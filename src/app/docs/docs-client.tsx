@@ -48,11 +48,12 @@ interface ToolDefinition {
 }
 
 const MCP_TOOLS: ToolDefinition[] = [
+  // ─── 1. Full Schema & Introspection ───
   {
     name: "get_full_schema",
     title: "Get Full Schema",
     description:
-      "Get the complete database schema of a SaCMS workspace — all Content Types, Single Types, and Components with their fields and relationships. Call this FIRST before building any frontend or generating types.",
+      "Get the complete database schema of the workspace — all Content Types, Single Types, and Components with their fields and relationships. Call this FIRST before building or scaffolding any frontend.",
     inputs: [],
     sampleResponse: {
       workspace: { id: "cmsx45pyb0015ujloxp9f4r6v", name: "My Workspace", slug: "my-workspace" },
@@ -63,10 +64,9 @@ const MCP_TOOLS: ToolDefinition[] = [
           slug: "articles",
           description: "Blog posts and news articles",
           fields: [
-            { name: "Title", slug: "title", type: "text", required: true, unique: false },
-            { name: "Slug", slug: "slug", type: "slug", required: true, unique: true },
-            { name: "Content", slug: "content", type: "richText", required: true },
-            { name: "Author", slug: "author", type: "relation", required: false, relationSlug: "authors" }
+            { name: "Title", slug: "title", type: "text", required: true, unique: false, localizable: true },
+            { name: "Content", slug: "content", type: "richText", required: true, unique: false, localizable: true },
+            { name: "Author", slug: "author", type: "relation", required: false, unique: false, localizable: false, relationSlug: "authors" }
           ]
         }
       ],
@@ -76,9 +76,10 @@ const MCP_TOOLS: ToolDefinition[] = [
           name: "Homepage Config",
           slug: "homepage-config",
           description: "Hero banner and featured layout config",
+          hasData: true,
+          data: { siteTitle: "My Awesome Website", heroHeading: "Welcome" },
           fields: [
-            { name: "Site Title", slug: "siteTitle", type: "text", required: true },
-            { name: "Hero Heading", slug: "heroHeading", type: "text", required: false }
+            { name: "Site Title", slug: "siteTitle", type: "text", required: true, unique: false, localizable: true }
           ]
         }
       ],
@@ -89,18 +90,40 @@ const MCP_TOOLS: ToolDefinition[] = [
           slug: "seo-metadata",
           category: "SEO",
           fields: [
-            { name: "Meta Title", slug: "metaTitle", type: "text", required: true },
-            { name: "Meta Description", slug: "metaDescription", type: "text", required: false }
+            { name: "Meta Title", slug: "metaTitle", type: "text", required: true, unique: false, localizable: true }
           ]
         }
       ]
     }
   },
   {
+    name: "list_field_types",
+    title: "List Supported Field Types",
+    description:
+      "List all 33 supported field types (text, richText, number, currency, relation, component, repeater, media, etc.) with their supported options and an example schema field — call this before create_content_type/create_single_type/create_component to discover valid field shapes.",
+    inputs: [
+      { name: "category", type: "string", required: false, description: "Filter by category: Basic | Number | Date & Time | Selection | Boolean | Validation | Media | Relations | Advanced" }
+    ],
+    sampleResponse: {
+      totalCount: 33,
+      categories: ["Basic", "Number", "Date & Time", "Selection", "Boolean", "Validation", "Media", "Relations", "Advanced"],
+      fieldTypes: [
+        {
+          type: "relation",
+          label: "Relation",
+          category: "Relations",
+          supportedOptions: { relationSlug: "string (target collection slug, e.g. 'categories')", relationType: "oneToOne | oneToMany | manyToOne | manyToMany" },
+          exampleSchemaField: { name: "Relation", slug: "relation", type: "relation", required: false, relationSlug: "categories" }
+        }
+      ]
+    }
+  },
+
+  // ─── 2. Content Types (Collections) CRUD ───
+  {
     name: "list_content_types",
     title: "List Content Types",
-    description:
-      "List all Content Types (collections like articles, products, authors) with their field definitions and entry counts.",
+    description: "List all Content Types (collections like articles, products, authors) with their field schemas and total entry counts.",
     inputs: [],
     sampleResponse: [
       {
@@ -110,9 +133,7 @@ const MCP_TOOLS: ToolDefinition[] = [
         description: "Blog posts and news articles",
         entryCount: 15,
         fields: [
-          { name: "Title", slug: "title", type: "text", required: true },
-          { name: "Slug", slug: "slug", type: "slug", required: true },
-          { name: "Content", slug: "content", type: "richText", required: true }
+          { name: "Title", slug: "title", type: "text", required: true, unique: false, relationSlug: null, options: {} }
         ]
       }
     ]
@@ -120,7 +141,7 @@ const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "get_content_type",
     title: "Get Content Type Schema",
-    description: "Get detailed field schema and metadata for a specific Content Type by its slug or ID.",
+    description: "Get detailed field schema, entry count, and metadata for a specific Content Type by its slug or ID.",
     inputs: [
       { name: "slug", type: "string", required: true, description: "Slug or ID of the Content Type (e.g. 'articles')" }
     ],
@@ -129,149 +150,224 @@ const MCP_TOOLS: ToolDefinition[] = [
       name: "Articles",
       slug: "articles",
       description: "Blog posts and news articles",
+      showInCms: true,
+      entryCount: 15,
       fields: [
-        { name: "Title", slug: "title", type: "text", required: true },
-        { name: "Content", slug: "content", type: "richText", required: true }
+        { id: "fld_title", name: "Title", slug: "title", type: "text", required: true, unique: false, localizable: true, relationSlug: null, options: {} }
       ]
     }
   },
   {
     name: "create_content_type",
     title: "Create Content Type",
-    description: "Create a new Content Type (collection) in the workspace with field definitions.",
+    description: "Create a new Content Type (collection) with field definitions. Call list_field_types first to discover valid field types.",
     inputs: [
-      { name: "name", type: "string", required: true, description: "Display name (e.g. 'Products')" },
-      { name: "slug", type: "string", required: true, description: "Unique slug identifier (e.g. 'products')" },
-      { name: "description", type: "string", required: false, description: "Optional description" },
-      { name: "fields", type: "array", required: true, description: "Array of field definitions" }
+      { name: "name", type: "string", required: true, description: "Display name (e.g. 'Blog Post', 'Product Item')" },
+      { name: "slug", type: "string", required: true, description: "URL-safe slug (e.g. 'articles', 'products')" },
+      { name: "description", type: "string", required: false, description: "Description of this collection" },
+      { name: "showInCms", type: "boolean", required: false, default: "true", description: "Whether to display in CMS sidebar" },
+      { name: "fields", type: "array", required: false, description: "Array of field definitions: { name, slug, type, required?, unique?, localizable?, relationSlug?, options? }" }
     ],
     sampleResponse: {
-      success: true,
-      contentType: { id: "ct_products", name: "Products", slug: "products" }
+      id: "ct_products",
+      name: "Products",
+      slug: "products",
+      schemaFields: [
+        { id: "fld_name", name: "Name", slug: "name", type: "text", required: true, order: 0 }
+      ]
     }
   },
   {
-    name: "list_entries",
-    title: "List / Query Entries",
-    description:
-      "Query published content entries with Strapi-compatible filters, search, sort, pagination, and relational populate.",
+    name: "update_content_type",
+    title: "Update Content Type",
+    description: "Update an existing Content Type's name, description, CMS visibility, or add/replace its schema fields entirely.",
     inputs: [
-      { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the Content Type (e.g. 'articles')" },
-      { name: "page", type: "number", required: false, default: "1", description: "Page number" },
-      { name: "pageSize", type: "number", required: false, default: "25", description: "Number of entries per page (max 100)" },
-      { name: "search", type: "string", required: false, description: "Search keyword across text fields" },
-      { name: "filters", type: "object", required: false, description: "Strapi-style filter object (e.g. { category: { $eq: 'tech' } })" },
-      { name: "sort", type: "string", required: false, description: "Sort string (e.g. 'createdAt:desc')" },
-      { name: "populate", type: "array", required: false, description: "Relation field slugs to populate" }
+      { name: "slug", type: "string", required: true, description: "Current slug or ID of the Content Type to update" },
+      { name: "name", type: "string", required: false, description: "New display name" },
+      { name: "description", type: "string", required: false, description: "New description" },
+      { name: "showInCms", type: "boolean", required: false, description: "Show in CMS navigation" },
+      { name: "fields", type: "array", required: false, description: "New list of fields — if provided, REPLACES the entire schema field set" }
     ],
     sampleResponse: {
+      id: "ct_products",
+      name: "Products (Updated)",
+      slug: "products",
+      schemaFields: [
+        { id: "fld_name", name: "Name", slug: "name", type: "text", required: true, order: 0 }
+      ]
+    }
+  },
+  {
+    name: "delete_content_type",
+    title: "Delete Content Type",
+    description: "Permanently delete a Content Type collection, its schema fields, and ALL of its stored content entries.",
+    inputs: [
+      { name: "slug", type: "string", required: true, description: "Slug or ID of the Content Type to delete" }
+    ],
+    sampleResponse: { deleted: true, slug: "products" }
+  },
+
+  // ─── 3. Content Entries CRUD ───
+  {
+    name: "query_content",
+    title: "Query Content Entries",
+    description: "Fetch published or draft content entries from a Content Type collection with pagination, search, status, locale filtering, and sort order.",
+    inputs: [
+      { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the Content Type (e.g. 'articles', 'products')" },
+      { name: "limit", type: "number", required: false, default: "10", description: "Number of items to return (max 100)" },
+      { name: "page", type: "number", required: false, default: "1", description: "Page number (1-indexed)" },
+      { name: "status", type: "string", required: false, default: "PUBLISHED", description: "PUBLISHED | DRAFT | IN_REVIEW | ARCHIVED | ALL" },
+      { name: "search", type: "string", required: false, description: "Search term" },
+      { name: "locale", type: "string", required: false, description: "Filter by locale code (e.g. 'id', 'en')" },
+      { name: "sortOrder", type: "string", required: false, default: "desc", description: "asc | desc, sorted by createdAt" }
+    ],
+    sampleResponse: {
+      contentType: "articles",
+      pagination: { page: 1, limit: 10, total: 15, totalPages: 2 },
       data: [
         {
-          id: "cmt191h9s000nujikfe9o533b",
-          title: "Building Modern Web Apps with Next.js 16 and SaCMS",
-          author: "Admin",
-          status: "PUBLISHED",
-          createdAt: "2026-08-20T08:19:09.615Z"
+          _id: "cmt191h9s000nujikfe9o533b",
+          _status: "PUBLISHED",
+          _locale: "id",
+          _createdAt: "2026-08-20T08:19:09.615Z",
+          _publishedAt: "2026-08-20T08:20:00.000Z",
+          title: "Building Modern Web Apps with Next.js 16 and SaCMS"
         }
-      ],
-      meta: {
-        pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 }
-      }
+      ]
     }
   },
   {
-    name: "get_entry",
-    title: "Get Single Entry",
-    description: "Get a specific content entry by its ID with populated relational data.",
+    name: "get_content_entry",
+    title: "Get Content Entry",
+    description: "Fetch a specific content entry by its unique ID, including all JSON field values, locale, status, and content type info.",
     inputs: [
-      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
-      { name: "id", type: "string", required: true, description: "Entry ID" },
-      { name: "locale", type: "string", required: false, default: "en", description: "Language locale code" },
-      { name: "populate", type: "array", required: false, description: "Relations to populate" }
+      { name: "id", type: "string", required: true, description: "Unique ID of the content entry (e.g. 'cmtcsh...')" }
     ],
     sampleResponse: {
-      id: "cmt191h9s000nujikfe9o533b",
+      _id: "cmt191h9s000nujikfe9o533b",
+      _contentType: "articles",
+      _contentTypeName: "Articles",
+      _status: "PUBLISHED",
+      _locale: "id",
       title: "Building Modern Web Apps with Next.js 16 and SaCMS",
-      author: "Admin",
-      content: "<p>Complete guide on headless CMS...</p>",
-      status: "PUBLISHED"
+      content: "<p>Complete guide on headless CMS...</p>"
     }
   },
   {
-    name: "create_entry",
+    name: "create_content_entry",
     title: "Create Content Entry",
-    description: "Create a new content entry in a collection (DRAFT or PUBLISHED).",
+    description: "Insert a new content entry into a Content Type collection with a JSON payload.",
     inputs: [
-      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
-      { name: "data", type: "object", required: true, description: "JSON object with field values" },
-      { name: "status", type: "string", required: false, default: "DRAFT", description: "DRAFT | PUBLISHED" },
-      { name: "locale", type: "string", required: false, default: "en", description: "Language locale" }
+      { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the target Content Type (e.g. 'articles')" },
+      { name: "data", type: "object", required: true, description: "JSON object with field values (e.g. { title: 'Hello', content: '...' })" },
+      { name: "status", type: "string", required: false, default: "PUBLISHED", description: "PUBLISHED | DRAFT | IN_REVIEW" },
+      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
     ],
-    sampleResponse: {
-      success: true,
-      entry: { id: "cmt_new_entry_id", status: "PUBLISHED" }
-    }
+    sampleResponse: { id: "cmt_new_entry_id", status: "PUBLISHED", locale: "id" }
   },
   {
-    name: "update_entry",
+    name: "update_content_entry",
     title: "Update Content Entry",
-    description: "Update field values or workflow status of an existing entry.",
+    description: "Update an existing content entry's field values (merged with existing data) or workflow status.",
     inputs: [
-      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
-      { name: "id", type: "string", required: true, description: "Entry ID to update" },
-      { name: "data", type: "object", required: true, description: "Updated field values" },
-      { name: "status", type: "string", required: false, description: "New workflow status" }
+      { name: "id", type: "string", required: true, description: "ID of the content entry to update" },
+      { name: "data", type: "object", required: false, description: "Updated JSON field values — merged with existing data, not replaced" },
+      { name: "status", type: "string", required: false, description: "PUBLISHED | DRAFT | IN_REVIEW | ARCHIVED" }
     ],
-    sampleResponse: {
-      success: true,
-      entry: { id: "cmt191h9s000nujikfe9o533b", updatedAt: "2026-08-20T18:47:12.000Z" }
-    }
+    sampleResponse: { id: "cmt191h9s000nujikfe9o533b", status: "PUBLISHED" }
   },
   {
-    name: "delete_entry",
+    name: "delete_content_entry",
     title: "Delete Content Entry",
-    description: "Delete an entry from the collection permanently.",
+    description: "Permanently delete a specific content entry by its ID.",
     inputs: [
-      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
-      { name: "id", type: "string", required: true, description: "Entry ID" }
+      { name: "id", type: "string", required: true, description: "ID of the content entry to delete" }
     ],
-    sampleResponse: {
-      success: true,
-      message: "Entry deleted successfully"
-    }
+    sampleResponse: { deleted: true, id: "cmt191h9s000nujikfe9o533b" }
+  },
+
+  // ─── 4. Single Types (Singleton Pages) CRUD ───
+  {
+    name: "list_single_types",
+    title: "List Single Types",
+    description: "List all Single Types (one-off page schemas like Homepage, About Page, Global Site Settings).",
+    inputs: [],
+    sampleResponse: [
+      {
+        id: "st_homepage",
+        name: "Homepage Config",
+        slug: "homepage-config",
+        hasData: true,
+        fields: [{ name: "Site Title", slug: "siteTitle", type: "text", required: true, unique: false }]
+      }
+    ]
   },
   {
     name: "get_single_type",
-    title: "Get Single Type Content",
-    description: "Fetch content stored in a Single Type (e.g. homepage config, site settings).",
+    title: "Get Single Type Content & Schema",
+    description: "Fetch the schema fields and the actual saved content data for a specific Single Type.",
     inputs: [
-      { name: "slug", type: "string", required: true, description: "Slug of the Single Type (e.g. 'homepage-config')" },
-      { name: "locale", type: "string", required: false, default: "en", description: "Locale code" }
+      { name: "singleTypeSlug", type: "string", required: true, description: "Slug or ID of the Single Type (e.g. 'homepage', 'global-settings')" },
+      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
     ],
     sampleResponse: {
-      siteTitle: "My Awesome Website",
-      heroHeading: "Welcome to our portal",
-      heroDescription: "Powered by SaCMS"
+      singleType: { id: "st_homepage", name: "Homepage Config", slug: "homepage-config", fields: [] },
+      locale: "id",
+      data: { siteTitle: "My Awesome Website", heroHeading: "Welcome to our portal" }
     }
+  },
+  {
+    name: "create_single_type",
+    title: "Create Single Type",
+    description: "Create a new Single Type (singleton page schema, e.g. 'Homepage', 'Contact Page') with fields and optional initial content data.",
+    inputs: [
+      { name: "name", type: "string", required: true, description: "Display name (e.g. 'Homepage', 'Site Settings')" },
+      { name: "slug", type: "string", required: true, description: "URL-friendly slug (e.g. 'homepage', 'site-settings')" },
+      { name: "description", type: "string", required: false, description: "Description of this single type" },
+      { name: "fields", type: "array", required: false, description: "Field definitions: { name, slug, type, required?, options? }" },
+      { name: "initialData", type: "object", required: false, description: "Initial singleton content values" },
+      { name: "locale", type: "string", required: false, default: "id", description: "Initial content locale" }
+    ],
+    sampleResponse: { id: "st_new", name: "Homepage", slug: "homepage" }
+  },
+  {
+    name: "update_single_type_content",
+    title: "Update Single Type Content",
+    description: "Save or update the singleton content VALUES stored in a Single Type (e.g. hero banner title, footer links) — not its schema.",
+    inputs: [
+      { name: "singleTypeSlug", type: "string", required: true, description: "Slug of the Single Type (e.g. 'homepage')" },
+      { name: "data", type: "object", required: true, description: "JSON object of content values" },
+      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
+    ],
+    sampleResponse: { singleTypeId: "st_homepage", locale: "id", publishedAt: "2026-08-20T18:50:00.000Z" }
   },
   {
     name: "update_single_type",
-    title: "Update Single Type Content",
-    description: "Update and optionally publish data for a Single Type.",
+    title: "Update Single Type Schema",
+    description: "Update an existing Single Type's name, description, or add/replace its SCHEMA fields (not its content values — see update_single_type_content for that).",
     inputs: [
-      { name: "slug", type: "string", required: true, description: "Single Type slug" },
-      { name: "data", type: "object", required: true, description: "Updated JSON data" },
-      { name: "publish", type: "boolean", required: false, default: "true", description: "Whether to publish immediately" }
+      { name: "singleTypeSlug", type: "string", required: true, description: "Slug or ID of the Single Type to update" },
+      { name: "name", type: "string", required: false, description: "New display name" },
+      { name: "description", type: "string", required: false, description: "New description" },
+      { name: "fields", type: "array", required: false, description: "New list of fields — if provided, REPLACES the entire schema field set" }
     ],
-    sampleResponse: {
-      success: true,
-      updatedAt: "2026-08-20T18:50:00.000Z"
-    }
+    sampleResponse: { id: "st_homepage", name: "Homepage Config (Updated)" }
   },
+  {
+    name: "delete_single_type",
+    title: "Delete Single Type",
+    description: "Permanently delete a Single Type, its schema fields, and its stored content data.",
+    inputs: [
+      { name: "singleTypeSlug", type: "string", required: true, description: "Slug or ID of the Single Type to delete" }
+    ],
+    sampleResponse: { deleted: true, slug: "homepage-config" }
+  },
+
+  // ─── 5. Components (Reusable Nested Blocks) CRUD ───
   {
     name: "list_components",
     title: "List Components",
-    description: "List all reusable schema components (e.g. SEO block, CTA banner, Author card).",
+    description: "List all reusable Components (e.g. Hero Section, Feature Card, FAQ Item, SEO Meta block) with their field schemas.",
     inputs: [],
     sampleResponse: [
       {
@@ -279,43 +375,315 @@ const MCP_TOOLS: ToolDefinition[] = [
         name: "SEO Block",
         slug: "seo-block",
         category: "SEO",
-        fields: [{ name: "Meta Title", slug: "metaTitle", type: "text", required: true }]
+        fields: [{ name: "Meta Title", slug: "metaTitle", type: "text", required: true, options: {} }]
       }
     ]
   },
   {
+    name: "create_component",
+    title: "Create Component",
+    description: "Create a new reusable Component schema that can be embedded inside Content Types and Single Types (via the 'component' or 'repeater' field types).",
+    inputs: [
+      { name: "name", type: "string", required: true, description: "Display name (e.g. 'Hero Banner', 'Call To Action')" },
+      { name: "slug", type: "string", required: true, description: "Slug identifier (e.g. 'hero-banner', 'cta-box')" },
+      { name: "category", type: "string", required: false, default: "sections", description: "Component category (e.g. 'sections', 'elements', 'meta')" },
+      { name: "description", type: "string", required: false, description: "Description of this component" },
+      { name: "fields", type: "array", required: false, description: "Field definitions: { name, slug, type, required?, options? }" }
+    ],
+    sampleResponse: { id: "comp_hero", name: "Hero Banner", slug: "hero-banner" }
+  },
+  {
+    name: "get_component",
+    title: "Get Component",
+    description: "Fetch schema fields and metadata for a specific Component.",
+    inputs: [
+      { name: "componentSlug", type: "string", required: true, description: "Slug or ID of the Component (e.g. 'hero-banner', 'cta-box')" }
+    ],
+    sampleResponse: {
+      id: "comp_hero",
+      name: "Hero Banner",
+      slug: "hero-banner",
+      category: "sections",
+      fields: [{ id: "fld_heading", name: "Heading", slug: "heading", type: "text", required: true, options: {} }]
+    }
+  },
+  {
+    name: "update_component",
+    title: "Update Component",
+    description: "Update an existing Component's name, category, description, or add/replace its schema fields.",
+    inputs: [
+      { name: "componentSlug", type: "string", required: true, description: "Current slug or ID of the Component to update" },
+      { name: "name", type: "string", required: false, description: "New display name" },
+      { name: "category", type: "string", required: false, description: "New category (e.g. 'sections', 'elements', 'meta')" },
+      { name: "description", type: "string", required: false, description: "New description" },
+      { name: "fields", type: "array", required: false, description: "New list of fields — if provided, REPLACES the component's entire field set" }
+    ],
+    sampleResponse: { id: "comp_hero", name: "Hero Banner (Updated)" }
+  },
+  {
+    name: "delete_component",
+    title: "Delete Component",
+    description: "Permanently delete a Component and its schema fields.",
+    inputs: [
+      { name: "componentSlug", type: "string", required: true, description: "Slug or ID of the Component to delete" }
+    ],
+    sampleResponse: { deleted: true, slug: "hero-banner" }
+  },
+
+  // ─── 6. Webhooks CRUD & Automation ───
+  {
     name: "list_webhooks",
     title: "List Webhooks",
-    description: "List all webhook endpoints configured in the workspace.",
+    description: "List all configured webhooks, their subscribed events, URLs, and status.",
     inputs: [],
     sampleResponse: [
       {
         id: "wh_vercel_deploy",
         name: "Vercel Deploy Hook",
         url: "https://api.vercel.com/v1/integrations/deploy/...",
-        events: ["content.publish", "content.update"],
-        enabled: true
+        events: ["content.published", "content.updated"],
+        enabled: true,
+        hookType: "async"
       }
     ]
   },
   {
-    name: "get_api_docs",
-    title: "Get API Docs & Reference",
-    description: "Get the complete REST and GraphQL API guide with live endpoints for this workspace.",
+    name: "get_webhook",
+    title: "Get Webhook",
+    description: "Fetch details, subscribed events, endpoint URL, and status of a specific webhook by ID.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "ID of the webhook to retrieve" }
+    ],
+    sampleResponse: { id: "wh_vercel_deploy", name: "Vercel Deploy Hook", url: "https://example.com/hook", events: ["content.published"], enabled: true }
+  },
+  {
+    name: "create_webhook",
+    title: "Create Webhook",
+    description: "Register a new webhook endpoint to receive notifications on CMS events (e.g. 'content.created', 'content.published', 'content.updated', 'content.deleted', 'media.uploaded').",
+    inputs: [
+      { name: "name", type: "string", required: true, description: "Descriptive name (e.g. 'Vercel Deploy Hook', 'Discord Notification')" },
+      { name: "url", type: "string", required: true, description: "Destination endpoint URL (must start with https:// or http://)" },
+      { name: "events", type: "array", required: true, description: "Array of event names (e.g. ['content.created', 'content.published'])" },
+      { name: "secret", type: "string", required: false, description: "Optional HMAC signature secret" },
+      { name: "enabled", type: "boolean", required: false, default: "true", description: "Whether the webhook is immediately active" },
+      { name: "hookType", type: "string", required: false, default: "async", description: "'async' background dispatch or 'sync' pre-save validation" }
+    ],
+    sampleResponse: { id: "wh_new", name: "Discord Notification", url: "https://discord.com/api/webhooks/...", enabled: true }
+  },
+  {
+    name: "update_webhook",
+    title: "Update Webhook",
+    description: "Update an existing webhook's configuration (name, URL, subscribed events, active state, secret).",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "ID of the webhook to update" },
+      { name: "name", type: "string", required: false, description: "New name" },
+      { name: "url", type: "string", required: false, description: "New destination URL" },
+      { name: "events", type: "array", required: false, description: "New array of event names" },
+      { name: "enabled", type: "boolean", required: false, description: "New active state" },
+      { name: "secret", type: "string", required: false, description: "New HMAC signature secret" }
+    ],
+    sampleResponse: { id: "wh_vercel_deploy", name: "Vercel Deploy Hook (Updated)" }
+  },
+  {
+    name: "delete_webhook",
+    title: "Delete Webhook",
+    description: "Permanently delete a webhook configuration and its log history.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "ID of the webhook to delete" }
+    ],
+    sampleResponse: { deleted: true, id: "wh_vercel_deploy" }
+  },
+  {
+    name: "test_webhook",
+    title: "Test Webhook",
+    description: "Dispatch a mock test event to a webhook endpoint to verify its connectivity and response status.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "ID of the webhook to test" }
+    ],
+    sampleResponse: { ok: true, status: 200, durationMs: 184 }
+  },
+
+  // ─── 7. API Information & Capability Inspector ───
+  {
+    name: "inspect_api_capabilities",
+    title: "Inspect API Capabilities & Permissions",
+    description: "Inspect the active API token's permissions (read, write, delete) to decide whether to build read-only or interactive dynamic components.",
     inputs: [],
     sampleResponse: {
-      workspace: "my-workspace",
-      baseUrl: "http://localhost:3000/api/public/my-workspace",
-      authHeader: "Authorization: Bearer <API_TOKEN>",
-      endpoints: [
-        "GET /content/{contentTypeSlug}",
-        "GET /content/{contentTypeSlug}/{id}",
-        "POST /content/{contentTypeSlug}",
-        "PUT /content/{contentTypeSlug}/{id}",
-        "DELETE /content/{contentTypeSlug}/{id}",
-        "GET /single/{singleTypeSlug}",
-        "PUT /single/{singleTypeSlug}"
-      ]
+      tenantSlug: "my-workspace",
+      permissions: ["read", "write"],
+      capabilities: { canRead: true, canWrite: true, canDelete: false, canModifySchema: true, canManageWebhooks: true },
+      recommendedMode: "interactive_fullstack"
+    }
+  },
+  {
+    name: "get_api_info",
+    title: "Get API Information",
+    description: "Get the full REST API documentation, endpoints, filtering syntax, and sample integration code for this workspace.",
+    inputs: [
+      { name: "baseUrl", type: "string", required: false, description: "Public base URL of SaCMS (e.g. https://yourdomain.com)" }
+    ],
+    sampleResponse: "# SaCMS API & MCP Integration Guide — Workspace: My Workspace\n\n## Base URL\nhttps://yourdomain.com/api/public/my-workspace\n\n## Authentication Header\nAuthorization: Bearer YOUR_API_TOKEN\n\n## Public REST Endpoints\n- GET /content/{contentTypeSlug}\n- GET /content/{contentTypeSlug}/{id}\n- GET /single/{singleTypeSlug}\n- POST /graphql"
+  },
+  {
+    name: "get_or_create_api_key",
+    title: "Get or Create Workspace API Key",
+    description: "Get this workspace's primary REST/GraphQL API key, creating it once if it doesn't exist yet. Safe to call repeatedly — an existing key is reused, never duplicated. The plaintext secret is only returned the first time it's created.",
+    inputs: [],
+    sampleResponse: { status: "created", id: "key_abc123", name: "Primary API Key", permissions: ["read", "write"], apiKey: "sacms_live_xxxxxxxxxxxxxxxx" }
+  },
+  {
+    name: "update_api_key_permissions",
+    title: "Update Workspace API Key Permissions",
+    description: "Adjust the read/write/delete permissions on the workspace's primary REST/GraphQL API key — replaces the full permission set. You can only grant permissions your own MCP token already has.",
+    inputs: [
+      { name: "permissions", type: "array", required: true, description: 'Full replacement set of permissions, e.g. ["read","write"]' }
+    ],
+    sampleResponse: { status: "updated", id: "key_abc123", permissions: ["read", "write"] }
+  },
+  {
+    name: "regenerate_api_key",
+    title: "Regenerate Workspace API Key Secret",
+    description: "Rotate the workspace's primary REST/GraphQL API key — same key (id, name, permissions), brand new secret. The old secret stops working immediately.",
+    inputs: [],
+    sampleResponse: { status: "regenerated", id: "key_abc123", apiKey: "sacms_live_yyyyyyyyyyyyyyyy" }
+  },
+
+  // ─── 8. Hosting & Cloud Deployment (Vercel) ───
+  {
+    name: "deploy_to_vercel",
+    title: "Deploy Website / App to Vercel",
+    description: "Deploy generated website frontend files (Next.js, HTML, React) directly to Vercel Serverless hosting. The SaCMS API URL, tenant, and key are injected automatically as env vars. Requires a PAID workspace.",
+    inputs: [
+      { name: "projectName", type: "string", required: true, description: "Name of the Vercel project (e.g. 'my-awesome-site')" },
+      { name: "files", type: "array", required: true, description: "Array of { name: filePath, content: sourceCode } to deploy" },
+      { name: "envVars", type: "object", required: false, description: "Extra env vars merged on top of the workspace's saved Environment vars" }
+    ],
+    sampleResponse: { id: "dpl_abc123", url: "https://my-awesome-site.vercel.app", state: "READY", projectName: "my-awesome-site" }
+  },
+  {
+    name: "get_vercel_deployment_status",
+    title: "Get Vercel Deployment Status",
+    description: "Check the build progress, ready state, and live URL of an existing Vercel deployment.",
+    inputs: [
+      { name: "deploymentId", type: "string", required: true, description: "Vercel deployment ID (e.g. 'dpl_xxx')" }
+    ],
+    sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-awesome-site.vercel.app", isReady: true }
+  },
+  {
+    name: "configure_vercel_domain",
+    title: "Configure Custom Domain on Vercel",
+    description: "Attach and verify a custom apex domain or subdomain to a Vercel project, with DNS diagnostics.",
+    inputs: [
+      { name: "projectId", type: "string", required: true, description: "Vercel Project ID" },
+      { name: "domain", type: "string", required: true, description: "Custom domain name (e.g. 'mysite.com' or 'blog.mysite.com')" }
+    ],
+    sampleResponse: {
+      domain: "mysite.com",
+      verified: false,
+      dnsConfig: { cnameTarget: "cname.vercel-dns.com", aRecordTarget: "76.76.21.21", configured: false },
+      message: "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
+    }
+  },
+  {
+    name: "add_vercel_env",
+    title: "Add / Update Vercel Environment Variable",
+    description: "Create or update an environment variable on this workspace's Vercel project (upsert). Also mirrored into the dashboard's Environment tab. An existing deployment must be redeployed for the change to take effect.",
+    inputs: [
+      { name: "key", type: "string", required: true, description: "UPPER_SNAKE_CASE variable name, e.g. STRIPE_SECRET_KEY or NEXT_PUBLIC_ANALYTICS_ID" },
+      { name: "value", type: "string", required: true, description: "Variable value" },
+      { name: "projectId", type: "string", required: false, description: "Vercel Project ID — defaults to this workspace's linked project" },
+      { name: "targets", type: "array", required: false, description: "Which environments to apply to: production | preview | development (default: all three)" }
+    ],
+    sampleResponse: { key: "STRIPE_SECRET_KEY", type: "encrypted", targets: ["production", "preview", "development"], action: "created" }
+  },
+  {
+    name: "make_vercel_deployment_public",
+    title: "Make Vercel Deployment Publicly Viewable",
+    description: "Turn off Vercel's 'Vercel Authentication' deployment protection on this workspace's project, so every deployment link (including random-suffix preview URLs) can be opened without logging into Vercel. Only call when the user explicitly wants this.",
+    inputs: [
+      { name: "projectId", type: "string", required: false, description: "Vercel Project ID — defaults to this workspace's linked project" }
+    ],
+    sampleResponse: { ok: true, message: "✅ Proteksi 'Vercel Authentication' dinonaktifkan." }
+  },
+
+  // ─── 9. Multi-Tenant End-Users & Member Auth ───
+  {
+    name: "list_members",
+    title: "List End-User Members",
+    description: "List registered members/end-users for this workspace with filtering by search, role, or status.",
+    inputs: [
+      { name: "page", type: "number", required: false, default: "1", description: "Page number (1-based)" },
+      { name: "pageSize", type: "number", required: false, default: "20", description: "Items per page (max 100)" },
+      { name: "search", type: "string", required: false, description: "Search keyword for email or name" },
+      { name: "role", type: "string", required: false, description: "Filter by member role (e.g. 'member', 'vip', 'subscriber')" },
+      { name: "status", type: "string", required: false, description: "Filter by member status (e.g. 'active', 'suspended')" }
+    ],
+    sampleResponse: {
+      members: [{ id: "mbr_abc", email: "jane@example.com", name: "Jane Doe", role: "member", status: "active" }],
+      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 }
+    }
+  },
+  {
+    name: "get_member",
+    title: "Get End-User Member",
+    description: "Get detailed profile, metadata, and active sessions of a specific end-user member by ID or email.",
+    inputs: [
+      { name: "idOrEmail", type: "string", required: true, description: "Member ID (cuid) or email address" }
+    ],
+    sampleResponse: { id: "mbr_abc", email: "jane@example.com", name: "Jane Doe", role: "member", status: "active", sessions: [] }
+  },
+  {
+    name: "create_member",
+    title: "Create End-User Member",
+    description: "Programmatically create a new member/end-user for this workspace with a bcrypt-hashed password.",
+    inputs: [
+      { name: "email", type: "string", required: true, description: "Member email address" },
+      { name: "password", type: "string", required: true, description: "Plaintext password (min 6 chars, hashed with bcrypt before storage)" },
+      { name: "name", type: "string", required: false, description: "Full name of the member" },
+      { name: "role", type: "string", required: false, default: "member", description: "Member role (e.g. 'vip', 'subscriber')" },
+      { name: "metadata", type: "object", required: false, description: "Custom JSON metadata/attributes" }
+    ],
+    sampleResponse: { id: "mbr_new", email: "jane@example.com", role: "member", status: "active" }
+  },
+  {
+    name: "update_member",
+    title: "Update End-User Member",
+    description: "Update an existing member's profile, role, status ('active' | 'suspended' | 'pending_verification'), password, or custom metadata.",
+    inputs: [
+      { name: "idOrEmail", type: "string", required: true, description: "Member ID or email" },
+      { name: "name", type: "string", required: false, description: "Updated full name" },
+      { name: "role", type: "string", required: false, description: "Updated role" },
+      { name: "status", type: "string", required: false, description: "'active' | 'suspended' | 'pending_verification'" },
+      { name: "password", type: "string", required: false, description: "New plaintext password (min 6 chars, re-hashed)" },
+      { name: "metadata", type: "object", required: false, description: "Custom JSON metadata, merged with existing" }
+    ],
+    sampleResponse: { id: "mbr_abc", email: "jane@example.com", status: "suspended" }
+  },
+  {
+    name: "delete_member",
+    title: "Delete End-User Member",
+    description: "Permanently delete an end-user member and invalidate all of their active sessions.",
+    inputs: [
+      { name: "idOrEmail", type: "string", required: true, description: "Member ID or email to delete" }
+    ],
+    sampleResponse: { deleted: true, email: "jane@example.com" }
+  },
+
+  // ─── 10. Free Static Site Hosting (Vue.js 3 + Tailwind, No Build) ───
+  {
+    name: "write_static_site",
+    title: "Simpan Website Statis Hasil Tulisan AI Agent",
+    description:
+      "Save index.html + app.js already written by the calling AI agent itself as a draft one-page website (Vue.js 3 + Tailwind via CDN, no build step) — SaCMS does NOT call any AI model for this tool, it only stores what the agent sends. Step 1 of 3: a mock-data-only visual draft. Connecting it to real CMS schema/data is an optional next step only available from the dashboard, not via MCP — so a human reviews it before real CMS data is touched. Code must follow the required format: Vue 3 global build + Tailwind CDN, a <div id=\"app\"> mount point, <script src=\"app.js\"> before </body>, mock-only data (no fetch()), and every distinct data entity wrapped in // MOCK:<slug> ... // /MOCK:<slug> comment markers around its ref()/reactive() declaration.",
+    inputs: [
+      { name: "html", type: "string", required: true, description: "Full index.html content (Vue3 + Tailwind via CDN, has <div id=\"app\"> and <script src=\"app.js\">)" },
+      { name: "js", type: "string", required: true, description: "Full app.js content (Vue 3 Composition API, mock data wrapped in // MOCK:<slug> ... // /MOCK:<slug> markers)" }
+    ],
+    sampleResponse: {
+      status: "draft_created",
+      siteId: "site_abc123",
+      note: "Draft tersimpan, belum publik. Minta pemilik workspace preview & publish dari dashboard."
     }
   }
 ]
@@ -664,8 +1032,8 @@ export function DocsClient() {
                     href="#mcp-tools"
                     className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors font-medium flex items-center justify-between"
                   >
-                    <span>✦ Tool Reference (7 Tools)</span>
-                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 px-1 rounded">7</span>
+                    <span>✦ Tool Reference ({MCP_TOOLS.length} Tools)</span>
+                    <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 px-1 rounded">{MCP_TOOLS.length}</span>
                   </a>
                 </li>
                 <li>
