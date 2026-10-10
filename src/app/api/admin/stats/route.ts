@@ -95,8 +95,8 @@ export const GET = withAdminAuth(async () => {
     ])
 
     const mrr = financialReports?.summary?.mrr || monthlyRevenue._sum.amount || 0
-    const grossProfitMrr = financialReports?.summary?.grossProfit || 0
-    const grossMarginPercent = financialReports?.summary?.grossMargin || 0
+    const grossProfitMrr = financialReports?.summary?.monthlyGrossProfit || 0
+    const grossMarginPercent = financialReports?.summary?.grossMarginPercent || 0
 
     return NextResponse.json({
       contentTypes,

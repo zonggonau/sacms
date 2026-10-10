@@ -1,4 +1,5 @@
 import { getRedis } from "@/lib/redis"
+import { getClientIp, isLoopbackIp } from "@/lib/client-ip"
 
 /**
  * Rate limiter with Upstash Redis support (Edge compatible) and in-memory fallback.
@@ -127,6 +128,28 @@ export const RATE_LIMITS = {
   /** Dashboard API: 300 requests per minute per user */
   api: { limit: 300, windowSeconds: 60 },
 } as const
+
+/**
+ * Server Actions post to the page's own route (e.g. `/forgot-password`),
+ * not an `/api/...` path, so they never go through src/proxy.ts's
+ * path-prefixed rate limiting — that covers login, but nothing else
+ * invoked via a Server Action. Call this at the top of any sensitive one
+ * (password reset, registration, placing an order, …) instead. Needs
+ * `await headers()` from `next/headers` passed in since Server Actions
+ * have no Request object of their own.
+ */
+export async function checkActionRateLimit(
+  bucket: string,
+  requestHeaders: { get(name: string): string | null },
+  limit: number,
+  windowSeconds: number,
+): Promise<string | null> {
+  const ip = getClientIp({ headers: requestHeaders })
+  if (isLoopbackIp(ip)) return null
+  const rl = await rateLimit(`action:${bucket}:${ip}`, { limit, windowSeconds })
+  if (!rl.success) return "Terlalu banyak percobaan. Silakan coba lagi beberapa menit lagi."
+  return null
+}
 
 /**
  * Returns rate limit configuration based on tenant plan.

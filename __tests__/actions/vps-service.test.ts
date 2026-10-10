@@ -16,6 +16,14 @@ vi.mock("@/lib/audit-log", () => ({
   },
 }))
 
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue(new Headers()),
+}))
+
+vi.mock("@/lib/rate-limit", () => ({
+  checkActionRateLimit: vi.fn().mockResolvedValue(null),
+}))
+
 import { getServerSession } from "next-auth"
 import { db } from "@/lib/database"
 import { orderVpsAction, setupVpsAction, getUserVpsServicesAction } from "@/actions/vps-service"

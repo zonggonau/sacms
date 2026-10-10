@@ -4,9 +4,14 @@ import { db } from "@/lib/database"
 import { hashPassword } from "@/lib/auth"
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/lib/mail"
 import crypto from "crypto"
+import { headers } from "next/headers"
+import { checkActionRateLimit } from "@/lib/rate-limit"
 
 export async function registerUser(formData: any) {
   try {
+    const rlError = await checkActionRateLimit("register", await headers(), 5, 60)
+    if (rlError) return { error: rlError }
+
     const { name, email, password } = formData
 
     if (!email || !password || !name) {
@@ -239,6 +244,9 @@ export async function resendVerificationAction(email: string) {
 export async function forgotPassword(email: string) {
 
   try {
+    const rlError = await checkActionRateLimit("forgot-password", await headers(), 5, 60)
+    if (rlError) return { error: rlError }
+
     if (!email) {
       return { error: "Email wajib diisi" }
     }
@@ -284,6 +292,9 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword(formData: any) {
   try {
+    const rlError = await checkActionRateLimit("reset-password", await headers(), 10, 60)
+    if (rlError) return { error: rlError }
+
     const { token, password } = formData
 
     if (!token || !password) {

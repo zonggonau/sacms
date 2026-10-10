@@ -41,11 +41,10 @@ export const POST = withAdminAuth(
 
       await logAudit({
         action: "auth.verify",
-        actorId: session.user.id,
-        actorEmail: session.user.email || "superadmin",
-        targetId: user.id,
-        targetType: "user",
-        details: { method: "admin_manual_verify", userEmail: user.email },
+        userId: session.user.id,
+        entity: "user",
+        entityId: user.id,
+        data: { actorEmail: session.user.email || "superadmin", method: "admin_manual_verify", userEmail: user.email },
       })
 
       return NextResponse.json({
@@ -63,11 +62,10 @@ export const POST = withAdminAuth(
 
       await logAudit({
         action: "auth.unverify",
-        actorId: session.user.id,
-        actorEmail: session.user.email || "superadmin",
-        targetId: user.id,
-        targetType: "user",
-        details: { method: "admin_revoke_verify", userEmail: user.email },
+        userId: session.user.id,
+        entity: "user",
+        entityId: user.id,
+        data: { actorEmail: session.user.email || "superadmin", method: "admin_revoke_verify", userEmail: user.email },
       })
 
       return NextResponse.json({
@@ -107,11 +105,10 @@ export const POST = withAdminAuth(
 
       await logAudit({
         action: "auth.send_verification",
-        actorId: session.user.id,
-        actorEmail: session.user.email || "superadmin",
-        targetId: user.id,
-        targetType: "user",
-        details: { userEmail: user.email, tokenExpiryHours: 24 },
+        userId: session.user.id,
+        entity: "user",
+        entityId: user.id,
+        data: { actorEmail: session.user.email || "superadmin", userEmail: user.email, tokenExpiryHours: 24 },
       })
 
       return NextResponse.json({

@@ -197,6 +197,11 @@ export const authOptions: NextAuthOptions = {
                 where: { id: user.id },
                 data: { emailVerified: new Date() },
               })
+              // Same shape as the main success return below (and the OAuth
+              // path in the jwt callback) — this previously returned the
+              // raw, unmapped Prisma `tenants` relation (with the global
+              // system tenant not filtered out), which broke anything
+              // downstream expecting the flat {id,slug,name,role,...} shape.
               const globalTenantId = await getGlobalWorkspaceId()
               return {
                 id: user.id,
@@ -204,8 +209,16 @@ export const authOptions: NextAuthOptions = {
                 name: user.name,
                 role: user.role,
                 plan: user.plan || "free",
-                tenants: user.tenants || [],
-                globalTenantId,
+                image: user.image,
+                tenants: user.tenants
+                  .filter((t) => t.tenant.id !== globalTenantId && t.tenant.slug !== globalTenantId)
+                  .map((t) => ({
+                    id: t.tenant.id,
+                    slug: t.tenant.slug,
+                    name: t.tenant.name,
+                    role: t.role,
+                    customPermissions: t.customPermissions,
+                  })),
               }
             }
 

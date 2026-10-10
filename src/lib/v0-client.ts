@@ -437,7 +437,6 @@ export async function createV0Chat(
 
   if (resolvedKey) {
     try {
-      const teamId = options?.teamId || getV0TeamId()
       const title = options?.title || "SaCMS Website"
       const privacy = options?.privacy || "team"
 
@@ -448,7 +447,10 @@ export async function createV0Chat(
         setTimeout(() => resolve({ timeout: true }), 35000)
       )
 
-      // createAsync kicks off a real background generation job on v0 under sa-cms team
+      // createAsync kicks off a real background generation job on v0 under
+      // sa-cms team. This SDK version's createAsync has no query/team
+      // option — team scoping comes from the API key itself, not a
+      // per-request parameter, so there's no teamId to pass here anymore.
       const v0CreatePromise = client.chats.createAsync(
         {
           message: finalPrompt,
@@ -457,9 +459,6 @@ export async function createV0Chat(
           ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
           ...(options?.metadata ? { metadata: options.metadata } : {}),
           modelConfiguration: { modelId, imageGenerations: false },
-        },
-        {
-          query: teamId ? { teamId } : undefined,
         }
       ).catch((err: any) => {
         console.warn("[v0-client] Cloud v0 API call failed:", err?.message)
@@ -507,10 +506,9 @@ export async function createV0Chat(
     const startTime = Date.now()
 
     if (waitForFiles) {
-      const teamId = options?.teamId || getV0TeamId()
       while (Date.now() - startTime < maxWaitSeconds * 1000) {
         try {
-          const filesRes = await client.chats.getFiles({ chatId }, { query: teamId ? { teamId } : undefined })
+          const filesRes = await client.chats.getFiles({ chatId })
           const rawFiles =
             (filesRes as any)?.data?.files ||
             (filesRes as any)?.files ||
@@ -656,7 +654,9 @@ export async function iterateV0ChatReal(
     if (typeof (client.messages as any).sendAsync === "function") {
       await (client.messages as any).sendAsync(body, { query: teamId ? { teamId } : undefined })
     } else {
-      await client.messages.send(body, { query: teamId ? { teamId } : undefined })
+      // This SDK version's messages.send has no query/team option (team
+      // scoping comes from the API key itself) — see the createAsync note above.
+      await client.messages.send(body)
     }
 
     const startTime = Date.now()

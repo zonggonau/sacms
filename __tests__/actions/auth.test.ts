@@ -29,6 +29,14 @@ vi.mock("@/lib/auth", () => ({
   hashPassword: vi.fn().mockResolvedValue("hashed_password_123"),
 }))
 
+vi.mock("next/headers", () => ({
+  headers: vi.fn().mockResolvedValue(new Headers()),
+}))
+
+vi.mock("@/lib/rate-limit", () => ({
+  checkActionRateLimit: vi.fn().mockResolvedValue(null),
+}))
+
 describe("Auth Server Actions", () => {
   beforeEach(() => {
     vi.clearAllMocks()

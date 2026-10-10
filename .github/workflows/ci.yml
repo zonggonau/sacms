@@ -41,7 +41,13 @@ jobs:
       - name: Generate Prisma Client
         run: bun x prisma generate
 
-      - name: Run Automated Vitest Suite (155 tests)
+      - name: Type Check
+        run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Run Automated Vitest Suite
         run: bun run test
 
       - name: Compile Next.js Standalone Bundle
@@ -84,6 +90,14 @@ jobs:
     needs: [build-and-push]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
+    # `develop` and `master` both deploy to this one production VPS — there is
+    # no separate staging box. Gate `develop` behind a GitHub Environment so
+    # a push to it requires manual approval before touching the shared
+    # production server; `master` still deploys straight through. This only
+    # takes effect once "develop-deploy-approval" is created under repo
+    # Settings > Environments with a required reviewer — the environment
+    # name alone here does nothing without that protection rule configured.
+    environment: ${{ github.ref == 'refs/heads/develop' && 'develop-deploy-approval' || 'production' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

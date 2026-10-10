@@ -1,6 +1,7 @@
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import reactPlugin from "eslint-plugin-react";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
 import zodPlugin from "eslint-plugin-zod";
 
 const eslintConfig = [
@@ -25,6 +26,7 @@ const eslintConfig = [
     files: ["**/*.{ts,tsx,js,mjs}"],
     plugins: {
       react: reactPlugin,
+      "react-hooks": reactHooksPlugin,
       zod: zodPlugin,
     },
     languageOptions: {
@@ -57,6 +59,17 @@ const eslintConfig = [
       "no-useless-escape": "off",
       "no-useless-assignment": "off",
       "preserve-caught-error": "off",
+
+      // Actually catches real bugs (calling a hook conditionally/in a loop);
+      // cheap to enforce as an error, unlike exhaustive-deps below.
+      "react-hooks/rules-of-hooks": "error",
+      // Warn-only: enabling this for the first time across an existing
+      // codebase this size would surface a large pre-existing backlog, not
+      // just new code. Warn now (and registering the plugin at all fixes the
+      // immediate problem: an inline eslint-disable-next-line comment for
+      // this exact rule in mcp-client.tsx was erroring because the plugin
+      // wasn't registered, which is what broke `bun run lint` outright).
+      "react-hooks/exhaustive-deps": "warn",
 
       // Design tokens: prefer the theme tokens (bg-muted, text-muted-foreground,
       // border-border, bg-card, text-foreground …) over hardcoded Tailwind grey

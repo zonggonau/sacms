@@ -36,7 +36,7 @@ describe("Mail Library Tests", () => {
   it("should fallback to production default if siteUrl is not configured in settings", async () => {
     const { getPlatformSettings } = await import("@/lib/settings")
     vi.mocked(getPlatformSettings).mockResolvedValueOnce({} as any)
-    process.env.NODE_ENV = "production"
+    ;(process.env as Record<string, string>).NODE_ENV = "production"
     delete process.env.NEXTAUTH_URL
     delete process.env.NEXT_PUBLIC_APP_URL
 
@@ -47,7 +47,7 @@ describe("Mail Library Tests", () => {
   it("should resolve localhost for local development", async () => {
     const { getPlatformSettings } = await import("@/lib/settings")
     vi.mocked(getPlatformSettings).mockResolvedValueOnce({} as any)
-    process.env.NODE_ENV = "development"
+    ;(process.env as Record<string, string>).NODE_ENV = "development"
     process.env.NEXTAUTH_URL = "http://localhost:3000"
 
     const url = await getBaseUrl()

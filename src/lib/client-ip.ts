@@ -30,8 +30,12 @@ function isPlausibleIp(value: string): boolean {
  *
  * Prefers `X-Real-IP` (single value, set by the immediate proxy) and otherwise
  * walks `X-Forwarded-For` from the right by the configured number of trusted hops.
+ *
+ * Takes anything with a `.headers` that exposes `.get()` — a `Request`, or a
+ * plain `{ headers }` wrapper around the `headers()` helper from
+ * `next/headers`, which Server Actions use since they have no Request object.
  */
-export function getClientIp(request: Request): string {
+export function getClientIp(request: { headers: { get(name: string): string | null } }): string {
   const realIp = request.headers.get("x-real-ip")?.trim()
   if (realIp && isPlausibleIp(realIp)) return realIp
 

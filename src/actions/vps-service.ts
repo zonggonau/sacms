@@ -7,6 +7,8 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { randomBytes } from "crypto"
+import { headers } from "next/headers"
+import { checkActionRateLimit } from "@/lib/rate-limit"
 
 const orderVpsSchema = z.object({
   planSlug: z.string().min(1),
@@ -32,6 +34,9 @@ const setupVpsSchema = z.object({
 
 export async function orderVpsAction(data: z.infer<typeof orderVpsSchema>) {
   try {
+    const rlError = await checkActionRateLimit("order-vps", await headers(), 10, 60)
+    if (rlError) return { success: false, error: rlError }
+
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return { success: false, error: "Sesi tidak valid, silakan login kembali." }
