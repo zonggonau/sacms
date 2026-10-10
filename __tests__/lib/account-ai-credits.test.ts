@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { USER_PLAN_LIMITS, AI_CREDIT_PACKS } from "@/lib/constants/tenant-limits"
-import { enforceUserAiCredits, deductUserAiCredits } from "@/lib/plan-enforcement"
+import { enforceUserAiCredits, deductUserAiCredits, reserveUserAiCredits, refundUserAiCredits } from "@/lib/plan-enforcement"
 import { db } from "@/lib/database"
 
 vi.mock("@/lib/database", () => ({
@@ -8,6 +8,7 @@ vi.mock("@/lib/database", () => ({
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     customPlanOverride: {
       findUnique: vi.fn(),
@@ -131,6 +132,77 @@ describe("Account-Level AI Credit Quota & Standalone Top-Up Packs", () => {
         tokens: 25000,
         model: "v0.dev",
       },
+    })
+  })
+
+  // reserveUserAiCredits closes the TOCTOU race enforceUserAiCredits alone
+  // leaves open: two concurrent calls could both read "enough remaining"
+  // before either deduction lands. The fix is a single conditional
+  // UPDATE ... WHERE aiCreditsUsed <= max - cost, so these tests assert the
+  // exact where/data shape that makes that atomic, not just the boolean
+  // outcome — a regression here would silently reopen the race.
+  describe("reserveUserAiCredits (atomic check-and-deduct)", () => {
+    it("reserves credits in one conditional update when enough remain", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue({
+        role: "user",
+        aiCreditsUsed: 40,
+        aiCreditsExtra: 0,
+      } as any)
+      vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
+      vi.mocked(db.user.updateMany).mockResolvedValue({ count: 1 } as any)
+
+      // Free plan: 50 credits. 50 - 25 = 25 is the ceiling the WHERE clause
+      // must enforce atomically against concurrent reservations.
+      const result = await reserveUserAiCredits("user-1", 25)
+
+      expect(db.user.updateMany).toHaveBeenCalledWith({
+        where: { id: "user-1", aiCreditsUsed: { lte: 25 } },
+        data: { aiCreditsUsed: { increment: 25 } },
+      })
+      expect(result.allowed).toBe(true)
+    })
+
+    it("fails the reservation (count: 0) instead of racing when the conditional update doesn't match", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue({
+        role: "user",
+        aiCreditsUsed: 45,
+        aiCreditsExtra: 0,
+      } as any)
+      vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
+      // Simulates a concurrent request having already landed its own
+      // increment between this one's read and its conditional update.
+      vi.mocked(db.user.updateMany).mockResolvedValue({ count: 0 } as any)
+
+      const result = await reserveUserAiCredits("user-1", 25)
+
+      expect(result.allowed).toBe(false)
+      expect(result.message).toContain("AI credits depleted")
+    })
+
+    it("bypasses reservation entirely for super admin", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValue({
+        role: "super_admin",
+        aiCreditsUsed: 99999,
+        aiCreditsExtra: 0,
+      } as any)
+
+      const result = await reserveUserAiCredits("admin-user", 25)
+
+      expect(result.allowed).toBe(true)
+      expect(db.user.updateMany).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("refundUserAiCredits", () => {
+    it("atomically decrements, guarded against going negative", async () => {
+      vi.mocked(db.user.updateMany).mockResolvedValue({ count: 1 } as any)
+
+      await refundUserAiCredits("user-1", 25)
+
+      expect(db.user.updateMany).toHaveBeenCalledWith({
+        where: { id: "user-1", aiCreditsUsed: { gte: 25 } },
+        data: { aiCreditsUsed: { decrement: 25 } },
+      })
     })
   })
 })

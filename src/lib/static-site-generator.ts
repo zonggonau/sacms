@@ -547,36 +547,43 @@ export async function generateStaticSite(
   userId?: string,
   overrideModel?: string,
 ): Promise<StaticSiteResult> {
-  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
+  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, refundAiQuota, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 5, action: "generate_static_site_ui" }
   await enforceAiQuota(config)
 
-  const userPrompt = `User's Goal & Design Instruction:
+  try {
+    const userPrompt = `User's Goal & Design Instruction:
 ${prompt}
 
 Output ONLY the two delimited blocks <<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>, with every data entity wrapped in // MOCK:<slug> markers as instructed.`
 
-  const { model, modelId } = await resolveGatewayModel(overrideModel)
+    const { model, modelId } = await resolveGatewayModel(overrideModel)
 
-  const result = await withAiRetry(() =>
-    generateText({
-      model,
-      system: UI_SYSTEM_PROMPT,
-      prompt: userPrompt,
-      maxOutputTokens: 14000,
-    })
-  )
+    const result = await withAiRetry(() =>
+      generateText({
+        model,
+        system: UI_SYSTEM_PROMPT,
+        prompt: userPrompt,
+        maxOutputTokens: 14000,
+      })
+    )
 
-  if (result.finishReason === "length") {
-    throw new Error("Output AI terpotong karena melebihi batas panjang. Coba prompt yang lebih sederhana, atau pilih model lain.")
+    if (result.finishReason === "length") {
+      throw new Error("Output AI terpotong karena melebihi batas panjang. Coba prompt yang lebih sederhana, atau pilih model lain.")
+    }
+
+    const files = extractFiles(result.text)
+
+    await recordAiUsage(config, toUsageTotals(result.usage), modelId, files.html + files.js)
+
+    return files
+  } catch (err) {
+    // enforceAiQuota above already reserved (deducted) these credits —
+    // refund them since the generation it paid for didn't complete.
+    await refundAiQuota(config)
+    throw err
   }
-
-  const files = extractFiles(result.text)
-
-  await recordAiUsage(config, toUsageTotals(result.usage), modelId, files.html + files.js)
-
-  return files
 }
 
 /**
@@ -640,12 +647,13 @@ export async function connectStaticSiteToApi(
   userId?: string,
   overrideModel?: string,
 ): Promise<{ js: string }> {
-  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
+  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, refundAiQuota, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 3, action: "connect_static_site_api" }
   await enforceAiQuota(config)
 
-  const userPrompt = `Current app.js:
+  try {
+    const userPrompt = `Current app.js:
 \`\`\`javascript
 ${js}
 \`\`\`
@@ -653,29 +661,33 @@ ${js}
 Manifest (wire these refs to fetch real data):
 ${JSON.stringify(manifest, null, 2)}`
 
-  const { model, modelId } = await resolveGatewayModel(overrideModel)
+    const { model, modelId } = await resolveGatewayModel(overrideModel)
 
-  const result = await withAiRetry(() =>
-    generateText({
-      model,
-      system: API_CONNECT_SYSTEM_PROMPT,
-      prompt: userPrompt,
-      maxOutputTokens: 8000,
-    })
-  )
+    const result = await withAiRetry(() =>
+      generateText({
+        model,
+        system: API_CONNECT_SYSTEM_PROMPT,
+        prompt: userPrompt,
+        maxOutputTokens: 8000,
+      })
+    )
 
-  if (result.finishReason === "length") {
-    throw new Error("Output AI terpotong karena melebihi batas panjang. Coba lagi, atau pilih model lain.")
+    if (result.finishReason === "length") {
+      throw new Error("Output AI terpotong karena melebihi batas panjang. Coba lagi, atau pilih model lain.")
+    }
+
+    const jsMatch = result.text.match(/<<<APP_JS>>>([\s\S]*?)<<<END_APP_JS>>>/i)
+    const newJs = jsMatch ? jsMatch[1].trim() : result.text.trim()
+
+    if (!newJs) {
+      throw new Error("AI tidak mengembalikan app.js yang valid. Coba lagi.")
+    }
+
+    await recordAiUsage(config, toUsageTotals(result.usage), modelId, newJs)
+
+    return { js: newJs }
+  } catch (err) {
+    await refundAiQuota(config)
+    throw err
   }
-
-  const jsMatch = result.text.match(/<<<APP_JS>>>([\s\S]*?)<<<END_APP_JS>>>/i)
-  const newJs = jsMatch ? jsMatch[1].trim() : result.text.trim()
-
-  if (!newJs) {
-    throw new Error("AI tidak mengembalikan app.js yang valid. Coba lagi.")
-  }
-
-  await recordAiUsage(config, toUsageTotals(result.usage), modelId, newJs)
-
-  return { js: newJs }
 }

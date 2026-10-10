@@ -62,35 +62,41 @@ For Single Types, provide 1 complete initial record in 'dummyData'.
 All slugs must be snake_case or kebab-case lowercase.`
 
 async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
-  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
+  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, refundAiQuota, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 5, action: "generate_schema" }
   // Callers that already reserved quota for this cost as part of a larger
-  // combined check (e.g. generateStaticSite's upfront gate) pass true here
-  // so this doesn't check — and potentially pass — a balance that the
-  // outer call is also about to spend from before either deduction lands.
+  // combined check pass true here so this doesn't check — and potentially
+  // pass — a balance that the outer call is also about to spend from
+  // before either deduction lands. (No current caller actually does this
+  // anymore, but the escape hatch is cheap to keep for whoever needs it.)
   if (!skipQuotaCheck) {
     await enforceAiQuota(config)
   }
 
-  const { model, modelId } = await resolveGatewayModel(overrideModel)
+  try {
+    const { model, modelId } = await resolveGatewayModel(overrideModel)
 
-  // Pass the real zod schema straight to generateObject instead of asking
-  // for JSON in the prompt and hand-parsing it — the model's output is
-  // validated against systemSchema at generation time, provider-agnostic.
-  const result = await withAiRetry(() =>
-    generateObject({
-      model,
-      schema: systemSchema,
-      system: SYSTEM_PROMPT,
-      prompt,
-      maxOutputTokens: 16000,
-    })
-  )
+    // Pass the real zod schema straight to generateObject instead of asking
+    // for JSON in the prompt and hand-parsing it — the model's output is
+    // validated against systemSchema at generation time, provider-agnostic.
+    const result = await withAiRetry(() =>
+      generateObject({
+        model,
+        schema: systemSchema,
+        system: SYSTEM_PROMPT,
+        prompt,
+        maxOutputTokens: 16000,
+      })
+    )
 
-  await recordAiUsage(config, toUsageTotals(result.usage), modelId, JSON.stringify(result.object))
+    await recordAiUsage(config, toUsageTotals(result.usage), modelId, JSON.stringify(result.object))
 
-  return result.object
+    return result.object
+  } catch (err) {
+    if (!skipQuotaCheck) await refundAiQuota(config)
+    throw err
+  }
 }
 
 /**

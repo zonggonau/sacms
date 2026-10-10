@@ -407,6 +407,85 @@ export async function enforceUserAiCredits(
 }
 
 /**
+ * Atomically check-and-reserve AI credits in ONE database operation, closing
+ * the gap `enforceUserAiCredits` alone leaves open: that function only
+ * reads the current balance, so two concurrent requests from the same user
+ * can both see "enough remaining" and both proceed before either's
+ * deduction lands, letting the user spend past their limit. This instead
+ * does a conditional `UPDATE ... WHERE aiCreditsUsed <= max - cost`, which
+ * Postgres's row lock makes atomic: a second concurrent call only sees the
+ * first's increment once it's committed, so it correctly fails the
+ * condition instead of racing it. Enterprise/super_admin bypasses mirror
+ * enforceUserAiCredits exactly (no reservation needed — nothing to overrun).
+ * Call reserveUserAiCredits instead of enforceUserAiCredits wherever the
+ * cost is known up front and credits should actually be spent (not just
+ * previewed) — see refundUserAiCredits for undoing a reservation whose
+ * paid-for action then failed.
+ */
+export async function reserveUserAiCredits(
+  userId: string,
+  cost: number = 1
+): Promise<{ allowed: boolean; remaining: number; max: number; message: string }> {
+  try {
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    const globalTenantId = await getGlobalWorkspaceId()
+    const isEnterprise = await isEnterpriseTenant(globalTenantId) || await isEnterpriseTenant(userId)
+    if (isEnterprise) {
+      return { allowed: true, remaining: 999999, max: 999999, message: "Enterprise Unlimited" }
+    }
+  } catch {}
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, aiCreditsUsed: true, aiCreditsExtra: true }
+  })
+
+  if (user?.role === "super_admin") {
+    return { allowed: true, remaining: 999999, max: 999999, message: "Super Admin Bypass" }
+  }
+
+  const planConfig = await getUserPlanConfig(userId)
+  const override = await getUserOverride(userId)
+  const effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+  const maxUsageAfterReserve = effectiveMax - cost
+
+  const result = await db.user.updateMany({
+    where: { id: userId, aiCreditsUsed: { lte: maxUsageAfterReserve } },
+    data: { aiCreditsUsed: { increment: cost } },
+  })
+
+  if (result.count === 0) {
+    const current = user?.aiCreditsUsed || 0
+    const remaining = Math.max(0, effectiveMax - current)
+    return {
+      allowed: false,
+      remaining,
+      max: effectiveMax,
+      message: `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`,
+    }
+  }
+
+  return { allowed: true, remaining: Math.max(0, maxUsageAfterReserve), max: effectiveMax, message: "Reserved" }
+}
+
+/**
+ * Undo a reservation made by reserveUserAiCredits — call this if the action
+ * that consumed those credits then failed, so a failed AI call stays free
+ * (matching the pre-existing behavior: credits were only ever deducted on
+ * success, back when enforce/deduct were separate read-then-write steps).
+ */
+export async function refundUserAiCredits(userId: string, cost: number): Promise<void> {
+  try {
+    await db.user.updateMany({
+      where: { id: userId, aiCreditsUsed: { gte: cost } },
+      data: { aiCreditsUsed: { decrement: cost } },
+    })
+  } catch (error) {
+    console.error("[AI Credit Refund Error]", error)
+  }
+}
+
+/**
  * Atomically deduct AI credits from a user's account pool and record in ledger.
  */
 export async function deductUserAiCredits(

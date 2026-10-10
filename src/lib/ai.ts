@@ -109,13 +109,21 @@ export async function withAiRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Pro
 /**
  * Checks user-level AI credits and tenant-level AI token quota before
  * spending money on a call. Throws (status 429) if over quota.
+ *
+ * For the userId path this actually RESERVES (atomically deducts) the
+ * credits right here, not just previews the balance — enforceUserAiCredits
+ * alone would re-introduce the TOCTOU race this closes: two concurrent
+ * calls both reading "enough remaining" before either's deduction lands.
+ * recordAiUsage below no longer deducts for this path (it already
+ * happened); if the call this reserved for then fails, the caller must
+ * call refundAiQuota so a failed generation stays free, same as before.
  */
 export async function enforceAiQuota(config: AIConfig): Promise<void> {
   if (config.userId) {
-    const { enforceUserAiCredits } = await import("./plan-enforcement")
-    const creditCheck = await enforceUserAiCredits(config.userId, config.creditsCost || 1)
-    if (!creditCheck.allowed) {
-      const error: any = new Error(creditCheck.message)
+    const { reserveUserAiCredits } = await import("./plan-enforcement")
+    const reservation = await reserveUserAiCredits(config.userId, config.creditsCost || 1)
+    if (!reservation.allowed) {
+      const error: any = new Error(reservation.message)
       error.status = 429
       throw error
     }
@@ -151,19 +159,23 @@ export async function enforceAiQuota(config: AIConfig): Promise<void> {
 }
 
 /**
- * Deducts user credits or updates the tenant AI token ledger after a
- * successful call. Fire-and-forget — never blocks the response.
+ * Records the usage ledger entry after a successful call. For the userId
+ * path, credits were already reserved/deducted atomically by
+ * enforceAiQuota above — this only writes the ledger row, it does not
+ * deduct again. Fire-and-forget — never blocks the response.
  */
 export async function recordAiUsage(config: AIConfig, usage: UsageTotals, modelId: string, text: string): Promise<void> {
   if (config.userId) {
-    const { deductUserAiCredits } = await import("./plan-enforcement")
-    deductUserAiCredits(
-      config.userId,
-      config.creditsCost || 1,
-      config.action || "generate",
-      config.tenantId,
-      modelId
-    ).catch(err => console.error("[User AI Credit Deduction Error]", err))
+    db.aiQuotaLedger.create({
+      data: {
+        userId: config.userId,
+        tenantId: config.tenantId || null,
+        action: config.action || "generate",
+        credits: config.creditsCost || 1,
+        tokens: (config.creditsCost || 1) * 1000,
+        model: modelId,
+      },
+    }).catch(err => console.error("[AI Quota Ledger Error]", err))
   } else if (config.tenantId && usage.totalTokens > 0) {
     db.$transaction([
       db.tenant.update({
@@ -181,6 +193,19 @@ export async function recordAiUsage(config: AIConfig, usage: UsageTotals, modelI
       })
     ]).catch(err => console.error("[AI Quota Ledger Error]", err))
   }
+}
+
+/**
+ * Undoes the reservation enforceAiQuota made for config.userId, for when
+ * the call it was reserved for then failed — keeps a failed generation
+ * free, matching the behavior before enforce/record were split from a
+ * plain check into an atomic reserve. No-op for the tenantId-only path
+ * (that quota is tracked from real usage after the fact, never reserved).
+ */
+export async function refundAiQuota(config: AIConfig): Promise<void> {
+  if (!config.userId) return
+  const { refundUserAiCredits } = await import("./plan-enforcement")
+  await refundUserAiCredits(config.userId, config.creditsCost || 1)
 }
 
 /**
