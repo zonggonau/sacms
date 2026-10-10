@@ -9,6 +9,17 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
+import type { VpsPlanItem } from "@/components/dashboard/services-view"
 import {
   Server,
   Database,
@@ -24,7 +35,6 @@ import {
   Lock,
   Save,
   Zap,
-  ArrowRight,
   Sparkles,
   Layers,
   Check,
@@ -55,7 +65,10 @@ import {
   getUserVpsServicesAction,
   assignVpsToWorkspaceAction,
   disconnectVpsFromWorkspaceAction,
+  orderVpsAction,
 } from "@/actions/vps-service"
+
+const formatRupiah = (val: number) => "Rp " + Number(val || 0).toLocaleString("id-ID")
 
 export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const { data: session, status: authStatus } = useSession()
@@ -79,6 +92,15 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const [loadingVps, setLoadingVps] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
   const [selectedVpsToDisconnect, setSelectedVpsToDisconnect] = useState<any>(null)
+
+  // VPS Catalog & Order State (Step D — order a new dedicated VPS for THIS workspace)
+  const [vpsCatalog, setVpsCatalog] = useState<VpsPlanItem[]>([])
+  const [loadingCatalog, setLoadingCatalog] = useState(false)
+  const [selectedPlanToOrder, setSelectedPlanToOrder] = useState<VpsPlanItem | null>(null)
+  const [orderServerName, setOrderServerName] = useState("")
+  const [orderBillingCycle, setOrderBillingCycle] = useState<"monthly" | "yearly">("monthly")
+  const [orderNotes, setOrderNotes] = useState("")
+  const [isOrdering, setIsOrdering] = useState(false)
 
   useEffect(() => {
     if (authStatus === "unauthenticated") {
@@ -126,12 +148,77 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
     }
   }
 
+  const fetchVpsCatalog = async () => {
+    try {
+      setLoadingCatalog(true)
+      const res = await fetch(`/api/tenant/${tenantSlug}/vps-catalog`)
+      if (res.ok) {
+        const data = await res.json()
+        setVpsCatalog(data.plans || [])
+      }
+    } catch (err) {
+      console.error("Error fetching VPS catalog:", err)
+    } finally {
+      setLoadingCatalog(false)
+    }
+  }
+
   useEffect(() => {
     if (tenantSlug && session?.user) {
       fetchInfrastructure()
       fetchVpsServices()
+      fetchVpsCatalog()
     }
   }, [tenantSlug, session])
+
+  // Open the order dialog for a chosen plan, pre-filling a default server name
+  const handleOpenOrder = (plan: VpsPlanItem) => {
+    setSelectedPlanToOrder(plan)
+    setOrderServerName(`Server ${plan.name.replace(/SaCMS |Cloud /gi, "")} #${Math.floor(100 + Math.random() * 900)}`)
+    setOrderBillingCycle("monthly")
+    setOrderNotes("")
+  }
+
+  // Order a NEW dedicated VPS pre-linked to THIS workspace — skips the
+  // separate "assign" step since tenantId is known up front.
+  const handleOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedPlanToOrder || !orderServerName.trim()) return
+
+    setIsOrdering(true)
+    try {
+      const price = orderBillingCycle === "yearly" && selectedPlanToOrder.yearly_price
+        ? selectedPlanToOrder.yearly_price
+        : selectedPlanToOrder.price
+
+      const res = await orderVpsAction({
+        planSlug: selectedPlanToOrder.plan_slug || selectedPlanToOrder.id,
+        planName: selectedPlanToOrder.name,
+        serverName: orderServerName.trim(),
+        billingCycle: orderBillingCycle,
+        pricePaid: price,
+        specs: {
+          features: selectedPlanToOrder.features || [],
+          maxStorage: selectedPlanToOrder.max_storage,
+        },
+        notes: orderNotes.trim() || undefined,
+        tenantId: tenantSettings?.id || undefined,
+      })
+
+      if (res.success) {
+        toast.success("Pesanan VPS berhasil dikirim ke Tim IT Support!")
+        setSelectedPlanToOrder(null)
+        await Promise.all([fetchInfrastructure(), fetchVpsServices()])
+        router.refresh()
+      } else {
+        toast.error(res.error || "Gagal memesan VPS")
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Terjadi kesalahan saat memproses pesanan")
+    } finally {
+      setIsOrdering(false)
+    }
+  }
 
   const handleSaveConfig = async () => {
     setSaving(true)
@@ -563,38 +650,25 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
               ))}
             </div>
           ) : (
-            /* STATE D: NO VPS AT ALL - SHOW 3-STEP SOP FLOW WITH SUBSCRIPTIONS CTA */
+            /* STATE D: NO VPS AT ALL - SHOW 3-STEP SOP FLOW + INLINE CATALOG TO ORDER ONE FOR THIS WORKSPACE */
             <Card className="rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-muted/20 shadow-xs overflow-hidden">
               <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                      <Server className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                        Dedicated Server VPS / VDS SaCMS
-                      </CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                        Tingkatkan performa, isolasi fisik, dan kapasitas tak terbatas dengan server mandiri yang disiapkan penuh oleh Tim IT SaCMS.
-                      </CardDescription>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <Server className="h-5 w-5" />
                   </div>
-
-                  <Button
-                    asChild
-                    size="sm"
-                    className="rounded-xl h-8 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs self-start sm:self-center cursor-pointer"
-                  >
-                    <Link href="/dashboard/services">
-                      Kelola VPS di Dashboard Server
-                      <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                    </Link>
-                  </Button>
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                      Dedicated Server VPS / VDS SaCMS
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Tingkatkan performa, isolasi fisik, dan kapasitas tak terbatas dengan server mandiri yang disiapkan penuh oleh Tim IT SaCMS — berlangganan langsung untuk workspace ini.
+                    </CardDescription>
+                  </div>
                 </div>
               </CardHeader>
 
-              <CardContent className="p-5 space-y-4">
+              <CardContent className="p-5 space-y-5">
                 <div className="space-y-2">
                   <p className="text-xs font-bold text-foreground">Alur Kerja Penggunaan Server VPS di SaCMS:</p>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -602,9 +676,9 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                       <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary font-black text-xs flex items-center justify-center">
                         1
                       </div>
-                      <p className="text-xs font-bold text-foreground">Dikelola oleh Owner</p>
+                      <p className="text-xs font-bold text-foreground">Pesan dari Sini</p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Server VPS dipesan dan dikelola oleh Owner melalui Dashboard Server terpusat.
+                        Owner/Admin workspace ini memilih paket &amp; memesan langsung — tidak perlu pindah halaman.
                       </p>
                     </div>
 
@@ -622,12 +696,53 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                       <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center">
                         3
                       </div>
-                      <p className="text-xs font-bold text-foreground">Integrasi ke Workspace</p>
+                      <p className="text-xs font-bold text-foreground">Langsung Aktif</p>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Setelah status &apos;Siap Digunakan&apos;, cukup klik tombol &quot;Hubungkan&quot; di halaman ini tanpa repot konfigurasi manual.
+                        Begitu status &apos;Siap Digunakan&apos;, server otomatis terhubung ke workspace ini — tanpa langkah tambahan.
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-2.5 pt-1 border-t border-border/50">
+                  <p className="text-xs font-bold text-foreground">Pilih Paket Server:</p>
+                  {loadingCatalog ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Array.from({ length: 2 }).map((_, i) => (
+                        <Skeleton key={i} className="h-28 rounded-xl" />
+                      ))}
+                    </div>
+                  ) : vpsCatalog.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Katalog paket belum tersedia. Coba refresh beberapa saat lagi.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {vpsCatalog.map((plan) => (
+                        <div
+                          key={plan.id}
+                          className={cn(
+                            "p-3.5 rounded-xl border bg-background/80 space-y-2",
+                            plan.is_popular ? "border-primary/50 ring-1 ring-primary/20" : "border-border/70"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-bold text-foreground">{plan.name}</p>
+                            {plan.is_popular && (
+                              <Badge className="bg-primary/10 text-primary border-primary/20 text-[9px] font-bold shrink-0">Populer</Badge>
+                            )}
+                          </div>
+                          <p className="text-sm font-black text-primary">{formatRupiah(plan.price)}<span className="text-[10px] font-normal text-muted-foreground">/bln</span></p>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{plan.description || plan.desc}</p>
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenOrder(plan)}
+                            className="w-full h-8 rounded-lg text-[11px] font-bold bg-primary hover:bg-primary/90 text-primary-foreground"
+                          >
+                            Pesan
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -892,6 +1007,140 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Order VPS Dialog — pre-linked to this workspace */}
+      <Dialog open={!!selectedPlanToOrder} onOpenChange={(open) => !open && setSelectedPlanToOrder(null)}>
+        <DialogContent className="sm:max-w-lg rounded-3xl p-6 border-border/80 bg-card shadow-2xl">
+          {selectedPlanToOrder && (
+            <form onSubmit={handleOrderSubmit} className="space-y-4">
+              <DialogHeader>
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                    <Server className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-base font-black text-foreground">
+                      Pemesanan {selectedPlanToOrder.name}
+                    </DialogTitle>
+                    <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                      Server mandiri untuk workspace ini, setup terisolasi PostgreSQL 17 oleh tim IT Support.
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-3.5 text-xs">
+                <div className="space-y-1.5">
+                  <Label htmlFor="srv-name" className="text-xs font-bold text-foreground">
+                    Nama / Label Server <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="srv-name"
+                    value={orderServerName}
+                    onChange={(e) => setOrderServerName(e.target.value)}
+                    placeholder="Contoh: Server Prod Intanjaya DB"
+                    className="text-xs h-9.5 rounded-xl bg-background border-border/80 font-medium"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-foreground">Pilihan Siklus Tagihan</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOrderBillingCycle("monthly")}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-xs text-left transition-all",
+                        orderBillingCycle === "monthly" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted/40"
+                      )}
+                    >
+                      <p className="font-bold text-foreground">Bulanan</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">{formatRupiah(selectedPlanToOrder.price)}/bln</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setOrderBillingCycle("yearly")}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-xs text-left transition-all",
+                        orderBillingCycle === "yearly" ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-muted/40"
+                      )}
+                    >
+                      <p className="font-bold text-foreground">Tahunan (Diskon)</p>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                        {formatRupiah(selectedPlanToOrder.yearly_price || selectedPlanToOrder.price * 10)}/thn
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="srv-notes" className="text-xs font-bold text-foreground">
+                    Catatan Kebutuhan Khusus ke IT Support <span className="text-[10px] text-muted-foreground font-normal">(Opsional)</span>
+                  </Label>
+                  <Textarea
+                    id="srv-notes"
+                    value={orderNotes}
+                    onChange={(e) => setOrderNotes(e.target.value)}
+                    placeholder="Contoh: Mohon gunakan region Singapore dan pasang ekstensi PostGIS."
+                    className="text-xs rounded-xl bg-background border-border/80 resize-none"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-border/70 bg-muted/40 p-3.5 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Biaya Layanan VPS:</span>
+                    <span className="font-bold text-foreground">
+                      {formatRupiah(orderBillingCycle === "yearly" && selectedPlanToOrder.yearly_price ? selectedPlanToOrder.yearly_price : selectedPlanToOrder.price)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Jasa Setup &amp; Konfigurasi IT:</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">Rp 0 (Gratis)</span>
+                  </div>
+                  <div className="flex justify-between text-foreground font-black pt-1.5 border-t border-border/60 text-sm">
+                    <span>Total Pembayaran:</span>
+                    <span className="text-primary">
+                      {formatRupiah(orderBillingCycle === "yearly" && selectedPlanToOrder.yearly_price ? selectedPlanToOrder.yearly_price : selectedPlanToOrder.price)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedPlanToOrder(null)}
+                  className="text-xs font-bold rounded-xl border-border/80"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isOrdering || !orderServerName.trim()}
+                  size="sm"
+                  className="text-xs font-bold rounded-xl bg-primary text-primary-foreground gap-1.5 px-4"
+                >
+                  {isOrdering ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Memproses Pesanan...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3.5 w-3.5" />
+                      Bayar &amp; Kirim ke IT Support
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

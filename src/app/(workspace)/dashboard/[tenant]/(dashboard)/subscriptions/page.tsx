@@ -317,7 +317,7 @@ export default function TenantSubscriptionsPage() {
   const currentPlanSlug = subscription?.plan || 'free'
   const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
-  // Hanya paket workspace standar, pro, dan bisnis (VPS dikelola oleh owner di dashboard server)
+  // Hanya paket workspace standar, pro, dan bisnis (VPS dedicated dipesan dari tab Infrastructure > Database & Storage workspace masing-masing)
   const WORKSPACE_TIERS = ['free', 'pro', 'business']
   const mainPlans = plans
     .filter(p => {

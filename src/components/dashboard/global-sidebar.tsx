@@ -17,7 +17,6 @@ import {
   Sun,
   Shield,
   BookOpen,
-  Server,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -50,7 +49,6 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
 
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Cloud Server", href: "/dashboard/services", icon: Server },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]

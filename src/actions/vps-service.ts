@@ -16,6 +16,11 @@ const orderVpsSchema = z.object({
   pricePaid: z.number().nonnegative(),
   specs: z.any().optional(),
   notes: z.string().max(1000).optional(),
+  // Set when ordering from inside a specific workspace's Infrastructure tab
+  // (as opposed to the global catalog, which links the VPS to a tenant
+  // later via assignVpsToWorkspaceAction) — pre-links the VPS to that
+  // tenant at creation time so no separate assign step is needed.
+  tenantId: z.string().optional(),
 })
 
 const setupVpsSchema = z.object({
@@ -37,7 +42,30 @@ export async function orderVpsAction(data: z.infer<typeof orderVpsSchema>) {
       return { success: false, error: "Data pesanan tidak valid. Periksa kembali form isian." }
     }
 
-    const { planSlug, planName, serverName, billingCycle, pricePaid, specs, notes } = validation.data
+    const { planSlug, planName, serverName, billingCycle, pricePaid, specs, notes, tenantId } = validation.data
+
+    // If ordering for a specific workspace, verify the caller actually
+    // manages it and that it doesn't already have a VPS — same checks
+    // assignVpsToWorkspaceAction uses, just applied up front at order time.
+    let targetTenant: { id: string; name: string; slug: string } | null = null
+    if (tenantId) {
+      const isSuperAdmin = session.user.role === "super_admin"
+      const tenant = await db.tenant.findUnique({
+        where: { id: tenantId },
+        include: { members: { where: { userId: session.user.id } }, vpsService: true },
+      })
+      if (!tenant) {
+        return { success: false, error: "Workspace tujuan tidak ditemukan." }
+      }
+      const isOwnerOrAdmin = isSuperAdmin || tenant.ownerId === session.user.id || tenant.members.some((m) => m.role === "owner" || m.role === "admin")
+      if (!isOwnerOrAdmin) {
+        return { success: false, error: "Anda tidak memiliki izin memesan server untuk workspace ini." }
+      }
+      if (tenant.vpsService) {
+        return { success: false, error: "Workspace ini sudah memiliki server VPS. Putuskan sambungan yang lama dulu sebelum memesan yang baru." }
+      }
+      targetTenant = tenant
+    }
 
     const now = new Date()
     const paidUntil = new Date(now)
@@ -93,6 +121,7 @@ export async function orderVpsAction(data: z.infer<typeof orderVpsSchema>) {
         ticketId: ticket.id,
         status: "awaiting_setup",
         paidUntil,
+        ...(targetTenant ? { tenantId: targetTenant.id } : {}),
       },
     })
 
@@ -125,11 +154,15 @@ export async function orderVpsAction(data: z.infer<typeof orderVpsSchema>) {
         planSlug,
         serverName,
         pricePaid,
+        ...(targetTenant ? { tenantId: targetTenant.id, tenantName: targetTenant.name } : {}),
       },
     })
 
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/services")
+    if (targetTenant) {
+      revalidatePath(`/dashboard/${targetTenant.slug || targetTenant.id}`)
+    }
 
     return {
       success: true,
@@ -173,15 +206,38 @@ export async function setupVpsAction(data: z.infer<typeof setupVpsSchema>) {
       return { success: false, error: "Anda tidak memiliki izin untuk mengonfigurasi server ini." }
     }
 
-    // Perbarui record VPS
-    const updated = await db.userVpsService.update({
-      where: { id: serviceId },
-      data: {
-        serverIp: serverIp.trim(),
-        databaseUrl: databaseUrl.trim(),
-        status: "ready",
-      },
-    })
+    // Kalau VPS ini sudah terikat ke tenant SEJAK dipesan (dipesan lewat tab
+    // Infrastructure workspace, lihat orderVpsAction), langsung selesaikan
+    // sampai 'in_use' dan salin databaseUrl ke tenant — meniru persis apa
+    // yang assignVpsToWorkspaceAction lakukan — supaya tidak perlu langkah
+    // assign manual terpisah lagi. Order lama tanpa tenantId (jalur asli,
+    // tidak diubah) tetap berhenti di 'ready' seperti sebelumnya, menunggu
+    // di-assign manual — jadi transaksi di sini hanya dipakai saat memang
+    // perlu menulis dua tabel sekaligus.
+    const updated = service.tenantId
+      ? await db.$transaction(async (tx) => {
+          const svc = await tx.userVpsService.update({
+            where: { id: serviceId },
+            data: {
+              serverIp: serverIp.trim(),
+              databaseUrl: databaseUrl.trim(),
+              status: "in_use",
+            },
+          })
+          await tx.tenant.update({
+            where: { id: service.tenantId! },
+            data: { databaseUrl: databaseUrl.trim() },
+          })
+          return svc
+        })
+      : await db.userVpsService.update({
+          where: { id: serviceId },
+          data: {
+            serverIp: serverIp.trim(),
+            databaseUrl: databaseUrl.trim(),
+            status: "ready",
+          },
+        })
 
     // Perbarui atau kirim pesan di Support Ticket jika ada
     if (service.ticketId) {
@@ -223,6 +279,10 @@ export async function setupVpsAction(data: z.infer<typeof setupVpsSchema>) {
 
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/services")
+    if (service.tenantId) {
+      const tenant = await db.tenant.findUnique({ where: { id: service.tenantId }, select: { slug: true } })
+      if (tenant) revalidatePath(`/dashboard/${tenant.slug}`)
+    }
 
     return { success: true, service: updated }
   } catch (error: any) {
