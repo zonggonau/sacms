@@ -40,7 +40,7 @@ interface AuthContext {
 
 const authContext = new AsyncLocalStorage<AuthContext>()
 
-async function resolveToken(rawToken: string): Promise<AuthContext | null> {
+export async function resolveToken(rawToken: string): Promise<AuthContext | null> {
   if (!rawToken?.trim()) return null
   const clean = rawToken.trim()
   const hashed = createHash("sha256").update(clean).digest("hex")
@@ -133,13 +133,13 @@ const UNAUTHORIZED = {
  */
 type Scope = "read" | "write" | "delete" | "schema" | "webhooks"
 
-function hasScope(auth: AuthContext, scope: Scope): boolean {
+export function hasScope(auth: AuthContext, scope: Scope): boolean {
   if (auth.isSuperAdmin) return true
   if (auth.permissions.includes("full_access")) return true
   return auth.permissions.includes(scope)
 }
 
-function permissionDenied(scope: Scope) {
+export function permissionDenied(scope: Scope) {
   const howToGrant = `Ask a workspace admin to grant it under Developer & API → API Tokens, or use a token with "full_access".`
   return {
     content: [{
@@ -2797,7 +2797,7 @@ export default async function NewsPage() {
 
 // ─── HTTP Request Handlers & Protocol Wrapper ─────────────────────────────────
 
-async function authenticateRequest(req: Request) {
+export async function authenticateRequest(req: Request) {
   let token = ""
   const authHeader = req.headers.get("authorization")
   
