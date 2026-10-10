@@ -73,14 +73,16 @@ export async function POST(
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "")
 
-      // First try to find in ApiKey (plain text)
+      // First try to find in ApiKey — key stores a SHA-256 hash, same as
+      // ApiToken.token below, never the raw value.
       let tenantId: string | null = null
       let tenantSlugFromDb: string | null = null
       let expiresAt: Date | null = null
       let apiTokenType = "read-only"
 
+      const hashedToken = createHash("sha256").update(token).digest("hex")
       const apiKey = await db.apiKey.findUnique({
-        where: { key: token },
+        where: { key: hashedToken },
         include: { tenant: true },
       })
 
@@ -93,7 +95,6 @@ export async function POST(
         isApiKey = true
       } else {
         // Fallback to ApiToken (hashed)
-        const hashedToken = createHash("sha256").update(token).digest("hex")
         const apiToken = await db.apiToken.findUnique({
           where: { token: hashedToken },
           include: { tenant: true },

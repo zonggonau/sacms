@@ -32,9 +32,10 @@ export async function GET(
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
     }
 
-    // Verify token (Check ApiKey first)
+    // Verify token (Check ApiKey first) — ApiKey.key stores a SHA-256 hash,
+    // same as ApiToken.token below, never the raw value.
     const apiKey = await db.apiKey.findUnique({
-      where: { key: token },
+      where: { key: hashedToken },
       include: { tenant: true },
     })
 

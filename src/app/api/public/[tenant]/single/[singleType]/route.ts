@@ -53,9 +53,9 @@ async function resolvePublicToken(request: NextRequest, tenantSlug: string): Pro
   const cleanToken = rawToken
   const hashedToken = createHash("sha256").update(cleanToken).digest("hex")
 
-  // 1. Check in ApiKey (plain key)
+  // 1. Check in ApiKey — key stores a SHA-256 hash, never the raw value.
   const apiKey = await db.apiKey.findUnique({
-    where: { key: cleanToken },
+    where: { key: hashedToken },
     include: { tenant: true },
   })
 

@@ -1,27 +1,28 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { randomBytes } from "crypto"
+import { randomBytes, createHash } from "crypto"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 
 /**
  * GET /api/tenant/[tenant]/api-keys — list workspace API keys (admin/owner).
- * The owner sees the full key (it's a single retrievable workspace key);
- * a plain admin sees only a masked preview. Rotate via POST to get a fresh
- * full value.
+ * `key` stores a SHA-256 hash now (see scripts/migrate/backfill-apikey-hash.ts
+ * for the one-time re-hash of pre-existing plaintext rows) — there is no
+ * raw value to reveal anymore, for anyone, regardless of role. Rotate via
+ * POST to get a fresh value, shown exactly once in that response.
  */
 export const GET = withStaffAuth(
-  async (_request, _context, { access, session }) => {
-    const canSeeFull = access.role === "owner" || session.user.role === "super_admin"
+  async (_request, _context, { access }) => {
     const keys = await db.apiKey.findMany({
       where: { tenantId: access.tenantId },
+      select: { id: true, name: true, createdAt: true, expiresAt: true },
       orderBy: { createdAt: "desc" },
     })
     return NextResponse.json({
       apiKeys: keys.map((k) => ({
         id: k.id,
         name: k.name,
-        key: canSeeFull ? k.key : `${k.key.slice(0, 10)}…${k.key.slice(-4)}`,
         createdAt: k.createdAt,
+        expiresAt: k.expiresAt,
       })),
     })
   },
@@ -30,37 +31,39 @@ export const GET = withStaffAuth(
 
 /**
  * POST /api/tenant/[tenant]/api-keys — rotate the workspace API key (admin/owner).
- * A workspace keeps a single key: the first row is updated, any extras are removed.
+ * A workspace keeps a single key: the first row is updated, any extras are
+ * removed. Only the hash is persisted; the plain value is returned once,
+ * here, and never stored or retrievable again.
  */
 export const POST = withStaffAuth(
   async (_request, _context, { access }) => {
     const newApiKey = `sacms_${randomBytes(24).toString("hex")}`
+    const hashedKey = createHash("sha256").update(newApiKey).digest("hex")
     const label = `API Key (${new Date().toLocaleDateString()})`
 
     const existingKeys = await db.apiKey.findMany({ where: { tenantId: access.tenantId } })
 
-    let apiKeyRecord
     if (existingKeys.length > 0) {
       const [firstKey, ...restKeys] = existingKeys
-      apiKeyRecord = await db.apiKey.update({
+      await db.apiKey.update({
         where: { id: firstKey.id },
-        data: { key: newApiKey, name: label },
+        data: { key: hashedKey, name: label },
       })
       if (restKeys.length > 0) {
         await db.apiKey.deleteMany({ where: { id: { in: restKeys.map((k) => k.id) } } })
       }
     } else {
-      apiKeyRecord = await db.apiKey.create({
+      await db.apiKey.create({
         data: {
           tenantId: access.tenantId,
           name: label,
-          key: newApiKey,
+          key: hashedKey,
           permissions: { fullAccess: true },
         },
       })
     }
 
-    return NextResponse.json({ apiKey: apiKeyRecord.key }, { status: 201 })
+    return NextResponse.json({ apiKey: newApiKey }, { status: 201 })
   },
   { minRole: "admin" },
 )

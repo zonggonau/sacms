@@ -111,16 +111,40 @@ services:
       PGUSER: ${POSTGRES_USER:-sacms}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
       PGDATABASE: ${POSTGRES_DB:-sacms}
+      # Optional offsite copy — a VPS-local-only backup is lost together
+      # with the VPS it backs up. Leave BACKUP_S3_BUCKET empty to keep
+      # backups local-only (previous behavior, unchanged). Deliberately a
+      # separate bucket/credential from the S3_* media storage vars, so a
+      # compromised media key can't also reach backups.
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-auto}
     volumes:
       - ./db/backups:/backups
     entrypoint: >
       sh -c '
+        if [ -n "$$BACKUP_S3_BUCKET" ]; then
+          apk add --no-cache aws-cli >/dev/null 2>&1
+          export AWS_ACCESS_KEY_ID="$$BACKUP_S3_ACCESS_KEY_ID"
+          export AWS_DEFAULT_REGION="$$BACKUP_S3_REGION"
+          export AWS_SECRET_ACCESS_KEY="$$BACKUP_S3_SECRET_ACCESS_KEY"
+        fi
         while true; do
           STAMP=$$(date +%Y%m%d_%H%M%S)
-          pg_dump -Fc > /backups/sacms_$$STAMP.dump
-          # Keep only last 7 daily backups
+          FILE=/backups/sacms_$$STAMP.dump
+          pg_dump -Fc > "$$FILE"
+          # Keep only last 7 daily backups locally
           ls -t /backups/sacms_*.dump | tail -n +8 | xargs rm -f 2>/dev/null
-          echo "[$$STAMP] Backup complete"
+          echo "[$$STAMP] Local backup complete"
+          if [ -n "$$BACKUP_S3_BUCKET" ]; then
+            if aws s3 cp "$$FILE" "s3://$$BACKUP_S3_BUCKET/sacms_$$STAMP.dump" --endpoint-url "$$BACKUP_S3_ENDPOINT" >/dev/null 2>&1; then
+              echo "[$$STAMP] Offsite copy uploaded to $$BACKUP_S3_BUCKET"
+            else
+              echo "[$$STAMP] WARNING: offsite upload failed — local backup is still safe, but this backup has no offsite copy"
+            fi
+          fi
           sleep 86400
         done
       '

@@ -125,8 +125,11 @@ export async function resolvePublicApiActor(
   }
 
   // ---- 2. API key / API token ----
+  // ApiKey.key stores a SHA-256 hash, same as ApiToken.token below — never
+  // the raw value, so a database leak doesn't hand out directly-usable keys.
+  const apiKeyHash = createHash("sha256").update(token).digest("hex")
   const apiKey = await db.apiKey.findUnique({
-    where: { key: token },
+    where: { key: apiKeyHash },
     select: { id: true, tenantId: true, expiresAt: true, tenant: { select: { slug: true } } },
   })
   if (apiKey) {

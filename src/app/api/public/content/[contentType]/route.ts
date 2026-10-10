@@ -56,14 +56,15 @@ export async function GET(
       })
     }
 
+    // Hash the token for database lookup (SHA-256) — ApiKey.key stores the
+    // hash, never the raw value, same as ApiToken.token below.
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+
     // 0. Find the API Key in ApiKey table
     const apiKey = await db.apiKey.findUnique({
-      where: { key: token },
+      where: { key: hashedToken },
       include: { tenant: true },
     })
-
-    // Hash the token for database lookup (SHA-256)
-    const hashedToken = createHash("sha256").update(token).digest("hex")
 
     // 1. Find the API token in ApiToken table
     const apiToken = !apiKey ? await db.apiToken.findUnique({

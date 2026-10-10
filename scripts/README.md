@@ -31,7 +31,8 @@ scripts/
 │   ├── migrate-domains.ts       # Migrates legacy domains to CustomDomain table
 │   ├── setup-fts.ts             # Installs PostgreSQL Full-Text Search trigger and GIN index
 │   ├── backfill-document-id.ts  # Backfills documentId for multi-locale entries
-│   └── backfill-owner-slugs.ts  # Backfills owner slugs and associates workspace owners
+│   ├── backfill-owner-slugs.ts  # Backfills owner slugs and associates workspace owners
+│   └── backfill-apikey-hash.ts  # Re-hashes legacy plaintext ApiKey.key values to SHA-256
 │
 ├── qa/                  # Automated quality assurance, audit & SDK generators
 │   ├── qa-runner.ts             # Route-by-route audit and latency benchmark
