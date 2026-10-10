@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { ArrowLeft, Wand2, Save, Loader2, DatabaseIcon, FileText, Puzzle, ExternalLink } from "lucide-react"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { ArrowLeft, Wand2, Save, Loader2, DatabaseIcon, FileText, Puzzle, ExternalLink, Maximize2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
 
 interface DraftItem {
   slug: string
@@ -28,6 +30,7 @@ interface SchemaTemplateEditClientProps {
   draftContentTypes: DraftItem[]
   draftSingleTypes: DraftItem[]
   draftComponents: DraftItem[]
+  diagramSchema: SchemaExport
 }
 
 function DraftList({
@@ -73,11 +76,13 @@ export function SchemaTemplateEditClient({
   draftContentTypes,
   draftSingleTypes,
   draftComponents,
+  diagramSchema,
 }: SchemaTemplateEditClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isMaterializing, setIsMaterializing] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
 
   const handleMaterialize = async () => {
     setIsMaterializing(true)
@@ -175,6 +180,40 @@ export function SchemaTemplateEditClient({
           />
         </div>
       )}
+
+      {/* ── ER Diagram ── */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFullscreenDiagram(true)}
+            className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+          >
+            <Maximize2 className="h-3 w-3" /> Preview Full Screen
+          </Button>
+        </div>
+        <SchemaDiagram data={diagramSchema} />
+        {isMaterialized && (
+          <p className="text-[11px] text-muted-foreground px-1">
+            Diagram ini mengikuti draft yang sedang diedit. Kalau sudah sesuai, klik &ldquo;Simpan ke Template&rdquo; supaya tersimpan permanen di template.
+          </p>
+        )}
+      </div>
+
+      {/* ── Fullscreen Diagram Preview Modal ── */}
+      <Dialog open={showFullscreenDiagram} onOpenChange={setShowFullscreenDiagram}>
+        <DialogContent className="max-w-none w-screen h-screen sm:max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none p-0 gap-0 flex flex-col">
+          <DialogTitle className="sr-only">Diagram Schema — Preview Full Screen</DialogTitle>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 shrink-0">
+            <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
+          </div>
+          <div className="flex-1 min-h-0 p-4">
+            <SchemaDiagram data={diagramSchema} height="100%" />
+          </div>
+        </DialogContent>
+      </Dialog>
         </div>
       </div>
     </div>

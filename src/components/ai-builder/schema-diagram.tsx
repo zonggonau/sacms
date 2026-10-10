@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Database, Layers, FileText, Box } from "lucide-react"
 import { FIELD_TYPES } from "@/lib/field-types"
 
-interface SchemaField {
+export interface SchemaField {
   name: string
   slug: string
   type: string
@@ -31,14 +31,14 @@ interface SchemaField {
   componentSlug?: string | null
 }
 
-interface SchemaModel {
+export interface SchemaModel {
   name: string
   slug: string
   description?: string | null
   fields: SchemaField[]
 }
 
-interface SchemaExport {
+export interface SchemaExport {
   contentTypes: SchemaModel[]
   singleTypes: SchemaModel[]
   components: SchemaModel[]
@@ -186,29 +186,45 @@ function buildGraph(schema: SchemaExport): { nodes: Node<TableNodeData>[]; edges
 }
 
 interface SchemaDiagramProps {
-  tenantSlug: string
-  /** Bump this to force a re-fetch (e.g. after a schema is imported). */
+  /** Omit when `data` is given directly — only needed for the self-fetching mode. */
+  tenantSlug?: string
+  /** Bump this to force a re-fetch (e.g. after a schema is imported). Ignored when `data` is given. */
   refreshKey?: number
   /** Container height (any CSS value). Defaults to a fixed inline preview size. */
   height?: string
+  /**
+   * Pre-fetched schema to render instead of fetching the tenant's whole
+   * live schema — e.g. a Schema Template's own `{contentTypes, singleTypes,
+   * components}` blob, which has nothing to do with "the current tenant's
+   * schema" and would be wrong to dump via /ai-builder/export-schema.
+   */
+  data?: SchemaExport
 }
 
-function SchemaDiagramInner({ tenantSlug, refreshKey }: SchemaDiagramProps) {
-  const [schema, setSchema] = useState<SchemaExport | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+function SchemaDiagramInner({ tenantSlug, refreshKey, data }: SchemaDiagramProps) {
+  const [schema, setSchema] = useState<SchemaExport | null>(data ?? null)
+  const [isLoading, setIsLoading] = useState(!data)
   const [error, setError] = useState<string | null>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<TableNodeData>>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
   useEffect(() => {
+    if (data) {
+      setSchema(data)
+      setIsLoading(false)
+      setError(null)
+      return
+    }
+    if (!tenantSlug) return
+
     let cancelled = false
     setIsLoading(true)
     setError(null)
     fetch(`/api/tenant/${tenantSlug}/ai-builder/export-schema`)
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Gagal memuat skema"))))
-      .then((data: SchemaExport) => {
+      .then((fetched: SchemaExport) => {
         if (cancelled) return
-        setSchema(data)
+        setSchema(fetched)
       })
       .catch((err: any) => {
         if (!cancelled) setError(err.message || "Gagal memuat skema")
@@ -219,7 +235,7 @@ function SchemaDiagramInner({ tenantSlug, refreshKey }: SchemaDiagramProps) {
     return () => {
       cancelled = true
     }
-  }, [tenantSlug, refreshKey])
+  }, [tenantSlug, refreshKey, data])
 
   const graph = useMemo(() => (schema ? buildGraph(schema) : null), [schema])
 
@@ -251,7 +267,7 @@ function SchemaDiagramInner({ tenantSlug, refreshKey }: SchemaDiagramProps) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center gap-1.5 text-muted-foreground">
         <Database className="h-6 w-6 opacity-50" />
-        <p className="text-xs">Belum ada struktur data. Buat schema dulu lewat prompt di atas.</p>
+        <p className="text-xs">Belum ada struktur data untuk digambar.</p>
       </div>
     )
   }
