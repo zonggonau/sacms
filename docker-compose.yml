@@ -47,7 +47,9 @@ services:
       - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sacms}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Z0ngg0n4U}
+      # No weak fallback — compose refuses to start rather than silently
+      # running Postgres with a known-public default password.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-sacms}
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -107,7 +109,7 @@ services:
     environment:
       PGHOST: postgres
       PGUSER: ${POSTGRES_USER:-sacms}
-      PGPASSWORD: ${POSTGRES_PASSWORD:-Z0ngg0n4U}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
       PGDATABASE: ${POSTGRES_DB:-sacms}
     volumes:
       - ./db/backups:/backups

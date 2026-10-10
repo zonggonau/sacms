@@ -28,7 +28,7 @@ services:
       - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sacms}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Z0ngg0n4U}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-sacms}
     volumes:
       - postgres_data:/var/lib/postgresql/data
