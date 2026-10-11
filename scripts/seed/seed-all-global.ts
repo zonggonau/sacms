@@ -339,9 +339,9 @@ const SEED_DATA: Record<string, any> = {
     ],
 
     local_pride: {
-      badge: "Smart Content Management System",
-      title: "Build smarter. Manage easier. Scale faster.",
-      description: "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien secara manual. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol terpadu yang elegan.",
+      badge: "Dibangun di Nabire, Papua Tengah",
+      title: "Lahir di Papua. Dibangun untuk Bersaing Secara Global.",
+      description: "SaCMS dirancang dan dikembangkan oleh talenta digital asli Papua di Nabire, Papua Tengah — bukti bahwa produk teknologi kelas dunia tidak harus lahir di Jakarta. Kami percaya UMKM, pemerintah daerah, kreator, dan startup di Papua berhak memakai infrastruktur digital yang sama cepat dan sekuat yang dipakai startup di kota besar, tanpa harus meninggalkan tanah sendiri.",
     },
 
     cta_banner: {

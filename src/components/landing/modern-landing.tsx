@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { HeroSection } from "./sections/hero-section"
+import { LocalPrideSection } from "./sections/papua-pride-section"
 import { TestimonialsSection } from "./sections/testimonials-section"
 import { BlogPreviewSection } from "./sections/blog-preview-section"
 import { CtaBanner } from "./sections/cta-banner"
@@ -31,6 +32,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
     testimonials = [],
     cta = null,
     blogs = [],
+    localPride = null,
   } = data
 
   return (
@@ -38,7 +40,10 @@ export function ModernLanding({ data }: { data: LandingData }) {
       {/* 1. Hero */}
       <HeroSection data={hero} />
 
-      {/* 2. Streamlined Feature Highlights with Link to /fitur */}
+      {/* 2. Local Pride — Papua identity, leads before the generic feature pitch */}
+      <LocalPrideSection data={localPride} />
+
+      {/* 3. Streamlined Feature Highlights with Link to /fitur */}
       <section className="py-20 sm:py-28 relative bg-background border-t border-border/50 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[900px] h-[400px] bg-gradient-to-tr from-primary/15 via-blue-500/10 to-transparent blur-3xl rounded-full pointer-events-none opacity-50" />
 
@@ -120,7 +125,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 3. Streamlined Pricing Spotlight with Link to /harga */}
+      {/* 4. Streamlined Pricing Spotlight with Link to /harga */}
       <section className="py-20 sm:py-28 relative bg-card/40 border-t border-border/50 overflow-hidden">
         <div className="container px-4 sm:px-6 max-w-6xl mx-auto relative z-10">
           <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-card via-card/80 to-primary/5 border border-border/70 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
@@ -129,10 +134,10 @@ export function ModernLanding({ data }: { data: LandingData }) {
                 Paket &amp; Langganan
               </Badge>
               <h2 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight">
-                Mulai Gratis, Tingkatkan Saat Butuh Dedicated Server
+                Mulai Gratis, Tingkatkan Saat Butuh Lebih
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground font-medium leading-relaxed">
-                Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Dedicated Database Appliance berlisensi Enterprise.
+                Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Database &amp; Storage Sendiri (BYODB) berlisensi Enterprise.
               </p>
               <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-foreground/80">
                 <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Tanpa Kartu Kredit</span>
@@ -158,19 +163,19 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 4. Testimonials (Social Proof) */}
+      {/* 5. Testimonials (Social Proof) */}
       <FadeIn delay={100}>
         <TestimonialsSection testimonials={testimonials} />
       </FadeIn>
 
-      {/* 5. Blog Preview Spotlight with Link to /blog */}
+      {/* 6. Blog Preview Spotlight with Link to /blog */}
       {blogs.length > 0 && (
         <FadeIn delay={100}>
           <BlogPreviewSection blogs={blogs} />
         </FadeIn>
       )}
 
-      {/* 6. About & Documentation Spotlight Banner */}
+      {/* 7. About & Documentation Spotlight Banner */}
       <section className="py-16 relative bg-background border-t border-border/50">
         <div className="container px-4 sm:px-6 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -217,7 +222,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 7. Call To Action Banner */}
+      {/* 8. Call To Action Banner */}
       <FadeIn delay={100}>
         <CtaBanner cta={cta} />
       </FadeIn>
