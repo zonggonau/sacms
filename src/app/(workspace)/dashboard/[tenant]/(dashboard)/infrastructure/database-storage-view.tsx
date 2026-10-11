@@ -3,22 +3,12 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
 import {
   Database,
   Upload,
@@ -27,9 +17,9 @@ import {
   Loader2,
   RefreshCw,
   Layers,
-  ShieldCheck,
   Settings2,
   Save,
+  HardDrive,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -40,7 +30,6 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [tenantSettings, setTenantSettings] = useState<any>(null)
   const [activeTab, setActiveTab] = useState<"overview" | "console">("overview")
 
   // BYODB & BYOS State
@@ -65,7 +54,6 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json()
         const s = settingsData.settings || {}
-        setTenantSettings(s)
         const dbUrl = s.databaseUrl || ""
         setDatabaseUrl(dbUrl)
         if (s.storageConfig) {
@@ -127,11 +115,17 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const isSuperAdmin = session?.user?.role === "super_admin"
 
   const [managedInfra, setManagedInfra] = useState<{ status: string; paidUntil: string } | null>(null)
+  const [storageAddons, setStorageAddons] = useState<
+    { id: string; bytes: number; startsAt: string; expiresAt: string; renewed: boolean }[]
+  >([])
   useEffect(() => {
     if (!tenantSlug || !session?.user) return
     fetch(`/api/tenant/${tenantSlug}/billing/services`)
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setManagedInfra(data?.managedInfra ?? null))
+      .then((data) => {
+        setManagedInfra(data?.managedInfra ?? null)
+        setStorageAddons(data?.storageAddons ?? [])
+      })
       .catch(() => {})
   }, [tenantSlug, session])
 
@@ -298,6 +292,64 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                   </p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 2. STORAGE ADD-ON CARD */}
+          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <HardDrive className="h-4 w-4 text-primary" />
+                Tambah Kapasitas Storage
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                Butuh ruang lebih untuk media workspace ini? Tambah kapasitas langsung dari SaCMS, aktif seketika setelah pembayaran.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3">
+              <p className="text-xs text-foreground">
+                <span className="font-bold">+10 GB</span> per add-on &middot; <span className="font-bold">Rp50.000/bulan</span> &middot; bisa dibeli berkali-kali
+              </p>
+              {storageAddons.length > 0 ? (
+                <div className="space-y-2">
+                  {storageAddons.map((addon) => (
+                    <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                      <div>
+                        <p className="font-semibold text-foreground">+{Math.round(addon.bytes / 1024 ** 3)} GB</p>
+                        <p className="text-muted-foreground">
+                          Berlaku sampai{" "}
+                          {new Date(addon.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                      {addon.renewed ? (
+                        <span className="text-muted-foreground">Sudah diperpanjang</span>
+                      ) : (
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl h-8 text-xs font-bold shrink-0"
+                        >
+                          <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb&renew=${addon.id}`}>
+                            Perpanjang
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button asChild size="sm" className="rounded-xl h-8 text-xs font-bold">
+                    <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb`}>
+                      Beli Add-on Lagi (+10 GB)
+                    </Link>
+                  </Button>
+                </div>
+              ) : (
+                <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
+                  <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb`}>
+                    Beli Storage Tambahan (+10 GB)
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
 
