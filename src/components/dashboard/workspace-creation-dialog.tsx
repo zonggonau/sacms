@@ -363,7 +363,7 @@ export function WorkspaceCreationDialog({
                 <SectionHeader
                   step={2}
                   title="Pilih Paket Cloud"
-                  description="Pilih salah satu dari 3 paket Cloud bawaan (Standar, Pro, Business). Butuh server VPS dedicated? Pesan dan hubungkan dari tab Infrastructure workspace setelah dibuat."
+                  description="Pilih salah satu dari 3 paket Cloud bawaan (Standar, Pro, Business). Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat."
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">

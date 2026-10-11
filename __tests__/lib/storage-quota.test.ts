@@ -73,7 +73,7 @@ describe("storage quota", () => {
   })
 
   it("meters Enterprise-named plans and super admins like everyone else", async () => {
-    setWorkspace({ planMb: 100, plan: "enterprise-vps", sizeBytes: 100 * MB })
+    setWorkspace({ planMb: 100, plan: "enterprise-dedicated", sizeBytes: 100 * MB })
     mockDb.user.findUnique = vi.fn().mockResolvedValue({ role: "super_admin" })
 
     const result = await enforcePlanLimit("t1", "storage", "admin-user")

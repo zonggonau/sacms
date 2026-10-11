@@ -25,3 +25,4 @@ matches and it has nothing destructive left to do.
 | File | What | Why safe |
 |------|------|----------|
 | `0001_drop_tenant_roles.sql` | `DROP TABLE tenant_roles` | The `TenantRole` model + all `roles/*` / `system-roles/*` routes and `actions/roles.ts` were deleted in the RBAC consolidation (commit `18c3696`). Zero runtime readers; the table only ever held seed data. |
+| `0002_drop_user_vps_services.sql` | `DROP TABLE user_vps_services` | The bring-your-own-VPS feature (Contabo provisioning, VPS catalog/ordering, Cloud Server page, Infrastructure tab VPS lifecycle UI) was removed entirely — every workspace now uses SaCMS's own managed infrastructure (ManagedInfraService/BYODB + StorageAddon) instead. Zero runtime readers left after the code removal. |

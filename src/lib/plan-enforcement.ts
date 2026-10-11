@@ -144,7 +144,7 @@ async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | 
     // 1. Check global enterprise license first
     let enterprise = await isEnterpriseTenant(globalTenantId)
     
-    // 2. Fallback to tenant-specific license or dedicated VPS plan if no global license
+    // 2. Fallback to tenant-specific license or dedicated plan if no global license
     if (!enterprise && tenantId && tenantId !== globalTenantId) {
       enterprise = await isEnterpriseTenant(tenantId)
       if (!enterprise) {
@@ -153,7 +153,7 @@ async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | 
           select: { plan: true, databaseUrl: true, storageConfig: true }
         })
         const p = (t?.plan || "").toLowerCase()
-        if (p.includes("vps") || p.includes("dedicated") || p.includes("enterprise") || (t?.databaseUrl && t?.storageConfig)) {
+        if (p.includes("dedicated") || p.includes("enterprise") || (t?.databaseUrl && t?.storageConfig)) {
           enterprise = true
         }
       }

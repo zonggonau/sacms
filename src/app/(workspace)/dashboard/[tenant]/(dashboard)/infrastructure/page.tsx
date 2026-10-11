@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     key: "hosting",
     label: "Deployments & Hosting",
-    description: "Status deploy Vercel & VPS, logs, dan URL live",
+    description: "Status deploy Vercel, logs, dan URL live",
     icon: Rocket,
   },
   {
@@ -108,7 +108,7 @@ function InfrastructureShell() {
         setTelemetry({
           hostingStatus: infraData?.deployment?.url ? "Live di Vercel" : "Siap Dideploy",
           domainsCount: infraData?.domains?.length || 1,
-          databaseType: hasDb ? "Dedicated VPS / BYODB" : "Shared PostgreSQL 17",
+          databaseType: hasDb ? "Dedicated / BYODB" : "Shared PostgreSQL 17",
           envCount: envKeys,
         })
       })

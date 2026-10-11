@@ -8,25 +8,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Loader2, CreditCard, ShieldCheck, CheckCircle2, 
-  ArrowLeft, Zap, Lock, AlertCircle, Info, Check, Shield,
-  Server, Cpu, HardDrive, Database, Globe, RefreshCw
+import {
+  Loader2, CreditCard, ShieldCheck, CheckCircle2,
+  ArrowLeft, Zap, Lock, AlertCircle, Info, Check, Shield
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
-
-const APPLIANCE_SPECS: Record<string, { cpu: string; ram: string; disk: string; bandwidth: string; isDedicatedCpu?: boolean }> = {
-  "enterprise-vps": { cpu: "6 vCPU", ram: "16 GB RAM", disk: "150 GB NVMe", bandwidth: "400 Mbps" },
-  "enterprise-vds": { cpu: "4 Dedicated Cores", ram: "32 GB RAM", disk: "240 GB NVMe", bandwidth: "500 Mbps", isDedicatedCpu: true },
-  "vps-s": { cpu: "4 vCPU", ram: "8 GB RAM", disk: "75 GB NVMe", bandwidth: "200 Mbps" },
-  "vps-m": { cpu: "6 vCPU", ram: "16 GB RAM", disk: "150 GB NVMe", bandwidth: "400 Mbps" },
-  "vps-l": { cpu: "8 vCPU", ram: "24 GB RAM", disk: "300 GB NVMe", bandwidth: "600 Mbps" },
-  "vds-s": { cpu: "3 Dedicated Cores", ram: "24 GB RAM", disk: "180 GB NVMe", bandwidth: "250 Mbps", isDedicatedCpu: true },
-  "vds-m": { cpu: "4 Dedicated Cores", ram: "32 GB RAM", disk: "240 GB NVMe", bandwidth: "500 Mbps", isDedicatedCpu: true },
-  "vds-l": { cpu: "6 Dedicated Cores", ram: "48 GB RAM", disk: "360 GB NVMe", bandwidth: "750 Mbps", isDedicatedCpu: true },
-}
 
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
@@ -119,29 +107,6 @@ export default function CheckoutPage() {
           const selectedPlan = plansData.plans?.find((p: any) => p.id === planId || p.slug === planId)
           if (selectedPlan) {
             setPlan(selectedPlan)
-          } else {
-            // Check if it's an appliance plan from dictionary
-            const spec = APPLIANCE_SPECS[planId]
-            if (spec) {
-              setPlan({
-                id: planId,
-                name: `SaCMS Dedicated ${spec.isDedicatedCpu ? 'VDS' : 'VPS'} (${planId.toUpperCase()})`,
-                description: `Dedicated Cloud Appliance (${spec.cpu}, ${spec.ram}, ${spec.disk})`,
-                type: "workspace",
-                price: spec.isDedicatedCpu ? 4500000 : 750000,
-                yearlyPrice: spec.isDedicatedCpu ? 45000000 : 7500000,
-                features: [
-                  `${spec.cpu} / ${spec.ram} / ${spec.disk}`,
-                  "Dedicated PostgreSQL 17 Appliance",
-                  "Dedicated MinIO S3 Object Storage",
-                  "Auto SSL & Reverse Proxy TLS 1.3",
-                  "Port Bandwidth " + spec.bandwidth,
-                  "Dukungan Prioritas 24/7 & SLA 99.9%"
-                ],
-                popular: true,
-                buttonText: "Pilih Paket"
-              })
-            }
           }
         }
         
@@ -376,7 +341,6 @@ export default function CheckoutPage() {
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)
   const total = subtotal + tax
-  const applianceSpec = APPLIANCE_SPECS[plan.id] || null
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -502,7 +466,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/60">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                        {applianceSpec ? <Server className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
+                        <Zap className="h-5 w-5" />
                       </div>
                       <div>
                         <p className="font-bold text-base text-foreground">{plan.name}</p>
@@ -524,40 +488,6 @@ export default function CheckoutPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* Appliance Dedicated Specs Highlight */}
-                  {applianceSpec && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-muted/30 border border-border/60">
-                      <div className="flex items-center gap-2">
-                        <Cpu className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <div>
-                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Prosesor</p>
-                          <p className="text-xs font-bold text-foreground">{applianceSpec.cpu}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Database className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <div>
-                          <p className="text-[9px] uppercase font-bold text-muted-foreground">RAM Memori</p>
-                          <p className="text-xs font-bold text-foreground">{applianceSpec.ram}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <HardDrive className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <div>
-                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Penyimpanan</p>
-                          <p className="text-xs font-bold text-foreground">{applianceSpec.disk}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <div>
-                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Bandwidth</p>
-                          <p className="text-xs font-bold text-foreground">{applianceSpec.bandwidth}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   <div className="space-y-2.5 text-xs">
                     <div className="flex justify-between font-medium text-muted-foreground">

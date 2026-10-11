@@ -76,7 +76,6 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
       const planLower = (tenant.plan || "").toLowerCase()
       if (
         planLower.includes("enterprise") ||
-        planLower.includes("vps") ||
         planLower.includes("postgres") ||
         session.user.role === "super_admin" ||
         !!tenant.databaseUrl

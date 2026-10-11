@@ -292,7 +292,7 @@ export default function AdminSupportPage() {
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all" className="text-xs">Semua Kategori</SelectItem>
                   <SelectItem value="technical" className="text-xs">Teknis & CMS</SelectItem>
-                  <SelectItem value="infrastructure" className="text-xs">VPS / DB</SelectItem>
+                  <SelectItem value="infrastructure" className="text-xs">Database / Storage</SelectItem>
                   <SelectItem value="domain" className="text-xs">Custom Domain</SelectItem>
                   <SelectItem value="billing" className="text-xs">Billing</SelectItem>
                 </SelectContent>

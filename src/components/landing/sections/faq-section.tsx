@@ -13,8 +13,8 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
       answer: "SaCMS adalah Smart Content Management System headless multi-tenant modern berbasis Next.js 16 dan PostgreSQL 17. SaCMS memisahkan penyimpanan data dari frontend untuk memberikan kebebasan penuh dalam mendistribusikan konten.",
     },
     {
-      question: "Bagaimana cara kerja Dedicated VPS/VDS?",
-      answer: "Saat Anda berlangganan paket Cloud VPS atau Gov VDS, sistem kami secara otomatis mem-provisioning server cloud terisolasi dengan database PostgreSQL 17, Object Storage S3, dan hosting frontend khusus untuk workspace Anda.",
+      question: "Kapasitas storage saya hampir habis, bagaimana cara menambahnya?",
+      answer: "Anda bisa upgrade kapasitas storage kapan saja langsung dari dashboard workspace — tanpa perlu mengelola server terpisah. Semua media dan data tetap tersimpan aman di infrastruktur SaCMS.",
     },
     {
       question: "Metode pembayaran apa saja yang didukung?",

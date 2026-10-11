@@ -9,7 +9,7 @@
  * v0.dev) only checked "is the API key missing?" with no regard for
  * NODE_ENV, which meant a misconfigured production deployment (env var
  * typo'd or simply forgotten) would silently start fabricating successful
- * deployments/VPS provisions instead of failing loudly. Others (Midtrans,
+ * deployments instead of failing loudly. Others (Midtrans,
  * R2) had no fallback at all, so the full payment/storage test matrix
  * could never run without real, billable credentials.
  *

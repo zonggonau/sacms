@@ -394,11 +394,7 @@ export default function GlobalAdminDashboard() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2.5 shrink-0">
-                          <Badge variant="outline" className={`text-[10px] font-bold uppercase rounded-full ${
-                            tenant.plan.includes('vds') ? 'bg-amber-500/10 text-amber-600 border-amber-500/30' :
-                            tenant.plan.includes('vps') ? 'bg-primary/10 text-primary border-primary/30' :
-                            'bg-blue-500/10 text-blue-600 border-blue-500/30'
-                          }`}>
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full bg-blue-500/10 text-blue-600 border-blue-500/30">
                             {tenant.plan}
                           </Badge>
                           <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" asChild>

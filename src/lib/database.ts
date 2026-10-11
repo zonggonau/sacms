@@ -35,7 +35,6 @@ export type {
   Component,
   Media,
   ContentStatus,
-  UserVpsService,
 } from '../../prisma/generated-client'
 
 interface TenantClientEntry {
@@ -57,10 +56,9 @@ if (globalForPrisma.prisma) {
       !(globalForPrisma.prisma as any).site ||
       !(globalForPrisma.prisma as any).siteFile ||
       !(globalForPrisma.prisma as any).permission ||
-      !(globalForPrisma.prisma as any).rolePermission ||
-      !(globalForPrisma.prisma as any).userVpsService
+      !(globalForPrisma.prisma as any).rolePermission
     ) {
-      console.log('[Prisma] Forcing client refresh for query engine recovery & userVpsService...')
+      console.log('[Prisma] Forcing client refresh for query engine recovery...')
       globalForPrisma.prisma = undefined
       if (globalForPrisma.tenantClients) {
         globalForPrisma.tenantClients.clear()

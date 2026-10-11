@@ -3,7 +3,7 @@
  * SaCMS Model Context Protocol (MCP) Stdio Bridge
  *
  * Connects local AI Agents (Claude Desktop, Cursor, local tools) via standard I/O (stdio)
- * to remote SaCMS servers hosted on Vercel or Contabo VPS.
+ * to a remote SaCMS instance, wherever it's hosted.
  *
  * Usage:
  *   bunx sacms-mcp --host https://your-cms.com --token <API_TOKEN>

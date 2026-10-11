@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Removed
+- **Bring-Your-Own-VPS Hosting**: Removed the customer-facing VPS/VDS provisioning feature end-to-end — the Contabo provisioning integration (`lib/contabo.ts`), VPS catalog/ordering actions (`actions/vps-service.ts`), the "Cloud Server" catalog page, the per-workspace VPS lifecycle UI, the `UserVpsService` model and table, every `vps-*`/`vds-*` pricing slug across billing/checkout/plan-enforcement, and the now-unused `ssh2` dependency. Every workspace now uses SaCMS's own managed infrastructure (`ManagedInfraService`/BYODB for a dedicated database, and `StorageAddon` for storage upgrades) instead.
+
 ## [1.3.0] - 2026-08-24
 
 ### Added

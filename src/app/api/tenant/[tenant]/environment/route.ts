@@ -13,8 +13,8 @@ import {
 
 /**
  * Custom environment variables merged into every deploy of this tenant's
- * frontend (Vercel project env + a `.env` file on a dedicated VPS), on top
- * of the fixed SACMS_* connection vars. Stored as one JSON Setting row.
+ * frontend (Vercel project env), on top of the fixed SACMS_* connection
+ * vars. Stored as one JSON Setting row.
  *
  * GET → { systemVars, customVars }
  * PUT → { vars: [{key,value}] }  replaces the whole custom set

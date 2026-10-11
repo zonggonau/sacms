@@ -275,7 +275,7 @@ export default function AdminBillingOverviewPage() {
                   Katalog Margin Paket <ArrowUpRight className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Margin tiap paket VPS dan VDS berdasarkan kurs EUR/IDR.
+                  Margin tiap paket workspace berdasarkan kurs EUR/IDR.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-primary mt-4 inline-block">Buka Katalog Margin &rarr;</span>

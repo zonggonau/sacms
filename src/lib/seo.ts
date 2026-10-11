@@ -23,7 +23,7 @@ export const SEO_CONFIG = {
     "Headless CMS",
     "Multi-Tenant Headless CMS",
     "PostgreSQL 17 Appliance",
-    "Dedicated VPS CMS",
+    "Dedicated Database Hosting",
     "AI Website Builder",
     "Next.js 16 CMS",
     "Dynamic GraphQL",

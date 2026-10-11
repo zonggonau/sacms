@@ -172,50 +172,6 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
         "Prioritas Support & 99.9% SLA"
       ]
     },
-    {
-      "name": "Cloud VPS Standard",
-      "plan_slug": "vps-4",
-      "price": 450000,
-      "yearly_price": 4500000,
-      "period": "bulan",
-      "description": "Virtual Private Server terisolasi dengan dedicated storage SSD berkecepatan tinggi.",
-      "max_content_types": 999999,
-      "max_content_entries": 50000,
-      "max_team_members": 25,
-      "max_storage": 50000,
-      "max_locales": 10,
-      "max_api_calls": 500000,
-      "features": [
-        "4 vCPU Cores & 8 GB RAM",
-        "50 GB NVMe / SSD Storage",
-        "Dedicated PostgreSQL Instance",
-        "Unmetered Bandwidth (Port 1 Gbps)",
-        "Full Root / SSH Access & Dedicated IPv4",
-        "Automated Daily Snapshot & Backup"
-      ]
-    },
-    {
-      "name": "Cloud VDS Dedicated CPU",
-      "plan_slug": "vds-s",
-      "price": 1250000,
-      "yearly_price": 12500000,
-      "period": "bulan",
-      "description": "100% Dedicated CPU Cores untuk kebutuhan enterprise dan instansi pemerintah.",
-      "max_content_types": 999999,
-      "max_content_entries": 500000,
-      "max_team_members": 100,
-      "max_storage": 200000,
-      "max_locales": 50,
-      "max_api_calls": 5000000,
-      "features": [
-        "4 Dedicated CPU Cores (100% Dedicated)",
-        "24 GB RAM & 200 GB NVMe Storage",
-        "Isolated Dedicated PostgreSQL 17 Appliance",
-        "Gov & Enterprise Compliance Ready",
-        "Custom SSL & Anycast DNS Shield",
-        "24/7 Dedicated Support & SLA 99.99%"
-      ]
-    }
   ],
   "sacms-testimonials": [
     {
@@ -287,7 +243,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
     {
       "icon": "Landmark",
       "label": "Pemerintah & BUMN",
-      "desc": "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem."
+      "desc": "Keamanan database terisolasi, kedaulatan data lokal, dan kepatuhan audit sistem."
     },
     {
       "icon": "ShoppingBag",

@@ -208,7 +208,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const effectiveHasDedicatedInfra = hasDedicatedInfra ?? Boolean(
     currentTenant?.hasDedicatedInfra ||
     currentTenant?.databaseUrl ||
-    currentTenant?.plan?.toLowerCase().includes("vps") ||
     currentTenant?.plan?.toLowerCase().includes("dedicated") ||
     currentTenant?.plan?.toLowerCase().includes("enterprise") ||
     isEnterpriseMode
@@ -275,7 +274,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             href: "/infrastructure",
             icon: Rocket,
             matchPrefix: true,
-            badge: effectiveHasDedicatedInfra ? "VPS" : "VERCEL"
+            badge: effectiveHasDedicatedInfra ? "DEDICATED" : "VERCEL"
           },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),

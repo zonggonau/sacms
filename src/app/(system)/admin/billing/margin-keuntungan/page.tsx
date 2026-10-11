@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import {
   Loader2, PieChart, Search, Download, RefreshCw,
-  Server, ShieldCheck, Layers, FileSpreadsheet, ArrowUpRight
+  ShieldCheck, Layers, FileSpreadsheet, ArrowUpRight
 } from "lucide-react"
 import { formatRupiah } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
@@ -181,13 +181,8 @@ export default function MarginKeuntunganPage() {
                     <div className="text-[10px] text-muted-foreground font-mono">{item.slug}</div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className={`text-[10px] font-bold rounded-full uppercase ${
-                      item.category === "vds" ? "bg-amber-500/10 text-amber-600 border-amber-500/30" :
-                      item.category === "storage" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" :
-                      item.category === "vps" ? "bg-primary/10 text-primary border-primary/30" :
-                      "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                    }`}>
-                      {item.category === "storage" ? "VPS STORAGE" : item.category}
+                    <Badge variant="outline" className="text-[10px] font-bold rounded-full uppercase bg-blue-500/10 text-blue-600 border-blue-500/30">
+                      {item.category}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono font-bold text-foreground">

@@ -86,10 +86,7 @@ export const GET = withAdminAuth(async () => {
       db.tenant.count({
         where: {
           ...notSystemTenant,
-          OR: [
-            { databaseUrl: { not: null } },
-            { plan: { in: ["vps-4", "vps-6", "vps-8", "vps-12", "vps-16", "vps-18", "vps-plus-4", "vps-plus-6", "vps-plus-8", "vps-plus-12", "vps-plus-16", "vps-plus-18", "vps-storage-10", "vps-storage-20", "vps-storage-30", "vps-storage-40", "vps-storage-50", "vds-s", "vds-m", "vds-l", "vds-xl", "vds-xxl"] } }
-          ]
+          databaseUrl: { not: null },
         }
       }).catch(() => 0)
     ])

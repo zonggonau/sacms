@@ -130,7 +130,7 @@ export function BillingSubSidebar() {
                 <span className="text-[10px] font-bold uppercase tracking-wider">Margin Terlindungi</span>
               </div>
               <p className="text-[10px] text-muted-foreground leading-relaxed">
-                Target margin laba VPS & VDS 500% aktif pada semua transaksi appliance.
+                Target margin laba 500% aktif pada semua transaksi paket workspace.
               </p>
             </div>
           </div>

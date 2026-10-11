@@ -83,7 +83,7 @@ export async function GET(
             price: numericPrice,
             yearlyPrice: yearlyPrice,
             features: parseFeatures(d.features),
-            popular: d.is_popular === true || d.popular === true || d.plan_slug === "pro" || d.plan_slug === "vds-s",
+            popular: d.is_popular === true || d.popular === true || d.plan_slug === "pro",
             buttonText: d.cta_text || "Pilih Paket",
             maxContentTypes: parseInt(d.max_content_types, 10) || 0,
             maxContentEntries: parseInt(d.max_content_entries, 10) || 0,
@@ -92,48 +92,15 @@ export async function GET(
             maxStorage: parseInt(d.max_storage, 10) || 0,
             maxLocales: parseInt(d.max_locales, 10) || 0,
             auditLogRetention: parseInt(d.audit_log_retention, 10) || 0,
-            supportLevel: d.support_level || (d.plan_slug?.includes("vds") ? "Dedicated DevOps & 99.99% SLA" : d.plan_slug?.includes("vps") ? "24/7 Dedicated SLA" : d.plan_slug === "enterprise" ? "Prioritas & SLA" : d.plan_slug === "pro" ? "Prioritas" : "Email")
+            supportLevel: d.support_level || (d.plan_slug === "enterprise" ? "Prioritas & SLA" : d.plan_slug === "pro" ? "Prioritas" : "Email")
           }
         })
 
-        const PLAN_ORDER: Record<string, number> = { 
-          free: 1, 
-          pro: 2, 
+        const PLAN_ORDER: Record<string, number> = {
+          free: 1,
+          pro: 2,
           business: 3,
-          enterprise: 3, 
-          // Cloud VPS Standard (SSD)
-          "vps-4": 10,
-          "vps-6": 11,
-          "vps-8": 12,
-          "vps-12": 13,
-          "vps-16": 14,
-          "vps-18": 15,
-          // Cloud VPS Plus (NVMe)
-          "vps-plus-4": 20, 
-          "vps-s": 20, 
-          "vps-plus-6": 21, 
-          "enterprise-vps": 21, 
-          "vps-m": 21, 
-          "vps-plus-8": 22, 
-          "vps-l": 22, 
-          "vps-plus-12": 23,
-          "vps-xl": 23,
-          "vps-plus-16": 24,
-          "vps-plus-18": 25,
-          "vps-xxl": 25,
-          // VPS Storage
-          "vps-storage-10": 30,
-          "vps-storage-20": 31,
-          "vps-storage-30": 32,
-          "vps-storage-40": 33,
-          "vps-storage-50": 34,
-          // Cloud VDS Dedicated CPU
-          "vds-s": 40, 
-          "vds-m": 41, 
-          "enterprise-vds": 41, 
-          "vds-l": 42, 
-          "vds-xl": 43,
-          "vds-xxl": 44,
+          enterprise: 3,
         }
         workspacePlans.sort((a, b) => (PLAN_ORDER[a.id] || 99) - (PLAN_ORDER[b.id] || 99) || a.price - b.price)
       }
@@ -247,61 +214,6 @@ export async function GET(
             auditLogRetention: 30,
             supportLevel: "Prioritas & SLA 99.9%"
           },
-          {
-            id: "vps-plus-4",
-            name: "Cloud VPS Plus 4 (8GB NVMe)",
-            description: "4 vCPU, 8 GB RAM, 150 GB NVMe (High IOPS Database & Fast Read/Write)",
-            type: "workspace",
-            price: 700000,
-            yearlyPrice: 7000000,
-            features: [
-              "🚀 Dedicated Cloud VPS (4 vCPU, 8 GB RAM, 150 GB NVMe Extreme)",
-              "🗄️ Dedicated PostgreSQL 17 Database Server Mandiri",
-              "📦 Dedicated S3-Compatible Object Storage (150 GB NVMe)",
-              "🌐 Fullstack Next.js Frontend Hosting di VPS (Rp 0 Ekstra)",
-              "100.000 Entri Konten & 20 Anggota Tim",
-              "1.000 AI Credits Awal (Top-Up untuk AI Frontend Builder)",
-              "Enterprise Cloud Firewall & Auto Backup",
-              "Prioritas 24/7 Support & SLA 99.9%"
-            ],
-            popular: false,
-            buttonText: "Pilih VPS Plus 4",
-            maxContentTypes: 999999,
-            maxContentEntries: 100000,
-            maxTeamMembers: 20,
-            maxApiCalls: 5000000,
-            maxStorage: 153600,
-            maxLocales: 20,
-            auditLogRetention: 180,
-            supportLevel: "Prioritas 24/7 & SLA 99.9%"
-          },
-          {
-            id: "vds-m",
-            name: "Gov VDS M (4 Cores Dedicated)",
-            description: "4 Core Fisik, 32 GB RAM, 240 GB NVMe (Dedicated Physical CPU Cores untuk transaksi kritis)",
-            type: "workspace",
-            price: 5290000,
-            yearlyPrice: 52900000,
-            features: [
-              "🛡️ Dedicated VDS (4 Dedicated Physical CPU Cores 100% Locked, 32 GB RAM, 240 GB NVMe)",
-              "100% Dedicated CPU Lock (Zero Noisy Neighbor)",
-              "Dedicated PostgreSQL 17 + MinIO S3 (240 GB) + Next.js Frontend Cluster",
-              "10.000.000 Entri Konten & 300 Anggota Tim",
-              "15.000 AI Credits Awal (Top-Up untuk AI Frontend Builder)",
-              "Lisensi RSA Enterprise Self-Hosted / On-Premise Ready",
-              "Dedicated DevOps Engineer & SLA 99.99%"
-            ],
-            popular: true,
-            buttonText: "Pilih VDS 4 Cores",
-            maxContentTypes: 999999,
-            maxContentEntries: 10000000,
-            maxTeamMembers: 300,
-            maxApiCalls: 100000000,
-            maxStorage: 245760,
-            maxLocales: 300,
-            auditLogRetention: 730,
-            supportLevel: "Dedicated DevOps Engineer & 99.99% SLA"
-          }
         ]
       }
     }

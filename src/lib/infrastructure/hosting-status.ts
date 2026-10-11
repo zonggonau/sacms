@@ -29,9 +29,9 @@ export async function resolveTenantHostingStatus(
   vercelDeploymentUrl: string | null | undefined,
   vercelProjectId: string | null | undefined,
   /** The `Tenant` row lives in whichever DB this tenant actually uses
-   *  (shared master, or its own dedicated appliance for VPS/VDS/Storage
-   *  plans — see getTenantDb) — write the clear-out back to the same one
-   *  the caller read from, defaulting to the shared master `db`. */
+   *  (shared master, or its own dedicated/BYODB appliance — see getTenantDb)
+   *  — write the clear-out back to the same one the caller read from,
+   *  defaulting to the shared master `db`. */
   client: PrismaClient = db,
 ): Promise<TenantHostingStatus> {
   if (!vercelDeploymentUrl || !vercelProjectId) {
