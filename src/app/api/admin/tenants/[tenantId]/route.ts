@@ -76,22 +76,7 @@ export const DELETE = withAdminAuth(async (_request, context) => {
       await dropEnterpriseDb(tenant.databaseUrl)
     }
 
-    // 3. Delete v0.dev project if exists
-    const v0Setting = await db.setting.findFirst({
-      where: { key: `${tenantId}_v0ChatId` }
-    })
-    
-    if (v0Setting?.value) {
-      try {
-        console.log(`[Admin Tenant Deletion] Deleting v0.dev chat ${v0Setting.value} for ${tenant.slug}`)
-        const { v0 } = await import("v0")
-        await v0.chats.delete({ chatId: v0Setting.value })
-      } catch (err) {
-        console.error(`Failed to delete v0.dev chat ${v0Setting.value}:`, err)
-      }
-    }
-
-    // 4. Clean up any related child records that lack foreign-key cascade in PostgreSQL
+    // 3. Clean up any related child records that lack foreign-key cascade in PostgreSQL
     const tenantSubscriptions = await db.subscription.findMany({
       where: { tenantId },
       select: { id: true }
@@ -113,7 +98,7 @@ export const DELETE = withAdminAuth(async (_request, context) => {
       where: { tenantId }
     }).catch(err => console.warn("Failed to clean up custom plan overrides:", err))
 
-    // 5. Delete tenant from master database
+    // 4. Delete tenant from master database
     await db.tenant.delete({
       where: { id: tenantId }
     })
