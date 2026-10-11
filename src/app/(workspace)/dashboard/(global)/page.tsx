@@ -100,27 +100,10 @@ export default async function WorkspaceSelectionPage() {
   let dbTemplates: any[] = []
   let workspacePlans: any[] = []
   let addonPlans: any[] = []
-  let readyVpsList: any[] = []
   let usage: any = null
 
   try {
-    const vpsPromise = (db as any).userVpsService?.findMany
-      ? db.userVpsService.findMany({
-          where: { userId: session.user.id, status: "ready" },
-          select: {
-            id: true,
-            planSlug: true,
-            planName: true,
-            serverName: true,
-            serverIp: true,
-            databaseUrl: true,
-            status: true,
-          },
-          orderBy: { createdAt: "desc" }
-        })
-      : Promise.resolve([])
-
-    const [wPlans, aPlans, userVps] = await Promise.all([
+    const [wPlans, aPlans] = await Promise.all([
       db.contentEntry.findMany({
         where: { contentType: { slug: "sacms-workspace-pricing" }, status: "PUBLISHED" },
         select: { id: true, data: true }
@@ -129,10 +112,7 @@ export default async function WorkspaceSelectionPage() {
         where: { contentType: { slug: "sacms-addons" }, status: "PUBLISHED" },
         select: { id: true, data: true }
       }),
-      vpsPromise
     ])
-
-    readyVpsList = userVps
 
     workspacePlans = wPlans.map(t => {
       const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
@@ -218,7 +198,6 @@ export default async function WorkspaceSelectionPage() {
       dbTemplates={dbTemplates}
       workspacePlans={workspacePlans}
       addonPlans={addonPlans}
-      readyVpsList={readyVpsList}
       isSuperAdmin={session.user.role === "super_admin"}
     />
   )

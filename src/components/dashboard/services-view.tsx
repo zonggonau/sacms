@@ -20,7 +20,6 @@ import {
   CheckCircle2,
   Clock,
   ShieldCheck,
-  Plus,
   ArrowRight,
   Sparkles,
   ExternalLink,
@@ -1186,31 +1185,18 @@ export function ServicesView({
                         )}
 
                         {isReady && (
-                          <div className="flex flex-col gap-1.5">
-                            <Button
-                              type="button"
-                              size="sm"
-                              onClick={() => {
-                                setAssigningVps(vps)
-                                setTargetWorkspaceId(workspaces[0]?.id || "")
-                              }}
-                              className="w-full h-8.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 cursor-pointer"
-                            >
-                              <Share2 className="h-3.5 w-3.5" />
-                              Hubungkan ke Workspace
-                            </Button>
-                            <Button
-                              asChild
-                              variant="outline"
-                              size="sm"
-                              className="w-full h-8 text-xs font-bold rounded-xl border-border/80"
-                            >
-                              <Link href={`/dashboard?action=new-workspace&vpsId=${vps.id}`}>
-                                <Plus className="h-3.5 w-3.5 mr-1" />
-                                Buat Workspace Baru dengan Server Ini
-                              </Link>
-                            </Button>
-                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                              setAssigningVps(vps)
+                              setTargetWorkspaceId(workspaces[0]?.id || "")
+                            }}
+                            className="w-full h-8.5 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 cursor-pointer"
+                          >
+                            <Share2 className="h-3.5 w-3.5" />
+                            Hubungkan ke Workspace
+                          </Button>
                         )}
 
                         {(isSuperAdmin || isAwaiting) && isAwaiting && (

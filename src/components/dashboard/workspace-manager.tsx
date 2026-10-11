@@ -41,7 +41,7 @@ import { cn } from "@/lib/utils"
 import { deleteTenantAction } from "@/actions/tenant"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { WorkspaceCreationDialog, ReadyVpsOption } from "./workspace-creation-dialog"
+import { WorkspaceCreationDialog } from "./workspace-creation-dialog"
 import { EnterpriseLicenseBanner } from "./enterprise-license-banner"
 
 interface Tenant {
@@ -65,7 +65,6 @@ interface WorkspaceManagerProps {
   dbTemplates: any[]
   workspacePlans: any[]
   addonPlans: any[]
-  readyVpsList?: ReadyVpsOption[]
   isSuperAdmin?: boolean
 }
 
@@ -75,7 +74,6 @@ export function WorkspaceManager({
   dbTemplates,
   workspacePlans,
   addonPlans,
-  readyVpsList = [],
   isSuperAdmin
 }: WorkspaceManagerProps) {
   const router = useRouter()
@@ -85,11 +83,9 @@ export function WorkspaceManager({
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationTemplateId, setCreationTemplateId] = useState("custom")
 
-  const initialVpsId = searchParams?.get("vpsId") || undefined
-
-  // Auto-open create dialog if action=new-workspace or vpsId is present in URL
+  // Auto-open create dialog if action=new-workspace is present in URL
   useEffect(() => {
-    if (searchParams?.get("action") === "new-workspace" || searchParams?.get("vpsId")) {
+    if (searchParams?.get("action") === "new-workspace") {
       setIsCreateOpen(true)
     }
   }, [searchParams])
@@ -612,14 +608,12 @@ export function WorkspaceManager({
       </section>
 
       {/* Creation Modal */}
-      <WorkspaceCreationDialog 
+      <WorkspaceCreationDialog
         open={isCreateOpen}
         onOpenChange={setIsCreateOpen}
         dbTemplates={dbTemplates}
         workspacePlans={workspacePlans}
         addonPlans={addonPlans}
-        readyVpsList={readyVpsList}
-        initialVpsId={initialVpsId}
         initialTemplateId={creationTemplateId}
       />
 
