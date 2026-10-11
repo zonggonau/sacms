@@ -118,7 +118,14 @@ CRITICAL CODING RULES TO PREVENT CRASHES & TIMEOUTS:
      \`const formatNumber = (val) => Number(val || 0).toLocaleString('id-ID');\`
      \`const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');\`
 
-5. Output ONLY the two delimited blocks (<<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>). Do not wrap the entire response in markdown or add commentary.`
+5. SPA NAVIGATION & LINKS (CRITICAL):
+   - This application is a Single Page Application (SPA). NEVER output raw multi-page links like \`<a href="/profile">\` or \`<a href="/berita">\`!
+   - Navigation MUST use Vue reactive state:
+     - Use button or link with \`@click="currentView = 'home'"\` / \`@click="currentView = 'profile'"\` / \`@click="currentView = 'berita'"\`.
+     - If using \`<a href="...">\`, ALWAYS use \`@click.prevent="currentView = '...'"\` or section anchors like \`<a href="#profil">\`.
+     - For external links (WhatsApp, social media), use \`target="_blank" rel="noopener noreferrer"\`.
+
+6. Output ONLY the two delimited blocks (<<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>). Do not wrap the entire response in markdown or add commentary.`
 
 export interface StaticSiteResult {
   html: string

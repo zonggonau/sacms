@@ -11,7 +11,95 @@ import { randomBytes } from "crypto"
 export function renderStaticSite(html: string, js: string): { body: string; headers: Record<string, string> } {
   const nonce = randomBytes(16).toString("base64")
 
-  const scriptTag = `<script nonce="${nonce}">${js}</script>`
+  const helperScript = `<script nonce="${nonce}">
+    (function() {
+      let _vue = window.Vue;
+      function wrapVue(v) {
+        if (!v || !v.createApp || v.__sacms_wrapped) return v;
+        const _origCreateApp = v.createApp;
+        v.createApp = function(...args) {
+          const app = _origCreateApp.apply(this, args);
+          const _origMount = app.mount;
+          app.mount = function(container) {
+            const vm = _origMount.call(this, container);
+            window.__SACMS_VUE_VM__ = vm;
+            return vm;
+          };
+          return app;
+        };
+        v.__sacms_wrapped = true;
+        return v;
+      }
+      if (_vue) {
+        wrapVue(_vue);
+      } else {
+        Object.defineProperty(window, 'Vue', {
+          configurable: true,
+          enumerable: true,
+          get() { return _vue; },
+          set(v) { _vue = wrapVue(v); }
+        });
+      }
+
+      function switchVueView(targetName) {
+        if (!window.__SACMS_VUE_VM__) return false;
+        const vm = window.__SACMS_VUE_VM__;
+        const clean = targetName.toLowerCase().trim();
+        const candidateKeys = ['currentView', 'activeView', 'activeTab', 'currentTab', 'view', 'page', 'selectedTab'];
+        for (const key of candidateKeys) {
+          if (key in vm) {
+            vm[key] = clean;
+            return true;
+          }
+        }
+        return false;
+      }
+
+      document.addEventListener('click', function(e) {
+        const a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if (!a) return;
+        const href = a.getAttribute('href');
+        if (!href) return;
+
+        if (/^(https?:|\\/\\/|mailto:|tel:)/i.test(href)) {
+          if (/^https?:|\\/\\//i.test(href)) {
+            e.preventDefault();
+            window.open(href, '_blank', 'noopener,noreferrer');
+          }
+          return;
+        }
+
+        if (href === '#' || href === '#!' || href.startsWith('javascript:')) {
+          e.preventDefault();
+          return;
+        }
+
+        if (href.startsWith('#')) {
+          const id = href.slice(1);
+          if (!id) return;
+          const targetEl = document.getElementById(id) || document.querySelector(href);
+          if (targetEl) {
+            e.preventDefault();
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+          }
+          switchVueView(id);
+          return;
+        }
+
+        e.preventDefault();
+        const viewSlug = href.replace(/^[\\/\\s]+|[\\/\\s]+$/g, '').toLowerCase();
+        if (viewSlug) {
+          switchVueView(viewSlug);
+          const targetEl = document.getElementById(viewSlug) || document.getElementById('section-' + viewSlug);
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth' });
+          }
+        }
+      }, true);
+    })();
+  </script>`
+
+  const scriptTag = `${helperScript}\n<script nonce="${nonce}">${js}</script>`
   let body = html
   if (body.includes('<script src="app.js"></script>')) {
     body = body.replace('<script src="app.js"></script>', scriptTag)

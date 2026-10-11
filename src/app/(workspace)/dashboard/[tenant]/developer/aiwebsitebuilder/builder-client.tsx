@@ -628,10 +628,12 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
       .replace(/origin\s*\+\s*['"]\/api\/public/g, "'' + '/api/public")
       .replace(/['"]null\/api\/public/g, "'/api/public")
 
-    // Injected environment helper and fetch normalizer
+    // Injected environment helper, fetch normalizer, and SPA navigation interceptor
     const envScript = `<script>
       window.__SACMS_TENANT_SLUG__ = "${tenantSlug}";
       window.__SACMS_API_BASE__ = "/api/public/${tenantSlug}";
+
+      // 1. Normalize fetch requests to public tenant API
       (function() {
         const _origFetch = window.fetch;
         window.fetch = function(resource, init) {
@@ -642,6 +644,105 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
           return _origFetch.call(this, resource, init);
         };
       })();
+
+      // 2. Intercept Vue.createApp so we capture the root Vue instance for reactive navigation
+      (function() {
+        let _vue = window.Vue;
+        function wrapVue(v) {
+          if (!v || !v.createApp || v.__sacms_wrapped) return v;
+          const _origCreateApp = v.createApp;
+          v.createApp = function(...args) {
+            const app = _origCreateApp.apply(this, args);
+            const _origMount = app.mount;
+            app.mount = function(container) {
+              const vm = _origMount.call(this, container);
+              window.__SACMS_VUE_VM__ = vm;
+              return vm;
+            };
+            return app;
+          };
+          v.__sacms_wrapped = true;
+          return v;
+        }
+        if (_vue) {
+          wrapVue(_vue);
+        } else {
+          Object.defineProperty(window, 'Vue', {
+            configurable: true,
+            enumerable: true,
+            get() { return _vue; },
+            set(v) { _vue = wrapVue(v); }
+          });
+        }
+      })();
+
+      // 3. SPA Link Interceptor: prevent iframe from navigating away to SaCMS platform
+      (function() {
+        function switchVueView(targetName) {
+          if (!window.__SACMS_VUE_VM__) return false;
+          const vm = window.__SACMS_VUE_VM__;
+          const clean = targetName.toLowerCase().trim();
+          const candidateKeys = ['currentView', 'activeView', 'activeTab', 'currentTab', 'view', 'page', 'selectedTab'];
+          for (const key of candidateKeys) {
+            if (key in vm) {
+              vm[key] = clean;
+              return true;
+            }
+          }
+          return false;
+        }
+
+        document.addEventListener('click', function(e) {
+          const a = e.target && e.target.closest ? e.target.closest('a') : null;
+          if (!a) return;
+          const href = a.getAttribute('href');
+          if (!href) return;
+
+          // External URLs -> open safely in new window/tab
+          if (/^(https?:|\/\/|mailto:|tel:)/i.test(href)) {
+            if (/^https?:|\/\//i.test(href)) {
+              e.preventDefault();
+              window.open(href, '_blank', 'noopener,noreferrer');
+            }
+            return;
+          }
+
+          // Javascript:void(0) or empty hash -> prevent default
+          if (href === '#' || href === '#!' || href.startsWith('javascript:')) {
+            e.preventDefault();
+            return;
+          }
+
+          // Anchor navigation (e.g. #profile, #berita, #kontak)
+          if (href.startsWith('#')) {
+            const id = href.slice(1);
+            if (!id) return;
+            const targetEl = document.getElementById(id) || document.querySelector(href);
+            if (targetEl) {
+              e.preventDefault();
+              targetEl.scrollIntoView({ behavior: 'smooth' });
+            }
+            switchVueView(id);
+            return;
+          }
+
+          // Path-like internal navigation (e.g. /profile, /berita, profile, berita)
+          // ALWAYS PREVENT DEFAULT so iframe never navigates to SaCMS platform!
+          e.preventDefault();
+
+          const viewSlug = href.replace(/^[\/\s]+|[\/\s]+$/g, '').toLowerCase();
+          if (viewSlug) {
+            // Try to update reactive view in Vue SPA
+            switchVueView(viewSlug);
+
+            // Also try smooth scroll if an element matches ID
+            const targetEl = document.getElementById(viewSlug) || document.getElementById('section-' + viewSlug);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }, true);
+      })();
     </script>`
 
     // Inlined script tag executing app.js directly within the preview frame
@@ -649,9 +750,9 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
 
     let finalDoc = rawHtml
     if (finalDoc.includes("<head>")) {
-      finalDoc = finalDoc.replace("<head>", `<head>\n<base href="/" />\n${envScript}`)
+      finalDoc = finalDoc.replace("<head>", `<head>\n${envScript}`)
     } else {
-      finalDoc = `<base href="/" />\n${envScript}\n${finalDoc}`
+      finalDoc = `${envScript}\n${finalDoc}`
     }
 
     if (finalDoc.includes('<script src="app.js"></script>')) {

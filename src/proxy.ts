@@ -493,18 +493,17 @@ export async function proxy(request: NextRequest) {
     // B. Direct Workspace Subdomain (e.g. klinik-intan.sacms.cloud)
     const rewriteUrl = request.nextUrl.clone()
 
+    // Cheap Redis flag check, set/cleared by api/tenant/[tenant]/static-site
+    // — never a DB call from the routing layer. Fails safe to false if Redis is unavailable.
+    let hasStaticSite = false
+    try {
+      const redis = getRedis()
+      if (redis) hasStaticSite = (await redis.get<string>(`static-site:${dynamicSubdomain}`)) === "1"
+    } catch {
+      hasStaticSite = false
+    }
+
     if (pathname === "/" || pathname === "") {
-      // Default entry: the tenant's published static site if they have one
-      // (cheap Redis flag check, set/cleared by api/tenant/[tenant]/static-site
-      // — never a DB call from the routing layer), otherwise the CMS Studio
-      // as before. Fails safe to the CMS Studio if Redis is unavailable.
-      let hasStaticSite = false
-      try {
-        const redis = getRedis()
-        if (redis) hasStaticSite = (await redis.get<string>(`static-site:${dynamicSubdomain}`)) === "1"
-      } catch {
-        hasStaticSite = false
-      }
       rewriteUrl.pathname = hasStaticSite
         ? `/site/${dynamicSubdomain}`
         : `/dashboard/${dynamicSubdomain}/cms`
@@ -526,6 +525,10 @@ export async function proxy(request: NextRequest) {
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname}`
     } else if (pathname.startsWith("/dashboard")) {
       rewriteUrl.pathname = pathname
+    } else if (hasStaticSite) {
+      // SPA Fallback: If tenant has a published static site, route subpaths like /berita or /profile
+      // to the static site so the SPA can handle navigation
+      rewriteUrl.pathname = `/site/${dynamicSubdomain}`
     } else {
       // Default: CMS route group
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
@@ -667,6 +670,9 @@ export async function proxy(request: NextRequest) {
         rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname}`
       } else if (pathname.startsWith("/dashboard")) {
         rewriteUrl.pathname = pathname
+      } else if (domainTarget === "site") {
+        // SPA Fallback: If custom domain targets a static site, route subpaths to the static site
+        rewriteUrl.pathname = `/site/${tenantSlug}`
       } else {
         const response = NextResponse.next()
         applySecurityHeaders(response)

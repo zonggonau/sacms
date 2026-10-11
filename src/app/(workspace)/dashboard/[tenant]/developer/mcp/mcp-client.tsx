@@ -357,6 +357,9 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
 
   { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa izin API key aktif (read, write, delete, schema, webhooks) untuk menentukan apakah membangun komponen read-only atau interaktif.", inputs: [] },
   { name: "get_api_info", category: "webhook", description: "Mengambil dokumentasi REST API lengkap, daftar endpoint, sintaks filtering, dan contoh kode integrasi untuk workspace ini.", inputs: ["baseUrl?"] },
+  { name: "get_or_create_api_key", category: "webhook", description: "Mengambil API key utama REST/GraphQL workspace ini, membuatnya sekali jika belum ada. Aman dipanggil berulang — key yang sudah ada selalu dipakai ulang, tidak pernah digandakan. Secret plaintext hanya ditampilkan sekali saat pertama dibuat.", inputs: [] },
+  { name: "update_api_key_permissions", category: "webhook", description: "Mengganti seluruh set izin (read/write/delete) pada API key utama workspace. Hanya bisa memberi izin yang token MCP Anda sendiri sudah miliki.", inputs: ["permissions"] },
+  { name: "regenerate_api_key", category: "webhook", description: "Merotasi secret API key utama workspace — id/nama/izin tetap sama, secret baru. Secret lama langsung berhenti berfungsi.", inputs: [] },
 
   // Multi-Tenant End-User & Member Auth MCP Tools
   { name: "list_members", category: "member", description: "Mendaftar akun end-user/member website dengan filter pencarian, role, dan status.", inputs: ["page", "pageSize", "search", "role", "status"] },
@@ -371,6 +374,9 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project Vercel, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
   { name: "add_vercel_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project Vercel workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
   { name: "make_vercel_deployment_public", category: "hosting", description: "Nonaktifkan proteksi 'Vercel Authentication' pada project Vercel workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login Vercel.", inputs: ["projectId?"] },
+
+  // Free Static Site Hosting (Vue.js 3 + Tailwind, no build step)
+  { name: "write_static_site", category: "hosting", description: "Menyimpan index.html + app.js yang ditulis langsung oleh AI agent sebagai draft website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build). Langkah 1 dari 3 — hanya tampilan + data mock, belum tersambung skema CMS atau publik; lanjutan (sambung skema, publish) dilakukan dari dashboard.", inputs: ["html", "js"] },
 ]
 
 export function MCPDashboardClient({
