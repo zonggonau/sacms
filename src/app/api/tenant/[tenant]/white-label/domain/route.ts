@@ -63,7 +63,7 @@ const updateTargetSchema = z.object({
 export const GET = withStaffAuth(
   async (request, _context, { access, session }) => {
 
-    const [tenantRecord, settings, siteRecord] = await Promise.all([
+    const [tenantRecord, settings] = await Promise.all([
       db.tenant.findUnique({
         where: { id: access.tenantId },
         include: {
@@ -84,15 +84,6 @@ export const GET = withStaffAuth(
           },
         },
       }),
-      db.site.findFirst({
-        where: { tenantId: access.tenantId },
-        include: {
-          deployments: {
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-        },
-      })
     ])
 
     if (!tenantRecord) {
@@ -118,9 +109,9 @@ export const GET = withStaffAuth(
     const vercelProjectIdSetting = settings.find((s) => s.key === `${access.tenantId}_vercelProjectId`)?.value
     const vercelCustomDomainSetting = settings.find((s) => s.key === `${access.tenantId}_customDomain`)?.value
 
-    const rawVercelUrl = tenantRecord.vercelDeploymentUrl || vercelDeploymentUrlSetting || siteRecord?.deployments?.[0]?.url || null
+    const rawVercelUrl = tenantRecord.vercelDeploymentUrl || vercelDeploymentUrlSetting || null
     const rawVercelProjectId = tenantRecord.vercelProjectId || vercelProjectIdSetting || null
-    const vercelCustomDomain = vercelCustomDomainSetting || siteRecord?.customDomain || null
+    const vercelCustomDomain = vercelCustomDomainSetting || null
 
     // Same live-check as the ai-builder/deploy route — a project deleted
     // directly on vercel.com must not keep showing as deployed here either,

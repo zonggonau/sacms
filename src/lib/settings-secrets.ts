@@ -8,7 +8,6 @@ import type { PlatformSettings } from "./settings"
  */
 export const SECRET_SETTING_KEYS = [
   "aiGatewayApiKey",
-  "v0ApiKey",
   "vercelAccessToken",
   "resendApiKey",
   "smtpPass",

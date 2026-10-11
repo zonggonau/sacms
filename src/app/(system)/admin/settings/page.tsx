@@ -109,7 +109,6 @@ export default function AdminSettingsPage() {
     // Tab 3: AI Engine (Vercel AI Gateway & SDK Core — one key, all models)
     aiGatewayApiKey: "",
     aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
-    v0ApiKey: "",
     vercelAccessToken: "",
     aiSdkDefaultModel: "google/gemini-2.5-flash",
     freePlanAiMonthlyWords: "10000",
@@ -599,12 +598,12 @@ export default function AdminSettingsPage() {
 
               </div>
 
-              {/* v0 & Vercel Access Token — unrelated to LLM calls (deploy integration), kept separate from the Gateway credential */}
+              {/* Vercel Access Token — unrelated to LLM calls (deploy integration), kept separate from the Gateway credential */}
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                 <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/15">
                   <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
                     <Key className="h-4 w-4 text-muted-foreground" />
-                    Integrasi Deploy (v0 & Vercel)
+                    Integrasi Deploy (Vercel)
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
                     Dipakai untuk deploy frontend tenant ke Vercel — bukan jalur pemanggilan model AI.
@@ -612,25 +611,6 @@ export default function AdminSettingsPage() {
                 </CardHeader>
                 <CardContent className="p-5">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs">🚀</span>
-                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">v0 by Vercel API Key</Label>
-                        </div>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('v0', 'v0ApiKey')}>
-                          {showMasks.v0 ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {showMasks.v0 ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <Input
-                        type={showMasks.v0 ? "text" : "password"}
-                        value={settings.v0ApiKey}
-                        onChange={e => setSettings(prev => ({ ...prev, v0ApiKey: e.target.value }))}
-                        placeholder="v1:••••••••••••••••"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                    </div>
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">

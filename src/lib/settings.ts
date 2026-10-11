@@ -29,7 +29,6 @@ export interface PlatformSettings {
   // Dynamic AI Engine (Vercel AI Gateway — one subscription, all models)
   aiGatewayApiKey: string
   aiGatewayBaseUrl: string
-  v0ApiKey: string
   vercelAccessToken: string
   aiSdkDefaultModel: string
   freePlanAiMonthlyWords: string
@@ -93,7 +92,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   // served through Vertex (e.g. Gemini), causing "function response parts"
   // errors from the underlying provider.
   aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
-  v0ApiKey: "",
   vercelAccessToken: "",
   // Gateway model id, "provider/model" form — this one key drives both
   // content generation and schema generation.
@@ -146,7 +144,6 @@ const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   aiGatewayApiKey: "AI_GATEWAY_API_KEY",
   aiGatewayBaseUrl: "AI_GATEWAY_BASE_URL",
   vercelAccessToken: "VERCEL_ACCESS_TOKEN",
-  v0ApiKey: "V0_API_KEY",
   resendApiKey: "RESEND_API_KEY",
   resendFrom: "RESEND_FROM",
   smtpHost: "SMTP_HOST",
@@ -270,7 +267,6 @@ export async function getResolvedAiConfig() {
   return {
     aiGatewayApiKey: settings.aiGatewayApiKey || "",
     aiGatewayBaseUrl: settings.aiGatewayBaseUrl || "",
-    v0ApiKey: settings.v0ApiKey || process.env.V0_API_KEY || "",
     vercelAccessToken: settings.vercelAccessToken || process.env.VERCEL_ACCESS_TOKEN || "",
     defaultModel: settings.aiSdkDefaultModel || "google/gemini-2.5-flash",
   }

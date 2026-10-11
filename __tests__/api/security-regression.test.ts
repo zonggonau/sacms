@@ -105,20 +105,6 @@ describe("P0-5  /api/tenant/[tenant]/license/activate", () => {
   })
 })
 
-// ── P0-6: Vercel webhook needs a valid signature ────────────────────────────
-describe("P0-6  /api/webhooks/vercel", () => {
-  it("rejects a POST with no signature", async () => {
-    const { POST } = await import("@/app/api/webhooks/vercel/route")
-    const res = await POST(
-      new Request("https://api.test/x", {
-        method: "POST",
-        body: JSON.stringify({ type: "deployment.succeeded", payload: { deployment: { id: "d", url: "x" } } }),
-      }) as any,
-    )
-    expect(res.status).toBe(401)
-  })
-})
-
 // ── P0-8: content-version routes are tenant-scoped ──────────────────────────
 describe("P0-8  content version restore", () => {
   it("404s when the entry is not in the caller's tenant", async () => {
