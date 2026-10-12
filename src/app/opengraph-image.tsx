@@ -126,7 +126,7 @@ export default async function Image() {
             "PostgreSQL 17 Appliance",
             "Dynamic GraphQL & MCP",
             "1-Prompt AI Engine",
-            "Vercel Custom DNS",
+            "SaCMS Custom DNS",
             "Midtrans Billing",
           ].map((pill, i) => (
             <div

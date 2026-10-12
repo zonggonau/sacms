@@ -438,9 +438,9 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [],
     sampleResponse: [
       {
-        id: "wh_vercel_deploy",
-        name: "Vercel Deploy Hook",
-        url: "https://api.vercel.com/v1/integrations/deploy/...",
+        id: "wh_build_trigger",
+        name: "Build Trigger",
+        url: "https://api.example.com/v1/deploy-hooks/...",
         events: ["content.published", "content.updated"],
         enabled: true,
         hookType: "async"
@@ -454,14 +454,14 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "id", type: "string", required: true, description: "ID of the webhook to retrieve" }
     ],
-    sampleResponse: { id: "wh_vercel_deploy", name: "Vercel Deploy Hook", url: "https://example.com/hook", events: ["content.published"], enabled: true }
+    sampleResponse: { id: "wh_build_trigger", name: "Build Trigger", url: "https://example.com/hook", events: ["content.published"], enabled: true }
   },
   {
     name: "create_webhook",
     title: "Create Webhook",
     description: "Register a new webhook endpoint to receive notifications on CMS events (e.g. 'content.created', 'content.published', 'content.updated', 'content.deleted', 'media.uploaded').",
     inputs: [
-      { name: "name", type: "string", required: true, description: "Descriptive name (e.g. 'Vercel Deploy Hook', 'Discord Notification')" },
+      { name: "name", type: "string", required: true, description: "Descriptive name (e.g. 'Build Trigger', 'Discord Notification')" },
       { name: "url", type: "string", required: true, description: "Destination endpoint URL (must start with https:// or http://)" },
       { name: "events", type: "array", required: true, description: "Array of event names (e.g. ['content.created', 'content.published'])" },
       { name: "secret", type: "string", required: false, description: "Optional HMAC signature secret" },
@@ -482,7 +482,7 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "enabled", type: "boolean", required: false, description: "New active state" },
       { name: "secret", type: "string", required: false, description: "New HMAC signature secret" }
     ],
-    sampleResponse: { id: "wh_vercel_deploy", name: "Vercel Deploy Hook (Updated)" }
+    sampleResponse: { id: "wh_build_trigger", name: "Build Trigger (Updated)" }
   },
   {
     name: "delete_webhook",
@@ -491,7 +491,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "id", type: "string", required: true, description: "ID of the webhook to delete" }
     ],
-    sampleResponse: { deleted: true, id: "wh_vercel_deploy" }
+    sampleResponse: { deleted: true, id: "wh_build_trigger" }
   },
   {
     name: "test_webhook",
@@ -549,33 +549,33 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: { status: "regenerated", id: "key_abc123", apiKey: "sacms_live_yyyyyyyyyyyyyyyy" }
   },
 
-  // ─── 8. Hosting & Cloud Deployment (Vercel) ───
+  // ─── 8. Hosting & Cloud Deployment (SaCMS Cloud Hosting) ───
   {
-    name: "deploy_to_vercel",
-    title: "Deploy Website / App to Vercel",
-    description: "Deploy generated website frontend files (Next.js, HTML, React) directly to Vercel Serverless hosting. The SaCMS API URL, tenant, and key are injected automatically as env vars. Requires a PAID workspace.",
+    name: "deploy_to_sacms",
+    title: "Deploy Website / App to SaCMS Cloud Hosting",
+    description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. The SaCMS API URL, tenant, and key are injected automatically as env vars. Requires a PAID workspace.",
     inputs: [
-      { name: "projectName", type: "string", required: true, description: "Name of the Vercel project (e.g. 'my-awesome-site')" },
+      { name: "projectName", type: "string", required: true, description: "Name of the deployment project (e.g. 'my-awesome-site')" },
       { name: "files", type: "array", required: true, description: "Array of { name: filePath, content: sourceCode } to deploy" },
       { name: "envVars", type: "object", required: false, description: "Extra env vars merged on top of the workspace's saved Environment vars" }
     ],
     sampleResponse: { id: "dpl_abc123", url: "https://my-awesome-site.vercel.app", state: "READY", projectName: "my-awesome-site" }
   },
   {
-    name: "get_vercel_deployment_status",
-    title: "Get Vercel Deployment Status",
-    description: "Check the build progress, ready state, and live URL of an existing Vercel deployment.",
+    name: "get_deployment_status",
+    title: "Get Deployment Status",
+    description: "Check the build progress, ready state, and live URL of an existing SaCMS Cloud Hosting deployment.",
     inputs: [
-      { name: "deploymentId", type: "string", required: true, description: "Vercel deployment ID (e.g. 'dpl_xxx')" }
+      { name: "deploymentId", type: "string", required: true, description: "Deployment ID (e.g. 'dpl_xxx')" }
     ],
     sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-awesome-site.vercel.app", isReady: true }
   },
   {
-    name: "configure_vercel_domain",
-    title: "Configure Custom Domain on Vercel",
-    description: "Attach and verify a custom apex domain or subdomain to a Vercel project, with DNS diagnostics.",
+    name: "configure_deployment_domain",
+    title: "Configure Custom Domain on a Deployment Project",
+    description: "Attach and verify a custom apex domain or subdomain to a SaCMS Cloud Hosting deployment project, with DNS diagnostics.",
     inputs: [
-      { name: "projectId", type: "string", required: true, description: "Vercel Project ID" },
+      { name: "projectId", type: "string", required: true, description: "Deployment Project ID" },
       { name: "domain", type: "string", required: true, description: "Custom domain name (e.g. 'mysite.com' or 'blog.mysite.com')" }
     ],
     sampleResponse: {
@@ -586,25 +586,25 @@ const MCP_TOOLS: ToolDefinition[] = [
     }
   },
   {
-    name: "add_vercel_env",
-    title: "Add / Update Vercel Environment Variable",
-    description: "Create or update an environment variable on this workspace's Vercel project (upsert). Also mirrored into the dashboard's Environment tab. An existing deployment must be redeployed for the change to take effect.",
+    name: "add_deployment_env",
+    title: "Add / Update Deployment Environment Variable",
+    description: "Create or update an environment variable on this workspace's SaCMS Cloud Hosting deployment project (upsert). Also mirrored into the dashboard's Environment tab. An existing deployment must be redeployed for the change to take effect.",
     inputs: [
       { name: "key", type: "string", required: true, description: "UPPER_SNAKE_CASE variable name, e.g. STRIPE_SECRET_KEY or NEXT_PUBLIC_ANALYTICS_ID" },
       { name: "value", type: "string", required: true, description: "Variable value" },
-      { name: "projectId", type: "string", required: false, description: "Vercel Project ID — defaults to this workspace's linked project" },
+      { name: "projectId", type: "string", required: false, description: "Deployment Project ID — defaults to this workspace's linked project" },
       { name: "targets", type: "array", required: false, description: "Which environments to apply to: production | preview | development (default: all three)" }
     ],
     sampleResponse: { key: "STRIPE_SECRET_KEY", type: "encrypted", targets: ["production", "preview", "development"], action: "created" }
   },
   {
-    name: "make_vercel_deployment_public",
-    title: "Make Vercel Deployment Publicly Viewable",
-    description: "Turn off Vercel's 'Vercel Authentication' deployment protection on this workspace's project, so every deployment link (including random-suffix preview URLs) can be opened without logging into Vercel. Only call when the user explicitly wants this.",
+    name: "make_deployment_public",
+    title: "Make Deployment Publicly Viewable",
+    description: "Turn off deployment protection on this workspace's SaCMS Cloud Hosting project, so every deployment link (including random-suffix preview URLs) can be opened without logging in. Only call when the user explicitly wants this.",
     inputs: [
-      { name: "projectId", type: "string", required: false, description: "Vercel Project ID — defaults to this workspace's linked project" }
+      { name: "projectId", type: "string", required: false, description: "Deployment Project ID — defaults to this workspace's linked project" }
     ],
-    sampleResponse: { ok: true, message: "✅ Proteksi 'Vercel Authentication' dinonaktifkan." }
+    sampleResponse: { ok: true, message: "✅ Proteksi deployment dinonaktifkan." }
   },
 
   // ─── 9. Multi-Tenant End-Users & Member Auth ───

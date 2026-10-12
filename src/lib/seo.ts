@@ -16,7 +16,7 @@ export const SEO_CONFIG = {
   brandDetail: "Smart Content Management System",
   slogan: "Build smarter. Manage easier. Scale faster.",
   defaultTitle: "SaCMS — Smart Content Management System | Build smarter. Manage easier. Scale faster.",
-  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, 1-Prompt AI Fullstack Website Engine, Vercel-Style Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, SaCMS Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
   keywords: [
     "SaCMS",
     "Smart Content Management System",
@@ -29,7 +29,7 @@ export const SEO_CONFIG = {
     "Model Context Protocol",
     "MCP Server",
     "Strapi Alternative",
-    "Vercel Custom DNS",
+    "SaCMS Custom DNS",
     "Midtrans Billing CMS",
     "Cloudflare R2 Media",
     "SaaS Headless CMS"
@@ -86,10 +86,10 @@ export function generatePlatformJsonLd() {
         },
         "featureList": [
           "Hybrid Multi-Tenancy & Dedicated PostgreSQL 17 Appliance",
-          "1-Prompt AI Fullstack Next.js Website Engine",
+          "AI Schema Generator for Content Types & Relations",
           "Dynamic GraphQL Schema & Strapi-Style REST API",
           "Model Context Protocol (MCP) Bridge for AI Coding Assistants",
-          "Vercel-Style Custom Domain DNS Auto-Verification",
+          "SaCMS Custom Domain DNS Auto-Verification",
           "Automated QRIS & Virtual Account Billing via Midtrans",
           "7-Stage Content Workflow with Granular RBAC Permissions",
           "Cloudflare R2 / S3 Object Storage with 0 Egress Fee"

@@ -87,7 +87,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
           </div>
           <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
             <Zap className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-            <span className="truncate">Vercel Custom DNS</span>
+            <span className="truncate">SaCMS Custom DNS</span>
           </div>
           <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
             <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />

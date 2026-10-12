@@ -270,7 +270,7 @@ export function HostingDeploymentsView({
   const handleSaveManualLink = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!linkUrlInput.trim()) {
-      toast.error("Masukkan URL deployment Vercel Anda")
+      toast.error("Masukkan URL deployment Anda")
       return
     }
 
@@ -288,7 +288,7 @@ export function HostingDeploymentsView({
 
       const data = await res.json()
       if (res.ok && data.success) {
-        toast.success("URL Deployment Vercel berhasil diperbarui!")
+        toast.success("URL Deployment berhasil diperbarui!")
         setIsLinkDialogOpen(false)
         await fetchDeploymentData()
         runHealthPing(linkUrlInput.trim())
@@ -492,7 +492,7 @@ export function HostingDeploymentsView({
               {vercelDeployment ? (
                 <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs font-bold rounded-full flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Live di Vercel Serverless
+                  Live di SaCMS Cloud Hosting
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-muted-foreground text-xs rounded-full">
@@ -548,7 +548,7 @@ export function HostingDeploymentsView({
             </div>
           </div>
 
-              {/* MAIN VERCEL PRODUCTION DEPLOYMENT CARD */}
+              {/* MAIN PRODUCTION DEPLOYMENT CARD */}
               {vercelDeployment ? (
                 <Card className="rounded-2xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/5 via-card to-card shadow-sm overflow-hidden">
                   <CardHeader className="p-5 pb-3 border-b border-emerald-500/20 bg-emerald-500/5">
@@ -560,7 +560,7 @@ export function HostingDeploymentsView({
                         <div>
                           <div className="flex items-center gap-2">
                             <CardTitle className="text-base font-bold text-foreground">
-                              Frontend Website Deployment (Vercel Serverless Edge)
+                              Frontend Website Deployment (SaCMS Cloud Hosting)
                             </CardTitle>
                             <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1.5">
                               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -568,7 +568,7 @@ export function HostingDeploymentsView({
                             </Badge>
                           </div>
                           <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                            Website Anda aktif secara global di Vercel Edge Network dan terhubung live ke SaCMS Headless Content Hub.
+                            Website Anda aktif secara global di SaCMS Edge Network dan terhubung live ke SaCMS Headless Content Hub.
                           </CardDescription>
                         </div>
                       </div>
@@ -687,7 +687,7 @@ export function HostingDeploymentsView({
                           Belum Ada Deployment Frontend Aktif
                         </h3>
                         <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                          Website frontend belum dipublikasikan ke cloud hosting. Kembangkan frontend-nya di IDE, lalu deploy otomatis dengan mengeksekusi tool <code className="font-mono text-primary">deploy_to_vercel</code> dari AI IDE (Antigravity / VS Code) atau AI agent apa pun yang terhubung lewat MCP.
+                          Website frontend belum dipublikasikan ke cloud hosting. Kembangkan frontend-nya di IDE, lalu deploy otomatis dengan mengeksekusi tool <code className="font-mono text-primary">deploy_to_sacms</code> dari AI IDE (Antigravity / VS Code) atau AI agent apa pun yang terhubung lewat MCP.
                         </p>
                       </div>
                     </div>
@@ -783,7 +783,7 @@ export function HostingDeploymentsView({
                     <div className="text-base font-mono font-bold text-foreground truncate">
                       {pingMetrics?.regionCode ? `${pingMetrics.regionCode.toUpperCase()} (Singapore)` : "SIN1 (Singapore)"}
                     </div>
-                    <p className="text-[11px] text-muted-foreground">Vercel Anycast Edge Network</p>
+                    <p className="text-[11px] text-muted-foreground">SaCMS Anycast Edge Network</p>
                   </Card>
 
                   {/* Card 4: SSL & Security */}
@@ -811,20 +811,20 @@ export function HostingDeploymentsView({
                     <h3 className="font-bold text-sm text-foreground">Deploy Otomatis via MCP Server di IDE</h3>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Anda dapat meminta AI IDE Anda (Antigravity atau VS Code) untuk men-deploy website Next.js langsung ke Vercel secara otomatis menggunakan tool <code className="font-mono text-primary font-bold">deploy_to_vercel</code>.
+                    Anda dapat meminta AI IDE Anda (Antigravity atau VS Code) untuk men-deploy website Next.js langsung ke SaCMS Cloud Hosting secara otomatis menggunakan tool <code className="font-mono text-primary font-bold">deploy_to_sacms</code>.
                   </p>
                   <div className="p-3 rounded-xl bg-muted/40 border border-border/60 space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] font-bold text-muted-foreground">
                       <span>Contoh Prompt AI di IDE:</span>
                       <button
-                        onClick={() => copyText("Deploy project frontend website ini ke hosting Vercel menggunakan MCP tool deploy_to_vercel.", "prompt-copy")}
+                        onClick={() => copyText("Deploy project frontend website ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms.", "prompt-copy")}
                         className="text-primary hover:underline cursor-pointer flex items-center gap-1"
                       >
                         {copiedId === "prompt-copy" ? "Tersalin!" : "Salin Prompt"}
                       </button>
                     </div>
                     <code className="text-[11px] font-mono text-foreground block bg-background p-2 rounded-lg border border-border/50">
-                      Deploy project frontend website ini ke hosting Vercel menggunakan MCP tool deploy_to_vercel.
+                      Deploy project frontend website ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms.
                     </code>
                   </div>
                 </Card>
@@ -1448,10 +1448,10 @@ export function HostingDeploymentsView({
               <DialogHeader>
                 <DialogTitle className="text-base font-bold flex items-center gap-2">
                   <Link2 className="h-4 w-4 text-primary" />
-                  Hubungkan URL Deployment Vercel
+                  Hubungkan URL Deployment
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Jika Anda men-deploy website dari terminal, IDE, atau dashboard Vercel secara terpisah, masukkan URL produksi untuk menghubungkannya dengan workspace ini.
+                  Jika Anda men-deploy website dari terminal, IDE, atau secara terpisah, masukkan URL produksi untuk menghubungkannya dengan workspace ini.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1459,13 +1459,13 @@ export function HostingDeploymentsView({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold">URL Deployment Live *</Label>
                   <Input
-                    placeholder="https://kabnabire.vercel.app"
+                    placeholder="https://kabnabire-prod.example.com"
                     value={linkUrlInput}
                     onChange={(e) => setLinkUrlInput(e.target.value)}
                     className="font-mono text-xs rounded-xl h-10"
                     required
                   />
-                  <p className="text-[10px] text-muted-foreground">URL produksi Vercel yang dihasilkan saat proses deploy.</p>
+                  <p className="text-[10px] text-muted-foreground">URL produksi yang dihasilkan saat proses deploy.</p>
                 </div>
 
                 <div className="space-y-1.5">

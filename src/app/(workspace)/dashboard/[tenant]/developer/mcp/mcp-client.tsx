@@ -369,11 +369,11 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "delete_member", category: "member", description: "Menghapus permanen akun member dan me-revoke seluruh sesi login aktifnya.", inputs: ["idOrEmail"] },
 
   // Hosting & Cloud Deployment MCP Tools
-  { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website/frontend langsung ke Vercel Serverless hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },
-  { name: "get_vercel_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment Vercel.", inputs: ["deploymentId"] },
-  { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project Vercel, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
-  { name: "add_vercel_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project Vercel workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
-  { name: "make_vercel_deployment_public", category: "hosting", description: "Nonaktifkan proteksi 'Vercel Authentication' pada project Vercel workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login Vercel.", inputs: ["projectId?"] },
+  { name: "deploy_to_sacms", category: "hosting", description: "Deploy file source code website/frontend langsung ke SaCMS Cloud Hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },
+  { name: "get_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment.", inputs: ["deploymentId"] },
+  { name: "configure_deployment_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project deployment, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
+  { name: "add_deployment_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project deployment workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
+  { name: "make_deployment_public", category: "hosting", description: "Nonaktifkan proteksi deployment pada project workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login.", inputs: ["projectId?"] },
 ]
 
 export function MCPDashboardClient({
@@ -721,14 +721,14 @@ export function MCPDashboardClient({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-foreground">
-                      Vercel Serverless (Shared Cloud)
+                      SaCMS Cloud Hosting (Shared Cloud)
                     </span>
                     <Badge className="text-[9px] font-bold uppercase px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                       Plan: {plan.toUpperCase()} • PAID
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Vercel Serverless Edge Pool dengan auto-scaling.
+                    SaCMS Serverless Edge Pool dengan auto-scaling.
                   </p>
                 </div>
               </div>
@@ -1183,19 +1183,19 @@ export function MCPDashboardClient({
                   </pre>
                 </Card>
 
-                {/* Recipe 5: 1-Click Vercel Deploy */}
+                {/* Recipe 5: 1-Click SaCMS Cloud Hosting Deploy */}
                 <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold">
                         Cloud Deploy
                       </Badge>
-                      <h3 className="text-sm font-bold text-foreground">5. Deploy Frontend Langsung ke Vercel</h3>
+                      <h3 className="text-sm font-bold text-foreground">5. Deploy Frontend Langsung ke SaCMS Cloud Hosting</h3>
                     </div>
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleCopy("Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.", "Prompt Vercel Deploy")}
+                      onClick={() => handleCopy("Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms dengan project name 'my-sacms-app'.", "Prompt SaCMS Deploy")}
                       className="h-7 px-2 text-xs font-bold text-primary"
                     >
                       <Copy className="h-3 w-3 mr-1" /> Salin Prompt
@@ -1205,7 +1205,7 @@ export function MCPDashboardClient({
                     Menerbitkan website dan mengembalikan live URL produksi.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
-                    Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.
+                    Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms dengan project name 'my-sacms-app'.
                   </pre>
                 </Card>
 

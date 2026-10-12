@@ -24,7 +24,7 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
     },
     {
       icon: "Globe",
-      title: "Vercel-Style Custom DNS & Registrar",
+      title: "SaCMS Custom DNS & Registrar",
       description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
     },
     {

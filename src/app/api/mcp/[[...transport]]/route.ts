@@ -1600,7 +1600,7 @@ const handler = createMcpHandler(
         title: "Create Webhook",
         description: "Register a new webhook endpoint to receive notifications on CMS events (e.g. 'content.created', 'content.published', 'content.updated', 'content.deleted', 'media.uploaded').",
         inputSchema: {
-          name: z.string().describe("Descriptive name (e.g. 'Vercel Deploy Hook', 'Discord Notification')"),
+          name: z.string().describe("Descriptive name (e.g. 'Build Trigger', 'Discord Notification')"),
           url: z.string().url().describe("Destination endpoint URL (must start with https:// or http://)"),
           events: z.array(z.string()).describe("Array of event names (e.g. ['content.created', 'content.published', 'content.deleted'])"),
           secret: z.string().optional().describe("Optional HMAC signature secret"),
@@ -2050,17 +2050,17 @@ export default async function NewsPage() {
     )
 
     // =========================================================================
-    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (VERCEL)
+    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
     // =========================================================================
 
-    // ── deploy_to_vercel ─────────────────────────────────────────────────────
+    // ── deploy_to_sacms ──────────────────────────────────────────────────────
     server.registerTool(
-      "deploy_to_vercel",
+      "deploy_to_sacms",
       {
-        title: "Deploy Website / App to Vercel",
-        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to Vercel Serverless hosting. Returns the live production deployment URL.",
+        title: "Deploy Website / App to SaCMS Cloud Hosting",
+        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the live production deployment URL.",
         inputSchema: {
-          projectName: z.string().describe("Name of the Vercel project (e.g. 'my-awesome-site')"),
+          projectName: z.string().describe("Name of the deployment project (e.g. 'my-awesome-site')"),
           files: z.array(z.object({
             name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
             content: z.string().describe("Raw source code content of the file")
@@ -2077,7 +2077,7 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ Payment Required: Fitur deploy Vercel memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+              text: `❌ Payment Required: Fitur deploy SaCMS Cloud Hosting memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
             }],
             isError: true,
           }
@@ -2096,7 +2096,7 @@ export default async function NewsPage() {
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>
-              console.warn("[MCP deploy_to_vercel] env push failed:", e),
+              console.warn("[MCP deploy_to_sacms] env push failed:", e),
             )
           }
 
@@ -2122,21 +2122,21 @@ export default async function NewsPage() {
                 }),
               ])
             } catch (persistErr) {
-              console.warn("[MCP deploy_to_vercel] Failed to persist deployment to database:", persistErr)
+              console.warn("[MCP deploy_to_sacms] Failed to persist deployment to database:", persistErr)
             }
           }
 
           return {
             content: [{
               type: "text" as const,
-              text: `🚀 Vercel Deployment Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || projectName}\n- Env terkirim ke Vercel: ${Object.keys(mergedEnv).join(", ")}`
+              text: `🚀 Deploy ke SaCMS Cloud Hosting Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || projectName}\n- Env terkirim: ${Object.keys(mergedEnv).join(", ")}`
             }]
           }
         } catch (err: any) {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ Gagal deploy ke Vercel: ${err.message}`
+              text: `❌ Gagal deploy ke SaCMS Cloud Hosting: ${err.message}`
             }],
             isError: true,
           }
@@ -2144,14 +2144,14 @@ export default async function NewsPage() {
       }
     )
 
-    // ── get_vercel_deployment_status ─────────────────────────────────────────
+    // ── get_deployment_status ────────────────────────────────────────────────
     server.registerTool(
-      "get_vercel_deployment_status",
+      "get_deployment_status",
       {
-        title: "Get Vercel Deployment Status",
-        description: "Check the build progress, ready state, and live URL of an existing Vercel deployment.",
+        title: "Get Deployment Status",
+        description: "Check the build progress, ready state, and live URL of an existing SaCMS Cloud Hosting deployment.",
         inputSchema: {
-          deploymentId: z.string().describe("Vercel deployment ID (e.g. 'dpl_xxx')"),
+          deploymentId: z.string().describe("Deployment ID (e.g. 'dpl_xxx')"),
         },
       },
       async ({ deploymentId }) => {
@@ -2176,7 +2176,7 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ Error memeriksa status Vercel: ${err.message}`
+              text: `❌ Error memeriksa status deployment: ${err.message}`
             }],
             isError: true,
           }
@@ -2184,14 +2184,14 @@ export default async function NewsPage() {
       }
     )
 
-    // ── configure_vercel_domain ──────────────────────────────────────────────
+    // ── configure_deployment_domain ──────────────────────────────────────────
     server.registerTool(
-      "configure_vercel_domain",
+      "configure_deployment_domain",
       {
-        title: "Configure Custom Domain on Vercel",
-        description: "Attach and verify a custom apex domain or subdomain to a Vercel project with DNS diagnostics.",
+        title: "Configure Custom Domain on a Deployment Project",
+        description: "Attach and verify a custom apex domain or subdomain to a SaCMS Cloud Hosting deployment project, with DNS diagnostics.",
         inputSchema: {
-          projectId: z.string().describe("Vercel Project ID"),
+          projectId: z.string().describe("Deployment Project ID"),
           domain: z.string().describe("Custom domain name (e.g. 'mysite.com' or 'blog.mysite.com')"),
         },
       },
@@ -2212,7 +2212,7 @@ export default async function NewsPage() {
                 create: { tenantId: auth.tenantId, key: `${auth.tenantId}_customDomain`, value: domain }
               })
             } catch (err) {
-              console.warn("[MCP configure_vercel_domain] Failed to save customDomain setting:", err)
+              console.warn("[MCP configure_deployment_domain] Failed to save customDomain setting:", err)
             }
           }
           return {
@@ -2226,13 +2226,14 @@ export default async function NewsPage() {
                   cnameTarget: config.cname,
                   aRecordTarget: config.aRecord,
                   configured: config.configured,
-                  // When set, the check against Vercel itself failed —
-                  // `configured: false` above does NOT mean the domain's DNS
-                  // is actually wrong, just that we couldn't verify it.
+                  // When set, the check against the hosting provider itself
+                  // failed — `configured: false` above does NOT mean the
+                  // domain's DNS is actually wrong, just that we couldn't
+                  // verify it.
                   checkError: config.error,
                 },
                 message: config.error
-                  ? "⚠️ Domain ditambahkan, tapi pengecekan status DNS ke Vercel gagal — coba cek lagi nanti, ini bukan berarti DNS Anda salah."
+                  ? "⚠️ Domain ditambahkan, tapi pengecekan status DNS gagal — coba cek lagi nanti, ini bukan berarti DNS Anda salah."
                   : result.verified ? "✅ Domain terverifikasi dan aktif!" : "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
               }, null, 2)
             }]
@@ -2241,7 +2242,7 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ Gagal mengonfigurasi domain di Vercel: ${err.message}`
+              text: `❌ Gagal mengonfigurasi domain: ${err.message}`
             }],
             isError: true,
           }
@@ -2249,16 +2250,16 @@ export default async function NewsPage() {
       }
     )
 
-    // ── add_vercel_env ──────────────────────────────────────────────────────
+    // ── add_deployment_env ───────────────────────────────────────────────────
     server.registerTool(
-      "add_vercel_env",
+      "add_deployment_env",
       {
-        title: "Add / Update Vercel Environment Variable",
+        title: "Add / Update Deployment Environment Variable",
         description:
-          "Create or update an environment variable on this workspace's Vercel project (upsert). " +
+          "Create or update an environment variable on this workspace's SaCMS Cloud Hosting deployment project (upsert). " +
           "Values are stored encrypted unless the key is prefixed NEXT_PUBLIC_. The variable also " +
           "shows up in the dashboard's Environment tab and is re-applied on the next SaCMS deploy. " +
-          "Note: an existing Vercel deployment must be redeployed for the change to take effect.",
+          "Note: an existing deployment must be redeployed for the change to take effect.",
         inputSchema: {
           key: z
             .string()
@@ -2268,7 +2269,7 @@ export default async function NewsPage() {
           projectId: z
             .string()
             .optional()
-            .describe("Vercel Project ID. Defaults to this workspace's linked Vercel project."),
+            .describe("Deployment Project ID. Defaults to this workspace's linked deployment project."),
           targets: z
             .array(z.enum(["production", "preview", "development"]))
             .optional()
@@ -2297,7 +2298,7 @@ export default async function NewsPage() {
             return {
               content: [{
                 type: "text" as const,
-                text: "❌ Tidak ada Vercel Project ID. Deploy dulu dengan deploy_to_vercel, atau berikan parameter projectId.",
+                text: "❌ Tidak ada Deployment Project ID. Deploy dulu dengan deploy_to_sacms, atau berikan parameter projectId.",
               }],
               isError: true,
             }
@@ -2317,7 +2318,7 @@ export default async function NewsPage() {
               const { upsertTenantCustomEnvVar } = await import("@/lib/infrastructure/frontend-env")
               await upsertTenantCustomEnvVar(auth.tenantId, key, value)
             } catch (err) {
-              console.warn("[MCP add_vercel_env] Failed to mirror env var into settings:", err)
+              console.warn("[MCP add_deployment_env] Failed to mirror env var into settings:", err)
             }
           }
 
@@ -2331,33 +2332,33 @@ export default async function NewsPage() {
                 action: result.simulated ? "simulated" : result.created ? "created" : "updated",
                 projectId: resolvedProjectId,
                 message: result.simulated
-                  ? "⚠️ VERCEL_ACCESS_TOKEN tidak diset — perubahan disimulasikan (tersimpan di dashboard, belum di Vercel)."
-                  : `✅ Variabel "${key}" ${result.created ? "dibuat" : "diperbarui"} di Vercel. Redeploy project agar berlaku.`,
+                  ? "⚠️ Kredensial deploy belum diset di platform — perubahan disimulasikan (tersimpan di dashboard, belum diterapkan ke hosting)."
+                  : `✅ Variabel "${key}" ${result.created ? "dibuat" : "diperbarui"}. Redeploy project agar berlaku.`,
               }, null, 2),
             }],
           }
         } catch (err: any) {
           return {
-            content: [{ type: "text" as const, text: `❌ Gagal set env di Vercel: ${err.message}` }],
+            content: [{ type: "text" as const, text: `❌ Gagal set env: ${err.message}` }],
             isError: true,
           }
         }
       },
     )
 
-    // ── make_vercel_deployment_public ────────────────────────────────────────
+    // ── make_deployment_public ───────────────────────────────────────────────
     server.registerTool(
-      "make_vercel_deployment_public",
+      "make_deployment_public",
       {
-        title: "Make Vercel Deployment Publicly Viewable",
+        title: "Make Deployment Publicly Viewable",
         description:
-          "Turn off Vercel's 'Vercel Authentication' deployment protection on this workspace's Vercel project, so " +
+          "Turn off deployment protection on this workspace's SaCMS Cloud Hosting project, so " +
           "its deployment links (including the per-deployment URL with a random suffix, e.g. " +
-          "my-site-abc123-team.vercel.app — not just the clean production alias) can be opened by anyone with the " +
-          "link, without needing to log into Vercel. This is a project-wide security setting change — only call it " +
+          "my-site-abc123-team.example.com — not just the clean production alias) can be opened by anyone with the " +
+          "link, without needing to log in. This is a project-wide security setting change — only call it " +
           "when the user explicitly wants the deployment publicly viewable.",
         inputSchema: {
-          projectId: z.string().optional().describe("Vercel Project ID. Defaults to this workspace's linked Vercel project."),
+          projectId: z.string().optional().describe("Deployment Project ID. Defaults to this workspace's linked deployment project."),
         },
       },
       async ({ projectId }) => {
@@ -2375,7 +2376,7 @@ export default async function NewsPage() {
             return {
               content: [{
                 type: "text" as const,
-                text: "❌ Tidak ada Vercel Project ID. Deploy dulu dengan deploy_to_vercel, atau berikan parameter projectId.",
+                text: "❌ Tidak ada Deployment Project ID. Deploy dulu dengan deploy_to_sacms, atau berikan parameter projectId.",
               }],
               isError: true,
             }
@@ -2384,7 +2385,7 @@ export default async function NewsPage() {
           const result = await disableVercelDeploymentProtection(resolvedProjectId)
           if (!result.ok) {
             return {
-              content: [{ type: "text" as const, text: `❌ Gagal menonaktifkan proteksi di Vercel: ${result.error}` }],
+              content: [{ type: "text" as const, text: `❌ Gagal menonaktifkan proteksi: ${result.error}` }],
               isError: true,
             }
           }
@@ -2392,12 +2393,12 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: "✅ Proteksi 'Vercel Authentication' dinonaktifkan. Semua URL deployment project ini (termasuk URL per-deployment dengan akhiran acak) sekarang bisa dibuka siapa saja tanpa login Vercel.",
+              text: "✅ Proteksi deployment dinonaktifkan. Semua URL deployment project ini (termasuk URL per-deployment dengan akhiran acak) sekarang bisa dibuka siapa saja tanpa login.",
             }],
           }
         } catch (err: any) {
           return {
-            content: [{ type: "text" as const, text: `❌ Gagal menonaktifkan proteksi di Vercel: ${err.message}` }],
+            content: [{ type: "text" as const, text: `❌ Gagal menonaktifkan proteksi: ${err.message}` }],
             isError: true,
           }
         }
@@ -2791,7 +2792,7 @@ function patchRequestUrl(req: Request): Request {
  *     be throttled before that lookup runs, not after.
  *  2. Per tenant, once authenticated, scaled by plan (reusing the same
  *     getTenantRateLimit() tiers the public content API uses) — so even a
- *     valid token can't hammer expensive tools (deploy_to_vercel) or the DB
+ *     valid token can't hammer expensive tools (deploy_to_sacms) or the DB
  *     without bound.
  */
 async function handleMcpRequest(req: Request): Promise<Response> {

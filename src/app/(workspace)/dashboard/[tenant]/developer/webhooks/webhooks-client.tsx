@@ -370,7 +370,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                     <Label htmlFor="name" className="text-xs font-semibold text-foreground">Nama Webhook</Label>
                     <Input
                       id="name"
-                      placeholder="Contoh: Deploy Hook Vercel"
+                      placeholder="Contoh: Build Trigger"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="rounded-xl h-9 text-xs bg-background border-border/80"

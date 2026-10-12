@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "PostgreSQL 17 Native",
       "AI Schema Generator",
       "Dynamic GraphQL Next.js",
-      "Vercel Custom DNS",
+      "SaCMS Custom DNS",
     ],
     alternates: {
       canonical: `${siteUrl}/fitur`,

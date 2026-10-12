@@ -41,7 +41,7 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     features: [
       "300 AI Credits",
       "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik Vercel",
+      "Deploy 1-Klik ke SaCMS Cloud Hosting",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -56,7 +56,7 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     features: [
       "1.500 AI Credits",
       "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik Vercel",
+      "Deploy 1-Klik ke SaCMS Cloud Hosting",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -70,7 +70,7 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     features: [
       "5.000 AI Credits",
       "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik Vercel",
+      "Deploy 1-Klik ke SaCMS Cloud Hosting",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -85,7 +85,7 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     features: [
       "15.000 AI Credits",
       "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik Vercel",
+      "Deploy 1-Klik ke SaCMS Cloud Hosting",
       "Digunakan di Semua Workspace"
     ]
   }

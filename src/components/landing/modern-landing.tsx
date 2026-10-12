@@ -113,7 +113,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
                 Edge Custom DNS &amp; Dynamic API
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-                Routing custom domain instan ala Vercel dengan verifikasi TXT challenge serta auto-generated REST dan GraphQL endpoint.
+                Routing custom domain instan dengan verifikasi TXT challenge serta auto-generated REST dan GraphQL endpoint.
               </p>
               <div className="flex items-center text-xs font-bold text-primary gap-1">
                 <span>Pelajari Edge Routing</span>

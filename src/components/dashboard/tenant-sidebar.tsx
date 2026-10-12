@@ -272,7 +272,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             href: "/infrastructure",
             icon: Rocket,
             matchPrefix: true,
-            badge: effectiveHasDedicatedInfra ? "DEDICATED" : "VERCEL"
+            badge: effectiveHasDedicatedInfra ? "DEDICATED" : "CLOUD"
           },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),

@@ -186,7 +186,7 @@ export default function TenantDashboardClient({
               </div>
               <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-foreground">Website Frontend Live (Vercel Serverless)</span>
+                  <span className="text-xs font-bold text-foreground">Website Frontend Live (SaCMS Cloud Hosting)</span>
                   <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[9px] font-bold px-1.5 py-0 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     LIVE
@@ -206,7 +206,7 @@ export default function TenantDashboardClient({
                 size="sm"
                 onClick={() => {
                   navigator.clipboard.writeText(currentTenant.vercelDeploymentUrl!)
-                  toast.success("Subdomain Vercel disalin ke clipboard!")
+                  toast.success("Subdomain disalin ke clipboard!")
                 }}
                 className="rounded-xl h-8 px-3 text-xs font-semibold border-border/80"
               >
@@ -252,7 +252,7 @@ export default function TenantDashboardClient({
               <div className="space-y-0.5 min-w-0">
                 <span className="text-xs font-bold text-foreground">Website Frontend Belum Di-deploy</span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Belum ada situs live di Vercel untuk workspace ini. Kembangkan frontend-nya di IDE lalu deploy lewat tool MCP <code className="font-mono text-primary">deploy_to_vercel</code>.
+                  Belum ada situs live di SaCMS Cloud Hosting untuk workspace ini. Kembangkan frontend-nya di IDE lalu deploy lewat tool MCP <code className="font-mono text-primary">deploy_to_sacms</code>.
                 </p>
               </div>
             </div>

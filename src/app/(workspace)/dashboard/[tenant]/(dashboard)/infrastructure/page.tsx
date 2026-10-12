@@ -23,7 +23,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     key: "hosting",
     label: "Deployments & Hosting",
-    description: "Status deploy Vercel, logs, dan URL live",
+    description: "Status deploy, logs, dan URL live",
     icon: Rocket,
   },
   {
@@ -80,7 +80,7 @@ function InfrastructureShell() {
 
   // Live telemetry summary
   const [telemetry, setTelemetry] = useState({
-    hostingStatus: "Live di Vercel",
+    hostingStatus: "Live di SaCMS Cloud",
     domainsCount: 1,
     databaseType: "PostgreSQL 17",
     envCount: 0,
@@ -98,7 +98,7 @@ function InfrastructureShell() {
         const hasDb = Boolean(s?.databaseUrl)
         const envKeys = envData?.variables ? Object.keys(envData.variables).length : 0
         setTelemetry({
-          hostingStatus: infraData?.deployment?.url ? "Live di Vercel" : "Siap Dideploy",
+          hostingStatus: infraData?.deployment?.url ? "Live di SaCMS Cloud" : "Siap Dideploy",
           domainsCount: infraData?.domains?.length || 1,
           databaseType: hasDb ? "Dedicated / BYODB" : "Shared PostgreSQL 17",
           envCount: envKeys,

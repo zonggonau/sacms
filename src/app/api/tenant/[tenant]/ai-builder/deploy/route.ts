@@ -57,7 +57,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
       dnsTemplate: {
         apex: { type: "A", name: "@", value: "76.76.21.21", description: "A-Record untuk root domain (@)" },
         cname: { type: "CNAME", name: "www", value: "cname.vercel-dns.com", description: "CNAME Record untuk subdomain" },
-        txt: { type: "TXT", name: "_vercel", value: "vc-domain-verify", description: "TXT Record untuk verifikasi Vercel" },
+        txt: { type: "TXT", name: "_vercel", value: "vc-domain-verify", description: "TXT Record untuk verifikasi domain" },
       },
     })
 })
@@ -91,7 +91,7 @@ export const POST = withStaffAuth(
 
         const latencyMs = Math.round(performance.now() - startTime)
         const vercelId = res.headers.get("x-vercel-id") || null
-        const server = res.headers.get("server") || "Vercel"
+        const server = res.headers.get("server") || "SaCMS Cloud Hosting"
         const regionCode = vercelId ? vercelId.split("::")[0] : null
 
         return NextResponse.json({

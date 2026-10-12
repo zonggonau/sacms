@@ -266,7 +266,7 @@ export function BuyDomainDialog({
               <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
                 Beli Domain Kustom
                 <Badge variant="secondary" className="text-[10px] font-mono tracking-wider font-semibold">
-                  VERCEL REGISTRAR
+                  SACMS REGISTRAR
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">

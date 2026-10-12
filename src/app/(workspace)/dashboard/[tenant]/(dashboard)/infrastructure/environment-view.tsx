@@ -103,7 +103,7 @@ export function EnvironmentView({ tenantSlug }: { tenantSlug: string }) {
             <Lock className="h-4 w-4 text-muted-foreground" /> Variabel Sistem
           </CardTitle>
           <CardDescription className="text-xs">
-            Di-inject otomatis ke build Vercel setiap kali situs di-deploy. Tidak bisa diubah di sini.
+            Di-inject otomatis ke build setiap kali situs di-deploy. Tidak bisa diubah di sini.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-5 pt-2 space-y-2">
@@ -123,7 +123,7 @@ export function EnvironmentView({ tenantSlug }: { tenantSlug: string }) {
               <Variable className="h-4 w-4 text-primary" /> Variabel Kustom
             </CardTitle>
             <CardDescription className="text-xs">
-              Untuk <strong>frontend</strong> saja (mis. API key layanan pihak ketiga). Otomatis dikirim ke Vercel
+              Untuk <strong>frontend</strong> saja (mis. API key layanan pihak ketiga). Otomatis dikirim ke deployment
               (env project) setiap kali situs
               di-deploy — lewat dashboard maupun MCP. Berlaku pada <strong>deploy berikutnya</strong>.
             </CardDescription>

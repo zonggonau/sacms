@@ -257,9 +257,9 @@ const SEED_DATA: Record<string, any> = {
     
     features: [
       { title: "Hybrid Multi-Tenancy & Dedicated Appliance", description: "Mulai dari shared multi-tenant hemat biaya hingga Dedicated PostgreSQL 17 + MinIO Appliance terisolasi penuh untuk privasi data absolut.", icon: "Layers", is_main: true, tag: "Infrastruktur" },
-      { title: "Deploy Frontend 1-Command via MCP", description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor), lalu deploy ke Vercel langsung dari editor lewat tool MCP deploy_to_vercel.", icon: "Rocket", is_main: true, tag: "AI Powered" },
+      { title: "Deploy Frontend 1-Command via MCP", description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.", icon: "Rocket", is_main: true, tag: "AI Powered" },
       { title: "Dynamic GraphQL, REST API & MCP", description: "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol (MCP).", icon: "Database", is_main: true, tag: "Developer" },
-      { title: "Vercel-Style Custom DNS & Registrar", description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.", icon: "Globe", is_main: false, tag: "Networking" },
+      { title: "SaCMS Custom DNS & Registrar", description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.", icon: "Globe", is_main: false, tag: "Networking" },
       { title: "Sistem Billing Otomatis Midtrans", description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.", icon: "CreditCard", is_main: true, tag: "Fintech" },
       { title: "Enterprise RBAC & 7-Stage Workflow", description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.", icon: "ShieldCheck", is_main: true, tag: "Keamanan" },
       { title: "Rate-Limiting Cerdas & Edge Cache", description: "Didukung Upstash Redis di Edge. Mencegah klien tertentu memonopoli resource API yang bisa memperlambat klien lainnya.", icon: "Activity", is_main: false, tag: "Performa" },
@@ -269,14 +269,14 @@ const SEED_DATA: Record<string, any> = {
     workflows: [
       { step: "1", title: "Rancang Skema Data Visual", description: "Gunakan Visual Builder untuk membuat Content Types, Single Types, dan relasi data dengan drag-and-drop.", icon: "Table" },
       { step: "2", title: "Generasi & Kelola Konten", description: "Tulis konten bersama tim dengan role RBAC atau generate artikel instan via AI Assistant.", icon: "Sparkles" },
-      { step: "3", title: "Konsumsi API & Deploy Frontend", description: "Ambil API Key dari workspace untuk Next.js, Mobile App, atau kembangkan frontend-nya di IDE lalu deploy lewat tool MCP deploy_to_vercel.", icon: "Link" },
+      { step: "3", title: "Konsumsi API & Deploy Frontend", description: "Ambil API Key dari workspace untuk Next.js, Mobile App, atau kembangkan frontend-nya di IDE lalu deploy lewat tool MCP deploy_to_sacms.", icon: "Link" },
       { step: "4", title: "Automasi Domain & Billing", description: "Sambungkan custom domain klien dengan auto-DNS, dan biarkan billing Midtrans menagih secara otomatis.", icon: "Banknote" },
     ],
 
     faqs: [
       { question: "Apa perbedaan Shared Database vs Dedicated Appliance?", answer: "Shared Database cocok untuk proyek standar dan UMKM yang mengutamakan efisiensi biaya. Dedicated Appliance mem-provisioning database PostgreSQL 17 dan MinIO S3 terisolasi penuh untuk privasi data 100% dan kebutuhan enterprise/pemerintah." },
-      { question: "Bagaimana cara membangun frontend dengan IDE menggunakan SaCMS?", answer: "Hubungkan AI IDE (Antigravity, VS Code, Cursor, dll) ke SaCMS lewat Model Context Protocol (MCP) menggunakan API Key workspace Anda. AI agent di IDE bisa langsung membaca skema, query/tulis konten, dan deploy frontend ke Vercel lewat tool deploy_to_vercel — semua tanpa keluar dari editor." },
-      { question: "Bagaimana alur integrasi Custom Domain ala Vercel?", answer: "Cukup masukkan nama domain Anda (misal: website.com atau subdomain.klien.com). SaCMS menyediakan instruksi DNS A-Record dan CNAME otomatis lengkap dengan verifikasi DNS dan challenge token." },
+      { question: "Bagaimana cara membangun frontend dengan IDE menggunakan SaCMS?", answer: "Hubungkan AI IDE (Antigravity, VS Code, Cursor, dll) ke SaCMS lewat Model Context Protocol (MCP) menggunakan API Key workspace Anda. AI agent di IDE bisa langsung membaca skema, query/tulis konten, dan deploy frontend ke SaCMS Cloud Hosting lewat tool deploy_to_sacms — semua tanpa keluar dari editor." },
+      { question: "Bagaimana alur integrasi Custom Domain SaCMS?", answer: "Cukup masukkan nama domain Anda (misal: website.com atau subdomain.klien.com). SaCMS menyediakan instruksi DNS A-Record dan CNAME otomatis lengkap dengan verifikasi DNS dan challenge token." },
       { question: "Metode pembayaran apa saja yang didukung?", answer: "Seluruh pembayaran lokal via Midtrans: QRIS, GoPay, OVO, ShopeePay, Transfer Virtual Account bank terkemuka, dan Kartu Kredit Visa/Mastercard." },
     ],
 
@@ -566,7 +566,7 @@ const SEED_DATA: Record<string, any> = {
         "1.500 AI Credits",
         "Sekali Beli (Never Expire)",
         "Iterasi Desain AI Cepat",
-        "Deploy 1-Klik Vercel",
+        "Deploy 1-Klik ke SaCMS Cloud Hosting",
         "Digunakan di Semua Workspace"
       ]
     },

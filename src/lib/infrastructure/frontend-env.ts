@@ -81,7 +81,7 @@ function parseEnvSetting(raw: string | null | undefined): Record<string, string>
 /** Get-or-create the dedicated service token a deployed frontend uses to
  *  authenticate against this workspace's SaCMS API. */
 export async function getFrontendDeployToken(tenantId: string, tenantSlug: string): Promise<string> {
-  const name = `Vercel Site (${tenantSlug})`
+  const name = `SaCMS Cloud Hosting (${tenantSlug})`
   let rec = await db.apiToken.findFirst({ where: { tenantId, name } })
   if (!rec) {
     rec = await db.apiToken.create({

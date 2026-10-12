@@ -294,8 +294,8 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       `
     },
     {
-      "slug": "panduan-custom-domain-dns-ala-vercel",
-      "title": "Panduan Lengkap Setup Custom Domain DNS ala Vercel di SaCMS",
+      "slug": "panduan-custom-domain-dns-sacms",
+      "title": "Panduan Lengkap Setup Custom Domain DNS di SaCMS",
       "excerpt": "Hubungkan domain instansi atau bisnis Anda dengan verifikasi DNS otomatis, A Record Apex, CNAME Subdomain, dan SSL Let's Encrypt gratis.",
       "category": "Tutorial",
       "date": "28 Agustus 2026",
