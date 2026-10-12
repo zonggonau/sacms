@@ -668,23 +668,6 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "idOrEmail", type: "string", required: true, description: "Member ID or email to delete" }
     ],
     sampleResponse: { deleted: true, email: "jane@example.com" }
-  },
-
-  // ─── 10. Free Static Site Hosting (Vue.js 3 + Tailwind, No Build) ───
-  {
-    name: "write_static_site",
-    title: "Simpan Website Statis Hasil Tulisan AI Agent",
-    description:
-      "Save index.html + app.js already written by the calling AI agent itself as a draft one-page website (Vue.js 3 + Tailwind via CDN, no build step) — SaCMS does NOT call any AI model for this tool, it only stores what the agent sends. Step 1 of 3: a mock-data-only visual draft. Connecting it to real CMS schema/data is an optional next step only available from the dashboard, not via MCP — so a human reviews it before real CMS data is touched. Code must follow the required format: Vue 3 global build + Tailwind CDN, a <div id=\"app\"> mount point, <script src=\"app.js\"> before </body>, mock-only data (no fetch()), and every distinct data entity wrapped in // MOCK:<slug> ... // /MOCK:<slug> comment markers around its ref()/reactive() declaration.",
-    inputs: [
-      { name: "html", type: "string", required: true, description: "Full index.html content (Vue3 + Tailwind via CDN, has <div id=\"app\"> and <script src=\"app.js\">)" },
-      { name: "js", type: "string", required: true, description: "Full app.js content (Vue 3 Composition API, mock data wrapped in // MOCK:<slug> ... // /MOCK:<slug> markers)" }
-    ],
-    sampleResponse: {
-      status: "draft_created",
-      siteId: "site_abc123",
-      note: "Draft tersimpan, belum publik. Minta pemilik workspace preview & publish dari dashboard."
-    }
   }
 ]
 

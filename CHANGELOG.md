@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - **Bring-Your-Own-VPS Hosting**: Removed the customer-facing VPS/VDS provisioning feature end-to-end — the Contabo provisioning integration (`lib/contabo.ts`), VPS catalog/ordering actions (`actions/vps-service.ts`), the "Cloud Server" catalog page, the per-workspace VPS lifecycle UI, the `UserVpsService` model and table, every `vps-*`/`vds-*` pricing slug across billing/checkout/plan-enforcement, and the now-unused `ssh2` dependency. Every workspace now uses SaCMS's own managed infrastructure (`ManagedInfraService`/BYODB for a dedicated database, and `StorageAddon` for storage upgrades) instead.
+- **In-Dashboard AI Website Builder**: Removed the single-file AI website generator (Developer Portal > AI Instant Website), its `TenantStaticSite` model/table, the `/api/tenant/[tenant]/static-site/*` routes, the public `/site/[tenant]` serving route, the `write_static_site` MCP tool, and the "site" custom-domain target. Frontend development now happens in an IDE, connected to SaCMS via MCP (`deploy_to_vercel` and the other developer-facing MCP tools).
 
 ## [1.3.0] - 2026-08-24
 

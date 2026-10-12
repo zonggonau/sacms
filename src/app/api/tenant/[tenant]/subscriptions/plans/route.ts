@@ -171,7 +171,6 @@ export async function GET(
               "100 MB Cloudflare R2 Storage",
               "1.000 API Calls / bulan",
               "50 AI Generation Credits",
-              "Live Sandbox Preview (AI Website Builder)",
               "Community Support"
             ],
             popular: false,

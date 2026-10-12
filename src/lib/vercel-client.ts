@@ -1,6 +1,6 @@
 /**
  * Vercel REST API Client
- * Handles deployments, custom domains, and DNS configuration for SaCMS AI Website Builder
+ * Handles deployments, custom domains, and DNS configuration for tenant frontends deployed to Vercel
  * Docs: https://vercel.com/docs/rest-api
  */
 

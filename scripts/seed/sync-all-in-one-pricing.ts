@@ -50,7 +50,6 @@ async function main() {
         "100 MB Cloudflare R2 Storage",
         "1.000 API Calls / bulan",
         "50 AI Generation Credits",
-        "Live Sandbox Preview (AI Website Builder)",
         "Community Support"
       ],
       max_content_types: 999999,
@@ -75,7 +74,7 @@ async function main() {
         "10 Anggota Tim & Kolaborasi Multi-Role",
         "5 GB Cloud Storage Media Assets",
         "100.000 API Requests / bulan",
-        "500 AI Website Builder Credits / bulan",
+        "500 AI Generation Credits / bulan",
         "🌐 Cloud Edge Global Hosting SUDAH TERMASUK (Rp 0 Tambahan)",
         "🏷️ GRATIS 1 Domain Kustom (.com / .id) Selama 1 Tahun",
         "Sertifikat SSL HTTPS Otomatis & Global Anycast CDN",

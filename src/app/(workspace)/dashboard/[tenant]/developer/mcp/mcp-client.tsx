@@ -374,9 +374,6 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project Vercel, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
   { name: "add_vercel_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project Vercel workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
   { name: "make_vercel_deployment_public", category: "hosting", description: "Nonaktifkan proteksi 'Vercel Authentication' pada project Vercel workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login Vercel.", inputs: ["projectId?"] },
-
-  // Free Static Site Hosting (Vue.js 3 + Tailwind, no build step)
-  { name: "write_static_site", category: "hosting", description: "Menyimpan index.html + app.js yang ditulis langsung oleh AI agent sebagai draft website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build). Langkah 1 dari 3 — hanya tampilan + data mock, belum tersambung skema CMS atau publik; lanjutan (sambung skema, publish) dilakukan dari dashboard.", inputs: ["html", "js"] },
 ]
 
 export function MCPDashboardClient({

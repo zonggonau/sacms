@@ -685,11 +685,11 @@ export default function TenantSubscriptionsPage() {
                       <Sparkles className="h-4 w-4" />
                     </div>
                     <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">
-                      AI Plan Builder (Frontend Credits)
+                      AI Plan Builder (Credits)
                     </h2>
                   </div>
                   <p className="text-xs text-muted-foreground max-w-2xl">
-                    Paket saldo credit AI untuk AI Website Builder, iterasi schema CMS via prompt, live sandbox coding, dan deployment otomatis ke Vercel. Sistem sekali beli (top-up) tanpa tagihan bulanan berulang. Saldo tidak pernah hangus, dan cukup lakukan top-up kembali jika credit habis.
+                    Paket saldo credit AI untuk AI Schema Builder, iterasi schema CMS via prompt, dan fitur AI lain di dalam CMS. Sistem sekali beli (top-up) tanpa tagihan bulanan berulang. Saldo tidak pernah hangus, dan cukup lakukan top-up kembali jika credit habis.
                   </p>
                 </div>
 

@@ -124,7 +124,7 @@ MIDTRANS_MODE=sandbox
 NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-""}
 NEXT_PUBLIC_MIDTRANS_SNAP_URL=https://app.sandbox.midtrans.com/snap/snap.js
 
-# AI Website Builder & Edge Generator
+# AI & Deploy Integrations
 # (NEXT_PUBLIC_SYSTEM_API_KEY intentionally removed — it isn't read anywhere
 # in the app. The real systemApiKey used by public content routes lives in
 # the Setting table, not an env var; a NEXT_PUBLIC_-prefixed one would have
@@ -132,7 +132,6 @@ NEXT_PUBLIC_MIDTRANS_SNAP_URL=https://app.sandbox.midtrans.com/snap/snap.js
 # ever wired up.)
 DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-""}
 VERCEL_ACCESS_TOKEN=${VERCEL_ACCESS_TOKEN:-""}
-V0_API_KEY=${V0_API_KEY:-""}
 
 EOF
     chmod 600 /opt/sacms/.env

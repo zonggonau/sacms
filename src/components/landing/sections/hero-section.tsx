@@ -27,7 +27,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
 
   const badgeText = data?.badge_text || ""
   const headlineText = data?.headline || "Build smarter. Manage easier. Scale faster."
-  const subheadlineText = data?.subheadline || "Platform Smart Content Management System (SaCMS) modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis."
+  const subheadlineText = data?.subheadline || "Platform Smart Content Management System (SaCMS) modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis."
   const ctaPrimary = data?.cta_primary || "Coba Gratis Sekarang"
   const ctaSecondary = data?.cta_secondary || "Dokumentasi API"
 

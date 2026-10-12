@@ -252,7 +252,7 @@ export default function TenantDashboardClient({
               <div className="space-y-0.5 min-w-0">
                 <span className="text-xs font-bold text-foreground">Website Frontend Belum Di-deploy</span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Belum ada situs live di Vercel untuk workspace ini. Bangun lewat AI Website Builder lalu deploy dalam satu klik.
+                  Belum ada situs live di Vercel untuk workspace ini. Kembangkan frontend-nya di IDE lalu deploy lewat tool MCP <code className="font-mono text-primary">deploy_to_vercel</code>.
                 </p>
               </div>
             </div>

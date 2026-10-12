@@ -1,8 +1,8 @@
 "use client"
 
 import { Suspense, useEffect, useMemo, useState } from "react"
-import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { Server, Rocket, Globe, Variable, Database, Cloud, Activity, Cpu, Zap, ArrowUpRight } from "lucide-react"
+import { useParams, useSearchParams } from "next/navigation"
+import { Server, Rocket, Globe, Variable, Database, Cloud, Activity, Cpu } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
@@ -48,18 +48,10 @@ const NAV_ITEMS: NavItem[] = [
 
 function InfrastructureShell() {
   const params = useParams()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
 
   const urlTab = searchParams.get("tab")
-
-  // Auto redirect legacy static-site URL to AI Website Builder in Developer Portal
-  useEffect(() => {
-    if (urlTab === "static-site" && tenantSlug) {
-      router.replace(`/dashboard/${tenantSlug}/developer/aiwebsitebuilder`)
-    }
-  }, [urlTab, tenantSlug, router])
 
   const [tab, setTab] = useState<TabKey>(() => {
     if (urlTab === "domains") return "domains"
@@ -198,16 +190,6 @@ function InfrastructureShell() {
               )
             })}
           </div>
-
-          {/* Quick link to AI Website Builder in Developer Portal */}
-          <button
-            onClick={() => router.push(`/dashboard/${tenantSlug}/developer/aiwebsitebuilder`)}
-            className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold transition-all shrink-0 cursor-pointer"
-          >
-            <Zap className="h-3.5 w-3.5 text-amber-500" />
-            <span>AI Instant Website</span>
-            <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
-          </button>
         </div>
       </div>
 

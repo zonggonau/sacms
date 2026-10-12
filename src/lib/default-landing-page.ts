@@ -1,7 +1,7 @@
 export const DEFAULT_LANDING_PAGE_DATA: any = {
   "sacms-hero": {
     "headline": "Build smarter. Manage easier. Scale faster.",
-    "subheadline": "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, 1-Prompt AI Fullstack Website Engine, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+    "subheadline": "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
     "cta_primary": "Coba Gratis Sekarang",
     "cta_secondary": "Lihat Dokumentasi",
     "badge_text": "",
@@ -142,7 +142,6 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
         "100 MB Cloudflare R2 Storage",
         "1.000 API Calls / bulan",
         "50 Bonus AI Credits Awal (Top-Up jika habis)",
-        "Live Sandbox Preview (AI Website Builder)",
         "Community Support"
       ]
     },

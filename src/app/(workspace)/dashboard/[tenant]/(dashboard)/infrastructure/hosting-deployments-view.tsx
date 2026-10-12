@@ -39,7 +39,6 @@ import {
   Star,
   LayoutDashboard,
   FileText,
-  Layout,
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -75,7 +74,7 @@ interface PingMetrics {
   checkedAt: string
 }
 
-type DomainTarget = "cms" | "workspace" | "site" | "api"
+type DomainTarget = "cms" | "workspace" | "api"
 
 const DOMAIN_TARGETS: { value: DomainTarget; label: string; desc: string; icon: React.ReactNode; example: string }[] = [
   {
@@ -91,13 +90,6 @@ const DOMAIN_TARGETS: { value: DomainTarget; label: string; desc: string; icon: 
     desc: "Langsung masuk ke dashboard workspace",
     icon: <LayoutDashboard className="h-3.5 w-3.5" />,
     example: "portal.domain.com → /workspace",
-  },
-  {
-    value: "site",
-    label: "Halaman Web Publik",
-    desc: "Tampilkan halaman publik / frontend site",
-    icon: <Layout className="h-3.5 w-3.5" />,
-    example: "domain.com → /site",
   },
   {
     value: "api",
@@ -695,7 +687,7 @@ export function HostingDeploymentsView({
                           Belum Ada Deployment Frontend Aktif
                         </h3>
                         <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                          Website frontend belum dipublikasikan ke cloud hosting. Anda dapat men-deploy otomatis melalui <strong>AI Website Builder</strong> atau mengeksekusi tool <code className="font-mono text-primary">deploy_to_vercel</code> dari AI IDE (Antigravity / VS Code).
+                          Website frontend belum dipublikasikan ke cloud hosting. Kembangkan frontend-nya di IDE, lalu deploy otomatis dengan mengeksekusi tool <code className="font-mono text-primary">deploy_to_vercel</code> dari AI IDE (Antigravity / VS Code) atau AI agent apa pun yang terhubung lewat MCP.
                         </p>
                       </div>
                     </div>
