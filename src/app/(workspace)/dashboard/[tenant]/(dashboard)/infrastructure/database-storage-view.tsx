@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -112,7 +113,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
     }
   }
 
-  const isSuperAdmin = session?.user?.role === "super_admin"
+  const isSuperAdmin = isPlatformStaff(session?.user?.role)
 
   const [managedInfra, setManagedInfra] = useState<{ status: string; paidUntil: string } | null>(null)
   const [storageAddons, setStorageAddons] = useState<

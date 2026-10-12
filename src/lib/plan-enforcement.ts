@@ -2,6 +2,7 @@ import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
 import { isEnterpriseTenant } from "./license"
+import { isPlatformStaff } from "./platform-roles"
 /**
  * Plan Enforcement Module
  *
@@ -210,7 +211,7 @@ export async function enforcePlanLimit(
       where: { id: userId },
       select: { role: true },
     })
-    if (user?.role === "super_admin") {
+    if (isPlatformStaff(user?.role)) {
       return {
         allowed: true,
         current: 0,
@@ -331,10 +332,10 @@ export async function enforceUserPlanLimit(
     select: { role: true, aiCreditsUsed: true, aiCreditsExtra: true },
   })
 
-  if (user?.role === "super_admin") {
+  if (isPlatformStaff(user?.role)) {
     return {
       allowed: true,
-      current: user.aiCreditsUsed || 0,
+      current: user?.aiCreditsUsed || 0,
       max: 999999,
       planSlug: "custom",
       message: "Super Admin Bypass",
@@ -382,8 +383,8 @@ export async function enforceUserAiCredits(
     select: { role: true, plan: true, aiCreditsUsed: true, aiCreditsExtra: true }
   })
 
-  if (user?.role === "super_admin") {
-    return { allowed: true, remaining: 999999, max: 999999, current: user.aiCreditsUsed || 0, planSlug: "custom", message: "Super Admin Bypass" }
+  if (isPlatformStaff(user?.role)) {
+    return { allowed: true, remaining: 999999, max: 999999, current: user?.aiCreditsUsed || 0, planSlug: "custom", message: "Super Admin Bypass" }
   }
 
   const planConfig = await getUserPlanConfig(userId)
@@ -440,7 +441,7 @@ export async function reserveUserAiCredits(
     select: { role: true, aiCreditsUsed: true, aiCreditsExtra: true }
   })
 
-  if (user?.role === "super_admin") {
+  if (isPlatformStaff(user?.role)) {
     return { allowed: true, remaining: 999999, max: 999999, message: "Super Admin Bypass" }
   }
 

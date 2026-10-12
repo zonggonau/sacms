@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 import { checkWorkspaceAccessAction } from "@/actions/tenant"
 import { cn } from "@/lib/utils"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -200,7 +201,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   }, [userId])
 
   const userRole = currentTenant?.role || "subscriber"
-  const isSuperAdmin = session?.user?.role === "super_admin"
+  const isSuperAdmin = isPlatformStaff(session?.user?.role)
   const isAdmin = userRole === "admin" || userRole === "owner" || isSuperAdmin
   const isEditor = userRole === "editor" || isAdmin
 

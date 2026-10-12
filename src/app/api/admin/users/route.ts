@@ -63,7 +63,8 @@ export const GET = withAdminAuth(
   { allowRoles: ["admin"] },
 )
 
-/** Roles a plain platform admin may create. `super_admin` is super_admin-only. */
+/** Roles a plain platform admin may create. `super_admin` and `developer`
+ *  (cross-tenant platform staff — see lib/platform-roles.ts) are super_admin-only. */
 const ADMIN_CREATABLE_ROLES = new Set(["owner", "user", "admin", "employee", "karyawan"])
 
 // POST /api/admin/users - create a user

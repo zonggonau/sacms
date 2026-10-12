@@ -9,6 +9,7 @@ import {
   Copy, History, Shield, Info
 } from "lucide-react"
 import { useSession } from "next-auth/react"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -210,7 +211,7 @@ export default function CMSEditEntryClient({
   }
 
   const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
-  const effectiveRole = userRole || (session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer"))
+  const effectiveRole = userRole || (isPlatformStaff(session?.user?.role) ? "owner" : (tenantMembership?.role || "viewer"))
   const customPermissions = initialCustomPermissions !== undefined 
     ? initialCustomPermissions 
     : (Array.isArray(tenantMembership?.customPermissions) ? tenantMembership.customPermissions as string[] : null)

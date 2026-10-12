@@ -1,5 +1,6 @@
 import { Session } from "next-auth"
 import { db } from "@/lib/database"
+import { isPlatformStaff } from "@/lib/platform-roles"
 
 interface TenantAccess {
   tenantId: string
@@ -16,7 +17,8 @@ interface TenantAccess {
 
 /**
  * Resolves tenant access for a user.
- * Super admins can access any tenant without a membership record.
+ * Super admins and developers (platform staff — see lib/platform-roles.ts)
+ * can access any tenant without a membership record.
  * Returns null if the user has no access to the tenant.
  */
 export async function getTenantAccess(
@@ -26,8 +28,8 @@ export async function getTenantAccess(
   const { getGlobalWorkspaceId } = await import("@/lib/settings")
   const globalId = await getGlobalWorkspaceId()
 
-  // Super admin can access any tenant
-  if (session.user.role === "super_admin") {
+  // Platform staff (super_admin, developer) can access any tenant
+  if (isPlatformStaff(session.user.role)) {
     const tenant = await db.tenant.findFirst({
       where: { 
         OR: [

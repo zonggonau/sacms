@@ -85,7 +85,7 @@ export default function LoginPage() {
       } else {
         const userTenants = user?.tenants || []
         const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
-        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "developer" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
 
         if (isSuperAdminOwnerOrAdmin) {
           router.push("/dashboard")
@@ -207,7 +207,7 @@ export default function LoginPage() {
       } else {
         const userTenants = user?.tenants || []
         const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
-        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "developer" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
 
         if (isSuperAdminOwnerOrAdmin) {
           destination = "/dashboard"

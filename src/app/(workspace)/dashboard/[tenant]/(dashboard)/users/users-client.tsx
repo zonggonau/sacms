@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition, useCallback } from "react"
 import { useSession } from "next-auth/react"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -218,7 +219,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   const [editPermissions, setEditPermissions] = useState<string[]>([])
 
   const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
-  const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
+  const effectiveRole = isPlatformStaff(session?.user?.role) ? "owner" : (tenantMembership?.role || "viewer")
   const isOwnerOrAdmin = effectiveRole === "owner" || effectiveRole === "admin"
   const isLimitReached = current >= limit
 

@@ -7,12 +7,17 @@ import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { cleanPrice } from "@/lib/plan-pricing"
+import { isPlatformStaff } from "@/lib/platform-roles"
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
 
   const isSuperAdmin = session.user.role === "super_admin"
+  // Platform staff (super_admin + developer) see every workspace here
+  // without needing a membership row — strictly narrower than isSuperAdmin
+  // is used for the /admin nav link below, which stays super_admin-only.
+  const isStaffAccess = isPlatformStaff(session.user.role)
 
   // Resolved per-request rather than once at module load — the previous
   // top-level `await` cached this for the process lifetime, so a DB hiccup
@@ -26,7 +31,7 @@ export default async function WorkspaceSelectionPage() {
     id: { not: globalId }
   }
 
-  if (!isSuperAdmin) {
+  if (!isStaffAccess) {
     whereClause.members = { some: { userId: session.user.id } }
   }
 
@@ -55,7 +60,7 @@ export default async function WorkspaceSelectionPage() {
         // globalId may be the real cuid, or just the "sacms-global" slug
         // fallback when no setting is configured yet.
         OR: [{ id: globalId }, { slug: globalId }, { slug: "sacms-global" }],
-        ...(isSuperAdmin ? {} : { members: { some: { userId: session.user.id } } })
+        ...(isStaffAccess ? {} : { members: { some: { userId: session.user.id } } })
       },
       include: {
         members: {
@@ -81,7 +86,7 @@ export default async function WorkspaceSelectionPage() {
   }
 
   // If non-admin / non-owner team member belongs to a single workspace, forward directly to its CMS studio
-  const isOwnerOrAdmin = session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "owner" || tenants.some(t => t.members[0]?.role === "owner" || t.members[0]?.role === "admin")
+  const isOwnerOrAdmin = session.user.role === "admin" || isStaffAccess || session.user.role === "owner" || tenants.some(t => t.members[0]?.role === "owner" || t.members[0]?.role === "admin")
   if (!isOwnerOrAdmin && tenants.length === 1) {
     redirect(`/dashboard/${tenants[0].slug || tenants[0].id}/cms`)
   }
@@ -112,7 +117,7 @@ export default async function WorkspaceSelectionPage() {
       status: (enterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
-      role: t.members[0]?.role || (isSuperAdmin ? 'owner' : 'member'),
+      role: t.members[0]?.role || (isStaffAccess ? 'owner' : 'member'),
       daysRemaining,
       isExpired,
       isEnterprise: enterprise,
@@ -233,7 +238,7 @@ export default async function WorkspaceSelectionPage() {
       dbTemplates={dbTemplates}
       workspacePlans={workspacePlans}
       addonPlans={addonPlans}
-      isSuperAdmin={session.user.role === "super_admin"}
+      isSuperAdmin={isSuperAdmin}
     />
   )
 }

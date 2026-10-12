@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isEnterpriseTenant } from "@/lib/license"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { SubscriptionGate } from "./subscription-gate"
 import { DashboardLayoutShell } from "@/components/dashboard/dashboard-layout-shell"
 
@@ -80,7 +81,7 @@ export default async function TenantDashboardLayout({
 
   // Only owners, admins, and super_admins can access the management dashboard.
   // Editors, authors, contributors, viewers, and subscribers must go to the CMS content studio.
-  const isManagementAdmin = access.role === "owner" || access.role === "admin" || session.user.role === "super_admin"
+  const isManagementAdmin = access.role === "owner" || access.role === "admin" || isPlatformStaff(session.user.role)
   if (!isManagementAdmin) {
     redirect(`/dashboard/${access.tenant.slug || access.tenant.id}/cms`)
   }

@@ -6,6 +6,7 @@ import { db } from "@/lib/database"
 import { revalidatePath } from "next/cache"
 import { createWebhookSchema, updateWebhookSchema } from "@/lib/validations"
 import { z } from "zod/v4"
+import { isPlatformStaff } from "@/lib/platform-roles"
 
 export async function getWebhooksAction(tenantSlug: string) {
   try {
@@ -21,7 +22,7 @@ export async function getWebhooksAction(tenantSlug: string) {
       where: { tenantId: tenant.id, userId: session.user.id },
     })
 
-    if (!membership && session.user.role !== "super_admin") {
+    if (!membership && !isPlatformStaff(session.user.role)) {
       return { error: "Forbidden" }
     }
 
@@ -65,7 +66,7 @@ export async function createWebhookAction(tenantSlug: string, data: z.infer<type
       },
     })
 
-    if (!membership && session.user.role !== "super_admin") {
+    if (!membership && !isPlatformStaff(session.user.role)) {
       return { error: "Forbidden - Admin access required" }
     }
 
@@ -110,7 +111,7 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
       },
     })
 
-    if (!membership && session.user.role !== "super_admin") {
+    if (!membership && !isPlatformStaff(session.user.role)) {
       return { error: "Forbidden - Admin access required" }
     }
 
@@ -170,7 +171,7 @@ export async function deleteWebhookAction(tenantSlug: string, webhookId: string)
       },
     })
 
-    if (!membership && session.user.role !== "super_admin") {
+    if (!membership && !isPlatformStaff(session.user.role)) {
       return { error: "Forbidden - Admin access required" }
     }
 

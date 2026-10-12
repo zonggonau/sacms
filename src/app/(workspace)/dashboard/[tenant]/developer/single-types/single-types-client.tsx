@@ -4,6 +4,7 @@ import { useState, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { 
   Save, Eye, EyeOff, FileText, Plus, Edit2, 
   Trash2, Loader2, Sparkles, Search, X, 
@@ -75,7 +76,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
   })
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
 
-  const isSuperAdmin = session?.user?.role === "super_admin"
+  const isSuperAdmin = isPlatformStaff(session?.user?.role)
 
   const filteredSingleTypes = useMemo(() => {
     return initialSingleTypes.filter(st => 

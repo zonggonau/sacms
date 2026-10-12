@@ -3,9 +3,11 @@ import { db } from "@/lib/database"
 import { z } from "zod/v4"
 import { withAdminAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
-/** Roles a platform admin may assign. `super_admin` is added only for a super_admin actor. */
+/** Roles a platform admin may assign. `super_admin` and `developer`
+ *  (cross-tenant platform staff — see lib/platform-roles.ts) are added
+ *  only for a super_admin actor. */
 const ADMIN_ASSIGNABLE_ROLES = ["owner", "user", "admin", "employee", "karyawan"] as const
-const ALL_ASSIGNABLE_ROLES = [...ADMIN_ASSIGNABLE_ROLES, "super_admin"] as const
+const ALL_ASSIGNABLE_ROLES = [...ADMIN_ASSIGNABLE_ROLES, "super_admin", "developer"] as const
 
 const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional().nullable(),
@@ -69,6 +71,8 @@ export const PATCH = withAdminAuth(
         return apiError("forbidden", { message: "You cannot change your own role" })
       } else if (updateData.role === "super_admin" && !isSuperAdmin) {
         return apiError("forbidden", { message: "Only a super admin can grant the super admin role" })
+      } else if (updateData.role === "developer" && !isSuperAdmin) {
+        return apiError("forbidden", { message: "Only a super admin can grant the developer role" })
       } else if (!isSuperAdmin && !ADMIN_ASSIGNABLE_ROLES.includes(updateData.role as (typeof ADMIN_ASSIGNABLE_ROLES)[number])) {
         return apiError("forbidden", { message: "You cannot assign that role" })
       }

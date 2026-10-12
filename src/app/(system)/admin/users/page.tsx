@@ -72,10 +72,12 @@ interface User {
 
 /**
  * Platform role → the badge label/color shown in the directory. "user" is
- * the self-registration type; "developer" is kept only for accounts created
- * before that account-type distinction was removed. "owner" is a
- * platform-staff-provisioned account (created from this admin page);
- * "admin"/"super_admin" are platform staff.
+ * the self-registration type. "owner" is a platform-staff-provisioned
+ * account (created from this admin page). "developer" is a SaCMS team
+ * account that can enter any workspace to help users or build its own —
+ * same cross-tenant access as super_admin, but no /admin/* access (see
+ * lib/platform-roles.ts); only a super_admin can grant it.
+ * "admin"/"super_admin" are platform staff with /admin/* access.
  */
 function getRoleBadge(role: string): { label: string; className: string } {
   switch (role) {
@@ -584,6 +586,7 @@ function AdminUsersContent() {
                         <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
                           <SelectItem value="owner" className="text-xs rounded-lg font-medium">Account Owner (Pemilik Workspace)</SelectItem>
+                          <SelectItem value="developer" className="text-xs rounded-lg font-medium">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
                           <SelectItem value="super_admin" className="text-xs rounded-lg font-medium">Super Admin (Platform Master)</SelectItem>
                         </SelectContent>
                       </Select>
@@ -658,7 +661,7 @@ function AdminUsersContent() {
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 <div className="text-2xl font-black text-foreground tracking-tight">
-                  {users.filter((u) => u.role !== "super_admin").length}
+                  {users.filter((u) => u.role !== "super_admin" && u.role !== "developer").length}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Pemilik akun & tenant</p>
               </CardContent>
@@ -926,10 +929,11 @@ function AdminUsersContent() {
               </div>
               <div className="space-y-1">
                 <Label htmlFor="edit-role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Platform</Label>
-                <Select value={formData.role === "super_admin" ? "super_admin" : "owner"} onValueChange={val => setFormData({...formData, role: val})}>
+                <Select value={formData.role || "owner"} onValueChange={val => setFormData({...formData, role: val})}>
                   <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl border-border bg-card">
                     <SelectItem value="owner" className="text-xs rounded-lg">Account Owner</SelectItem>
+                    <SelectItem value="developer" className="text-xs rounded-lg">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
                     <SelectItem value="super_admin" className="text-xs rounded-lg">Super Admin</SelectItem>
                   </SelectContent>
                 </Select>

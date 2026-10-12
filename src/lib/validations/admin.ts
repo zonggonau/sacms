@@ -73,7 +73,7 @@ export const updateSingleTypeSchema = z.object({
 export const createUserSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
-  role: z.enum(["owner", "user", "admin", "employee", "karyawan", "super_admin"]).optional(),
+  role: z.enum(["owner", "user", "admin", "employee", "karyawan", "developer", "super_admin"]).optional(),
   password: z.string().min(8).max(128).optional(),
   requireVerification: z.boolean().optional(),
 })

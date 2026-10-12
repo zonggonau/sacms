@@ -82,6 +82,26 @@ export function WorkspaceManager({
   const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
+
+  // Read the saved preference after mount only — a lazy useState initializer
+  // would read localStorage during SSR too (where it doesn't exist), and a
+  // server/client mismatch here would trigger a hydration warning.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sacms:workspace-view-mode")
+      if (saved === "table" || saved === "grid") setViewMode(saved)
+    } catch {
+      // Private browsing / storage blocked — just falls back to the default.
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sacms:workspace-view-mode", viewMode)
+    } catch {
+      // Private browsing / storage blocked — just a UI preference, safe to drop.
+    }
+  }, [viewMode])
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationTemplateId, setCreationTemplateId] = useState("custom")
 

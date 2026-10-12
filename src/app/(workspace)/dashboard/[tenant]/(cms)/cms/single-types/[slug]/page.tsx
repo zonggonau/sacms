@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { 
   ArrowLeft, Save, FileText, Loader2, 
   Globe, ShieldCheck, Send, Zap
@@ -263,8 +264,8 @@ export default function CMSSingleTypeDetailPage() {
   if (!singleType) return null
 
   const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
-  const effectiveRole = session?.user?.role === "super_admin" 
-    ? "owner" 
+  const effectiveRole = isPlatformStaff(session?.user?.role)
+    ? "owner"
     : (tenantMembership?.role || "owner")
   const customPermissions = Array.isArray(tenantMembership?.customPermissions)
     ? tenantMembership.customPermissions as string[]

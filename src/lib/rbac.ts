@@ -2,6 +2,7 @@ import { db } from "./database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "./auth"
 import { roleHasPermission, isWorkspaceAdmin } from "./rbac/staff"
+import { isPlatformStaff } from "./platform-roles"
 
 /**
  * RBAC helper for staff (TenantMember) permission checks in server actions and
@@ -15,7 +16,8 @@ export { PERMISSIONS, ROLE_PERMISSIONS } from "./rbac/staff"
 
 /**
  * Check if a user has a specific permission in a tenant.
- * Super admins and workspace owners/admins bypass all checks.
+ * Platform staff (super_admin, developer) and workspace owners/admins
+ * bypass all checks.
  */
 export async function hasPermission(
   userId: string,
@@ -24,7 +26,7 @@ export async function hasPermission(
   resourceOwnerId?: string,
 ): Promise<boolean> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } })
-  if (user?.role === "super_admin") return true
+  if (isPlatformStaff(user?.role)) return true
 
   const member = await db.tenantMember.findUnique({
     where: { tenantId_userId: { tenantId, userId } },
@@ -38,7 +40,7 @@ export async function hasPermission(
 
 export async function getUserRole(userId: string, tenantId: string): Promise<string | null> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } })
-  if (user?.role === "super_admin") return "super_admin"
+  if (isPlatformStaff(user?.role)) return user!.role
 
   const member = await db.tenantMember.findUnique({
     where: { tenantId_userId: { tenantId, userId } },
