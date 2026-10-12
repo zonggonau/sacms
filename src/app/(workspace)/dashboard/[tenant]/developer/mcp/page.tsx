@@ -15,19 +15,13 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   const tenantSummary = access.tenant
 
-  // Fetch existing tokens and subscription for this tenant. Only type "mcp"
-  // rows are MCP credentials — the REST/GraphQL API key (any other type, or
-  // the legacy ApiKey) is a separate system managed at /developer/api-keys
-  // and no longer authenticates against the MCP server at all.
-  const [tenant, tokens, subscription] = await Promise.all([
+  // MCP token creation/regeneration/deletion now happens at /developer/
+  // api-keys' "MCP Token" tab — this page only needs tenant/subscription
+  // status to render the config/setup guides.
+  const [tenant, subscription] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
-    }),
-    db.apiToken.findMany({
-      where: { tenantId: tenantSummary.id, type: "mcp" },
-      select: { id: true, name: true, description: true, type: true, createdAt: true, lastUsedAt: true },
-      orderBy: { createdAt: "desc" },
     }),
     db.subscription.findFirst({
       where: { tenantId: tenantSummary.id },
@@ -49,19 +43,6 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       plan={currentPlan}
       isPaid={isPaid}
       subscriptionStatus={subscription?.status || "inactive"}
-      existingTokens={tokens.map(t => ({
-        id: t.id,
-        name: t.name,
-        type: t.type,
-        // ApiToken.token is stored as a SHA-256 hash (see actions/mcp-tokens.ts)
-        // — never send it to the client. The real token is only ever shown
-        // once, immediately after creation, via generatedPlainToken in
-        // handleCreateToken. Intentionally omitted here, not just masked,
-        // so nothing downstream can mistake the hash for a usable token.
-        description: t.description,
-        createdAt: t.createdAt.toISOString(),
-        lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
-      }))}
     />
   )
 }

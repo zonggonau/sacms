@@ -36,13 +36,14 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
-  Plus, Key, Copy, Trash2, Loader2, ShieldCheck,
+  Plus, Key, Copy, Check, Trash2, Loader2, ShieldCheck,
   Save, Globe, Shield, Terminal, Settings2, Sliders, CheckCircle,
-  ExternalLink, Lock, Code2, AlertTriangle, Pencil, RefreshCw
+  ExternalLink, Lock, Code2, AlertTriangle, Pencil, RefreshCw, Plug
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction, regenerateApiTokenAction } from "@/actions/api-keys"
+import { createMcpTokenAction, regenerateMcpTokenAction, deleteMcpTokenAction } from "@/actions/mcp-tokens"
 
 interface ApiToken {
   id: string
@@ -70,14 +71,23 @@ interface LegacyApiKey {
   expiresAt: Date | string | null
 }
 
+interface McpToken {
+  id: string
+  name: string
+  description: string | null
+  createdAt: Date | string
+  lastUsedAt: Date | string | null
+}
+
 interface ApiKeysClientProps {
   initialTokens: ApiToken[]
   legacyApiKeys?: LegacyApiKey[]
+  initialMcpTokens?: McpToken[]
   tenantSlug: string
   initialSettings: ApiSettings
 }
 
-export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, initialSettings }: ApiKeysClientProps) {
+export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTokens = [], tenantSlug, initialSettings }: ApiKeysClientProps) {
   const { toast } = useToast()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [isPending, startTransition] = useTransition()
@@ -101,6 +111,21 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
   const [createdPlainToken, setCreatedPlainToken] = useState<string | null>(null)
   const [showTokenDialog, setShowTokenDialog] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  // Which token row `createdPlainToken` belongs to — the secret is only ever
+  // held in this browser session's React state (the DB only has its hash),
+  // so a row-level Copy button can only work for the one token just
+  // created/regenerated in this session, not for rows loaded from the server.
+  const [revealedTokenId, setRevealedTokenId] = useState<string | null>(null)
+
+  // MCP token state & dialogs — a separate credential (type "mcp") used only
+  // by AI agents/IDEs over the Model Context Protocol, never interchangeable
+  // with the REST/GraphQL API keys above. A tenant may have at most one.
+  const [mcpTokensList, setMcpTokensList] = useState<McpToken[]>(initialMcpTokens)
+  const [showCreateMcpDialog, setShowCreateMcpDialog] = useState(false)
+  const [newMcpTokenName, setNewMcpTokenName] = useState("")
+  const [createdPlainMcpToken, setCreatedPlainMcpToken] = useState<string | null>(null)
+  const [showMcpTokenDialog, setShowMcpTokenDialog] = useState(false)
+  const [revealedMcpTokenId, setRevealedMcpTokenId] = useState<string | null>(null)
 
   // Edit-permissions dialog — a tenant may only ever have one API key, so
   // instead of deleting + recreating to change its scope, permissions can be
@@ -203,6 +228,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
         setCreatedPlainToken(res.plainToken || null)
         if (res.token) {
           setTokensList(prev => [res.token as any, ...prev])
+          setRevealedTokenId(res.token.id)
         }
         setShowTokenDialog(true)
         toast({
@@ -234,6 +260,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
         })
       } else {
         setTokensList(prev => prev.filter(t => t.id !== tokenId))
+        setRevealedTokenId(prev => (prev === tokenId ? null : prev))
         toast({
           title: "Berhasil",
           description: "API key berhasil dihapus",
@@ -266,6 +293,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
         if (res.token) {
           setTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
         }
+        setRevealedTokenId(token.id)
         setShowTokenDialog(true)
         toast({
           title: "Berhasil",
@@ -335,6 +363,109 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
     } finally {
       setRevokingLegacyId(null)
     }
+  }
+
+  const handleCreateMcpToken = () => {
+    if (!newMcpTokenName.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Nama Token Wajib",
+        description: "Masukkan nama deskriptif untuk token MCP Anda (misal: VS Code Dev)",
+      })
+      return
+    }
+
+    startTransition(async () => {
+      const res = await createMcpTokenAction(tenantSlug, {
+        name: newMcpTokenName.trim(),
+        description: `MCP Server Access for ${tenantSlug}`,
+      })
+
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Gagal Membuat Token",
+          description: res.error,
+        })
+      } else {
+        setShowCreateMcpDialog(false)
+        setNewMcpTokenName("")
+        setCreatedPlainMcpToken(res.plainToken || null)
+        if (res.token) {
+          setMcpTokensList(prev => [res.token as any, ...prev])
+          setRevealedMcpTokenId(res.token.id)
+        }
+        setShowMcpTokenDialog(true)
+        toast({
+          title: "Berhasil",
+          description: "Token MCP baru berhasil dibuat",
+        })
+      }
+    })
+  }
+
+  const handleRegenerateMcpToken = async (token: McpToken) => {
+    if (
+      !(await confirm({
+        title: "Generate ulang token MCP ini?",
+        description: `Token lama untuk "${token.name}" langsung berhenti berfungsi — AI agent/editor yang masih memakainya akan kehilangan akses sampai Anda pasang token baru.`,
+        confirmLabel: "Generate Ulang",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    startTransition(async () => {
+      const res = await regenerateMcpTokenAction(tenantSlug, token.id)
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Terjadi Kesalahan",
+          description: res.error,
+        })
+      } else {
+        setCreatedPlainMcpToken(res.plainToken || null)
+        if (res.token) {
+          setMcpTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
+        }
+        setRevealedMcpTokenId(token.id)
+        setShowMcpTokenDialog(true)
+        toast({
+          title: "Berhasil",
+          description: "Token MCP berhasil di-generate ulang",
+        })
+      }
+    })
+  }
+
+  const handleDeleteMcpToken = async (tokenId: string) => {
+    if (
+      !(await confirm({
+        title: "Hapus token MCP ini?",
+        description: "AI agent atau editor yang menggunakan token ini akan kehilangan akses ke workspace.",
+        confirmLabel: "Hapus token",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    startTransition(async () => {
+      const res = await deleteMcpTokenAction(tenantSlug, tokenId)
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Terjadi Kesalahan",
+          description: res.error,
+        })
+      } else {
+        setMcpTokensList(prev => prev.filter(t => t.id !== tokenId))
+        setRevealedMcpTokenId(prev => (prev === tokenId ? null : prev))
+        toast({
+          title: "Berhasil",
+          description: "Token MCP berhasil dihapus",
+        })
+      }
+    })
   }
 
   const formatDate = (dateString: Date | string | null) => {
@@ -546,10 +677,14 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
 
           {/* Main Layout Tabs */}
           <Tabs defaultValue="keys" className="space-y-6">
-            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
+            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-3 max-w-xl h-auto gap-1">
               <TabsTrigger value="keys" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Key className="h-3.5 w-3.5 mr-1.5" />
-                Daftar API Keys ({tokensList.length})
+                API Key ({tokensList.length})
+              </TabsTrigger>
+              <TabsTrigger value="mcp" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                <Plug className="h-3.5 w-3.5 mr-1.5" />
+                MCP Token ({mcpTokensList.length})
               </TabsTrigger>
               <TabsTrigger value="config" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Sliders className="h-3.5 w-3.5 mr-1.5" />
@@ -569,10 +704,8 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
                       Gunakan pada header <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code>.
                       Setiap workspace hanya boleh punya satu API Key aktif — dibuat sekali, izinnya bisa diubah kapan saja lewat tombol Edit.
-                      {" "}Ini <strong>terpisah</strong> dari token MCP (dipakai AI agent seperti Claude/ChatGPT/Codex) — kelola token MCP di{" "}
-                      <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">
-                        Developer &gt; MCP
-                      </a>.
+                      {" "}Ini <strong>terpisah</strong> dari token MCP (dipakai AI agent seperti Claude/ChatGPT/Codex) — kelola token MCP di tab{" "}
+                      <strong>MCP Token</strong> di atas.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -585,10 +718,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                         Klik <strong>Buat API Key Baru</strong> untuk membuat token.
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-2">
-                        Sudah generate token di halaman <strong>MCP</strong> tapi tidak muncul di sini? Memang terpisah — token MCP untuk AI agent dikelola di{" "}
-                        <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">
-                          Developer &gt; MCP
-                        </a>, bukan di halaman ini.
+                        Mencari token untuk AI agent (Claude/ChatGPT/Codex)? Itu token MCP — dikelola terpisah di tab <strong>MCP Token</strong> di atas, bukan di sini.
                       </p>
                     </div>
                   ) : (
@@ -613,12 +743,18 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                               </div>
                             </TableCell>
                             <TableCell className="py-3">
-                              <span
-                                className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-muted-foreground tracking-widest"
-                                title="Untuk keamanan, token asli hanya ditampilkan sekali saat dibuat dan tidak dapat diambil kembali."
-                              >
-                                ••••••••••••••••
-                              </span>
+                              {apiKey.id === revealedTokenId && createdPlainToken ? (
+                                <span className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-foreground">
+                                  {createdPlainToken}
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-muted-foreground tracking-widest"
+                                  title="Untuk keamanan, token asli hanya ditampilkan sekali saat dibuat dan tidak dapat diambil kembali."
+                                >
+                                  ••••••••••••••••
+                                </span>
+                              )}
                             </TableCell>
                             <TableCell className="py-3">
                               <div className="flex gap-1 flex-wrap">
@@ -637,6 +773,17 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                             </TableCell>
                             <TableCell className="text-right pr-6 py-3">
                               <div className="flex items-center justify-end gap-1">
+                                {apiKey.id === revealedTokenId && createdPlainToken && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleCopy(createdPlainToken, "API Key", apiKey.id)}
+                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    title="Salin API Key"
+                                  >
+                                    {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -678,7 +825,127 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
               </Card>
             </TabsContent>
 
-            {/* TAB 2: REST CONFIGURATION & CORS */}
+            {/* TAB 2: MCP TOKEN */}
+            <TabsContent value="mcp" className="space-y-6">
+              <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Plug className="h-4 w-4 text-primary" />
+                      Token MCP (Model Context Protocol)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Dipakai AI agent/editor (Claude, ChatGPT, Codex, Antigravity, VS Code, dll.) untuk membaca &amp; mengubah skema, konten, dan webhook workspace ini secara langsung lewat protokol MCP.
+                      {" "}Ini <strong>terpisah</strong> dari API Key REST/GraphQL di tab <strong>API Key</strong>.
+                      Setiap workspace hanya boleh punya satu token MCP aktif. Untuk panduan koneksi per-platform (Claude Desktop, VS Code, dll.), lihat{" "}
+                      <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">
+                        Developer &gt; MCP
+                      </a>.
+                    </CardDescription>
+                  </div>
+                  {mcpTokensList.length === 0 && (
+                    <Button
+                      onClick={() => setShowCreateMcpDialog(true)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0"
+                    >
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Generate Token MCP Baru
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="p-0">
+                  {mcpTokensList.length === 0 ? (
+                    <div className="text-center py-16 text-muted-foreground">
+                      <Plug className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                      <p className="font-bold text-xs text-foreground">Belum ada token MCP</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Klik <strong>Generate Token MCP Baru</strong> untuk menghubungkan AI agent atau editor Anda.
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader className="bg-muted/30 border-b border-border/60">
+                        <TableRow>
+                          <TableHead className="font-bold text-xs pl-6">Nama Token</TableHead>
+                          <TableHead className="font-bold text-xs">Token</TableHead>
+                          <TableHead className="font-bold text-xs">Dibuat</TableHead>
+                          <TableHead className="font-bold text-xs">Terakhir Dipakai</TableHead>
+                          <TableHead className="text-right pr-6 font-bold text-xs">Aksi</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {mcpTokensList.map((mcpToken) => (
+                          <TableRow key={mcpToken.id} className="hover:bg-muted/40 border-b border-border/60 transition-colors">
+                            <TableCell className="pl-6 py-3">
+                              <div className="flex items-center gap-2">
+                                <Plug className="h-3.5 w-3.5 text-primary shrink-0" />
+                                <span className="text-xs font-bold text-foreground">{mcpToken.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              {mcpToken.id === revealedMcpTokenId && createdPlainMcpToken ? (
+                                <span className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-foreground">
+                                  {createdPlainMcpToken}
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-muted-foreground tracking-widest"
+                                  title="Untuk keamanan, token asli hanya ditampilkan sekali saat dibuat dan tidak dapat diambil kembali."
+                                >
+                                  ••••••••••••••••
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground py-3">
+                              {formatDate(mcpToken.createdAt)}
+                            </TableCell>
+                            <TableCell className="text-xs text-muted-foreground py-3">
+                              {formatDate(mcpToken.lastUsedAt)}
+                            </TableCell>
+                            <TableCell className="text-right pr-6 py-3">
+                              <div className="flex items-center justify-end gap-1">
+                                {mcpToken.id === revealedMcpTokenId && createdPlainMcpToken && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleCopy(createdPlainMcpToken, "Token MCP", mcpToken.id)}
+                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                    title="Salin Token MCP"
+                                  >
+                                    {copiedId === mcpToken.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRegenerateMcpToken(mcpToken)}
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  disabled={isPending}
+                                  title="Generate Ulang Token MCP"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteMcpToken(mcpToken.id)}
+                                  className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
+                                  disabled={isPending}
+                                  title="Hapus Token MCP"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 3: REST CONFIGURATION & CORS */}
             <TabsContent value="config" className="space-y-6">
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
                 <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -888,6 +1155,89 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
               </div>
               <DialogFooter>
                 <Button onClick={() => setShowTokenDialog(false)} className="w-full rounded-xl text-xs font-bold h-9">
+                  Selesai & Tutup
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Create MCP Token Dialog */}
+          <Dialog open={showCreateMcpDialog} onOpenChange={setShowCreateMcpDialog}>
+            <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold text-foreground">Generate Token MCP Baru</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Buat token otorisasi khusus untuk menghubungkan AI agent atau editor Anda ke SaCMS lewat Model Context Protocol.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="mcp-name" className="text-xs font-semibold text-foreground">Nama Klien / Editor</Label>
+                  <Input
+                    id="mcp-name"
+                    placeholder="Contoh: Antigravity IDE / VS Code Local"
+                    value={newMcpTokenName}
+                    onChange={(e) => setNewMcpTokenName(e.target.value)}
+                    className="rounded-xl h-9 text-xs bg-background border-border/80"
+                  />
+                </div>
+                <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs text-muted-foreground">
+                  Token ini bisa membaca dan mengubah konten, skema, dan webhook via protokol MCP.
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button variant="outline" onClick={() => setShowCreateMcpDialog(false)} disabled={isPending} className="rounded-xl text-xs font-bold h-9">
+                  Batal
+                </Button>
+                <Button onClick={handleCreateMcpToken} disabled={isPending} className="rounded-xl text-xs font-bold h-9 bg-primary text-primary-foreground">
+                  {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                  {isPending ? "Membuat Token..." : "Generate Token"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* MCP Token Created Success Dialog */}
+          <Dialog open={showMcpTokenDialog} onOpenChange={setShowMcpTokenDialog}>
+            <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
+              <DialogHeader>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-1">
+                  <Plug className="h-5 w-5" />
+                </div>
+                <DialogTitle className="text-base font-bold text-foreground">Token MCP Anda Siap Dipakai</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Salin token ini sekarang — hanya ditampilkan sekali.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Token MCP Anda</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={createdPlainMcpToken || ""}
+                      readOnly
+                      className="font-mono text-xs bg-muted/40 pr-10 border-primary/30 rounded-xl h-9"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => createdPlainMcpToken && handleCopy(createdPlainMcpToken, "Token MCP")}
+                      className="gap-1.5 whitespace-nowrap h-9 text-xs font-bold rounded-xl"
+                    >
+                      Salin Token
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-300">
+                  ✓ Pasang token ini di konfigurasi AI agent/editor Anda. Lihat{" "}
+                  <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="font-bold underline">
+                    Developer &gt; MCP
+                  </a>{" "}
+                  untuk panduan setup per-platform.
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setShowMcpTokenDialog(false)} className="w-full rounded-xl text-xs font-bold h-9">
                   Selesai & Tutup
                 </Button>
               </DialogFooter>
