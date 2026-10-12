@@ -25,7 +25,7 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-4 w-full max-w-full">
+    <div className="flex flex-col gap-4 w-full">
       {/* ── Page Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 pb-1">
         <div>
