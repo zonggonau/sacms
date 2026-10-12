@@ -14,7 +14,7 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
         <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent blur-3xl rounded-full" />
       </div>
 
-      <div className="container px-6 max-w-7xl mx-auto relative z-10">
+      <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="space-y-4">
             <Link href="/" className="inline-block">
