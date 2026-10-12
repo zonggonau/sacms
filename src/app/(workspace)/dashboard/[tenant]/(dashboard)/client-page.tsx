@@ -156,7 +156,7 @@ export default function TenantDashboardClient({
           <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
             <Link href={`/dashboard/${tenantId}/developer/aischema`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              AI Website Studio
+              AI Schema Generator
             </Link>
           </Button>
 
@@ -258,9 +258,9 @@ export default function TenantDashboardClient({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button asChild size="sm" className="rounded-xl h-8 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs">
-                <Link href={`/dashboard/${tenantId}/developer/aischema`}>
-                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                  Bangun & Deploy Sekarang
+                <Link href={`/dashboard/${tenantId}/developer/mcp`}>
+                  <Plug className="h-3.5 w-3.5 mr-1.5" />
+                  Hubungkan MCP & Deploy
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" asChild className="rounded-xl h-8 px-3 text-xs text-muted-foreground hover:text-foreground">
@@ -280,13 +280,13 @@ export default function TenantDashboardClient({
           <div className="space-y-1.5 max-w-xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold">
               <Sparkles className="h-3 w-3" />
-              <span>AI Frontend Builder & Vercel Cockpit</span>
+              <span>AI Schema Generator & MCP</span>
             </div>
             <h2 className="text-lg md:text-xl font-black tracking-tight text-foreground">
-              Bangun Website Modern Berbasis Prompt
+              Rancang Skema CMS Berbasis Prompt
             </h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Ketik deskripsi ide website, AI secara otomatis membuat skema koleksi di PostgreSQL, mengisi data via MCP, dan mengompilasi frontend interaktif siap deploy ke Vercel.
+              Jelaskan struktur bisnis atau aplikasi Anda, AI merancang Content Type &amp; relasi skema CMS secara otomatis. Kembangkan frontend-nya di IDE favorit Anda, terhubung langsung ke data lewat Server MCP dan REST/GraphQL API.
             </p>
           </div>
 
@@ -294,7 +294,7 @@ export default function TenantDashboardClient({
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
               <Link href={`/dashboard/${tenantId}/developer/aischema`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                Buka AI Studio
+                Buka AI Schema Generator
               </Link>
             </Button>
             <Button variant="outline" asChild className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 bg-card hover:bg-muted/60 cursor-pointer">
@@ -505,7 +505,7 @@ export default function TenantDashboardClient({
                     <PenTool className="h-8 w-8 mx-auto text-muted-foreground/30" />
                     <p className="text-xs font-bold text-foreground">Belum ada tipe koleksi yang dibuat</p>
                     <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                      Buat skema tipe konten pertama Anda di Content Studio atau gunakan AI Schema Builder.
+                      Buat skema tipe konten pertama Anda lewat Content Types atau gunakan AI Schema Generator.
                     </p>
                     <div>
                       <Button asChild size="sm" variant="outline" className="rounded-xl h-8 px-3 text-xs font-semibold">
@@ -552,7 +552,7 @@ export default function TenantDashboardClient({
                     </p>
                     <div>
                       <Button asChild size="sm" variant="outline" className="rounded-xl h-8 px-3 text-xs font-semibold">
-                        <Link href={`/dashboard/${tenantId}/developer/single-type/new`}>
+                        <Link href={`/dashboard/${tenantId}/developer/single-types/new`}>
                           <Plus className="h-3.5 w-3.5 mr-1" />
                           Buat Single Type Baru
                         </Link>

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { enforcePlanLimit } from "@/lib/plan-enforcement"
+import { getSingleTypesAction } from "@/actions/single-types"
 import { redirect } from "next/navigation"
 import TenantDashboardClient from "./client-page"
 
@@ -56,6 +57,12 @@ export default async function TenantDashboardPage({
       }
     })
   )
+
+  // Single Types for the dashboard's schema explorer tab — mirrors how
+  // Developer Portal > Single Types fetches them, so the count/list shown
+  // here matches reality instead of always being empty.
+  const singleTypesResult = await getSingleTypesAction(tenantSlug).catch(() => ({ error: "Internal error" }))
+  const singleTypes = "singleTypes" in singleTypesResult ? singleTypesResult.singleTypes : []
 
   // 2. Fetch Stats (with safe fallbacks)
   const [
@@ -210,6 +217,7 @@ export default async function TenantDashboardPage({
       tenantId={tenantId}
       stats={stats}
       contentTypes={contentTypes}
+      singleTypes={singleTypes}
       usage={usage}
       activities={activities}
     />
