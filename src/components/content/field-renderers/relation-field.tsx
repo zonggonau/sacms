@@ -12,6 +12,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Plus, ExternalLink } from "lucide-react"
+import { getSingleTypesAction, createSingleTypeAction } from "@/actions/single-types"
 
 interface SingleType {
   id: string
@@ -41,10 +42,9 @@ export function RelationField({ value, onChange, tenantSlug }: RelationFieldProp
   const fetchSingleTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types`)
-      if (!response.ok) throw new Error("Failed to fetch single types")
-      const data = await response.json()
-      setSingleTypes(data || [])
+      const result = await getSingleTypesAction(tenantSlug)
+      if ("error" in result) throw new Error(result.error)
+      setSingleTypes(result.singleTypes || [])
     } catch (error) {
       console.error("Error fetching single types:", error)
     } finally {
@@ -54,26 +54,20 @@ export function RelationField({ value, onChange, tenantSlug }: RelationFieldProp
 
   const handleCreateSingleType = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!newSingleTypeName.trim()) return
 
     setCreating(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newSingleTypeName,
-          slug: newSingleTypeSlug || newSingleTypeName.toLowerCase().replace(/\s+/g, "-"),
-          description: "",
-          isPublished: true,
-        }),
+      const result = await createSingleTypeAction(tenantSlug, {
+        name: newSingleTypeName,
+        slug: newSingleTypeSlug || newSingleTypeName.toLowerCase().replace(/\s+/g, "-"),
+        description: "",
       })
 
-      if (!response.ok) throw new Error("Failed to create single type")
+      if ("error" in result) throw new Error(result.error)
 
-      const data = await response.json()
-      onChange(data.singleType.slug)
+      onChange(result.singleType.slug)
       setShowCreateDialog(false)
       setNewSingleTypeName("")
       setNewSingleTypeSlug("")
@@ -163,7 +157,7 @@ export function RelationField({ value, onChange, tenantSlug }: RelationFieldProp
                   if (newSingleTypeName.trim()) {
                     const slug = newSingleTypeSlug || newSingleTypeName.toLowerCase().replace(/\s+/g, "-")
                     window.open(
-                      `/dashboard/${tenantSlug}/single-types/new?name=${encodeURIComponent(newSingleTypeName)}&slug=${slug}`,
+                      `/dashboard/${tenantSlug}/developer/single-types/new?name=${encodeURIComponent(newSingleTypeName)}&slug=${slug}`,
                       "_blank"
                     )
                   }

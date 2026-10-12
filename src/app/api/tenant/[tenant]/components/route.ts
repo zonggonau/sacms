@@ -11,6 +11,12 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
   // assigned to it. Don't load every tenant's components into memory.
   const components = await tenantDb.component.findMany({
     where: {
+      // Excludes in-progress SchemaTemplate draft materializations — see
+      // Component.draftTemplateId in schema.prisma. actions/components.ts'
+      // getComponentsAction (used by the dashboard Components list) already
+      // filters this; this route serves the content editor's Dynamic Zone
+      // picker and was missing the same guard.
+      draftTemplateId: null,
       OR: [
         { tenantId: null },
         { tenantId: access.tenantId },
