@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
-  Loader2, Activity, Cpu, HardDrive, Globe, RefreshCw, 
+  Loader2, Cpu, HardDrive, Globe, RefreshCw,
   AlertTriangle, Search, Filter, CheckCircle2, Clock,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Server, Power, RotateCw, PowerOff,
+  MemoryStick, Receipt, ExternalLink,
 } from "lucide-react"
 import {
   Select,
@@ -19,9 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { useToast } from "@/hooks/use-toast"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 
 interface SystemMetric {
@@ -48,16 +59,57 @@ interface ComponentHealth {
   detail: string
 }
 
+interface ContaboInstance {
+  instanceId: number
+  name: string
+  displayName: string
+  dataCenter: string
+  region: string
+  regionName: string
+  productName?: string
+  ramMb: number
+  cpuCores: number
+  diskMb: number
+  createdDate: string
+  status: string
+  ipConfig: { v4: { ip: string } }
+  availableUpgrades: { productId: string; name: string; additionalPrice?: { price: number; currency: string } }[]
+}
+
+type PendingVpsAction = { instanceId: number; action: "start" | "restart" | "shutdown" } | null
+
+const VPS_ACTION_LABEL: Record<string, string> = {
+  start: "Nyalakan",
+  restart: "Restart",
+  shutdown: "Shutdown (Graceful)",
+}
+
+const VPS_ACTION_WARNING: Record<string, string> = {
+  start: "Server akan dinyalakan. Tidak ada downtime tambahan jika server memang sedang mati.",
+  restart: "Server produksi akan di-restart sekarang. Semua koneksi aktif (termasuk request yang sedang berjalan) akan terputus selama proses reboot (biasanya 30-90 detik).",
+  shutdown: "Server produksi akan dimatikan secara graceful (ACPI shutdown). SaCMS Cloud akan DOWN total sampai Anda menyalakannya kembali secara manual dari halaman ini atau panel Contabo.",
+}
+
 export default function AdminMonitoringPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  
+  const { toast } = useToast()
+
   const [metrics, setMetrics] = useState<SystemMetric[]>([])
   const [componentHealth, setComponentHealth] = useState<ComponentHealth[]>([])
   const [apiRequests, setApiRequests] = useState<ApiRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(false)
+
+  // VPS (Contabo) — the physical server running SaCMS Cloud itself
+  const [vpsInstances, setVpsInstances] = useState<ContaboInstance[]>([])
+  const [vpsConfigured, setVpsConfigured] = useState(true)
+  const [vpsError, setVpsError] = useState<string | null>(null)
+  const [vpsLoading, setVpsLoading] = useState(true)
+  const [pendingVpsAction, setPendingVpsAction] = useState<PendingVpsAction>(null)
+  const [runningVpsAction, setRunningVpsAction] = useState(false)
+  const [enablingBackupFor, setEnablingBackupFor] = useState<number | null>(null)
   
   // Filter States
   const [searchQuery, setSearchQuery] = useState("")
@@ -134,6 +186,66 @@ export default function AdminMonitoringPage() {
     return () => clearInterval(interval)
   }, [autoRefresh, fetchData])
 
+  const fetchVpsData = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/infrastructure/vps")
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Gagal memuat data VPS")
+      setVpsConfigured(data.configured !== false)
+      setVpsError(data.error || null)
+      setVpsInstances(data.instances || [])
+    } catch (err: any) {
+      setVpsError(err.message || "Terjadi kesalahan")
+    } finally {
+      setVpsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (session?.user?.role === "super_admin") {
+      fetchVpsData()
+    }
+  }, [session, fetchVpsData])
+
+  const handleRunVpsAction = async () => {
+    if (!pendingVpsAction) return
+    setRunningVpsAction(true)
+    try {
+      const res = await fetch(`/api/admin/infrastructure/vps/${pendingVpsAction.instanceId}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: pendingVpsAction.action }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Aksi gagal dijalankan")
+      toast({ title: "Perintah Terkirim", description: `${VPS_ACTION_LABEL[pendingVpsAction.action]} sedang diproses oleh Contabo.` })
+      setPendingVpsAction(null)
+      setTimeout(fetchVpsData, 3000)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message || "Terjadi kesalahan" })
+    } finally {
+      setRunningVpsAction(false)
+    }
+  }
+
+  const handleEnableBackup = async (instanceId: number) => {
+    setEnablingBackupFor(instanceId)
+    try {
+      const res = await fetch(`/api/admin/infrastructure/vps/${instanceId}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "enable-backup" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Gagal mengaktifkan add-on")
+      toast({ title: "Add-on Backup Diaktifkan", description: "Automated Backup sedang diaktifkan oleh Contabo untuk instance ini." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message || "Terjadi kesalahan" })
+    } finally {
+      setEnablingBackupFor(null)
+    }
+  }
+
   const getStatusBadge = (code: number) => {
     if (code < 300) return <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border">{code}</Badge>
     if (code < 400) return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border">{code}</Badge>
@@ -200,11 +312,12 @@ export default function AdminMonitoringPage() {
             </div>
           </div>
 
-          {/* Metrics Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Metrics Row — CPU/RAM/Disk read live from the VPS's own OS (os/df), not an external API */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
               { label: "Penggunaan CPU", value: `${metrics.find(m => m.type === 'cpu')?.value || 0}%`, icon: Cpu, color: "text-blue-500", bg: "bg-blue-500/10" },
-              { label: "Memori RAM", value: `${metrics.find(m => m.type === 'memory')?.value || 0}%`, icon: HardDrive, color: "text-purple-500", bg: "bg-purple-500/10" },
+              { label: "Memori RAM", value: `${metrics.find(m => m.type === 'memory')?.value || 0}%`, icon: MemoryStick, color: "text-purple-500", bg: "bg-purple-500/10" },
+              { label: "Disk", value: `${metrics.find(m => m.type === 'disk')?.value ?? '-'}%`, icon: HardDrive, color: "text-amber-500", bg: "bg-amber-500/10" },
               { label: "Permintaan/Menit", value: metrics.find(m => m.type === 'requests')?.value || 0, icon: Globe, color: "text-emerald-500", bg: "bg-emerald-500/10" },
               { label: "Galat (1 Jam)", value: metrics.find(m => m.type === 'errors')?.value || 0, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10" },
             ].map((m) => (
@@ -221,6 +334,150 @@ export default function AdminMonitoringPage() {
               </Card>
             ))}
           </div>
+
+          {/* Server VPS (Contabo) — the physical machine running SaCMS Cloud */}
+          {!vpsLoading && !vpsConfigured && (
+            <Card className="border border-amber-500/30 bg-amber-500/5 rounded-2xl shadow-xs">
+              <CardContent className="p-5 flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">Contabo API belum terkonfigurasi</p>
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-1">
+                    {vpsError || "Set CONTABO_CLIENT_ID, CONTABO_CLIENT_SECRET, CONTABO_API_USER, dan CONTABO_API_PASSWORD di environment server."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {vpsInstances.map((instance) => {
+            const isRunning = instance.status === "running"
+            return (
+              <Card key={instance.instanceId} className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Server className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-sm font-bold text-foreground">
+                        {instance.displayName || instance.name}
+                      </CardTitle>
+                      <Badge
+                        className={cn(
+                          "text-[9px] font-bold uppercase rounded-full border shadow-none",
+                          isRunning
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                        )}
+                      >
+                        <div className={cn("w-1.5 h-1.5 rounded-full mr-1", isRunning ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                        {instance.status}
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-[11px] font-mono mt-0.5">
+                      {instance.name} &bull; #{instance.instanceId} &bull; {instance.regionName || instance.region}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isRunning}
+                      onClick={() => setPendingVpsAction({ instanceId: instance.instanceId, action: "start" })}
+                      className="h-8 rounded-lg text-[11px] font-bold"
+                    >
+                      <Power className="h-3 w-3 mr-1" /> Start
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPendingVpsAction({ instanceId: instance.instanceId, action: "restart" })}
+                      className="h-8 rounded-lg text-[11px] font-bold"
+                    >
+                      <RotateCw className="h-3 w-3 mr-1" /> Restart
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!isRunning}
+                      onClick={() => setPendingVpsAction({ instanceId: instance.instanceId, action: "shutdown" })}
+                      className="h-8 rounded-lg text-[11px] font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
+                    >
+                      <PowerOff className="h-3 w-3 mr-1" /> Shutdown
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5 space-y-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1"><Cpu className="h-3 w-3" /> CPU</p>
+                      <p className="text-sm font-bold text-foreground mt-1">{instance.cpuCores} cores</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1"><MemoryStick className="h-3 w-3" /> RAM</p>
+                      <p className="text-sm font-bold text-foreground mt-1">{Math.round(instance.ramMb / 1024)} GB</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1"><HardDrive className="h-3 w-3" /> Disk</p>
+                      <p className="text-sm font-bold text-foreground mt-1">{Math.round(instance.diskMb / 1024)} GB</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
+                      <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider flex items-center gap-1"><Globe className="h-3 w-3" /> IP Publik</p>
+                      <p className="text-sm font-bold text-foreground font-mono mt-1">{instance.ipConfig?.v4?.ip || "-"}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl bg-muted/20 border border-border/60">
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{instance.productName || "Plan tidak diketahui"}</p>
+                      <p className="text-[11px] text-muted-foreground">Dibuat {new Date(instance.createdDate).toLocaleDateString("id-ID")}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={enablingBackupFor === instance.instanceId}
+                        onClick={() => handleEnableBackup(instance.instanceId)}
+                        className="h-8 rounded-lg text-[11px] font-bold"
+                      >
+                        {enablingBackupFor === instance.instanceId ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <HardDrive className="h-3 w-3 mr-1" />}
+                        Aktifkan Backup
+                      </Button>
+                      <a href="https://my.contabo.com/account/billing" target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm" className="h-8 rounded-lg text-[11px] font-bold">
+                          <Receipt className="h-3 w-3 mr-1" /> Billing
+                        </Button>
+                      </a>
+                    </div>
+                  </div>
+
+                  {instance.availableUpgrades?.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Opsi Upgrade Tersedia</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {instance.availableUpgrades.slice(0, 6).map((upg) => (
+                          <div key={upg.productId} className="p-3 rounded-xl border border-border/60 bg-muted/10 text-xs">
+                            <p className="font-bold text-foreground">{upg.name}</p>
+                            {upg.additionalPrice && (
+                              <p className="text-muted-foreground mt-0.5">
+                                +{upg.additionalPrice.price} {upg.additionalPrice.currency}/bln
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Untuk upgrade resource (CPU/RAM/Disk) secara aman, lakukan dari{" "}
+                        <a href="https://my.contabo.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-semibold inline-flex items-center gap-0.5">
+                          Panel Contabo <ExternalLink className="h-3 w-3" />
+                        </a>{" "}
+                        — API publik Contabo belum mendokumentasikan endpoint upgrade resource secara jelas, dan tagihan/invoice juga tidak tersedia lewat API.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )
+          })}
 
           {/* API Traffic Area */}
           <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
@@ -362,7 +619,7 @@ export default function AdminMonitoringPage() {
           </Card>
 
           {/* Bottom Health Checks */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <Card className="border border-border/80 rounded-2xl shadow-xs bg-card">
               <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Komponen Platform</CardTitle>
@@ -397,17 +654,34 @@ export default function AdminMonitoringPage() {
                 )}
               </CardContent>
             </Card>
-
-            <Card className="border border-border/80 rounded-2xl shadow-xs bg-card flex flex-col justify-center p-6 text-center">
-              <div className="w-12 h-12 rounded-2xl border border-primary/20 bg-primary/10 flex items-center justify-center mx-auto mb-3 text-primary">
-                <Activity className="h-6 w-6" />
-              </div>
-              <h3 className="text-sm font-bold text-foreground">Infrastruktur Terintegrasi</h3>
-              <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
-                Metrik performa dipantau otomatis untuk mendeteksi anomali.
-              </p>
-            </Card>
           </div>
+
+          {/* VPS action confirmation */}
+          <AlertDialog open={!!pendingVpsAction} onOpenChange={(open) => !open && setPendingVpsAction(null)}>
+            <AlertDialogContent className="rounded-2xl border-border/80 shadow-xl bg-card max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  {pendingVpsAction ? `${VPS_ACTION_LABEL[pendingVpsAction.action]} Server Produksi?` : ""}
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-xs leading-relaxed text-muted-foreground">
+                  {pendingVpsAction ? VPS_ACTION_WARNING[pendingVpsAction.action] : ""}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">
+                <AlertDialogCancel disabled={runningVpsAction} className="rounded-xl text-xs font-bold h-9">Batal</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={handleRunVpsAction}
+                  disabled={runningVpsAction}
+                  className="rounded-xl text-xs font-bold h-9"
+                >
+                  {runningVpsAction ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                  {pendingVpsAction ? `Ya, ${VPS_ACTION_LABEL[pendingVpsAction.action]}` : ""}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </div>
     </div>

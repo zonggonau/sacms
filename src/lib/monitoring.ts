@@ -1,5 +1,9 @@
 import { db } from "@/lib/database"
 import os from "os"
+import { exec as execCb } from "child_process"
+import { promisify } from "util"
+
+const exec = promisify(execCb)
 
 export interface LogApiRequestParams {
   tenantId?: string | null
@@ -115,6 +119,41 @@ export function getMemoryUsage() {
 }
 
 /**
+ * Real root-filesystem usage via `df`. Inside the app container this still
+ * reflects the host VPS's actual disk (Docker's overlay2 storage is backed
+ * directly by the host partition unless a storage-opt size quota is set,
+ * which this deployment doesn't use) — not a virtualized/per-container
+ * number, so this is genuinely "how full is the VPS", not "how much has
+ * this one container written".
+ */
+export async function getDiskUsage(): Promise<{
+  percentage: number
+  metadata: { totalBytes: number; usedBytes: number; freeBytes: number }
+} | null> {
+  try {
+    const { stdout } = await exec("df -k /")
+    const lines = stdout.trim().split("\n")
+    const parts = lines[lines.length - 1].trim().split(/\s+/)
+    const totalKb = parseInt(parts[1], 10)
+    const usedKb = parseInt(parts[2], 10)
+    const availKb = parseInt(parts[3], 10)
+    if (!totalKb) return null
+
+    return {
+      percentage: Math.max(0, Math.min(100, Math.round((usedKb / totalKb) * 100))),
+      metadata: {
+        totalBytes: totalKb * 1024,
+        usedBytes: usedKb * 1024,
+        freeBytes: availKb * 1024,
+      },
+    }
+  } catch (error) {
+    console.error("[Monitoring] Failed to read disk usage:", error)
+    return null
+  }
+}
+
+/**
  * Compiles live hardware metrics and database traffic rates,
  * persists the results as historical system metrics, and cleans up entries older than 24 hours.
  */
@@ -122,6 +161,7 @@ export async function collectSystemMetrics() {
   try {
     const cpuVal = await getCpuUsage()
     const memInfo = getMemoryUsage()
+    const diskInfo = await getDiskUsage()
 
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
 
@@ -153,6 +193,16 @@ export async function collectSystemMetrics() {
           timestamp,
         }
       }),
+      ...(diskInfo
+        ? [db.systemMetric.create({
+            data: {
+              type: "disk",
+              value: diskInfo.percentage,
+              metadata: JSON.stringify(diskInfo.metadata),
+              timestamp,
+            }
+          })]
+        : []),
       db.systemMetric.create({
         data: { type: "requests", value: requestsVal, timestamp }
       }),
@@ -171,6 +221,8 @@ export async function collectSystemMetrics() {
       cpu: cpuVal,
       memory: memInfo.percentage,
       memoryMetadata: memInfo.metadata,
+      disk: diskInfo?.percentage ?? null,
+      diskMetadata: diskInfo?.metadata ?? null,
       requests: requestsVal,
       errors: errorsVal,
       timestamp,

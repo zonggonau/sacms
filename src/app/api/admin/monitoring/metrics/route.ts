@@ -80,6 +80,9 @@ export const GET = withAdminAuth(async () => {
         metrics: [
           { type: "cpu", value: freshMetrics.cpu, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
           { type: "memory", value: freshMetrics.memory, metadata: JSON.stringify(freshMetrics.memoryMetadata), timestamp: freshMetrics.timestamp.toISOString() },
+          ...(freshMetrics.disk !== null
+            ? [{ type: "disk", value: freshMetrics.disk, metadata: JSON.stringify(freshMetrics.diskMetadata), timestamp: freshMetrics.timestamp.toISOString() }]
+            : []),
           { type: "requests", value: freshMetrics.requests, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
           { type: "errors", value: freshMetrics.errors, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
         ],

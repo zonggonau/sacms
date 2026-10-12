@@ -1,8 +1,7 @@
 /**
  * GET /api/admin/infrastructure/vps
- * Live Contabo compute instances + SaCMS's own app health — the data behind
- * /admin/infrastruktur. Super admin only; this surfaces the real production
- * VPS (power status, specs, add-ons), not a customer-facing feature.
+ * Live Contabo compute instance(s) running SaCMS Cloud itself — consumed by
+ * /admin/monitoring's "Server VPS" section. Super admin only.
  */
 import { NextResponse } from "next/server"
 import { getContaboInstances, getContaboAvailableUpgrades } from "@/lib/contabo"
@@ -27,16 +26,5 @@ export const GET = withAdminAuth(async () => {
     })
   )
 
-  let appHealth: unknown = null
-  try {
-    const healthUrl = process.env.NEXT_PUBLIC_APP_URL
-      ? `${process.env.NEXT_PUBLIC_APP_URL}/api/health`
-      : "http://127.0.0.1:3000/api/health"
-    const res = await fetch(healthUrl, { cache: "no-store", signal: AbortSignal.timeout(4000) })
-    appHealth = await res.json()
-  } catch {
-    appHealth = null
-  }
-
-  return NextResponse.json({ configured: true, instances, appHealth })
+  return NextResponse.json({ configured: true, instances })
 })

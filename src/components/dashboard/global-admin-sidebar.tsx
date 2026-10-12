@@ -25,7 +25,6 @@ import {
   Globe,
   Gem,
   Webhook,
-  Server,
   Headphones,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -82,7 +81,6 @@ const adminNavSections: NavSection[] = [
     label: "ENTERPRISE",
     items: [
       { title: "Enterprise Licenses", href: "/admin/enterprise/licenses", icon: Gem },
-      { title: "Infrastruktur", href: "/admin/infrastruktur", icon: Server },
     ],
   },
 ]

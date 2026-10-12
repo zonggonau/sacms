@@ -1,8 +1,8 @@
 /**
- * Contabo Compute API client — used by the internal /admin/infrastruktur
- * page to monitor and control the VPS that runs SaCMS's own production
- * instance (not a customer-facing feature; that bring-your-own-VPS system
- * was removed entirely, see db/manual-migrations/README.md #0002).
+ * Contabo Compute API client — used by the "Server VPS" section of
+ * /admin/monitoring to monitor and control the VPS that runs SaCMS's own
+ * production instance (not a customer-facing feature; that bring-your-own-VPS
+ * system was removed entirely, see db/manual-migrations/README.md #0002).
  *
  * Official reference: https://api.contabo.com (OpenAPI spec). Endpoints used
  * here are deliberately limited to what that spec documents clearly —
