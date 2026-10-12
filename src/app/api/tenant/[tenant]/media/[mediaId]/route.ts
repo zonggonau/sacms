@@ -41,7 +41,7 @@ export const DELETE = withStaffAuth(async (_request, context, { access }) => {
 
   if (media.storageKey) {
     try {
-      await deleteFromStorage(media.storageKey)
+      await deleteFromStorage(media.storageKey, access.tenantId)
     } catch (err) {
       console.error("[media DELETE] storage delete failed:", err)
     }

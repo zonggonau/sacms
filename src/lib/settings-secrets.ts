@@ -12,7 +12,6 @@ export const SECRET_SETTING_KEYS = [
   "resendApiKey",
   "smtpPass",
   "midtransServerKey",
-  "r2SecretAccessKey",
 ] as const satisfies readonly (keyof PlatformSettings)[]
 
 export type SecretSettingKey = (typeof SECRET_SETTING_KEYS)[number]

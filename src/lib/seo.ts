@@ -31,7 +31,7 @@ export const SEO_CONFIG = {
     "Strapi Alternative",
     "SaCMS Custom DNS",
     "Midtrans Billing CMS",
-    "Cloudflare R2 Media",
+    "MinIO Media",
     "SaaS Headless CMS"
   ],
   social: {
@@ -92,7 +92,7 @@ export function generatePlatformJsonLd() {
           "SaCMS Custom Domain DNS Auto-Verification",
           "Automated QRIS & Virtual Account Billing via Midtrans",
           "7-Stage Content Workflow with Granular RBAC Permissions",
-          "Cloudflare R2 / S3 Object Storage with 0 Egress Fee"
+          "Self-Hosted MinIO Object Storage with 0 Egress Fee"
         ],
         "author": {
           "@id": `${baseUrl}/#organization`

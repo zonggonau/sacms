@@ -2,16 +2,15 @@
  * Central policy for "should this paid/external service be mocked?"
  *
  * Every integration in SaCMS that depends on a paid third-party service
- * (Midtrans, Vercel, v0.dev, Cloudflare R2) should gate its mock
- * fallback through `shouldUseMockServices()` / `isMockAllowed()` rather than
- * inventing its own ad-hoc check. Before this module existed, each client
- * decided independently whether to simulate — several (Vercel,
- * v0.dev) only checked "is the API key missing?" with no regard for
- * NODE_ENV, which meant a misconfigured production deployment (env var
- * typo'd or simply forgotten) would silently start fabricating successful
- * deployments instead of failing loudly. Others (Midtrans,
- * R2) had no fallback at all, so the full payment/storage test matrix
- * could never run without real, billable credentials.
+ * (Midtrans, Vercel) should gate its mock fallback through
+ * `shouldUseMockServices()` / `isMockAllowed()` rather than inventing its
+ * own ad-hoc check. Before this module existed, each client decided
+ * independently whether to simulate — Vercel only checked "is the API key
+ * missing?" with no regard for NODE_ENV, which meant a misconfigured
+ * production deployment (env var typo'd or simply forgotten) would silently
+ * start fabricating successful deployments instead of failing loudly.
+ * Midtrans had no fallback at all, so the full payment test matrix could
+ * never run without real, billable credentials.
  *
  * The rule enforced here:
  *   - In `production`, mocking is NEVER allowed, even if a credential is

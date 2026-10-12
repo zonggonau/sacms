@@ -101,7 +101,7 @@ export function MediaLibraryView({
   const [storageLimit, setStorageLimit] = useState<number>(0)
   const [currentStorage, setCurrentStorage] = useState<number>(0)
   const [isLimitReached, setIsLimitReached] = useState<boolean>(false)
-  const [storageProvider, setStorageProvider] = useState<string>("Cloudflare R2 (Shared)")
+  const [storageProvider, setStorageProvider] = useState<string>("Storage bersama SaCMS")
   const [isDedicatedStorage, setIsDedicatedStorage] = useState<boolean>(false)
 
   // Edit Metadata State

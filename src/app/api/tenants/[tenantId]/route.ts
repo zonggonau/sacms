@@ -52,7 +52,7 @@ export async function DELETE(
       }, { status: 403 })
     }
 
-    // 1. Delete physical assets from storage (R2 or Local)
+    // 1. Delete physical assets from storage (MinIO bucket or local disk)
     if (tenantSlug) {
       await deleteTenantStorage({ id: tenant.id, slug: tenantSlug })
     }

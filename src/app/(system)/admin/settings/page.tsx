@@ -133,11 +133,6 @@ export default function AdminSettingsPage() {
     allowedFileExtensions: ".jpg, .jpeg, .png, .webp, .svg, .pdf, .mp4",
     autoWebpConvert: "true",
     autoGenerateThumbnails: "true",
-    r2AccountId: "",
-    r2AccessKeyId: "",
-    r2SecretAccessKey: "",
-    r2BucketName: "",
-    r2PublicUrl: "",
 
     // Retention
     auditLogRetentionDays: "90",
@@ -899,73 +894,27 @@ export default function AdminSettingsPage() {
             <TabsContent value="storage_infra" className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* Cloudflare R2 */}
+                {/* MinIO — the only object storage backend SaCMS Cloud uses.
+                    No Cloudflare R2 / external provider: every workspace
+                    gets its own auto-provisioned bucket on this same MinIO,
+                    configured once via S3_* environment variables (see
+                    docker-compose.yml's `minio` service) — not from here. */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
                       <ImageIcon className="h-4 w-4 text-primary" />
-                      Penyimpanan Berkas (Cloudflare R2 / AWS S3)
+                      Penyimpanan Berkas (MinIO)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kredensial S3 Object Storage untuk media upload.
+                      Setiap workspace otomatis mendapat bucket MinIO-nya sendiri. Dikonfigurasi lewat environment server (<code className="font-mono">S3_ENDPOINT</code> dkk.), bukan di sini.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="p-5 space-y-3.5">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cloudflare R2 Account ID</Label>
-                      <Input 
-                        value={settings.r2AccountId}
-                        onChange={e => setSettings(prev => ({ ...prev, r2AccountId: e.target.value }))}
-                        placeholder="contoh: c8b9e6f••••••••••••"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground">Access Key ID</Label>
-                        <Input 
-                          value={settings.r2AccessKeyId}
-                          onChange={e => setSettings(prev => ({ ...prev, r2AccessKeyId: e.target.value }))}
-                          placeholder="AKIA••••••••"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold text-muted-foreground">Secret Access Key</Label>
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('r2Secret', 'r2SecretAccessKey')}>
-                            {showMasks.r2Secret ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                            {showMasks.r2Secret ? "Sembunyikan" : "Tampilkan"}
-                          </Button>
-                        </div>
-                        <Input
-                          type={showMasks.r2Secret ? "text" : "password"}
-                          value={settings.r2SecretAccessKey}
-                          onChange={e => setSettings(prev => ({ ...prev, r2SecretAccessKey: e.target.value }))}
-                          placeholder="••••••••••••"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground">Bucket Name</Label>
-                        <Input 
-                          value={settings.r2BucketName}
-                          onChange={e => setSettings(prev => ({ ...prev, r2BucketName: e.target.value }))}
-                          placeholder="sacms-media"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground">Public CDN URL</Label>
-                        <Input 
-                          value={settings.r2PublicUrl}
-                          onChange={e => setSettings(prev => ({ ...prev, r2PublicUrl: e.target.value }))}
-                          placeholder="https://media.sacms.cloud"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
+                      <span className="text-xs font-bold text-foreground">Status MinIO</span>
+                      <span className={envStatus?.hasMinioEndpoint ? "text-emerald-500 font-bold text-xs" : "text-amber-500 font-bold text-xs"}>
+                        {envStatus?.hasMinioEndpoint ? "● Terhubung" : "● Belum Dikonfigurasi"}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -1396,7 +1345,7 @@ export default function AdminSettingsPage() {
                     <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 text-xs text-muted-foreground flex items-start gap-2.5">
                       <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                       <div className="leading-relaxed">
-                        <strong className="text-foreground font-semibold">Arsitektur Hybrid .env vs Database UI:</strong> Variabel bootstrap di atas didefinisikan pada file <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded">.env</code> server saat container booting. Semua parameter lain (Vercel AI Gateway, Email Resend/SMTP, Payment Midtrans, Storage R2/S3) tersimpan dinamis di database & cache Redis pada UI ini tanpa perlu restart server.
+                        <strong className="text-foreground font-semibold">Arsitektur Hybrid .env vs Database UI:</strong> Variabel bootstrap di atas (termasuk Storage MinIO) didefinisikan pada file <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded">.env</code> server saat container booting. Parameter lain (Vercel AI Gateway, Email Resend/SMTP, Payment Midtrans) tersimpan dinamis di database & cache Redis pada UI ini tanpa perlu restart server.
                       </div>
                     </div>
 

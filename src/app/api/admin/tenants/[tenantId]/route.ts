@@ -65,7 +65,7 @@ export const DELETE = withAdminAuth(async (_request, context) => {
       return apiError("validation", { message: "Cannot delete global tenant" })
     }
 
-    // 1. Delete physical assets from storage (R2 or Local)
+    // 1. Delete physical assets from storage (MinIO bucket or local disk)
     if (tenant.slug) {
       await deleteTenantStorage({ id: tenant.id, slug: tenant.slug })
     }

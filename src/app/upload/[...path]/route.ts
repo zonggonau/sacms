@@ -30,11 +30,11 @@ import path from "path"
  * fixing new AND previously-uploaded (already broken) files alike — no
  * database migration needed, since their stored `url` already points here.
  *
- * Deliberately unauthenticated: local disk is the default storage tier for
- * shared-plan workspaces and is meant to behave like a public bucket (the
- * same visibility a real R2 bucket with a public URL would have) — not
- * like the tenant-membership-gated `/api/media/serve` fallback, which
- * exists for a different case (R2 configured without a public URL).
+ * Deliberately unauthenticated: local disk is the fallback storage tier when
+ * MinIO isn't configured at all, and is meant to behave like a public bucket
+ * (the same visibility a real MinIO bucket with a public URL would have) —
+ * not like the tenant-membership-gated `/api/media/serve` fallback, which
+ * exists for a different case (MinIO configured without a public URL).
  */
 export async function GET(_req: NextRequest, context: { params: Promise<{ path: string[] }> }) {
   const { path: segments } = await context.params

@@ -49,12 +49,12 @@ export const GET = withAdminAuth(async () => {
       }
     }
 
-    // 3. Cloudflare R2 / S3 Object Storage
-    const hasR2 = !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY)
+    // 3. MinIO object storage
+    const hasMinio = !!(process.env.S3_ENDPOINT && process.env.S3_ACCESS_KEY_ID && process.env.S3_SECRET_ACCESS_KEY)
     healthChecks.storage = {
-      status: hasR2 ? "healthy" : "degraded",
+      status: hasMinio ? "healthy" : "degraded",
       latencyMs: 0,
-      message: hasR2 ? "Cloudflare R2 storage configured" : "Local/Mock storage mode"
+      message: hasMinio ? "MinIO object storage configured" : "Local disk storage mode"
     }
 
 

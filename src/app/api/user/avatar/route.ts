@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { isR2Configured, uploadToR2, uploadToLocal, deleteFromStorage } from "@/lib/r2"
+import { isObjectStorageConfigured, uploadToSharedStorage, uploadToLocal, deleteFromStorage } from "@/lib/r2"
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_MIME_TYPES = [
@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
     const filename = `avatar_${session.user.id}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
 
     let uploadResult
-    if (await isR2Configured()) {
-      uploadResult = await uploadToR2("avatars", buffer, filename, file.type)
+    if (isObjectStorageConfigured()) {
+      uploadResult = await uploadToSharedStorage("avatars", buffer, filename, file.type)
     } else {
       uploadResult = await uploadToLocal("avatars", buffer, filename, file.type)
     }

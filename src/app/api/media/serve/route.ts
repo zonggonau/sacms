@@ -58,12 +58,12 @@ export async function GET(request: NextRequest) {
       throw e
     }
 
-    // 4. Read the object wherever it actually lives — local disk, or R2/S3
-    //    if this tenant/instance is storage-configured. Uploads that went
-    //    to R2 without a public bucket URL configured are referenced by
-    //    this exact route (see buildUrl() in lib/r2.ts), so it must be able
-    //    to fetch from R2 too, not just local disk.
-    const stored = await readFromStorage(key)
+    // 4. Read the object wherever it actually lives — local disk, or this
+    //    workspace's own MinIO bucket. Uploads that went to object storage
+    //    without a public bucket URL configured are referenced by this
+    //    exact route (see buildUrl() in lib/r2.ts), so it must be able to
+    //    fetch from MinIO too, not just local disk.
+    const stored = await readFromStorage(key, tenant.id)
     if (!stored) {
       return NextResponse.json({ error: "File not found" }, { status: 404 })
     }

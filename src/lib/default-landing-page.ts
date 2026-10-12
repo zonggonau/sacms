@@ -34,8 +34,8 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
     },
     {
       "icon": "Cloud",
-      "title": "Cloudflare R2 Media",
-      "description": "Penyimpanan aset digital terdistribusi CDN tanpa membebani database utama. Dilengkapi auto-thumbnail generation.",
+      "title": "MinIO Media Storage",
+      "description": "Penyimpanan aset digital object storage mandiri tanpa membebani database utama. Dilengkapi auto-thumbnail generation.",
       "color": "purple"
     },
     {
@@ -109,7 +109,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
     {
       "icon": "Database",
       "name": "Penyimpanan Ekstra",
-      "description": "50GB tambahan penyimpanan Cloudflare R2 untuk aset digital berat.",
+      "description": "50GB tambahan penyimpanan MinIO untuk aset digital berat.",
       "price": 29000,
       "unit": "bulan"
     },
@@ -139,7 +139,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
         "Unlimited Content Schemas & Tipe Data",
         "500 Entri Konten Dinamis",
         "1 Anggota Tim",
-        "100 MB Cloudflare R2 Storage",
+        "100 MB Object Storage",
         "1.000 API Calls / bulan",
         "50 Bonus AI Credits Awal (Top-Up jika habis)",
         "Community Support"

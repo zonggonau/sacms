@@ -44,7 +44,7 @@ export function AboutSection({ about }: { about: AboutData | null }) {
             { label: "Didirikan", value: about?.founded || "2026", icon: "🚀" },
             { label: "Arsitektur", value: "Multi-Tenant", icon: "🏢" },
             { label: "Protokol API", value: "REST + GraphQL", icon: "⚡" },
-            { label: "Penyimpanan", value: "Cloudflare R2 / S3", icon: "☁️" },
+            { label: "Penyimpanan", value: "MinIO Self-Hosted", icon: "☁️" },
           ].map((item, i) => (
             <div 
               key={item.label} 

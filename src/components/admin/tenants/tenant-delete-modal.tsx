@@ -135,7 +135,7 @@ export function TenantDeleteModal({
           <div className="bg-destructive/10 p-3 rounded-xl text-destructive text-xs font-medium border border-destructive/20 flex items-start gap-2">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
-              Perhatian: Menghapus workspace ini akan menghapus database, entri konten, berkas aset di storage Cloudflare R2, dan mencabut seluruh akses anggota tim.
+              Perhatian: Menghapus workspace ini akan menghapus database, entri konten, berkas aset di storage MinIO, dan mencabut seluruh akses anggota tim.
             </span>
           </div>
 

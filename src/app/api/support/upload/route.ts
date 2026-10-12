@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { isR2Configured, uploadToR2, uploadToLocal } from "@/lib/r2"
+import { isObjectStorageConfigured, uploadToSharedStorage, uploadToLocal } from "@/lib/r2"
 import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
 
 export const dynamic = "force-dynamic"
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     const tenantSlug = "global"
 
     let fileUrl = ""
-    if (await isR2Configured()) {
-      const r2Res = await uploadToR2(tenantSlug, buffer, filename, mimeType)
-      fileUrl = r2Res.url
+    if (isObjectStorageConfigured()) {
+      const uploadRes = await uploadToSharedStorage(tenantSlug, buffer, filename, mimeType)
+      fileUrl = uploadRes.url
     } else {
       const localRes = await uploadToLocal(tenantSlug, buffer, filename, mimeType)
       fileUrl = localRes.url

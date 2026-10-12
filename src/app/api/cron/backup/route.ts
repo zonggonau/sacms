@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { promises as fs } from "fs"
 import path from "path"
 import { db } from "@/lib/database"
-import { uploadToR2, isR2Configured } from "@/lib/r2"
+import { uploadToSharedStorage, isObjectStorageConfigured } from "@/lib/r2"
 import { authorizeCronRequest } from "@/lib/cron-auth"
 
 /**
  * GET /api/cron/backup — JSON snapshot of the platform's structural data.
  *
- * Writes to R2 when configured, otherwise to the private BACKUP_DIR volume
- * (docker-compose mounts ./db/backups → /backups). It NEVER writes under
- * public/ — that path is served statically, and a DB dump there is a public
- * download.
+ * Writes to MinIO when configured, otherwise to the private BACKUP_DIR
+ * volume (docker-compose mounts ./db/backups → /backups). It NEVER writes
+ * under public/ — that path is served statically, and a DB dump there is a
+ * public download.
  *
  * The dump excludes credential columns (User.password, Member.passwordHash,
  * Tenant.databaseUrl / storageConfig, API tokens) — a structural backup, not a
@@ -49,15 +49,15 @@ export async function GET(request: NextRequest) {
     const fileName = `db-dump-${new Date().toISOString().replace(/[:.]/g, "-")}.json`
 
     let location: string
-    if (await isR2Configured()) {
-      const uploadResult = await uploadToR2("backups", backupBuffer, fileName, "application/json")
+    if (isObjectStorageConfigured()) {
+      const uploadResult = await uploadToSharedStorage("backups", backupBuffer, fileName, "application/json")
       location = uploadResult.url
     } else {
       await fs.mkdir(BACKUP_DIR, { recursive: true })
       const target = path.join(BACKUP_DIR, fileName)
       await fs.writeFile(target, backupBuffer)
       location = target
-      console.warn(`[Backup] R2 not configured — wrote to ${BACKUP_DIR} (private volume).`)
+      console.warn(`[Backup] MinIO not configured — wrote to ${BACKUP_DIR} (private volume).`)
     }
 
     return NextResponse.json({

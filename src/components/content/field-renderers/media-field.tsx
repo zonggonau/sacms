@@ -116,7 +116,7 @@ export function MediaField({ value, onChange, type = "image", label, required, e
               Pilih atau Unggah {type === "image" ? "Gambar" : "File"}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              Pilih dari Cloudflare R2 Media Library atau unggah file baru
+              Pilih dari Media Library atau unggah file baru
             </span>
           </div>
         </button>

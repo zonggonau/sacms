@@ -158,7 +158,7 @@ export function WorkspaceCreationDialog({
           "Unlimited Content Schemas",
           "500 Entri Konten",
           "1 Anggota Tim",
-          "100 MB Cloudflare R2 Storage",
+          "100 MB Object Storage",
           "1.000 API Calls / bulan"
         ]
       }

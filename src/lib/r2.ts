@@ -1,10 +1,14 @@
 import {
   S3Client,
   PutObjectCommand,
-  DeleteObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  HeadBucketCommand,
+  CreateBucketCommand,
+  PutBucketPolicyCommand,
+  DeleteBucketCommand,
 } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import sharp from "sharp"
@@ -13,8 +17,6 @@ import path from "path"
 import { db } from "./database"
 import { createS3Client } from "./s3-client"
 
-import { getResolvedStorageConfig } from "./settings"
-
 export interface StorageConfig {
   endpoint: string
   accessKey: string
@@ -22,6 +24,12 @@ export interface StorageConfig {
   bucket: string
   publicUrl: string
 }
+
+// ─── Dedicated enterprise storage ────────────────────────────────────────
+// A tenant's own S3-compatible bucket, provisioned by SaCMS's own ops team
+// as part of the paid "Database & Storage" managed infra add-on (see
+// lib/billing/managed-infra.ts) — not something a tenant configures from
+// outside. Every other workspace uses the platform's own MinIO below.
 
 async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig | null> {
   try {
@@ -41,55 +49,17 @@ async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig
   return null
 }
 
-async function getS3Client(tenantSlug?: string): Promise<{ s3: S3Client, bucket: string, publicUrl: string, isCustom: boolean }> {
-  if (tenantSlug) {
-    const customConfig = await getTenantStorageConfig(tenantSlug)
-    if (customConfig) {
-      const customS3 = createS3Client(customConfig.endpoint, customConfig.accessKey, customConfig.secretKey)
-      return { 
-        s3: customS3, 
-        bucket: customConfig.bucket, 
-        publicUrl: customConfig.publicUrl || "", 
-        isCustom: true 
-      }
-    }
-  }
-  
-  const storageConfig = await getResolvedStorageConfig()
-  const accountId = storageConfig.accountId || process.env.R2_ACCOUNT_ID || ""
-  const endpoint = accountId
-    ? `https://${accountId}.r2.cloudflarestorage.com`
-    : "http://localhost:9000"
-
-  const globalS3 = createS3Client(
-    endpoint,
-    storageConfig.accessKeyId || process.env.R2_ACCESS_KEY_ID || "",
-    storageConfig.secretAccessKey || process.env.R2_SECRET_ACCESS_KEY || "",
-  )
-
-  return { 
-    s3: globalS3, 
-    bucket: storageConfig.bucketName || process.env.R2_BUCKET_NAME || "sacms-media", 
-    publicUrl: storageConfig.publicUrl || process.env.R2_PUBLIC_URL || "", 
-    isCustom: false 
-  }
-}
-
-/**
- * Check if global R2 is configured.
- */
-export async function isR2Configured(): Promise<boolean> {
-  const cfg = await getResolvedStorageConfig()
-  return !!(cfg.accountId && cfg.accessKeyId && cfg.secretAccessKey)
-}
-
 /**
  * Where a workspace's media goes:
- *   - its own S3 (`tenant.storageConfig`, the managed BYOS service) — keys `upload/<slug>/...`;
- *   - otherwise the platform object storage (MinIO on the SaCMS VPS, `S3_*` env) — one folder
- *     per workspace, keys `<tenantId>/<ext>/<file>`;
- *   - otherwise local disk (development) — keys `upload/<slug>/...` under `public/`.
- * Keys starting with `upload/` are the legacy/local layout; any other key is the platform bucket.
+ *   - its own dedicated bucket (`tenant.storageConfig`, the managed enterprise
+ *     infra add-on) — keys `<tenantId>/<ext>/...`;
+ *   - otherwise its own auto-provisioned bucket on the platform's MinIO
+ *     (`sacms-tenant-<tenantId>`, see getTenantObjectStorage) — same key
+ *     layout;
+ *   - otherwise local disk (development, no S3_* configured) — keys
+ *     `upload/<slug>/...` under `public/`.
+ * Keys starting with `upload/` are the legacy/local layout; any other key is
+ * an object-storage key, `<tenantId>/...`.
  */
 export async function isTenantStorageConfigured(tenantSlug?: string): Promise<boolean> {
   if (!tenantSlug) return false
@@ -97,13 +67,21 @@ export async function isTenantStorageConfigured(tenantSlug?: string): Promise<bo
   return !!customConfig
 }
 
+// ─── Platform object storage (MinIO) ─────────────────────────────────────
+// The only storage backend SaCMS Cloud uses day to day — no Cloudflare R2,
+// no externally-configured provider. This is the `minio` service in
+// docker-compose.yml, reached through the S3-compatible API via S3_* env
+// vars (see .env.example).
+
 export interface PlatformStorage {
   s3: S3Client
   bucket: string
   publicUrl: string
 }
 
-/** The shared object storage for workspace media, or null when `S3_ENDPOINT` is not set. */
+/** The shared object storage used for platform-wide, non-tenant-scoped files
+ * (avatars, DB backups, support attachments) — or null when `S3_ENDPOINT`
+ * isn't set. */
 export function getPlatformStorage(): PlatformStorage | null {
   const endpoint = process.env.S3_ENDPOINT
   const accessKeyId = process.env.S3_ACCESS_KEY_ID
@@ -116,12 +94,98 @@ export function getPlatformStorage(): PlatformStorage | null {
   }
 }
 
-/** Keys in the platform bucket start with the workspace id; legacy and local keys with `upload/`. */
+/** Whether MinIO is configured at all — the gate every direct `uploadToSharedStorage` caller checks before falling back to local disk. */
+export function isObjectStorageConfigured(): boolean {
+  return !!getPlatformStorage()
+}
+
+/** Deterministic, stable bucket name for a workspace's own MinIO bucket —
+ * derived from the immutable tenant id (not the editable slug), so renaming
+ * a workspace never orphans its bucket. Bucket names must be lowercase;
+ * cuid() already only ever produces lowercase alphanumerics. */
+export function getTenantBucketName(tenantId: string): string {
+  return `sacms-tenant-${tenantId}`.toLowerCase()
+}
+
+/** Creates the bucket (and a public-read policy, matching the shared
+ * bucket's `mc anonymous set download`) if it doesn't exist yet. Idempotent
+ * — safe to call on every upload. */
+async function ensureBucketExists(s3: S3Client, bucket: string): Promise<void> {
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }))
+    return
+  } catch {
+    // Doesn't exist (or HEAD isn't permitted) — try to create it below.
+  }
+
+  try {
+    await s3.send(new CreateBucketCommand({ Bucket: bucket }))
+  } catch (err: any) {
+    // Created concurrently by another request, or already exists — fine.
+    if (err?.name !== "BucketAlreadyOwnedByYou" && err?.name !== "BucketAlreadyExists") {
+      throw err
+    }
+  }
+
+  try {
+    await s3.send(
+      new PutBucketPolicyCommand({
+        Bucket: bucket,
+        Policy: JSON.stringify({
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Effect: "Allow",
+              Principal: { AWS: ["*"] },
+              Action: ["s3:GetObject"],
+              Resource: [`arn:aws:s3:::${bucket}/*`],
+            },
+          ],
+        }),
+      })
+    )
+  } catch (err) {
+    console.warn(`[Storage] Failed to set public-read policy on bucket ${bucket}:`, err)
+  }
+}
+
+/** A workspace's own MinIO bucket, auto-created on first use. Returns null
+ * only when MinIO itself isn't configured at all. */
+export async function getTenantObjectStorage(tenantId: string): Promise<{ s3: S3Client; bucket: string } | null> {
+  const platform = getPlatformStorage()
+  if (!platform) return null
+  const bucket = getTenantBucketName(tenantId)
+  await ensureBucketExists(platform.s3, bucket)
+  return { s3: platform.s3, bucket }
+}
+
+/** Resolves the shared bucket for a platform-wide, non-tenant upload
+ * (avatars, backups, support attachments), or a tenant's dedicated
+ * enterprise bucket when it has one configured. */
+async function getSharedS3Client(tenantSlug?: string): Promise<{ s3: S3Client; bucket: string; publicUrl: string; isCustom: boolean }> {
+  if (tenantSlug) {
+    const customConfig = await getTenantStorageConfig(tenantSlug)
+    if (customConfig) {
+      const customS3 = createS3Client(customConfig.endpoint, customConfig.accessKey, customConfig.secretKey)
+      return { s3: customS3, bucket: customConfig.bucket, publicUrl: customConfig.publicUrl || "", isCustom: true }
+    }
+  }
+
+  const platform = getPlatformStorage()
+  if (!platform) {
+    throw new Error(
+      "Object storage (MinIO) belum dikonfigurasi — set S3_ENDPOINT, S3_ACCESS_KEY_ID, dan S3_SECRET_ACCESS_KEY di environment server."
+    )
+  }
+  return { s3: platform.s3, bucket: platform.bucket, publicUrl: platform.publicUrl, isCustom: false }
+}
+
+/** Keys outside the platform bucket layout start with `upload/` (legacy/local). */
 export function isPlatformStorageKey(key: string): boolean {
   return !key.startsWith("upload/")
 }
 
-/** Platform bucket key for a workspace file: `<tenantId>/<ext>/<name>_<timestamp>.<ext>`. */
+/** Platform-bucket key for a workspace file: `<tenantId>/<ext>/<name>_<timestamp>.<ext>`. */
 export function generateTenantMediaKey(tenantId: string, filename: string): string {
   return generateStorageKey(tenantId, filename).replace(/^upload\//, "")
 }
@@ -146,7 +210,7 @@ function generateStorageKey(tenantSlug: string, filename: string): string {
 }
 
 /**
- * Extract tenant slug from storage key
+ * Extract tenant slug from a legacy/local storage key.
  */
 function extractTenantSlug(key: string): string | null {
   const parts = key.split("/")
@@ -154,6 +218,14 @@ function extractTenantSlug(key: string): string | null {
     return parts[1]
   }
   return null
+}
+
+/**
+ * Extract the tenant id from a platform-bucket key (`<tenantId>/<ext>/...`).
+ */
+function extractTenantIdFromPlatformKey(key: string): string | null {
+  const parts = key.split("/")
+  return parts[0] || null
 }
 
 /**
@@ -177,21 +249,26 @@ export interface UploadResult {
 }
 
 /**
- * Upload a file to R2 with optional image resizing.
+ * Upload a file to the shared platform bucket (or a tenant's dedicated
+ * enterprise bucket when `tenantSlug` matches one), with optional image
+ * resizing. Used for platform-wide, non-tenant-scoped files — avatars, DB
+ * backups, support attachments — never for the workspace media library
+ * (see uploadTenantMedia, which gets each workspace its own MinIO bucket).
  */
-export async function uploadToR2(
+export async function uploadToSharedStorage(
   tenantSlug: string,
   buffer: Buffer,
   filename: string,
   mimeType: string
 ): Promise<UploadResult> {
-  const { s3, bucket, publicUrl, isCustom } = await getS3Client(tenantSlug)
+  const { s3, bucket, publicUrl, isCustom } = await getSharedS3Client(tenantSlug)
   return putWithVariants(s3, bucket, publicUrl, isCustom, generateStorageKey(tenantSlug, filename), buffer, mimeType)
 }
 
 /**
- * Upload workspace media: to the workspace's own S3 when it has one, else to its folder in the
- * platform object storage, else to local disk.
+ * Upload workspace media: to the workspace's own dedicated bucket when it
+ * has one (enterprise managed infra), else to its own auto-provisioned
+ * bucket on the platform's MinIO, else to local disk (dev only).
  */
 export async function uploadTenantMedia(
   tenant: { id: string; slug: string },
@@ -199,10 +276,11 @@ export async function uploadTenantMedia(
   filename: string,
   mimeType: string,
 ): Promise<UploadResult> {
-  if (await isTenantStorageConfigured(tenant.slug)) return uploadToR2(tenant.slug, buffer, filename, mimeType)
-  const platform = getPlatformStorage()
-  if (platform) {
-    return putWithVariants(platform.s3, platform.bucket, platform.publicUrl, false, generateTenantMediaKey(tenant.id, filename), buffer, mimeType)
+  if (await isTenantStorageConfigured(tenant.slug)) return uploadToSharedStorage(tenant.slug, buffer, filename, mimeType)
+
+  const tenantStorage = await getTenantObjectStorage(tenant.id)
+  if (tenantStorage) {
+    return putWithVariants(tenantStorage.s3, tenantStorage.bucket, "", false, generateTenantMediaKey(tenant.id, filename), buffer, mimeType)
   }
   return uploadToLocal(tenant.slug, buffer, filename, mimeType)
 }
@@ -302,50 +380,102 @@ export async function uploadToLocal(
 }
 
 /**
- * Delete a single file from storage.
+ * Delete a single file from storage. `tenantId`, when known, lets this check
+ * the workspace's own MinIO bucket; callers that don't have it (or keys
+ * uploaded before per-workspace buckets existed) fall back to the one
+ * shared platform bucket.
  */
-async function resolveKeyLocation(storageKey: string): Promise<{ s3: S3Client; bucket: string; isCustom: boolean }> {
-  const platform = isPlatformStorageKey(storageKey) ? getPlatformStorage() : null
-  if (platform) return { s3: platform.s3, bucket: platform.bucket, isCustom: true }
-  const tenantSlug = extractTenantSlug(storageKey)
-  return getS3Client(tenantSlug || undefined)
+export async function deleteFromStorage(storageKey: string, tenantId?: string): Promise<void> {
+  if (!isPlatformStorageKey(storageKey)) {
+    const tenantSlug = extractTenantSlug(storageKey)
+    const { s3, bucket, isCustom } = await getSharedS3Client(tenantSlug || undefined)
+    if (isCustom) {
+      await deleteKeyAndVariants(s3, bucket, storageKey)
+    } else {
+      deleteLocalKeyAndVariants(storageKey)
+    }
+    return
+  }
+
+  // Dedicated enterprise bucket, if this workspace has one — takes priority
+  // over its MinIO bucket, same as uploadTenantMedia's own resolution order.
+  const keyTenantId = tenantId || extractTenantIdFromPlatformKey(storageKey)
+  const dedicated = keyTenantId ? await getTenantStorageConfig(keyTenantId).catch(() => null) : null
+  if (dedicated) {
+    const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
+    await deleteKeyAndVariants(s3, dedicated.bucket, storageKey)
+    return
+  }
+
+  // Best-effort delete from both the workspace's own MinIO bucket and the
+  // legacy shared bucket — harmless no-op wherever the key doesn't exist.
+  const attempts: Promise<void>[] = []
+  if (keyTenantId) {
+    const tenantStorage = await getTenantObjectStorage(keyTenantId).catch(() => null)
+    if (tenantStorage) attempts.push(deleteKeyAndVariants(tenantStorage.s3, tenantStorage.bucket, storageKey))
+  }
+  const platform = getPlatformStorage()
+  if (platform) attempts.push(deleteKeyAndVariants(platform.s3, platform.bucket, storageKey))
+  await Promise.all(attempts)
 }
 
-export async function deleteFromStorage(storageKey: string): Promise<void> {
-  const { s3, bucket, isCustom } = await resolveKeyLocation(storageKey)
+async function deleteKeyAndVariants(s3: S3Client, bucket: string, storageKey: string): Promise<void> {
+  const keys = [
+    storageKey,
+    storageKey.replace(/(\.[^.]+)$/, "_thumb$1"),
+    storageKey.replace(/(\.[^.]+)$/, "_medium$1"),
+  ]
+  await Promise.all(
+    keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {}))
+  )
+}
 
-  // Tenant-scoped op: only that tenant's own dedicated config counts (see
-  // isTenantStorageConfigured) — never fall back to platform-wide R2, or a
-  // shared-tier tenant's read/delete/presign would look in the wrong place
-  // the moment global R2 happens to be configured for something else.
-  if (isCustom) {
-    const keys = [
-      storageKey,
-      storageKey.replace(/(\.[^.]+)$/, "_thumb$1"),
-      storageKey.replace(/(\.[^.]+)$/, "_medium$1"),
-    ]
-    await Promise.all(
-      keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {}))
-    )
-  } else {
-    try {
-      const fullPath = path.join(process.cwd(), "public", storageKey)
-      if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
-      const thumbPath = path.join(process.cwd(), "public", storageKey.replace(/(\.[^.]+)$/, "_thumb$1"))
-      if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath)
-    } catch (e) {
-      console.error("Local delete failed:", e)
-    }
+function deleteLocalKeyAndVariants(storageKey: string): void {
+  try {
+    const fullPath = path.join(process.cwd(), "public", storageKey)
+    if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
+    const thumbPath = path.join(process.cwd(), "public", storageKey.replace(/(\.[^.]+)$/, "_thumb$1"))
+    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath)
+  } catch (e) {
+    console.error("Local delete failed:", e)
   }
 }
 
 /**
- * Delete all files associated with a tenant (full directory cleanup).
+ * Delete all files associated with a tenant: its dedicated bucket (if any),
+ * its own MinIO bucket, and anything left over in the legacy shared bucket
+ * or local disk from before per-workspace buckets existed.
  */
 export async function deleteTenantStorage(tenant: { id: string; slug: string }): Promise<void> {
+  const dedicated = await getTenantStorageConfig(tenant.slug)
+  if (dedicated) {
+    const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
+    await deleteS3Prefix(s3, dedicated.bucket, `${tenant.id}/`, tenant.slug)
+  }
+
   const platform = getPlatformStorage()
-  if (platform) await deleteS3Prefix(platform.s3, platform.bucket, `${tenant.id}/`, tenant.slug)
+  if (platform) {
+    await deleteAndRemoveBucket(platform.s3, getTenantBucketName(tenant.id), tenant.slug)
+    // Pre-existing media uploaded before per-workspace buckets existed.
+    await deleteS3Prefix(platform.s3, platform.bucket, `${tenant.id}/`, tenant.slug)
+  }
+
   await deleteLegacyTenantStorage(tenant.slug)
+}
+
+/** Empties and removes a workspace's own MinIO bucket entirely. */
+async function deleteAndRemoveBucket(s3: S3Client, bucket: string, label: string): Promise<void> {
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }))
+  } catch {
+    return // Bucket never existed — nothing to clean up.
+  }
+  await deleteS3Prefix(s3, bucket, "", label)
+  try {
+    await s3.send(new DeleteBucketCommand({ Bucket: bucket }))
+  } catch (e) {
+    console.error(`[Storage] Failed to delete bucket ${bucket} for tenant ${label}:`, e)
+  }
 }
 
 async function deleteS3Prefix(s3: S3Client, bucket: string, prefix: string, label: string): Promise<void> {
@@ -363,117 +493,96 @@ async function deleteS3Prefix(s3: S3Client, bucket: string, prefix: string, labe
       }
       continuationToken = list.NextContinuationToken
     } while (continuationToken)
-    if (totalDeleted > 0) console.log(`[Storage] Deleted ${totalDeleted} objects for tenant: ${label}`)
+    if (totalDeleted > 0) console.log(`[Storage] Deleted ${totalDeleted} objects from ${bucket} for tenant: ${label}`)
   } catch (e) {
-    console.error(`[Storage] S3 cleanup failed for tenant ${label}:`, e)
+    console.error(`[Storage] S3 cleanup failed for tenant ${label} (bucket ${bucket}):`, e)
   }
 }
 
 async function deleteLegacyTenantStorage(tenantSlug: string): Promise<void> {
   const prefix = `upload/${tenantSlug}/`
-  const { s3, bucket, isCustom } = await getS3Client(tenantSlug)
+  const dedicated = await getTenantStorageConfig(tenantSlug)
 
-  // Tenant-scoped op: only that tenant's own dedicated config counts (see
-  // isTenantStorageConfigured) — never fall back to platform-wide R2, or a
-  // shared-tier tenant's read/delete/presign would look in the wrong place
-  // the moment global R2 happens to be configured for something else.
-  if (isCustom) {
-    try {
-      let continuationToken: string | undefined = undefined
-      let totalDeleted = 0
+  if (dedicated) {
+    const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
+    await deleteS3Prefix(s3, dedicated.bucket, prefix, tenantSlug)
+    return
+  }
 
-      do {
-        const listCommand = new ListObjectsV2Command({
-          Bucket: bucket,
-          Prefix: prefix,
-          ContinuationToken: continuationToken,
-        })
-        const list = await s3.send(listCommand)
-
-        if (list.Contents && list.Contents.length > 0) {
-          const deleteCommand = new DeleteObjectsCommand({
-            Bucket: bucket,
-            Delete: {
-              Objects: list.Contents.map((obj) => ({ Key: obj.Key })),
-              Quiet: true,
-            },
-          })
-          await s3.send(deleteCommand)
-          totalDeleted += list.Contents.length
-        }
-
-        continuationToken = (list as any).NextContinuationToken
-      } while (continuationToken)
-
-      if (totalDeleted > 0) {
-        console.log(`[Storage] Deleted ${totalDeleted} objects for tenant: ${tenantSlug}`)
-      }
-    } catch (e) {
-      console.error(`[Storage] R2/S3 cleanup failed for tenant ${tenantSlug}:`, e)
+  try {
+    const tenantPath = path.join(process.cwd(), "public", "upload", tenantSlug)
+    if (fs.existsSync(tenantPath)) {
+      fs.rmSync(tenantPath, { recursive: true, force: true })
+      console.log(`[Storage] Deleted local directory for tenant: ${tenantSlug}`)
     }
-  } else {
-    try {
-      const tenantPath = path.join(process.cwd(), "public", "upload", tenantSlug)
-      if (fs.existsSync(tenantPath)) {
-        fs.rmSync(tenantPath, { recursive: true, force: true })
-        console.log(`[Storage] Deleted local directory for tenant: ${tenantSlug}`)
-      }
-    } catch (e) {
-      console.error(`[Storage] Local cleanup failed for tenant ${tenantSlug}:`, e)
-    }
+  } catch (e) {
+    console.error(`[Storage] Local cleanup failed for tenant ${tenantSlug}:`, e)
   }
 }
 
 /**
- * Read a stored object's bytes, regardless of whether it lives in R2/S3 or
- * on local disk — used by /api/media/serve, which is the URL every upload
- * falls back to whenever no public bucket URL is configured (see
- * buildUrl()). Without this, a file actually stored in R2 but referenced
- * via the local-only serve route would 404 forever: the object exists in
- * the bucket, but /api/media/serve used to only ever look on local disk.
+ * Read a stored object's bytes, regardless of where it lives — used by
+ * /api/media/serve, which is the URL every upload falls back to whenever no
+ * public bucket URL is configured (see buildUrl()). `tenantId` picks the
+ * workspace's own MinIO bucket first, falling back to the legacy shared
+ * bucket for media uploaded before per-workspace buckets existed.
  */
-export async function readFromStorage(storageKey: string): Promise<{ buffer: Buffer; contentType?: string } | null> {
-  const { s3, bucket, isCustom } = await resolveKeyLocation(storageKey)
+export async function readFromStorage(storageKey: string, tenantId?: string): Promise<{ buffer: Buffer; contentType?: string } | null> {
+  if (!isPlatformStorageKey(storageKey)) {
+    const tenantSlug = extractTenantSlug(storageKey)
+    const { s3, bucket, isCustom } = await getSharedS3Client(tenantSlug || undefined)
+    if (isCustom) return getObjectBuffer(s3, bucket, storageKey)
 
-  // Tenant-scoped op: only that tenant's own dedicated config counts (see
-  // isTenantStorageConfigured) — never fall back to platform-wide R2, or a
-  // shared-tier tenant's read/delete/presign would look in the wrong place
-  // the moment global R2 happens to be configured for something else.
-  if (isCustom) {
-    try {
-      const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: storageKey }))
-      if (!res.Body) return null
-      const buffer = Buffer.from(await (res.Body as any).transformToByteArray())
-      return { buffer, contentType: res.ContentType }
-    } catch {
-      return null
+    const fullPath = path.join(process.cwd(), "public", storageKey)
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return null
+    return { buffer: fs.readFileSync(fullPath) }
+  }
+
+  const keyTenantId = tenantId || extractTenantIdFromPlatformKey(storageKey)
+  const dedicated = keyTenantId ? await getTenantStorageConfig(keyTenantId).catch(() => null) : null
+  if (dedicated) {
+    const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
+    return getObjectBuffer(s3, dedicated.bucket, storageKey)
+  }
+
+  if (keyTenantId) {
+    const tenantStorage = await getTenantObjectStorage(keyTenantId).catch(() => null)
+    if (tenantStorage) {
+      const fromTenantBucket = await getObjectBuffer(tenantStorage.s3, tenantStorage.bucket, storageKey)
+      if (fromTenantBucket) return fromTenantBucket
     }
   }
 
-  const fullPath = path.join(process.cwd(), "public", storageKey)
-  if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) return null
-  return { buffer: fs.readFileSync(fullPath) }
+  const platform = getPlatformStorage()
+  if (!platform) return null
+  return getObjectBuffer(platform.s3, platform.bucket, storageKey)
+}
+
+async function getObjectBuffer(s3: S3Client, bucket: string, key: string): Promise<{ buffer: Buffer; contentType?: string } | null> {
+  try {
+    const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+    if (!res.Body) return null
+    const buffer = Buffer.from(await (res.Body as any).transformToByteArray())
+    return { buffer, contentType: res.ContentType }
+  } catch {
+    return null
+  }
 }
 
 /**
- * Generate a presigned URL for private R2 objects.
+ * Generate a presigned URL for a private object in a tenant's dedicated
+ * enterprise bucket (the only case with no public bucket URL at all).
  */
-export async function generatePresignedUrl(storageKey: string, expiresIn = 3600): Promise<string> {
-  const { s3, bucket, isCustom } = await resolveKeyLocation(storageKey)
-  
-  // Tenant-scoped op: only that tenant's own dedicated config counts (see
-  // isTenantStorageConfigured) — never fall back to platform-wide R2, or a
-  // shared-tier tenant's read/delete/presign would look in the wrong place
-  // the moment global R2 happens to be configured for something else.
-  if (isCustom) {
-    const command = new GetObjectCommand({
-      Bucket: bucket,
-      Key: storageKey,
-    })
+export async function generatePresignedUrl(storageKey: string, tenantId?: string, expiresIn = 3600): Promise<string> {
+  const keyTenantId = tenantId || (isPlatformStorageKey(storageKey) ? extractTenantIdFromPlatformKey(storageKey) : extractTenantSlug(storageKey))
+  const dedicated = keyTenantId ? await getTenantStorageConfig(keyTenantId).catch(() => null) : null
+
+  if (dedicated) {
+    const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
+    const command = new GetObjectCommand({ Bucket: dedicated.bucket, Key: storageKey })
     return getSignedUrl(s3 as any, command as any, { expiresIn })
   }
-  
-  // Fallback for local storage: internal proxy route
+
+  // Every other case serves through the internal proxy route instead.
   return `/api/media/serve?key=${storageKey}`
 }
-

@@ -305,7 +305,7 @@ export default function GlobalAdminDashboard() {
               <div className="flex items-center gap-3">
                 <div className={`w-3 h-3 rounded-full ${health?.storage.status === 'healthy' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
                 <div>
-                  <div className="text-xs font-bold text-foreground">Cloudflare R2 / S3</div>
+                  <div className="text-xs font-bold text-foreground">MinIO Object Storage</div>
                   <div className="text-[10px] text-muted-foreground">Object Media Storage</div>
                 </div>
               </div>

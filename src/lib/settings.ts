@@ -48,14 +48,6 @@ export interface PlatformSettings {
   midtransServerKey: string
   midtransClientKey: string
 
-  // Dynamic R2 / S3 Storage
-  r2AccountId: string
-  r2AccessKeyId: string
-  r2SecretAccessKey: string
-  r2BucketName: string
-  r2PublicUrl: string
-
-
   // System Retention
   auditLogRetentionDays: string
   apiLogRetentionDays: string
@@ -113,14 +105,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   midtransServerKey: "",
   midtransClientKey: "",
 
-  // Storage Defaults
-  r2AccountId: "",
-  r2AccessKeyId: "",
-  r2SecretAccessKey: "",
-  r2BucketName: "",
-  r2PublicUrl: "",
-
-
   // Retention
   auditLogRetentionDays: "90",
   apiLogRetentionDays: "14",
@@ -128,16 +112,11 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
 
 /**
  * Env vars that back a Platform Settings field. When a fresh deploy already
- * has real credentials in its server-side `.env` (e.g. R2_ACCOUNT_ID for
- * the "Penyimpanan Berkas (Cloudflare R2 / AWS S3)" section), the admin
- * used to see those fields blank in the Settings UI until someone hand-typed
- * the same values into the form — `getResolvedStorageConfig()` and friends
- * already fell back to these env vars at *call* time, but `getPlatformSettings()`
- * itself never did, so the UI looked unconfigured even while storage/payment/
- * AI calls were quietly working off the env var. Applying the same fallback
- * here means the admin sees (and can just confirm/Save) what's already
- * active, instead of re-entering it — a DB-stored value (once saved) always
- * wins over the env var.
+ * has real credentials in its server-side `.env`, the admin used to see
+ * those fields blank in the Settings UI until someone hand-typed the same
+ * values into the form — this fallback means the admin sees (and can just
+ * confirm/Save) what's already active, instead of re-entering it — a
+ * DB-stored value (once saved) always wins over the env var.
  */
 const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   siteUrl: "NEXT_PUBLIC_APP_URL",
@@ -154,11 +133,6 @@ const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   smtpFrom: "SMTP_FROM",
   midtransServerKey: "MIDTRANS_SERVER_KEY",
   midtransClientKey: "MIDTRANS_CLIENT_KEY",
-  r2AccountId: "R2_ACCOUNT_ID",
-  r2AccessKeyId: "R2_ACCESS_KEY_ID",
-  r2SecretAccessKey: "R2_SECRET_ACCESS_KEY",
-  r2BucketName: "R2_BUCKET_NAME",
-  r2PublicUrl: "R2_PUBLIC_URL",
 }
 
 function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
@@ -175,19 +149,6 @@ function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
   // Also check VERCEL_AI_API_KEY fallback for aiGatewayApiKey
   if (!out.aiGatewayApiKey && process.env.VERCEL_AI_API_KEY) {
     out.aiGatewayApiKey = process.env.VERCEL_AI_API_KEY
-  }
-  // Also check S3_* fallbacks for object storage
-  if (!out.r2AccessKeyId && process.env.S3_ACCESS_KEY_ID) {
-    out.r2AccessKeyId = process.env.S3_ACCESS_KEY_ID
-  }
-  if (!out.r2SecretAccessKey && process.env.S3_SECRET_ACCESS_KEY) {
-    out.r2SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY
-  }
-  if (!out.r2BucketName && process.env.S3_BUCKET) {
-    out.r2BucketName = process.env.S3_BUCKET
-  }
-  if (!out.r2PublicUrl && process.env.S3_PUBLIC_URL) {
-    out.r2PublicUrl = process.env.S3_PUBLIC_URL
   }
   return out
 }
@@ -315,14 +276,4 @@ export async function getResolvedMidtransConfig() {
   }
 }
 
-export async function getResolvedStorageConfig() {
-  const settings = await getPlatformSettings()
-  return {
-    accountId: settings.r2AccountId || process.env.R2_ACCOUNT_ID || "",
-    accessKeyId: settings.r2AccessKeyId || process.env.R2_ACCESS_KEY_ID || "",
-    secretAccessKey: settings.r2SecretAccessKey || process.env.R2_SECRET_ACCESS_KEY || "",
-    bucketName: settings.r2BucketName || process.env.R2_BUCKET_NAME || "",
-    publicUrl: settings.r2PublicUrl || process.env.R2_PUBLIC_URL || "",
-  }
-}
 
