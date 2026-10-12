@@ -82,6 +82,7 @@ const adminNavSections: NavSection[] = [
     label: "ENTERPRISE",
     items: [
       { title: "Enterprise Licenses", href: "/admin/enterprise/licenses", icon: Gem },
+      { title: "Infrastruktur", href: "/admin/infrastruktur", icon: Server },
     ],
   },
 ]
