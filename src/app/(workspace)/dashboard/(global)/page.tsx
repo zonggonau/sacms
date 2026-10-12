@@ -30,20 +30,45 @@ export default async function WorkspaceSelectionPage() {
     whereClause.members = { some: { userId: session.user.id } }
   }
 
-  const tenants = await db.tenant.findMany({
-    where: whereClause,
-    include: {
-      members: {
-        where: { userId: session.user.id },
-        select: { role: true }
+  const [tenants, globalTenant] = await Promise.all([
+    db.tenant.findMany({
+      where: whereClause,
+      include: {
+        members: {
+          where: { userId: session.user.id },
+          select: { role: true }
+        },
+        subscriptions: {
+          orderBy: { currentPeriodEnd: "desc" },
+          take: 1
+        }
       },
-      subscriptions: {
-        orderBy: { currentPeriodEnd: "desc" },
-        take: 1
+      orderBy: { createdAt: "desc" }
+    }),
+    // The SaCMS Global workspace itself — shown separately from the normal
+    // tenant list (never matched by `whereClause` above) so IT support staff
+    // who are members of it (or any super_admin) can still reach it from
+    // here, without it being deletable/manageable like a regular workspace.
+    db.tenant.findFirst({
+      where: {
+        // Matches the same id-or-slug fallback as SYSTEM_SLUGS above —
+        // globalId may be the real cuid, or just the "sacms-global" slug
+        // fallback when no setting is configured yet.
+        OR: [{ id: globalId }, { slug: globalId }, { slug: "sacms-global" }],
+        ...(isSuperAdmin ? {} : { members: { some: { userId: session.user.id } } })
+      },
+      include: {
+        members: {
+          where: { userId: session.user.id },
+          select: { role: true }
+        },
+        subscriptions: {
+          orderBy: { currentPeriodEnd: "desc" },
+          take: 1
+        }
       }
-    },
-    orderBy: { createdAt: "desc" }
-  })
+    })
+  ])
 
   let isGlobalEnterprise = await isEnterpriseTenant(globalId)
   if (!isGlobalEnterprise) {
@@ -61,7 +86,7 @@ export default async function WorkspaceSelectionPage() {
     redirect(`/dashboard/${tenants[0].slug || tenants[0].id}/cms`)
   }
 
-  const formattedTenants = await Promise.all(tenants.map(async (t) => {
+  const formatTenant = async (t: typeof tenants[number], isGlobalWorkspace = false) => {
     const sub = t.subscriptions[0]
     let daysRemaining: number | null = null
     let isExpired = false
@@ -92,9 +117,19 @@ export default async function WorkspaceSelectionPage() {
       isExpired,
       isEnterprise: enterprise,
       subscriptionStatus: sub?.status || null,
-      expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null
+      expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null,
+      isGlobalWorkspace,
     }
-  }))
+  }
+
+  const formattedTenants = await Promise.all(tenants.map((t) => formatTenant(t)))
+
+  // Surface SaCMS Global first in the list — never deletable/manageable like
+  // a regular workspace (see isGlobalWorkspace in WorkspaceManager), just a
+  // way in for whoever's allowed to see it.
+  if (globalTenant) {
+    formattedTenants.unshift(await formatTenant(globalTenant, true))
+  }
 
   // Fetch global dependencies for the creation dialog
   let dbTemplates: any[] = []

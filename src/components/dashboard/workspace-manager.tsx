@@ -57,6 +57,8 @@ interface Tenant {
   subscriptionStatus: string | null
   isExpired?: boolean
   isEnterprise?: boolean
+  /** The SaCMS Global workspace itself — no manage/delete menu, just a way in. */
+  isGlobalWorkspace?: boolean
 }
 
 interface WorkspaceManagerProps {
@@ -371,57 +373,64 @@ export function WorkspaceManager({
                         </div>
                       </div>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 text-muted-foreground hover:text-foreground">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl w-48">
-                          <DropdownMenuLabel className="text-xs">Kelola Workspace</DropdownMenuLabel>
-                          {isOwnerOrAdmin ? (
-                            <>
-                              <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}`}>
-                                  <Layers className="mr-2 h-3.5 w-3.5" /> Ringkasan Workspace
-                                </Link>
-                              </DropdownMenuItem>
+                      {!tenant.isGlobalWorkspace && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg shrink-0 text-muted-foreground hover:text-foreground">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-48">
+                            <DropdownMenuLabel className="text-xs">Kelola Workspace</DropdownMenuLabel>
+                            {isOwnerOrAdmin ? (
+                              <>
+                                <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                  <Link href={`/dashboard/${tenant.id}`}>
+                                    <Layers className="mr-2 h-3.5 w-3.5" /> Ringkasan Workspace
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                  <Link href={`/dashboard/${tenant.id}/cms`}>
+                                    <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                  <Link href={`/dashboard/${tenant.id}/settings`}>
+                                    <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                  <Link href={`/dashboard/${tenant.id}/subscriptions`}>
+                                    <Zap className="mr-2 h-3.5 w-3.5" /> Langganan & Paket
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg"
+                                  onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
+                                >
+                                  <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Workspace
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
                               <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
                                 <Link href={`/dashboard/${tenant.id}/cms`}>
                                   <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}/settings`}>
-                                  <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}/subscriptions`}>
-                                  <Zap className="mr-2 h-3.5 w-3.5" /> Langganan & Paket
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg"
-                                onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Workspace
-                              </DropdownMenuItem>
-                            </>
-                          ) : (
-                            <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                              <Link href={`/dashboard/${tenant.id}/cms`}>
-                                <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
 
                     {/* Meta Chips */}
                     <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {tenant.isGlobalWorkspace && (
+                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary border-primary/30 flex items-center gap-1">
+                          <Globe className="w-2.5 h-2.5" /> System
+                        </Badge>
+                      )}
                       {isProvisioning ? (
                         <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full text-blue-500 border-blue-200 bg-blue-50 dark:bg-blue-950/30">
                           <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" /> Setup
@@ -511,7 +520,14 @@ export function WorkspaceManager({
                             )}
                           </div>
                           <div>
-                            <p className="font-bold text-xs text-foreground line-clamp-1">{tenant.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-bold text-xs text-foreground line-clamp-1">{tenant.name}</p>
+                              {tenant.isGlobalWorkspace && (
+                                <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 rounded-full bg-primary/10 text-primary border-primary/30">
+                                  System
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-[11px] text-muted-foreground font-mono">{tenant.slug}.sacms.cloud</p>
                           </div>
                         </div>
@@ -559,43 +575,45 @@ export function WorkspaceManager({
                               {isTenantExpired ? "Langganan" : "Buka"} <ArrowRight className="ml-1.5 h-3 w-3" />
                             </Link>
                           </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl w-48">
-                              <DropdownMenuLabel className="text-xs">Kelola Workspace</DropdownMenuLabel>
-                              {isOwnerOrAdmin ? (
-                                <>
+                          {!tenant.isGlobalWorkspace && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                <DropdownMenuLabel className="text-xs">Kelola Workspace</DropdownMenuLabel>
+                                {isOwnerOrAdmin ? (
+                                  <>
+                                    <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                      <Link href={`/dashboard/${tenant.id}/settings`}>
+                                        <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
+                                      <Link href={`/dashboard/${tenant.id}/subscriptions`}>
+                                        <Zap className="mr-2 h-3.5 w-3.5" /> Langganan
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg"
+                                      onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
+                                    >
+                                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Workspace
+                                    </DropdownMenuItem>
+                                  </>
+                                ) : (
                                   <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                    <Link href={`/dashboard/${tenant.id}/settings`}>
-                                      <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
+                                    <Link href={`/dashboard/${tenant.id}/cms`}>
+                                      <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
                                     </Link>
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                    <Link href={`/dashboard/${tenant.id}/subscriptions`}>
-                                      <Zap className="mr-2 h-3.5 w-3.5" /> Langganan
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg"
-                                    onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
-                                  >
-                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Workspace
-                                  </DropdownMenuItem>
-                                </>
-                              ) : (
-                                <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                  <Link href={`/dashboard/${tenant.id}/cms`}>
-                                    <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
-                                  </Link>
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
