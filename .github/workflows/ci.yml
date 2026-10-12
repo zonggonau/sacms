@@ -121,6 +121,7 @@ jobs:
           command_timeout: 10m
           script: |
             mkdir -p /opt/sacms/db/backups
+            mkdir -p /opt/sacms/db/manual-migrations
             mkdir -p /opt/sacms/caddy_data
             mkdir -p /opt/sacms/caddy_config
             mkdir -p /opt/sacms/scripts
@@ -135,7 +136,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 10m
-          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js,docker/cron/crontab"
+          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js,docker/cron/crontab,db/manual-migrations/*.sql"
           target: "/opt/sacms"
 
       - name: Execute Zero-Downtime Deployment & DB Migration
