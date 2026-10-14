@@ -21,9 +21,17 @@ import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
 import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
-import { hashMemberPassword } from "@/lib/member-auth"
 import { safeFetch } from "@/lib/safe-url"
 import { rateLimit, getTenantRateLimit } from "@/lib/rate-limit"
+import {
+  createContentEntry,
+  updateContentEntry,
+  deleteContentEntry,
+  contentRevalidatePaths,
+  type EntryWriteContext,
+  type ContentActor,
+} from "@/lib/content/entry-service"
+import { revalidatePath } from "next/cache"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -147,6 +155,101 @@ export function permissionDenied(scope: Scope) {
       text: `❌ Forbidden: this API token does not have the "${scope}" permission. ${howToGrant}`
     }],
     isError: true,
+  }
+}
+
+// ─── Webhook response shaping ───────────────────────────────────────────────
+// The signing secret must never round-trip back out of any tool — a reader
+// (or a trivial update that doesn't even touch the secret) could otherwise
+// recover it and forge validly-signed requests to the tenant's receiving
+// endpoint. `hasSecret` tells the caller whether one is configured without
+// exposing its value, matching how API tokens are handled elsewhere in this
+// file (shown once at creation/rotation, never again on plain reads).
+function redactWebhook(w: {
+  id: string; name: string; url: string; events: unknown; enabled: boolean
+  hookType: string; secret: string | null; failureCount: number
+  lastTriggeredAt: Date | null; createdAt: Date
+}) {
+  return {
+    id: w.id,
+    name: w.name,
+    url: w.url,
+    events: w.events,
+    enabled: w.enabled,
+    hookType: w.hookType,
+    hasSecret: !!w.secret,
+    failureCount: w.failureCount,
+    lastTriggeredAt: w.lastTriggeredAt,
+    createdAt: w.createdAt,
+  }
+}
+
+// ─── Deployment project ownership ───────────────────────────────────────────
+/**
+ * Resolves the Vercel project this tenant's own deployment lives under, and
+ * rejects outright if the caller supplied a DIFFERENT project id. `projectId`
+ * used to be passed straight through to Vercel's API with no check that it
+ * actually belonged to the calling tenant — any tenant that knew (or
+ * guessed — Vercel project ids aren't secret) another tenant's project id
+ * could attach an attacker-controlled domain to it, overwrite one of its env
+ * vars, or lift its deployment protection, none of which touch this app's
+ * own Prisma-level tenant scoping since they're calls straight through to
+ * Vercel's API under a single shared platform token.
+ */
+async function resolveOwnProjectId(
+  auth: AuthContext,
+  suppliedProjectId: string | undefined,
+): Promise<{ ok: true; projectId: string } | { ok: false; response: { content: { type: "text"; text: string }[]; isError: true } }> {
+  const tenant = await db.tenant.findUnique({
+    where: { id: auth.tenantId },
+    select: { vercelProjectId: true },
+  })
+  let ownProjectId = tenant?.vercelProjectId || undefined
+  if (!ownProjectId) {
+    const row = await db.setting.findFirst({ where: { key: `${auth.tenantId}_vercelProjectId` } })
+    ownProjectId = row?.value || undefined
+  }
+
+  if (!ownProjectId) {
+    return {
+      ok: false,
+      response: {
+        content: [{
+          type: "text",
+          text: "❌ Tidak ada Deployment Project ID. Deploy dulu dengan deploy_to_sacms, atau berikan parameter projectId.",
+        }],
+        isError: true,
+      },
+    }
+  }
+
+  if (suppliedProjectId && suppliedProjectId !== ownProjectId) {
+    return {
+      ok: false,
+      response: {
+        content: [{ type: "text", text: `❌ Project ID '${suppliedProjectId}' bukan milik workspace ini.` }],
+        isError: true,
+      },
+    }
+  }
+
+  return { ok: true, projectId: ownProjectId }
+}
+
+// ─── Content entry write context ───────────────────────────────────────────
+// Builds the (ctx, actor) pair entry-service.ts needs — the same service
+// layer the dashboard's create/updateEntryAction now goes through, so MCP's
+// content-entry write tools inherit draftTemplateId filtering, schema/
+// relation validation, and optimistic-locking for free instead of
+// reimplementing (and drifting from) that logic with raw Prisma calls.
+// MCP tokens aren't tied to a human actor or role, so "system" is the right
+// actor kind: it bypasses the staff/member ownership checks (there's no
+// per-entry "owner" concept for a workspace-wide token) and the workflow-
+// transition gate, same as super-admin global content and cron already do.
+async function mcpEntryContext(auth: AuthContext, tenantDb: Awaited<ReturnType<typeof getTenantDb>>): Promise<{ ctx: EntryWriteContext; actor: ContentActor }> {
+  return {
+    ctx: { client: tenantDb, tenantId: auth.tenantId, tenantSlug: auth.tenantSlug, isGlobal: false, enforcePlan: true },
+    actor: { kind: "system" },
   }
 }
 
@@ -767,13 +870,14 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const ct = await tenantDb.contentType.findFirst({ 
-          where: { 
+        const ct = await tenantDb.contentType.findFirst({
+          where: {
+            draftTemplateId: null,
             OR: [
               { slug: contentTypeSlug, tenantId: auth.tenantId },
               { id: contentTypeSlug, tenantId: auth.tenantId },
             ]
-          } 
+          }
         })
         if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }] }
 
@@ -889,31 +993,24 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const ct = await tenantDb.contentType.findFirst({
-          where: {
-            OR: [
-              { slug: contentTypeSlug, tenantId: auth.tenantId },
-              { id: contentTypeSlug, tenantId: auth.tenantId },
-            ]
-          }
-        })
-        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }] }
+        const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
 
-        const entry = await tenantDb.contentEntry.create({
-          data: {
-            contentTypeId: ct.id,
-            tenantId: auth.tenantId,
-            data: data || {},
-            status: status || "PUBLISHED",
-            locale: locale || "id",
-            publishedAt: status === "PUBLISHED" ? new Date() : null,
-          }
+        const result = await createContentEntry(ctx, actor, {
+          contentTypeSlug,
+          data: data || {},
+          status,
+          locale,
         })
+        if (!result.ok) {
+          return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], isError: true }
+        }
+
+        for (const path of contentRevalidatePaths(auth.tenantSlug, contentTypeSlug)) revalidatePath(path)
 
         return {
           content: [{
             type: "text" as const,
-            text: `✅ Content entry created successfully in '${ct.slug}' with ID '${entry.id}'.\n\n${JSON.stringify(entry, null, 2)}`
+            text: `✅ Content entry created successfully in '${contentTypeSlug}' with ID '${result.data.id}'.\n\n${JSON.stringify(result.data, null, 2)}`
           }]
         }
       }
@@ -938,26 +1035,29 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const existing = await tenantDb.contentEntry.findFirst({
-          where: { id, tenantId: auth.tenantId }
+          where: { id, tenantId: auth.tenantId },
+          include: { contentType: { select: { slug: true } } },
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }] }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }
 
-        const existingData = typeof existing.data === "object" && existing.data !== null ? existing.data : {}
-        const mergedData = data ? { ...existingData, ...data } : existingData
-
-        const updated = await tenantDb.contentEntry.update({
-          where: { id },
-          data: {
-            data: mergedData,
-            ...(status ? { status } : {}),
-            ...(status === "PUBLISHED" && !existing.publishedAt ? { publishedAt: new Date() } : {}),
-          }
+        const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
+        const result = await updateContentEntry(ctx, actor, {
+          contentTypeSlug: existing.contentType.slug,
+          entryId: id,
+          data,
+          status,
+          locale: existing.locale,
         })
+        if (!result.ok) {
+          return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], isError: true }
+        }
+
+        for (const path of contentRevalidatePaths(auth.tenantSlug, existing.contentType.slug)) revalidatePath(path)
 
         return {
           content: [{
             type: "text" as const,
-            text: `✅ Content entry '${id}' updated successfully.\n\n${JSON.stringify(updated, null, 2)}`
+            text: `✅ Content entry '${id}' updated successfully.\n\n${JSON.stringify(result.data, null, 2)}`
           }]
         }
       }
@@ -980,11 +1080,21 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const existing = await tenantDb.contentEntry.findFirst({
-          where: { id, tenantId: auth.tenantId }
+          where: { id, tenantId: auth.tenantId },
+          include: { contentType: { select: { slug: true } } },
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }] }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }
 
-        await tenantDb.contentEntry.delete({ where: { id } })
+        const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
+        const result = await deleteContentEntry(ctx, actor, {
+          contentTypeSlug: existing.contentType.slug,
+          entryId: id,
+        })
+        if (!result.ok) {
+          return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], isError: true }
+        }
+
+        for (const path of contentRevalidatePaths(auth.tenantSlug, existing.contentType.slug)) revalidatePath(path)
 
         return {
           content: [{
@@ -1678,17 +1788,7 @@ const handler = createMcpHandler(
           orderBy: { createdAt: "desc" },
         })
 
-        const result = webhooks.map((w) => ({
-          id: w.id,
-          name: w.name,
-          url: w.url,
-          events: w.events,
-          enabled: w.enabled,
-          hookType: w.hookType,
-          failureCount: w.failureCount,
-          lastTriggeredAt: w.lastTriggeredAt,
-          createdAt: w.createdAt,
-        }))
+        const result = webhooks.map(redactWebhook)
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -1722,7 +1822,7 @@ const handler = createMcpHandler(
         return {
           content: [{
             type: "text" as const,
-            text: JSON.stringify(webhook, null, 2)
+            text: JSON.stringify(redactWebhook(webhook), null, 2)
           }]
         }
       }
@@ -1737,7 +1837,7 @@ const handler = createMcpHandler(
         inputSchema: {
           name: z.string().describe("Descriptive name (e.g. 'Build Trigger', 'Discord Notification')"),
           url: z.string().url().describe("Destination endpoint URL (must start with https:// or http://)"),
-          events: z.array(z.string()).describe("Array of event names (e.g. ['content.created', 'content.published', 'content.deleted'])"),
+          events: z.array(z.string()).min(1).describe("Array of event names (e.g. ['content.created', 'content.published', 'content.deleted']) — at least one required, or the webhook will never fire"),
           secret: z.string().optional().describe("Optional HMAC signature secret"),
           enabled: z.boolean().default(true).describe("Whether the webhook is immediately active"),
           hookType: z.enum(["async", "sync"]).default("async").describe("Hook type ('async' background dispatch or 'sync' pre-save validation)"),
@@ -1755,6 +1855,14 @@ const handler = createMcpHandler(
           return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }] }
         }
 
+        // One tenant-level cap, same bucket the dashboard's own webhook
+        // creation lacks today too — bounded here first since this is a
+        // new, easily-scriptable trigger for an unbounded "webhook storm".
+        const existingCount = await db.webhook.count({ where: { tenantId: auth.tenantId } })
+        if (existingCount >= 20) {
+          return { content: [{ type: "text" as const, text: `❌ Batas maksimum 20 webhook per workspace sudah tercapai. Hapus webhook yang tidak terpakai sebelum membuat yang baru.` }], isError: true }
+        }
+
         const webhook = await db.webhook.create({
           data: {
             tenantId: auth.tenantId,
@@ -1770,7 +1878,7 @@ const handler = createMcpHandler(
         return {
           content: [{
             type: "text" as const,
-            text: `✅ Webhook '${webhook.name}' (ID: '${webhook.id}') created successfully targeting ${webhook.url}.\n\n${JSON.stringify(webhook, null, 2)}`
+            text: `✅ Webhook '${webhook.name}' (ID: '${webhook.id}') created successfully targeting ${webhook.url}.\n\n${JSON.stringify(redactWebhook(webhook), null, 2)}`
           }]
         }
       }
@@ -1786,7 +1894,7 @@ const handler = createMcpHandler(
           id: z.string().describe("ID of the webhook to update"),
           name: z.string().optional(),
           url: z.string().url().optional(),
-          events: z.array(z.string()).optional(),
+          events: z.array(z.string()).min(1).optional(),
           enabled: z.boolean().optional(),
           secret: z.string().optional(),
         },
@@ -1799,7 +1907,7 @@ const handler = createMcpHandler(
         const existing = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }] }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], isError: true }
 
         if (url) {
           try {
@@ -1811,7 +1919,7 @@ const handler = createMcpHandler(
         }
 
         const updated = await db.webhook.update({
-          where: { id },
+          where: { id, tenantId: auth.tenantId },
           data: {
             ...(name ? { name: name.trim() } : {}),
             ...(url ? { url: url.trim() } : {}),
@@ -1824,7 +1932,7 @@ const handler = createMcpHandler(
         return {
           content: [{
             type: "text" as const,
-            text: `✅ Webhook '${updated.name}' updated successfully.\n\n${JSON.stringify(updated, null, 2)}`
+            text: `✅ Webhook '${updated.name}' updated successfully.\n\n${JSON.stringify(redactWebhook(updated), null, 2)}`
           }]
         }
       }
@@ -1848,9 +1956,9 @@ const handler = createMcpHandler(
         const existing = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }] }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], isError: true }
 
-        await db.webhook.delete({ where: { id } })
+        await db.webhook.delete({ where: { id, tenantId: auth.tenantId } })
 
         return {
           content: [{
@@ -2089,100 +2197,18 @@ export default async function NewsPage() {
       }
     )
 
-    // ── update_api_key_permissions ───────────────────────────────────────────
-    server.registerTool(
-      "update_api_key_permissions",
-      {
-        title: "Update Workspace API Key Permissions",
-        description: "Adjust the read/write/delete permissions on the workspace's primary REST/GraphQL API key (see get_or_create_api_key). Replaces the full permission set. You can only grant permissions your own MCP token already has.",
-        inputSchema: {
-          permissions: z.array(z.enum(["read", "write", "delete"])).min(1).describe('Full replacement set of permissions for the key, e.g. ["read","write"]'),
-        },
-      },
-      async ({ permissions }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        const isPrivileged = !!auth.isSuperAdmin || auth.permissions.includes("full_access")
-        if (!isPrivileged) {
-          const missing = permissions.filter((p) => !auth.permissions.includes(p))
-          if (missing.length > 0) {
-            return {
-              content: [{
-                type: "text" as const,
-                text: `❌ Forbidden: your own MCP token doesn't have [${missing.join(", ")}], so it can't grant ${missing.length > 1 ? "those permissions" : "that permission"} to another key.`
-              }],
-              isError: true,
-            }
-          }
-        }
-
-        const { findPrimaryApiToken, updateApiTokenPermissions } = await import("@/lib/api-token-registry")
-
-        const existing = await findPrimaryApiToken(auth.tenantId)
-        if (!existing) {
-          return {
-            content: [{ type: "text" as const, text: "❌ No API key exists yet for this workspace. Call get_or_create_api_key first." }],
-            isError: true,
-          }
-        }
-
-        const result = await updateApiTokenPermissions(auth.tenantId, existing.id, permissions)
-        if ("error" in result) {
-          return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
-        }
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({ status: "updated", id: result.apiToken.id, permissions: result.apiToken.permissions }, null, 2)
-          }]
-        }
-      }
-    )
-
-    // ── regenerate_api_key ───────────────────────────────────────────────────
-    server.registerTool(
-      "regenerate_api_key",
-      {
-        title: "Regenerate Workspace API Key Secret",
-        description: "Rotate the workspace's primary REST/GraphQL API key — same key (id, name, permissions), brand new secret. The old secret stops working immediately. A workspace only ever has one such key; this is the only way to change its value (see get_or_create_api_key).",
-        inputSchema: {},
-      },
-      async () => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        const { findPrimaryApiToken, regenerateApiToken } = await import("@/lib/api-token-registry")
-
-        const existing = await findPrimaryApiToken(auth.tenantId)
-        if (!existing) {
-          return {
-            content: [{ type: "text" as const, text: "❌ No API key exists yet for this workspace. Call get_or_create_api_key first." }],
-            isError: true,
-          }
-        }
-
-        const result = await regenerateApiToken(auth.tenantId, existing.id)
-        if ("error" in result) {
-          return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
-        }
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              status: "regenerated",
-              id: result.apiToken.id,
-              apiKey: result.plainToken,
-              warning: "Store this key now — it will never be shown again, and the previous secret no longer works.",
-            }, null, 2)
-          }]
-        }
-      }
-    )
+    // update_api_key_permissions / regenerate_api_key were removed: both
+    // mutate the tenant's primary REST/GraphQL API key with production-
+    // breaking blast radius (an instant secret rotation invalidates every
+    // live integration; a permission change alters what every consumer of
+    // that key can do) — the dashboard reserves both for admin/owner
+    // humans, but every MCP token is minted with full scope and no human
+    // role concept, so holding any MCP token was equivalent to admin/owner
+    // authority here with no audit trail. Same reasoning as removing the
+    // Member tools: an agent helping build schemas/content has no
+    // legitimate need to rotate or reconfigure production credentials.
+    // get_or_create_api_key is kept — it only reveals the existing key or
+    // creates one if none exists yet, never invalidates a working secret.
 
     // =========================================================================
     // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
@@ -2214,6 +2240,18 @@ export default async function NewsPage() {
               type: "text" as const,
               text: `❌ Payment Required: Fitur deploy SaCMS Cloud Hosting memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
             }],
+            isError: true,
+          }
+        }
+
+        // A dedicated cooldown, separate from the general per-tenant MCP
+        // rate limit (shared with cheap read calls) — each deploy triggers
+        // a real Vercel build, so an uncapped loop here runs up real
+        // hosting/build cost even within the general limit's budget.
+        const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
+        if (!deployLimit.success) {
+          return {
+            content: [{ type: "text" as const, text: "❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi sebentar." }],
             isError: true,
           }
         }
@@ -2296,6 +2334,21 @@ export default async function NewsPage() {
 
         try {
           const status = await getDeploymentStatus(deploymentId)
+
+          // Reject a deployment that belongs to a different tenant's
+          // project — deploymentId alone carries no tenant scoping, so
+          // without this any token could poll any tenant's build state and
+          // live URL by guessing/observing an id.
+          if (status.projectId) {
+            const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+            if (tenant?.vercelProjectId && tenant.vercelProjectId !== status.projectId) {
+              return {
+                content: [{ type: "text" as const, text: `❌ Deployment '${deploymentId}' bukan milik workspace ini.` }],
+                isError: true,
+              }
+            }
+          }
+
           return {
             content: [{
               type: "text" as const,
@@ -2326,7 +2379,7 @@ export default async function NewsPage() {
         title: "Configure Custom Domain on a Deployment Project",
         description: "Attach and verify a custom apex domain or subdomain to a SaCMS Cloud Hosting deployment project, with DNS diagnostics.",
         inputSchema: {
-          projectId: z.string().describe("Deployment Project ID"),
+          projectId: z.string().optional().describe("Deployment Project ID. Defaults to this workspace's linked deployment project."),
           domain: z.string().describe("Custom domain name (e.g. 'mysite.com' or 'blog.mysite.com')"),
         },
       },
@@ -2335,8 +2388,21 @@ export default async function NewsPage() {
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
+        if (!auth.isPaid) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Payment Required: Konfigurasi custom domain memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+            }],
+            isError: true,
+          }
+        }
+
         try {
-          const result = await addDomainToProject(projectId, domain)
+          const resolved = await resolveOwnProjectId(auth, projectId)
+          if (!resolved.ok) return resolved.response
+
+          const result = await addDomainToProject(resolved.projectId, domain)
           const config = await getDomainConfig(domain)
 
           if (auth.tenantId) {
@@ -2416,7 +2482,8 @@ export default async function NewsPage() {
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        if (["NEXT_PUBLIC_SACMS_API_URL", "NEXT_PUBLIC_SACMS_TENANT", "SACMS_API_KEY"].includes(key)) {
+        const { RESERVED_ENV_KEYS } = await import("@/lib/infrastructure/frontend-env")
+        if (RESERVED_ENV_KEYS.includes(key)) {
           return {
             content: [{ type: "text" as const, text: `❌ "${key}" adalah variabel sistem SaCMS dan tidak bisa ditimpa.` }],
             isError: true,
@@ -2424,20 +2491,9 @@ export default async function NewsPage() {
         }
 
         try {
-          let resolvedProjectId = projectId
-          if (!resolvedProjectId && auth.tenantId) {
-            const row = await db.setting.findFirst({ where: { key: `${auth.tenantId}_vercelProjectId` } })
-            resolvedProjectId = row?.value || undefined
-          }
-          if (!resolvedProjectId) {
-            return {
-              content: [{
-                type: "text" as const,
-                text: "❌ Tidak ada Deployment Project ID. Deploy dulu dengan deploy_to_sacms, atau berikan parameter projectId.",
-              }],
-              isError: true,
-            }
-          }
+          const resolved = await resolveOwnProjectId(auth, projectId)
+          if (!resolved.ok) return resolved.response
+          const resolvedProjectId = resolved.projectId
 
           const result = await upsertVercelProjectEnv(
             resolvedProjectId,
@@ -2501,21 +2557,20 @@ export default async function NewsPage() {
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
+        if (!auth.isPaid) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Payment Required: Mengatur visibilitas deployment memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+            }],
+            isError: true,
+          }
+        }
+
         try {
-          let resolvedProjectId = projectId
-          if (!resolvedProjectId && auth.tenantId) {
-            const row = await db.setting.findFirst({ where: { key: `${auth.tenantId}_vercelProjectId` } })
-            resolvedProjectId = row?.value || undefined
-          }
-          if (!resolvedProjectId) {
-            return {
-              content: [{
-                type: "text" as const,
-                text: "❌ Tidak ada Deployment Project ID. Deploy dulu dengan deploy_to_sacms, atau berikan parameter projectId.",
-              }],
-              isError: true,
-            }
-          }
+          const resolved = await resolveOwnProjectId(auth, projectId)
+          if (!resolved.ok) return resolved.response
+          const resolvedProjectId = resolved.projectId
 
           const result = await disableVercelDeploymentProtection(resolvedProjectId)
           if (!result.ok) {
@@ -2540,333 +2595,13 @@ export default async function NewsPage() {
       },
     )
 
-    // ─── SECTION 7: MULTI-TENANT END-USERS & MEMBER AUTH ─────────────────────
-
-    // ── list_members ──────────────────────────────────────────────────────────
-    server.registerTool(
-      "list_members",
-      {
-        title: "List End-User Members",
-        description: "List registered members/end-users for this workspace with filtering by search, role, or status.",
-        inputSchema: {
-          page: z.number().default(1).describe("Page number (1-based)"),
-          pageSize: z.number().default(20).describe("Number of items per page (max 100)"),
-          search: z.string().optional().describe("Search keyword for email or name"),
-          role: z.string().optional().describe("Filter by member role (e.g. 'member', 'vip', 'subscriber')"),
-          status: z.string().optional().describe("Filter by member status (e.g. 'active', 'suspended')"),
-        },
-      },
-      async ({ page, pageSize, search, role, status }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "read")) return permissionDenied("read")
-
-        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
-        const limit = Math.min(pageSize || 20, 100)
-        const skip = ((page || 1) - 1) * limit
-
-        const where: Record<string, any> = { tenantId: auth.tenantId }
-        if (role) where.role = role
-        if (status) where.status = status
-        if (search) {
-          where.OR = [
-            { email: { contains: search, mode: "insensitive" } },
-            { name: { contains: search, mode: "insensitive" } },
-          ]
-        }
-
-        const [members, total] = await Promise.all([
-          tenantDb.member.findMany({
-            where,
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              avatar: true,
-              role: true,
-              status: true,
-              metadata: true,
-              createdAt: true,
-              lastLoginAt: true,
-            },
-            orderBy: { createdAt: "desc" },
-            skip,
-            take: limit,
-          }),
-          tenantDb.member.count({ where }),
-        ])
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              members,
-              pagination: {
-                page: page || 1,
-                pageSize: limit,
-                total,
-                totalPages: Math.ceil(total / limit),
-              }
-            }, null, 2)
-          }]
-        }
-      }
-    )
-
-    // ── get_member ────────────────────────────────────────────────────────────
-    server.registerTool(
-      "get_member",
-      {
-        title: "Get End-User Member",
-        description: "Get detailed profile and metadata of a specific end-user member by ID or email.",
-        inputSchema: {
-          idOrEmail: z.string().describe("Member ID (cuid) or email address"),
-        },
-      },
-      async ({ idOrEmail }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "read")) return permissionDenied("read")
-
-        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
-        const member = await tenantDb.member.findFirst({
-          where: {
-            tenantId: auth.tenantId,
-            OR: [
-              { id: idOrEmail },
-              { email: idOrEmail.toLowerCase().trim() },
-            ]
-          },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            avatar: true,
-            role: true,
-            status: true,
-            metadata: true,
-            createdAt: true,
-            updatedAt: true,
-            lastLoginAt: true,
-            sessions: {
-              where: { revokedAt: null },
-              select: {
-                id: true,
-                userAgent: true,
-                ipAddress: true,
-                expiresAt: true,
-                createdAt: true,
-              },
-              take: 5,
-            }
-          }
-        })
-
-        if (!member) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found in this workspace.` }],
-            isError: true,
-          }
-        }
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify(member, null, 2)
-          }]
-        }
-      }
-    )
-
-    // ── create_member ─────────────────────────────────────────────────────────
-    server.registerTool(
-      "create_member",
-      {
-        title: "Create End-User Member",
-        description: "Programmatically create a new member/end-user for this workspace with bcrypt hashed password.",
-        inputSchema: {
-          email: z.string().email().describe("Member email address"),
-          password: z.string().min(6).describe("Plaintext password (will be hashed with bcrypt 12 rounds)"),
-          name: z.string().optional().describe("Full name of the member"),
-          role: z.string().default("member").describe("Member role (default 'member', e.g. 'vip', 'subscriber')"),
-          metadata: z.record(z.string(), z.any()).optional().describe("Custom JSON metadata/attributes"),
-        },
-      },
-      async ({ email, password, name, role, metadata }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
-        const cleanEmail = email.toLowerCase().trim()
-
-        const existing = await tenantDb.member.findUnique({
-          where: {
-            tenantId_email: {
-              tenantId: auth.tenantId,
-              email: cleanEmail,
-            }
-          }
-        })
-
-        if (existing) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Member with email '${cleanEmail}' already exists in this workspace.` }],
-            isError: true,
-          }
-        }
-
-        const passwordHash = await hashMemberPassword(password)
-        const created = await tenantDb.member.create({
-          data: {
-            tenantId: auth.tenantId,
-            email: cleanEmail,
-            passwordHash,
-            name: name || null,
-            role: role || "member",
-            status: "active",
-            metadata: metadata || {},
-          },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-            status: true,
-            metadata: true,
-            createdAt: true,
-          }
-        })
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: `✅ Member '${created.email}' created successfully.\n\n${JSON.stringify(created, null, 2)}`
-          }]
-        }
-      }
-    )
-
-    // ── update_member ─────────────────────────────────────────────────────────
-    server.registerTool(
-      "update_member",
-      {
-        title: "Update End-User Member",
-        description: "Update an existing member's profile, role, status ('active' | 'suspended'), password, or custom metadata.",
-        inputSchema: {
-          idOrEmail: z.string().describe("Member ID or email"),
-          name: z.string().optional().describe("Updated full name"),
-          role: z.string().optional().describe("Updated role (e.g. 'vip', 'subscriber', 'member')"),
-          status: z.string().optional().describe("Updated status: 'active' | 'suspended' | 'pending_verification'"),
-          password: z.string().min(6).optional().describe("New plaintext password (will be re-hashed)"),
-          metadata: z.record(z.string(), z.any()).optional().describe("Custom JSON metadata to merge"),
-        },
-      },
-      async ({ idOrEmail, name, role, status, password, metadata }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
-        const member = await tenantDb.member.findFirst({
-          where: {
-            tenantId: auth.tenantId,
-            OR: [
-              { id: idOrEmail },
-              { email: idOrEmail.toLowerCase().trim() },
-            ]
-          }
-        })
-
-        if (!member) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found.` }],
-            isError: true,
-          }
-        }
-
-        const updateData: Record<string, any> = {}
-        if (name !== undefined) updateData.name = name
-        if (role !== undefined) updateData.role = role
-        if (status !== undefined) updateData.status = status
-        if (metadata !== undefined) {
-          updateData.metadata = {
-            ...((member.metadata as Record<string, any>) || {}),
-            ...metadata,
-          }
-        }
-        if (password) {
-          updateData.passwordHash = await hashMemberPassword(password)
-        }
-
-        const updated = await tenantDb.member.update({
-          where: { id: member.id },
-          data: updateData,
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            role: true,
-            status: true,
-            metadata: true,
-            updatedAt: true,
-          }
-        })
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: `✅ Member '${updated.email}' updated successfully.\n\n${JSON.stringify(updated, null, 2)}`
-          }]
-        }
-      }
-    )
-
-    // ── delete_member ─────────────────────────────────────────────────────────
-    server.registerTool(
-      "delete_member",
-      {
-        title: "Delete End-User Member",
-        description: "Permanently delete an end-user member and invalidate all associated sessions.",
-        inputSchema: {
-          idOrEmail: z.string().describe("Member ID or email to delete"),
-        },
-      },
-      async ({ idOrEmail }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "delete")) return permissionDenied("delete")
-
-        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
-        const member = await tenantDb.member.findFirst({
-          where: {
-            tenantId: auth.tenantId,
-            OR: [
-              { id: idOrEmail },
-              { email: idOrEmail.toLowerCase().trim() },
-            ]
-          }
-        })
-
-        if (!member) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found.` }],
-            isError: true,
-          }
-        }
-
-        await tenantDb.member.delete({
-          where: { id: member.id }
-        })
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: `✅ Member '${member.email}' (ID: ${member.id}) deleted successfully.`
-          }]
-        }
-      }
-    )
+    // Member (end-user) management intentionally has no MCP tools. Members
+    // are the tenant's own app's end-users, managed through the dashboard's
+    // Users & Permissions section (Strapi-parity model) — an AI agent
+    // building schemas/content via MCP has no legitimate reason to create,
+    // promote, or delete end-user accounts, and the tools that used to live
+    // here skipped the dashboard's role-existence/status-enum validation
+    // entirely. Removed rather than patched.
 
   },
   {

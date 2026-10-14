@@ -148,7 +148,7 @@ export async function deployToVercel(
 /**
  * Get deployment status
  */
-export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string; simulated?: boolean }> {
+export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string; projectId?: string; simulated?: boolean }> {
   const token = await getVercelToken()
   if (!token) {
     if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
@@ -163,7 +163,8 @@ export async function getDeploymentStatus(deploymentId: string): Promise<{ state
   const data = await res.json()
   return {
     state: data.readyState || data.state || "BUILDING",
-    url: data.url ? `https://${data.url}` : ""
+    url: data.url ? `https://${data.url}` : "",
+    projectId: data.projectId || undefined,
   }
 }
 
