@@ -90,6 +90,22 @@ interface EntryActionResult {
 const actionError = (error: string, details?: Record<string, string>): EntryActionResult => ({ error, details })
 const actionOk = (entry: any): EntryActionResult => ({ success: true, entry })
 
+/**
+ * Whether a staff caller holds at least one of the given permissions — used
+ * at the action layer as a coarse "is this role capable of this kind of
+ * write at all" gate. The real per-entry decision (can THIS actor touch
+ * THIS entry) is made by entry-service.ts's ownership checks afterwards;
+ * this just has to not reject "author"/"contributor" outright, since they
+ * only ever hold the *_OWN variant of a permission, never the plain one.
+ */
+async function hasAnyPermission(tenantSlug: string, permissions: string[]): Promise<boolean> {
+  for (const permission of permissions) {
+    const rbac = await checkPermission(tenantSlug, permission)
+    if (rbac.allowed) return true
+  }
+  return false
+}
+
 function serviceFailure(result: { code: string; message: string; details?: Record<string, string> }): EntryActionResult {
   return actionError(result.message || SERVICE_ERROR_LABEL[result.code] || "Request failed", result.details)
 }
@@ -132,8 +148,9 @@ export async function getEntriesAction(
     const tenantDb = await getTenantDb(tenantSlug)
 
     const contentTypeRecord = await tenantDb.contentType.findFirst({
-      where: { 
+      where: {
         slug: contentTypeSlug,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -256,8 +273,9 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
     const tenantDb = await getTenantDb(tenantSlug)
 
     const contentTypeRecord = await tenantDb.contentType.findFirst({
-      where: { 
+      where: {
         slug: contentTypeSlug,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -371,14 +389,17 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
 /**
  * Update an entry (or create translation)
  */
-export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; locale: string; scheduledAt?: Date | null }) {
+export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; locale: string; scheduledAt?: Date | null; expectedUpdatedAt?: Date | string | null }) {
   try {
     const resolved = await resolveWriteContext(tenantSlug)
     if (!resolved.ok) return actionError(resolved.error)
 
     if (resolved.actor.kind === "staff") {
-      const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
-      if (!rbac.allowed) return actionError("Forbidden: Missing content.update permission")
+      // CONTENT_UPDATE_OWN-only roles (author/contributor) must still pass
+      // this gate — entry-service.ts's ownership check below is what
+      // actually decides whether THIS entry is theirs to touch.
+      const allowed = await hasAnyPermission(tenantSlug, [PERMISSIONS.CONTENT_UPDATE, PERMISSIONS.CONTENT_UPDATE_OWN])
+      if (!allowed) return actionError("Forbidden: Missing content.update permission")
     }
 
     const result = await updateContentEntry(resolved.ctx, resolved.actor, {
@@ -388,6 +409,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
       status: payload.status,
       locale: payload.locale,
       scheduledAt: payload.scheduledAt ?? null,
+      expectedUpdatedAt: payload.expectedUpdatedAt ?? null,
     })
     if (!result.ok) return serviceFailure(result)
 
@@ -426,8 +448,8 @@ export async function updateContentEntryStatusAction(tenantSlug: string, content
     if (!resolved.ok) return actionError(resolved.error)
 
     if (resolved.actor.kind === "staff") {
-      const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
-      if (!rbac.allowed) return actionError("Forbidden: Missing content.update permission")
+      const allowed = await hasAnyPermission(tenantSlug, [PERMISSIONS.CONTENT_UPDATE, PERMISSIONS.CONTENT_UPDATE_OWN])
+      if (!allowed) return actionError("Forbidden: Missing content.update permission")
     }
 
     const result = await transitionContentEntryStatus(resolved.ctx, resolved.actor, {
@@ -477,14 +499,24 @@ export async function bulkContentAction(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
-    if (!rbac.allowed) return actionError("Forbidden: Missing content.update permission")
+    // Coarse "can this role do bulk writes at all" gate — per-entry
+    // ownership (author/contributor touching only their own entries) is
+    // enforced downstream by updateEntryAction/deleteEntryAction for each
+    // entry individually, same as the single-entry actions.
+    const allowed = await hasAnyPermission(tenantSlug, [
+      PERMISSIONS.CONTENT_UPDATE,
+      PERMISSIONS.CONTENT_UPDATE_OWN,
+      PERMISSIONS.CONTENT_DELETE,
+      PERMISSIONS.CONTENT_DELETE_OWN,
+    ])
+    if (!allowed) return actionError("Forbidden: Missing content.update permission")
 
     const tenantDb = await getTenantDb(tenantSlug)
 
     const contentType = await tenantDb.contentType.findFirst({
-      where: { 
+      where: {
         slug: contentTypeSlug,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -505,9 +537,9 @@ export async function bulkContentAction(
     const failures: Array<{ entryId: string; error: string }> = []
 
     if (action === "delete") {
-      if (access.role !== "admin" && access.role !== "owner") {
-        return { error: "Only admins and owners can delete entries" }
-      }
+      // Per-entry role/ownership (editor: any; author/contributor: own
+      // only) is enforced inside deleteEntryAction → entry-service.ts,
+      // matching the single-entry delete path exactly.
       for (const entry of entries) {
         const result = await deleteEntryAction(tenantSlug, contentTypeSlug, entry.id)
         if ("success" in result && result.success) successCount++

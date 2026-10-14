@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { ContentEntriesManager } from "@/components/cms/content-entries-manager"
 
@@ -33,11 +34,15 @@ export default async function CMSContentTypeEntriesPage({
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect("/dashboard")
 
+  const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+  if (!rbac.allowed) redirect(`/dashboard/${tenantSlug}/cms`)
+
   const tenantDb = await getTenantDb(tenantSlug)
 
   const contentType = await tenantDb.contentType.findFirst({
-    where: { 
+    where: {
       slug: contentTypeSlug,
+      draftTemplateId: null,
       OR: [
         { tenantId: access.tenantId },
         { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -113,6 +118,7 @@ export default async function CMSContentTypeEntriesPage({
     const relatedTypes = await tenantDb.contentType.findMany({
       where: {
         slug: { in: relationSlugs },
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },

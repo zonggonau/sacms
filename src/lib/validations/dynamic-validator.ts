@@ -13,6 +13,7 @@ export interface FieldDefinition {
   type: string
   required: boolean
   unique?: boolean
+  relationSlug?: string | null
 }
 
 export async function validateDynamicContent(
@@ -79,6 +80,40 @@ export async function validateDynamicContent(
           errors[field.slug] = `Invalid date format`
         }
         break
+      case "relation": {
+        // Stored as a plain string id (single) or array of string ids
+        // (multi) — see relation-labels.ts's batchFetchRelationLabels for
+        // the same shape assumption elsewhere in the codebase.
+        if (!field.relationSlug) break
+        const targetIds = Array.isArray(value) ? value : [value]
+        if (!targetIds.every((v) => typeof v === "string" && v.length > 0)) {
+          errors[field.slug] = `${field.name} has an invalid relation value`
+          break
+        }
+        const targetContentType = await client.contentType.findFirst({
+          where: {
+            slug: field.relationSlug,
+            draftTemplateId: null,
+            OR: [{ tenantId }, { tenantId: null }],
+          },
+          select: { id: true },
+        })
+        if (!targetContentType) {
+          errors[field.slug] = `${field.name} points at an unknown content type`
+          break
+        }
+        const foundCount = await client.contentEntry.count({
+          where: {
+            id: { in: targetIds as string[] },
+            contentTypeId: targetContentType.id,
+            OR: [{ tenantId }, { tenantId: null }],
+          },
+        })
+        if (foundCount !== targetIds.length) {
+          errors[field.slug] = `${field.name} references one or more entries that don't exist`
+        }
+        break
+      }
       // Add more specific type checks as needed
     }
 

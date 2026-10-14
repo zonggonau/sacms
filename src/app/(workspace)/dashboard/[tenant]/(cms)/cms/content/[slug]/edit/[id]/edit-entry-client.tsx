@@ -166,6 +166,10 @@ export default function CMSEditEntryClient({
     initialEntry?.scheduledAt ? new Date(initialEntry.scheduledAt) : undefined
   )
   const [availableLocales, setAvailableLocales] = useState<any[]>(initialAvailableLocales || [{ locale: "id", name: "Bahasa Indonesia" }])
+  // The `updatedAt` this editor last loaded for the current locale's row —
+  // sent back on save so a concurrent edit by someone else is caught as a
+  // conflict instead of silently overwritten (see entry-service.ts).
+  const [lastKnownUpdatedAt, setLastKnownUpdatedAt] = useState<Date | string | null>(initialEntry?.updatedAt ?? null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialPreviewUrl || null)
   const [translating, setTranslating] = useState(false)
 
@@ -240,6 +244,7 @@ export default function CMSEditEntryClient({
         setFormData((entryData.entry.data as Record<string, unknown>) || {})
         setEntryStatus(entryData.entry.status || "DRAFT")
         setPersistedStatus(entryData.entry.status || "DRAFT")
+        setLastKnownUpdatedAt(entryData.entry.updatedAt ?? null)
         if (entryData.entry.scheduledAt) {
           setScheduledAt(new Date(entryData.entry.scheduledAt))
         }
@@ -273,7 +278,8 @@ export default function CMSEditEntryClient({
         data: formData,
         status: targetStatus,
         locale,
-        scheduledAt: scheduledAt || null
+        scheduledAt: scheduledAt || null,
+        expectedUpdatedAt: lastKnownUpdatedAt,
       })
 
       if (res.error) {
@@ -286,7 +292,8 @@ export default function CMSEditEntryClient({
       } else {
         setPersistedStatus(targetStatus)
         setEntryStatus(targetStatus)
-        toast({ 
+        if (res.entry?.updatedAt) setLastKnownUpdatedAt(res.entry.updatedAt)
+        toast({
           title: publishNow ? "Entri Berhasil Dipublikasikan" : "Entri Berhasil Diperbarui",
           description: `Perubahan data untuk ${contentType?.name || 'konten'} berhasil disimpan.`
         })

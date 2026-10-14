@@ -119,13 +119,14 @@ type ResolvedContentType = Awaited<ReturnType<typeof loadContentType>>
 async function loadContentType(client: PrismaClient, slug: string, ctx: ContentTypeContext) {
   if (ctx.tenantId === null) {
     return client.contentType.findFirst({
-      where: { slug, tenantId: null },
+      where: { slug, tenantId: null, draftTemplateId: null },
       include: { schemaFields: { orderBy: { order: "asc" } }, tenants: true },
     })
   }
   return client.contentType.findFirst({
     where: {
       slug,
+      draftTemplateId: null,
       OR: [
         { tenantId: ctx.tenantId },
         { tenantId: null, tenants: { some: { tenantId: ctx.tenantId, enabled: true } } },
@@ -427,6 +428,14 @@ export interface UpdateEntryInput {
   status?: string
   locale?: string | null
   scheduledAt?: Date | string | null
+  /**
+   * The `updatedAt` the caller's editor last loaded for this entry/locale.
+   * When supplied, the write is rejected with a "conflict" if someone else
+   * saved in between — otherwise two concurrent editors silently last-write-
+   * wins over each other with no signal. Omit to skip the check (e.g. bulk
+   * field updates that intentionally don't carry a stale client snapshot).
+   */
+  expectedUpdatedAt?: Date | string | null
 }
 
 export async function updateContentEntry(
@@ -457,6 +466,16 @@ export async function updateContentEntry(
   })
   if (!baseEntry) return fail("not_found", "Entry not found")
 
+  // A tenantId:null entry is globally-shared across every tenant assigned to
+  // this content type (same convention as ContentType itself — see
+  // updateContentTypeAction's isGlobal/!access.isGlobal check). Only the
+  // platform's own Global workspace may write to it; an ordinary tenant can
+  // still read it (the OR above), but reaching it here via a known id must
+  // not let that tenant mutate data every other assigned tenant also relies on.
+  if (baseEntry.tenantId === null && tenantId !== null && !ctx.isGlobal) {
+    return fail("forbidden", "This entry is globally shared and cannot be modified by tenant admins")
+  }
+
   const documentId = baseEntry.documentId || baseEntry.id
 
   let existingLocaleEntry: ContentEntry | null =
@@ -484,6 +503,17 @@ export async function updateContentEntry(
   }
   if (actor.kind === "member" && actor.ownershipRequired && ownerId !== actor.memberId) {
     return fail("forbidden", "You can only modify entries you created")
+  }
+
+  // Optimistic lock — reject if someone else saved this locale's row since
+  // the caller's editor last loaded it, instead of silently overwriting
+  // their changes (see UpdateEntryInput.expectedUpdatedAt).
+  if (input.expectedUpdatedAt && existingLocaleEntry) {
+    const expected = normalizeScheduledAt(input.expectedUpdatedAt)?.getTime()
+    const actual = existingLocaleEntry.updatedAt.getTime()
+    if (expected !== undefined && expected !== actual) {
+      return fail("conflict", "This entry was changed by someone else since you opened it. Reload it to see the latest version before saving.")
+    }
   }
 
   const transition = existingLocaleEntry
@@ -668,7 +698,10 @@ export async function transitionContentEntryStatus(
   input: { contentTypeSlug: string; entryId: string; status: string },
 ): Promise<ServiceResult<ContentEntry>> {
   const existing = await ctx.client.contentEntry.findFirst({
-    where: { id: input.entryId },
+    where: {
+      id: input.entryId,
+      OR: ctx.tenantId === null ? [{ tenantId: null }] : [{ tenantId: ctx.tenantId }, { tenantId: null }],
+    },
     select: { locale: true },
   })
   if (!existing) return fail("not_found", "Entry not found")
@@ -701,6 +734,12 @@ export async function deleteContentEntry(
     },
   })
   if (!entry) return fail("not_found", "Entry not found")
+
+  // See the matching check in updateContentEntry — a tenantId:null entry is
+  // globally shared; only the platform's Global workspace may delete it.
+  if (entry.tenantId === null && tenantId !== null && !ctx.isGlobal) {
+    return fail("forbidden", "This entry is globally shared and cannot be deleted by tenant admins")
+  }
 
   // Deletion authority.
   if (actor.kind === "staff") {

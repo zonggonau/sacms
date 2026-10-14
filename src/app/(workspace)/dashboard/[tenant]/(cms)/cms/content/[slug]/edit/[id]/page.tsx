@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
 import CMSEditEntryClient from "./edit-entry-client"
@@ -18,11 +19,15 @@ export default async function CMSEditEntryPage({
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect("/dashboard")
 
+  const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+  if (!rbac.allowed) redirect(`/dashboard/${tenantSlug}/cms`)
+
   const tenantDb = await getTenantDb(tenantSlug)
 
   const contentType = await tenantDb.contentType.findFirst({
-    where: { 
+    where: {
       slug: contentTypeSlug,
+      draftTemplateId: null,
       OR: [
         { tenantId: access.tenantId },
         { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
