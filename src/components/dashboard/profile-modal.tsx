@@ -41,6 +41,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
   const [imageUrl, setImageUrl] = useState<string | null>(session?.user?.image || null)
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
 
   // Keep state synchronized when session loads or dialog opens
   React.useEffect(() => {
@@ -49,6 +50,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
       setImageUrl(session.user.image || null)
       setPassword("")
       setConfirmPassword("")
+      setCurrentPassword("")
     }
   }, [open, session?.user?.name, session?.user?.image])
 
@@ -184,6 +186,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
         const result = await updateProfileAction({
           name: name.trim() || undefined,
           password: password || undefined,
+          currentPassword: currentPassword || undefined,
           image: imageUrl,
         })
 
@@ -193,6 +196,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
           }
           setPassword("")
           setConfirmPassword("")
+          setCurrentPassword("")
           toast({
             title: "Profil Berhasil Disimpan",
             description: "Perubahan data profil Anda telah tersimpan.",
@@ -399,6 +403,20 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
               <div className="p-3 rounded-xl bg-muted/20 border border-border/60 text-xs text-muted-foreground space-y-1">
                 <p className="font-bold text-foreground">Perbarui Kata Sandi Akun</p>
                 <p className="text-[11px]">Kosongkan bidang ini jika Anda tidak ingin mengubah kata sandi akun saat ini.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="profile-current-password" className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-primary" /> Password Saat Ini
+                </Label>
+                <Input
+                  id="profile-current-password"
+                  type="password"
+                  placeholder="Wajib diisi untuk mengubah password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="h-9 bg-background border-border rounded-xl text-xs"
+                />
               </div>
 
               <div className="space-y-1.5">

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
 import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
-import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
+import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, sniffMimeTypeFromBuffer, MAX_FILE_SIZE } from "@/lib/validations"
 import { uploadTenantMedia } from "@/lib/r2"
 import type { Media } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
@@ -58,12 +58,27 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       if (file.name.endsWith(".docx") && (mimeType === "application/octet-stream" || !mimeType)) {
         mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       }
-      if (!isAllowedMimeType(mimeType)) return NextResponse.json({ error: `File type not allowed: ${mimeType}` }, { status: 400 })
 
       if (!isAllowedFileSize(file.size)) return NextResponse.json({ error: `File too large. Max size: ${MAX_FILE_SIZE / 1024 / 1024}MB` }, { status: 400 })
 
       const bytes = await file.arrayBuffer()
       const buffer = Buffer.from(bytes)
+
+      // A client-declared "application/octet-stream" is also what an
+      // attacker gets by just not setting a Content-Type on the file part —
+      // it used to sail through both the whitelist (explicitly listed) and
+      // the signature check (no case for it, defaulted to true). Resolve it
+      // from the real bytes instead of trusting the label; reject outright
+      // if nothing recognizable matches rather than accepting it as-is.
+      if (mimeType === "application/octet-stream") {
+        const sniffed = sniffMimeTypeFromBuffer(buffer)
+        if (!sniffed) {
+          return NextResponse.json({ error: "Could not verify file content — unrecognized or corrupted file." }, { status: 400 })
+        }
+        mimeType = sniffed
+      }
+
+      if (!isAllowedMimeType(mimeType)) return NextResponse.json({ error: `File type not allowed: ${mimeType}` }, { status: 400 })
 
       if (!validateMagicBytes(buffer, mimeType)) return NextResponse.json({ error: `Invalid file signature for type: ${mimeType}` }, { status: 400 })
 

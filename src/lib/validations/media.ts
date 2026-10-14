@@ -74,12 +74,47 @@ export function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
     case "application/msword":
       return hex.startsWith("D0CF11E0") || hex.startsWith("504B")
     case "image/svg+xml":
-      // Basic SVG check: starts with <svg or <?xml
-      const svgStart = buffer.subarray(0, 100).toString().toLowerCase()
-      return svgStart.includes("<svg") || svgStart.includes("<?xml")
+      return looksLikeSvg(buffer)
     default:
-      return true
+      // No signature on file for this type (includes application/octet-stream)
+      // — reject rather than blindly trust the client-supplied label. Every
+      // other whitelisted type above has an explicit signature check; a
+      // mimeType that reaches here either isn't really whitelisted or is
+      // octet-stream, which sniffMimeTypeFromBuffer below exists to resolve
+      // into a real type before validation, not to be accepted as-is.
+      return false
   }
+}
+
+/**
+ * A much stricter SVG check than a plain "<svg" substring match would be:
+ * actively rejects embedded <script> tags and on* event-handler attributes
+ * instead of just confirming the file looks vaguely SVG-shaped. This is a
+ * stopgap, not a sanitizer — svg content still isn't rewritten/cleaned, so
+ * other active content vectors (e.g. CSS expressions) aren't exhaustively
+ * covered, but the common stored-XSS payloads are blocked outright.
+ */
+function looksLikeSvg(buffer: Buffer): boolean {
+  const text = buffer.subarray(0, 4096).toString("utf8").toLowerCase()
+  if (!(text.includes("<svg") || text.includes("<?xml"))) return false
+  if (/<script[\s>]/.test(text)) return false
+  if (/\son\w+\s*=/.test(text)) return false
+  return true
+}
+
+/**
+ * Best-effort content sniffing for when the client-supplied mimeType is
+ * missing/generic (application/octet-stream) — used to resolve a real type
+ * from the bytes themselves instead of trusting a label an attacker fully
+ * controls. Returns null if nothing recognizable matched (caller should
+ * reject the upload rather than falling back to octet-stream unchecked).
+ */
+export function sniffMimeTypeFromBuffer(buffer: Buffer): string | null {
+  const candidates = ALLOWED_MIME_TYPES.filter((t) => t !== "application/octet-stream")
+  for (const candidate of candidates) {
+    if (validateMagicBytes(buffer, candidate)) return candidate
+  }
+  return null
 }
 
 /**

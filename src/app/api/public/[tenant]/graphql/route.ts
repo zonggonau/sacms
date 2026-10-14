@@ -6,6 +6,11 @@ import {
 } from "graphql"
 
 const MAX_QUERY_DEPTH = 10
+// Depth alone doesn't stop a wide, flat query — N root-level aliased fields
+// each trigger their own count+findMany+relation resolution, but still
+// count as a single request against the per-token/session rate limit.
+// Cap the total number of field selections in the whole document too.
+const MAX_QUERY_NODES = 300
 
 /** Reject documents nested deeper than MAX_QUERY_DEPTH (DoS guard). */
 const depthLimitRule: ValidationRule = (context) => ({
@@ -26,6 +31,29 @@ const depthLimitRule: ValidationRule = (context) => ({
     depthOf(node, 0)
   },
 })
+
+/** Reject documents with more than MAX_QUERY_NODES total field selections (breadth/DoS guard). */
+const breadthLimitRule: ValidationRule = (context) => ({
+  OperationDefinition(node) {
+    let count = 0
+    let reported = false
+    const walk = (n: ASTNode) => {
+      const sels = (n as { selectionSet?: { selections: readonly ASTNode[] } }).selectionSet?.selections ?? []
+      for (const sel of sels) {
+        if (sel.kind === "Field") count++
+        if (count > MAX_QUERY_NODES) {
+          if (!reported) {
+            context.reportError(new GraphQLError(`Query exceeds maximum of ${MAX_QUERY_NODES} field selections`))
+            reported = true
+          }
+          return
+        }
+        walk(sel)
+      }
+    }
+    walk(node)
+  },
+})
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { buildDynamicTypeDefs, buildDynamicResolvers } from "@/lib/graphql-schema"
@@ -38,6 +66,7 @@ import { createHash } from "crypto"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
 
 // POST /api/public/[tenant]/graphql - GraphQL endpoint
 export async function POST(
@@ -164,8 +193,13 @@ export async function POST(
       }
 
       resolvedTenantId = access.tenantId
-      // Allow mutations for workspace admins/owners or super admins
-      allowMutations = access.role === "admin" || access.role === "owner" || session.user.role === "super_admin"
+      // Mirrors the REST/server-action write gate (checkPermission against
+      // content.update) instead of hardcoding role names — editor already
+      // holds unrestricted CONTENT_UPDATE there, so it shouldn't be the only
+      // write path where editor is silently blocked. author/contributor are
+      // deliberately NOT included: they only ever hold the *_OWN variant,
+      // and this resolver has no per-entry ownership check to fall back on.
+      allowMutations = roleHasPermission(access.role, PERMISSIONS.CONTENT_UPDATE) || session.user.role === "super_admin"
 
       // Apply a rate limit based on the session user ID
       const limitRes = await rateLimit(`session:${session.user.id}`, RATE_LIMITS.publicApi)
@@ -219,7 +253,7 @@ export async function POST(
         { status: 400 },
       ))
     }
-    const rules: ValidationRule[] = [...specifiedRules, depthLimitRule]
+    const rules: ValidationRule[] = [...specifiedRules, depthLimitRule, breadthLimitRule]
     if (!allowMutations) rules.push(NoSchemaIntrospectionCustomRule)
     const validationErrors = validate(schema, document, rules)
     if (validationErrors.length > 0) {

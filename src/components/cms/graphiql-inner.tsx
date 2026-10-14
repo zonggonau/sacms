@@ -11,6 +11,15 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
+  // Apollo's sandbox is only ever served from a mutable "_latest" alias —
+  // there's no versioned/pinned path on their CDN to lock this script to
+  // (checked directly against their hosting: no SRI-friendly fixed-version
+  // URL exists). Since the script can't be pinned, it shouldn't carry the
+  // operator's session by default: includeCookies starts off, so a
+  // tampered/compromised script can't fire authenticated mutations just
+  // because this tab is open — the operator has to deliberately opt in
+  // each time they actually want to run something against real tenant data.
+  const [includeCookies, setIncludeCookies] = useState(false)
 
   const isMountedRef = useRef(true)
 
@@ -54,10 +63,16 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
             target: containerRef.current,
             initialEndpoint: endpoint,
             initialState: {
-              document: 'query {\\n  __schema {\\n    types {\\n      name\\n      kind\\n    }\\n  }\\n}',
+              // Introspection is disabled server-side for any caller the
+              // GraphQL route doesn't grant mutation access to (viewer,
+              // subscriber, author, contributor) — seeding an introspection
+              // query by default made the playground fail validation
+              // immediately for most roles. A plain placeholder works for
+              // everyone; privileged roles can still introspect on demand.
+              document: '# Write a query or mutation, then press the Run button.\\n',
               variables: {},
               headers: {},
-              includeCookies: true,
+              includeCookies,
               pollForSchemaUpdates: false
             }
           })
@@ -78,13 +93,13 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
           console.error("Error disposing EmbeddedSandbox:", e)
         }
       }
-      
+
       const existingScript = document.querySelector('script[src*="embeddable-sandbox"]')
       if (existingScript) {
         existingScript.removeEventListener('load', initSandbox)
       }
     }
-  }, [endpoint])
+  }, [endpoint, includeCookies])
 
   if (error) {
     return (
@@ -95,8 +110,17 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
   }
 
   return (
-    <div className="h-full w-full bg-background" style={{ minHeight: 'calc(100vh - 4rem)' }}>
-      <div ref={containerRef} className="w-full h-full" style={{ height: '100%', width: '100%' }} />
+    <div className="h-full w-full bg-background flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
+      <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-border shrink-0 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={includeCookies}
+          onChange={(e) => setIncludeCookies(e.target.checked)}
+          className="h-3.5 w-3.5"
+        />
+        Jalankan dengan sesi login saya (diperlukan untuk query/mutation sungguhan — nonaktif secara default demi keamanan)
+      </label>
+      <div ref={containerRef} className="w-full flex-1" style={{ width: '100%' }} />
     </div>
   )
 }

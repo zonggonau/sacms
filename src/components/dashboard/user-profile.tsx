@@ -29,6 +29,7 @@ export function UserProfile({ initialData }: UserProfileProps) {
   const [role, setRole] = useState(initialData?.role || "user")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,13 +47,15 @@ export function UserProfile({ initialData }: UserProfileProps) {
       try {
         const result = await updateProfileAction({
           name,
-          password: password || undefined
+          password: password || undefined,
+          currentPassword: currentPassword || undefined,
         })
 
         if (result.success) {
           await update({ name: result.user?.name }) // Update NextAuth session
           setPassword("")
           setConfirmPassword("")
+          setCurrentPassword("")
           toast({
             title: "Profil Diperbarui",
             description: "Profil Anda telah berhasil diperbarui.",
@@ -142,6 +145,17 @@ export function UserProfile({ initialData }: UserProfileProps) {
                   <h4 className="text-xs font-bold flex items-center gap-2 mb-4">
                     <Key className="h-3.5 w-3.5 text-muted-foreground" /> Ubah Kata Sandi
                   </h4>
+                  <div className="space-y-1.5 mb-4">
+                    <Label htmlFor="current-password" className="text-xs font-semibold">Kata Sandi Saat Ini</Label>
+                    <Input
+                      id="current-password"
+                      type="password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Wajib diisi untuk mengubah kata sandi"
+                      className="h-9 text-xs rounded-xl border-border/80"
+                    />
+                  </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
                       <Label htmlFor="new-password" className="text-xs font-semibold">Kata Sandi Baru</Label>

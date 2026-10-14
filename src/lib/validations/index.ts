@@ -1,7 +1,7 @@
 export { paginationSchema, sortSchema, localeSchema, cuidSchema, slugSchema, contentStatusSchema, contentStatusValues } from "./common"
 export { createEntrySchema, updateEntrySchema, changeStatusSchema, bulkDeleteSchema } from "./content"
 export type { CreateEntryInput, UpdateEntryInput, ChangeStatusInput } from "./content"
-export { mediaUploadSchema, mediaUpdateSchema, isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MIME_WHITELIST, MAX_FILE_SIZE } from "./media"
+export { mediaUploadSchema, mediaUpdateSchema, isAllowedMimeType, isAllowedFileSize, validateMagicBytes, sniffMimeTypeFromBuffer, MIME_WHITELIST, MAX_FILE_SIZE } from "./media"
 export { createTenantSchema, updateTenantSchema, addLocaleSchema, inviteMemberSchema } from "./tenant"
 export { createWebhookSchema, updateWebhookSchema } from "./webhook"
 export type { CreateWebhookInput, UpdateWebhookInput } from "./webhook"

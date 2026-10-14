@@ -185,17 +185,42 @@ export function isPlatformStorageKey(key: string): boolean {
   return !key.startsWith("upload/")
 }
 
+/** Validated mimeType -> safe extension, so a stored file's extension
+ * reflects what the bytes actually are rather than whatever extension the
+ * uploader's filename happened to carry (which the client fully controls). */
+const EXTENSION_BY_MIME: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/svg+xml": "svg",
+  "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+  "video/quicktime": "mov",
+  "application/pdf": "pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+  "application/msword": "doc",
+  "application/zip": "zip",
+  "application/x-zip-compressed": "zip",
+}
+
 /** Platform-bucket key for a workspace file: `<tenantId>/<ext>/<name>_<timestamp>.<ext>`. */
-export function generateTenantMediaKey(tenantId: string, filename: string): string {
-  return generateStorageKey(tenantId, filename).replace(/^upload\//, "")
+export function generateTenantMediaKey(tenantId: string, filename: string, mimeType?: string): string {
+  return generateStorageKey(tenantId, filename, mimeType).replace(/^upload\//, "")
 }
 
 /**
- * Generate a storage key for a file.
+ * Generate a storage key for a file. `mimeType`, when given, picks the
+ * extension from EXTENSION_BY_MIME instead of trusting the filename's own
+ * extension — falls back to the filename only for types with no map entry
+ * (e.g. application/octet-stream never reaches here unvalidated any more,
+ * but third-party callers might still omit mimeType).
  */
-function generateStorageKey(tenantSlug: string, filename: string): string {
+function generateStorageKey(tenantSlug: string, filename: string, mimeType?: string): string {
   const parts = filename.split(".")
-  const ext = parts.pop()?.toLowerCase() || "bin"
+  const filenameExt = parts.pop()?.toLowerCase() || "bin"
+  const ext = (mimeType && EXTENSION_BY_MIME[mimeType]) || filenameExt
   const baseName = parts.join(".").replace(/[^a-z0-9]/gi, "_").toLowerCase()
   const timestamp = Date.now()
   // The per-extension folder is deliberately NOT dot-prefixed (it used to be
@@ -262,7 +287,7 @@ export async function uploadToSharedStorage(
   mimeType: string
 ): Promise<UploadResult> {
   const { s3, bucket, publicUrl, isCustom } = await getSharedS3Client(tenantSlug)
-  return putWithVariants(s3, bucket, publicUrl, isCustom, generateStorageKey(tenantSlug, filename), buffer, mimeType)
+  return putWithVariants(s3, bucket, publicUrl, isCustom, generateStorageKey(tenantSlug, filename, mimeType), buffer, mimeType)
 }
 
 /**
@@ -280,7 +305,7 @@ export async function uploadTenantMedia(
 
   const tenantStorage = await getTenantObjectStorage(tenant.id)
   if (tenantStorage) {
-    return putWithVariants(tenantStorage.s3, tenantStorage.bucket, "", false, generateTenantMediaKey(tenant.id, filename), buffer, mimeType)
+    return putWithVariants(tenantStorage.s3, tenantStorage.bucket, "", false, generateTenantMediaKey(tenant.id, filename, mimeType), buffer, mimeType)
   }
   return uploadToLocal(tenant.slug, buffer, filename, mimeType)
 }
@@ -350,7 +375,7 @@ export async function uploadToLocal(
   filename: string,
   mimeType: string
 ): Promise<UploadResult> {
-  const storageKey = generateStorageKey(tenantSlug, filename)
+  const storageKey = generateStorageKey(tenantSlug, filename, mimeType)
   const fullPath = path.join(process.cwd(), "public", storageKey)
   fs.mkdirSync(path.dirname(fullPath), { recursive: true })
   fs.writeFileSync(fullPath, buffer)
