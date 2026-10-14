@@ -98,6 +98,7 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
     const contentType = await tenantDb.contentType.findFirst({
       where: {
         id,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -139,6 +140,7 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
     const contentType = await tenantDb.contentType.findFirst({
       where: {
         slug,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -357,7 +359,15 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
     const referencingFields = await tenantDb.schemaField.findMany({
       where: {
         relationSlug: existingContentType.slug,
-        NOT: { contentTypeId: id }
+        NOT: { contentTypeId: id },
+        OR: [
+          { contentType: { tenantId: access.tenantId } },
+          { singleType: { tenantId: access.tenantId } },
+          { component: { tenantId: access.tenantId } },
+          { contentType: { tenantId: null } },
+          { singleType: { tenantId: null } },
+          { component: { tenantId: null } },
+        ],
       },
       include: {
         contentType: true,

@@ -103,9 +103,10 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         slug,
+        draftTemplateId: null,
         OR: [
           { tenantId: tenantId },
-          { 
+          {
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },
@@ -232,8 +233,8 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, showInCms, fields } = result.data
 
-    const existingSingleType = await tenantDb.singleType.findUnique({
-      where: { id },
+    const existingSingleType = await tenantDb.singleType.findFirst({
+      where: { id, draftTemplateId: null },
     })
 
     if (!existingSingleType) return { error: "Single type not found" }
@@ -313,8 +314,8 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const existingSingleType = await tenantDb.singleType.findUnique({
-      where: { id },
+    const existingSingleType = await tenantDb.singleType.findFirst({
+      where: { id, draftTemplateId: null },
       include: { tenants: true }
     })
 
@@ -331,7 +332,15 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
     const referencingFields = await tenantDb.schemaField.findMany({
       where: {
         relationSlug: existingSingleType.slug,
-        NOT: { singleTypeId: id }
+        NOT: { singleTypeId: id },
+        OR: [
+          { contentType: { tenantId: access.tenantId } },
+          { singleType: { tenantId: access.tenantId } },
+          { component: { tenantId: access.tenantId } },
+          { contentType: { tenantId: null } },
+          { singleType: { tenantId: null } },
+          { component: { tenantId: null } },
+        ],
       },
       include: {
         contentType: true,
@@ -366,12 +375,22 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
+    if (!rbac.allowed) return { error: "Forbidden" }
+
+    // saveSingleTypeDataSchema wraps {singleTypeId, data, publish}, but this
+    // action receives the inner field-value record directly as `data` — so
+    // we validate against its `data` sub-schema, not the whole object.
+    const result = saveSingleTypeDataSchema.shape.data.safeParse(data)
+    if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
+
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         id: singleTypeId,
+        draftTemplateId: null,
         OR: [
           { tenantId: tenantId },
           { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
@@ -382,13 +401,13 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
 
     if (!singleType) return { error: "Single type not found" }
 
-    let processedData = data
-    if (data) {
+    let processedData = result.data
+    if (processedData) {
       processedData = await processAutoSlugs(
         tenantId,
         singleTypeId,
         singleType.schemaFields,
-        data,
+        processedData,
         undefined,
         'single',
         tenantDb

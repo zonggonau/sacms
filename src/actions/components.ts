@@ -111,6 +111,7 @@ export async function getComponentBySlugAction(tenantSlug: string, slug: string)
     const component = await tenantDb.component.findFirst({
       where: {
         slug,
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { 
@@ -229,8 +230,8 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, category, fields } = result.data
 
-    const existingComponent = await tenantDb.component.findUnique({
-      where: { id },
+    const existingComponent = await tenantDb.component.findFirst({
+      where: { id, draftTemplateId: null },
     })
 
     if (!existingComponent) return { error: "Component not found" }
@@ -310,8 +311,8 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const existingComponent = await tenantDb.component.findUnique({
-      where: { id },
+    const existingComponent = await tenantDb.component.findFirst({
+      where: { id, draftTemplateId: null },
     })
 
     if (!existingComponent) return { error: "Component not found" }

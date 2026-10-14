@@ -9,6 +9,7 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
   const component = await tenantDb.component.findFirst({
     where: {
       slug: componentSlug,
+      draftTemplateId: null,
       OR: [{ tenantId: null }, { tenantId: access.tenantId }],
     },
     include: { schemaFields: { orderBy: { order: "asc" } }, tenants: true },
