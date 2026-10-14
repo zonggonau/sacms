@@ -5,16 +5,30 @@ import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
 import { db } from "@/lib/database"
 import { cleanPrice, formatRupiah } from "@/lib/plan-pricing"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions)
-  
+
   if (!session) {
     redirect("/login")
   }
 
+  // Account-level billing isn't scoped to one workspace, so "enterprise
+  // mode" here reflects the platform's own global workspace license — not
+  // session.user.id, which getTenantAccess() can never resolve to a real
+  // Tenant (user ids and tenant ids are different id spaces), so that
+  // always silently evaluated to false before this fix.
   const { isEnterpriseTenant } = await import("@/lib/license")
-  const enterprise = await isEnterpriseTenant(session.user.id)
+  // getGlobalWorkspaceId() returns whatever the "globalTenantId" setting
+  // holds — a slug OR an id — but isEnterpriseTenant()/validateLicense()
+  // only ever look Tenant up by exact id, so resolve it to the real id first.
+  const globalWorkspaceSlugOrId = await getGlobalWorkspaceId()
+  const globalWorkspace = await db.tenant.findFirst({
+    where: { OR: [{ id: globalWorkspaceSlugOrId }, { slug: globalWorkspaceSlugOrId }] },
+    select: { id: true },
+  })
+  const enterprise = globalWorkspace ? await isEnterpriseTenant(globalWorkspace.id) : false
 
   // 1. Fetch Account Plans directly from DB
   let accountPlans: any[] = []

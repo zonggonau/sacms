@@ -461,11 +461,18 @@ export default function BillingClient({
             </section>
           )}
 
-          {/* ── 3. ENTERPRISE LICENSE ── */}
+          {/* ── 3. ENTERPRISE LICENSE ──
+              No tenantId passed: this page isn't scoped to one workspace, so
+              the banner falls back to its own getGlobalWorkspaceIdAction()
+              resolution (see enterprise-license-banner.tsx) — same as
+              workspace-manager.tsx's usage. Passing session.user.id here
+              used to send a user id where a tenant id/slug was required,
+              which getTenantAccess() can never resolve, so this always
+              silently showed "no license" regardless of real status. */}
           <div className="mt-6">
             <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
             {session?.user?.id && (
-              <EnterpriseLicenseBanner tenantId={session.user.id} hideActivation={false} />
+              <EnterpriseLicenseBanner hideActivation={false} />
             )}
           </div>
         </TabsContent>

@@ -224,9 +224,29 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
     return { valid: false, status: "invalid", error: "No license key configured" }
   }
 
+  // Step 0: Check the issuing record for an explicit revoke — authoritative,
+  // checked before trusting any cache or offline signature verification.
+  // The RSA signature alone proves the key is genuine, not that it's still
+  // allowed to be used; without this check, revoking a license from the
+  // admin panel never actually stopped the key from validating, since the
+  // offline/cache paths below never consulted this table at all.
+  const dbRecord = await getLicenseFromDb(key).catch(() => null)
+  if (dbRecord?.status === "revoked") {
+    return {
+      valid: false,
+      status: "revoked",
+      error: "License has been revoked",
+      customerName: dbRecord.customerName,
+      customerEmail: dbRecord.customerEmail ?? undefined,
+      organization: dbRecord.organization ?? undefined,
+      type: dbRecord.type,
+    }
+  }
+
   // Step 1: Check cache
   const cached = await getCachedLicense(tenantId)
   if (cached?.valid && cached.status === "active") {
+    recordValidation(key).catch(() => {})
     return cached
   }
 
@@ -281,6 +301,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
           status: "active",
         }
         await upsertLicenseCache(result, tenantId, key)
+        recordValidation(key).catch(() => {})
         return result
       }
     } catch {
@@ -303,6 +324,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
   }
 
   await upsertLicenseCache(result, tenantId, key)
+  recordValidation(key).catch(() => {})
   return result
 }
 

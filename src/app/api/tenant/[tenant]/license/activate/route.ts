@@ -7,7 +7,7 @@
  * caller is entitled to attach it here.
  */
 import { NextResponse } from "next/server"
-import { parseLicenseKey, isLicenseExpired, upsertLicenseCache } from "@/lib/license"
+import { parseLicenseKey, isLicenseExpired, upsertLicenseCache, getLicenseFromDb } from "@/lib/license"
 import { db } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { z } from "zod"
@@ -33,6 +33,13 @@ export const POST = withStaffAuth(
     // 2. Check expiry
     if (isLicenseExpired(payload)) {
       return apiError("validation", { message: "This license key has expired" })
+    }
+
+    // 2b. Refuse a key the admin panel has revoked — the RSA signature only
+    // proves the key is genuine, not that it's still allowed to be used.
+    const dbRecord = await getLicenseFromDb(licenseKey).catch(() => null)
+    if (dbRecord?.status === "revoked") {
+      return apiError("validation", { message: "This license key has been revoked" })
     }
 
     // 3. Try online validation (optional)

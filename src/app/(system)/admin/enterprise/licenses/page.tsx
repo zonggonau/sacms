@@ -55,7 +55,9 @@ import {
   Loader2,
   Key,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShieldOff,
+  ShieldCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -100,6 +102,7 @@ export default function EnterpriseLicensesPage() {
   const [confirmGenerate, setConfirmGenerate] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [togglingRevokeId, setTogglingRevokeId] = useState<string | null>(null)
 
   const fetchLicenses = async () => {
     try {
@@ -253,11 +256,41 @@ export default function EnterpriseLicensesPage() {
     }
   }
 
+  const handleToggleRevoke = async (lic: License) => {
+    const nextStatus = lic.status === "revoked" ? "active" : "revoked"
+    setTogglingRevokeId(lic.id)
+    try {
+      const res = await fetch(`/api/admin/license/${lic.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      if (res.ok) {
+        toast({
+          title: nextStatus === "revoked" ? "Lisensi Dicabut" : "Lisensi Diaktifkan Kembali",
+          description:
+            nextStatus === "revoked"
+              ? `Lisensi untuk ${lic.customerName} tidak akan lolos validasi lagi, walau masih dipakai.`
+              : `Lisensi untuk ${lic.customerName} kini dapat divalidasi kembali.`,
+        })
+        fetchLicenses()
+      } else {
+        const errData = await res.json()
+        toast({ title: "Gagal", description: errData.error || "Terjadi kesalahan", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Terjadi Kesalahan", description: "Gagal mengubah status lisensi", variant: "destructive" })
+    } finally {
+      setTogglingRevokeId(null)
+    }
+  }
+
   const filteredLicenses = licenses.filter((lic) => {
     const matchesStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && lic.status === "active" && !lic.isExpired) ||
-      (statusFilter === "expired" && (lic.isExpired || lic.status === "expired"))
+      (statusFilter === "expired" && (lic.isExpired || lic.status === "expired")) ||
+      (statusFilter === "revoked" && lic.status === "revoked")
     return matchesStatus
   })
 
@@ -490,6 +523,7 @@ export default function EnterpriseLicensesPage() {
                 <SelectItem value="all" className="text-xs rounded-lg">Semua Status</SelectItem>
                 <SelectItem value="active" className="text-xs rounded-lg">Aktif</SelectItem>
                 <SelectItem value="expired" className="text-xs rounded-lg">Kadaluarsa</SelectItem>
+                <SelectItem value="revoked" className="text-xs rounded-lg">Dicabut</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -558,7 +592,11 @@ export default function EnterpriseLicensesPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {lic.status === "active" && !lic.isExpired ? (
+                          {lic.status === "revoked" ? (
+                            <Badge className="bg-muted-foreground/10 text-muted-foreground border-border/60 text-[9px] font-bold rounded-full border shadow-none">
+                              Dicabut
+                            </Badge>
+                          ) : lic.status === "active" && !lic.isExpired ? (
                             <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-bold rounded-full border shadow-none">
                               Aktif
                             </Badge>
@@ -579,6 +617,27 @@ export default function EnterpriseLicensesPage() {
                               title="Salin kunci lisensi"
                             >
                               <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              disabled={togglingRevokeId === lic.id}
+                              className={cn(
+                                "h-8 w-8 rounded-lg",
+                                lic.status === "revoked"
+                                  ? "text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                  : "text-amber-600 hover:text-amber-600 hover:bg-amber-500/10"
+                              )}
+                              onClick={() => handleToggleRevoke(lic)}
+                              title={lic.status === "revoked" ? "Aktifkan kembali lisensi" : "Cabut lisensi (tetap berlaku walau sedang dipakai)"}
+                            >
+                              {togglingRevokeId === lic.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : lic.status === "revoked" ? (
+                                <ShieldCheck className="w-3.5 h-3.5" />
+                              ) : (
+                                <ShieldOff className="w-3.5 h-3.5" />
+                              )}
                             </Button>
                             <Button
                               variant="ghost"
@@ -632,7 +691,7 @@ export default function EnterpriseLicensesPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-base font-bold text-foreground">Hapus Lisensi Enterprise?</AlertDialogTitle>
                 <AlertDialogDescription className="text-xs leading-relaxed text-muted-foreground">
-                  Tindakan ini tidak dapat dibatalkan. Lisensi ini akan dinonaktifkan permanen dan instance pelanggan yang menggunakannya akan kehilangan akses enterprise.
+                  Tindakan ini tidak dapat dibatalkan — baris lisensi ini akan dihapus permanen dari sistem. Hanya bisa dilakukan untuk lisensi yang belum/tidak lagi dipakai workspace mana pun; kalau masih aktif dipakai, gunakan tombol "Cabut" terlebih dahulu.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">
