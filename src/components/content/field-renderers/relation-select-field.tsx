@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label"
 
 import { getEntriesAction } from "@/actions/content"
 import { getSingleTypeBySlugAction } from "@/actions/single-types"
+import { getMembersAction } from "@/actions/members"
 
 interface Entry {
   id: string
@@ -59,6 +60,9 @@ interface RelationSelectFieldProps {
    *  next to the field label so users can see what kind of link this is,
    *  independent of the single/multiple select behavior it renders as. */
   relationType?: RelationCardinality | string | null
+  /** "member" targets the tenant's end-user Member table instead of a
+   *  Content Type/Single Type — there's no targetSlug to pick for it. */
+  targetModel?: string | null
 }
 
 export function RelationSelectField({
@@ -71,7 +75,9 @@ export function RelationSelectField({
   multiple = false,
   placeholder,
   relationType,
+  targetModel,
 }: RelationSelectFieldProps) {
+  const isMemberTarget = targetModel === "member"
   const [open, setOpen] = useState(false)
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(false)
@@ -80,23 +86,35 @@ export function RelationSelectField({
 
   // Normalize value to array for easier internal handling if multiple
   const selectedIds = Array.isArray(value) ? value : value ? [value] : []
+  const targetLabel = isMemberTarget ? "Member" : targetSlug
 
   const fetchEntries = useCallback(async (search: string = "") => {
-    if (!targetSlug || !tenantSlug) return
+    if (!tenantSlug) return
+    if (!isMemberTarget && !targetSlug) return
     setLoading(true)
     setError(null)
     try {
-      const result = await getEntriesAction(tenantSlug, targetSlug, { 
-        page: 1, 
-        pageSize: 100, 
-        search 
+      if (isMemberTarget) {
+        const result = await getMembersAction(tenantSlug, { page: 1, pageSize: 100, search })
+        if (result.error) throw new Error(result.error)
+        // Shaped as { id, data } to reuse the same label-resolution path as
+        // content entries — Member's own fields (name/email/role) already
+        // match the generic priority keys getEntryLabel looks for.
+        setEntries((result.members || []).map((m: any) => ({ id: m.id, data: m })))
+        return
+      }
+
+      const result = await getEntriesAction(tenantSlug, targetSlug, {
+        page: 1,
+        pageSize: 100,
+        search
       })
-      
+
       if (result.error) {
         // Fallback to Single Type
         const stResult = await getSingleTypeBySlugAction(tenantSlug, targetSlug)
         if (stResult.error || !stResult.singleType) throw new Error(result.error)
-        
+
         // Mock a single entry from the single type
         setEntries([{
           id: stResult.singleType.id,
@@ -104,12 +122,12 @@ export function RelationSelectField({
         }])
         return
       }
-      
+
       const parsedEntries = (result.entries || []).map((e: any) => ({
         ...e,
         data: typeof e.data === 'string' ? JSON.parse(e.data) : e.data
       }))
-      
+
       setEntries(parsedEntries)
     } catch (err: any) {
       console.warn("Relation fetch warning:", err.message)
@@ -117,7 +135,7 @@ export function RelationSelectField({
     } finally {
       setLoading(false)
     }
-  }, [tenantSlug, targetSlug])
+  }, [tenantSlug, targetSlug, isMemberTarget])
 
   useEffect(() => {
     fetchEntries()
@@ -264,7 +282,7 @@ export function RelationSelectField({
     }
   }
 
-  if (!targetSlug) {
+  if (!isMemberTarget && !targetSlug) {
     return (
       <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-xs font-semibold">
         <AlertCircle className="h-4 w-4 shrink-0" /> Target relasi belum dikonfigurasi.
@@ -356,7 +374,7 @@ export function RelationSelectField({
                 ) : (
                   <span className="flex items-center gap-2 text-muted-foreground">
                     <Search className="h-3.5 w-3.5 opacity-50" />
-                    {placeholder || `Pilih ${label || targetSlug}...`}
+                    {placeholder || `Pilih ${label || targetLabel}...`}
                   </span>
                 )}
               </div>
@@ -365,8 +383,8 @@ export function RelationSelectField({
           </PopoverTrigger>
           <PopoverContent className="w-[420px] p-0 border border-border bg-popover shadow-xl rounded-2xl overflow-hidden" align="start">
             <Command className="rounded-2xl border-none">
-              <CommandInput 
-                placeholder={`Cari data ${targetSlug}...`} 
+              <CommandInput
+                placeholder={`Cari data ${targetLabel}...`}
                 onValueChange={(val) => {
                   setSearchTerm(val)
                 }}
@@ -420,7 +438,7 @@ export function RelationSelectField({
               </CommandList>
               <div className="p-2.5 border-t border-border bg-muted/20 flex justify-between items-center">
                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                   Koleksi Target: <span className="font-mono">{targetSlug}</span>
+                   Koleksi Target: <span className="font-mono">{targetLabel}</span>
                  </p>
                  <Button 
                    variant="ghost" 

@@ -265,10 +265,21 @@ export default function EditComponentClient({
       }
     } catch (e) {}
 
+    if (typeof options !== 'object' || options === null) options = {}
+
     if (field.type === 'slug' && field.autoGenerate) {
-      if (typeof options !== 'object' || options === null) options = {}
       options.autoGenerate = true
       options.sourceField = field.sourceField
+    }
+
+    if (field.type === 'relation') {
+      // See the matching comment in edit-single-type-client.tsx — the
+      // target picker only updates the field's top-level state, so without
+      // this, a changed relation target never made it into the persisted
+      // options.
+      options.relationType = field.relationType || options.relationType
+      options.targetModel = field.targetModel || options.targetModel || "content-type"
+      options.targetSlug = field.targetSlug ?? options.targetSlug ?? ""
     }
 
     return options

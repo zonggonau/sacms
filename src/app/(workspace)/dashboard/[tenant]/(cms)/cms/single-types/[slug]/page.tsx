@@ -220,6 +220,7 @@ export default function CMSSingleTypeDetailPage() {
               label=""
               tenantSlug={tenantSlug}
               targetSlug={field.relationSlug || relOpts?.targetSlug || relOpts?.targetContentType || ""}
+              targetModel={relOpts?.targetModel}
               multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany" || relOpts?.multiple === true}
               value={value as any}
               onChange={v => handleFieldChange(field.slug, v)}

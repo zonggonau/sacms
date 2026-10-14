@@ -14,6 +14,7 @@ export interface FieldDefinition {
   required: boolean
   unique?: boolean
   relationSlug?: string | null
+  options?: any
 }
 
 export async function validateDynamicContent(
@@ -84,12 +85,28 @@ export async function validateDynamicContent(
         // Stored as a plain string id (single) or array of string ids
         // (multi) — see relation-labels.ts's batchFetchRelationLabels for
         // the same shape assumption elsewhere in the codebase.
-        if (!field.relationSlug) break
         const targetIds = Array.isArray(value) ? value : [value]
         if (!targetIds.every((v) => typeof v === "string" && v.length > 0)) {
           errors[field.slug] = `${field.name} has an invalid relation value`
           break
         }
+
+        let opts: any = field.options
+        if (typeof opts === "string") {
+          try { opts = JSON.parse(opts) } catch { opts = {} }
+        }
+
+        if (opts?.targetModel === "member") {
+          const foundCount = await client.member.count({
+            where: { id: { in: targetIds as string[] }, tenantId },
+          })
+          if (foundCount !== targetIds.length) {
+            errors[field.slug] = `${field.name} references one or more members that don't exist`
+          }
+          break
+        }
+
+        if (!field.relationSlug) break
         const targetContentType = await client.contentType.findFirst({
           where: {
             slug: field.relationSlug,

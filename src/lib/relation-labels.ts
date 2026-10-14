@@ -184,10 +184,10 @@ export async function batchFetchRelationLabels(
     }
 
     // 2. Fallback check for singleTypes if any id wasn't in contentEntry
-    const missingIds = ids.filter((id) => !labelMap[id])
-    if (missingIds.length > 0) {
+    const missingAfterEntries = ids.filter((id) => !labelMap[id])
+    if (missingAfterEntries.length > 0) {
       const singleTypes = await tenantDb.singleType.findMany({
-        where: { id: { in: missingIds } },
+        where: { id: { in: missingAfterEntries } },
         include: { tenants: { where: { tenantId } } },
       })
       for (const st of singleTypes) {
@@ -199,6 +199,20 @@ export async function batchFetchRelationLabels(
         const label = extractEntryLabel(parsedData, st.name)
         const subtitle = extractEntrySubtitle(parsedData, label)
         labelMap[st.id] = { label: label || st.name, subtitle: subtitle || undefined, data: parsedData }
+      }
+    }
+
+    // 3. Fallback check for end-user Members (relation target "member") for
+    // any id still unresolved — same tenant-scoped, best-effort approach as
+    // the singleType pass above.
+    const missingAfterSingleTypes = ids.filter((id) => !labelMap[id])
+    if (missingAfterSingleTypes.length > 0) {
+      const members = await tenantDb.member.findMany({
+        where: { id: { in: missingAfterSingleTypes }, tenantId },
+        select: { id: true, name: true, email: true, role: true },
+      })
+      for (const m of members) {
+        labelMap[m.id] = { label: m.name || m.email, subtitle: m.name ? m.email : undefined, data: m }
       }
     }
   } catch (error) {

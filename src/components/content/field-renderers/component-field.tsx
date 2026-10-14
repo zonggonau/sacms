@@ -184,11 +184,12 @@ export function ComponentField({
         const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
-          <RelationSelectField 
-            value={fieldValue as any} 
-            onChange={onFieldChange} 
+          <RelationSelectField
+            value={fieldValue as any}
+            onChange={onFieldChange}
             tenantSlug={tenantSlug}
             targetSlug={(field as any).relationSlug || relOpts?.targetSlug || ""}
+            targetModel={relOpts?.targetModel}
             required={field.required}
             multiple={isMultiple}
           />

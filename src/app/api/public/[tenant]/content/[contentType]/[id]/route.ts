@@ -429,6 +429,17 @@ export async function GET(
           })
         })
 
+        // Relation fields targeting Member resolve from a different table —
+        // see the matching fallback in the list route's GET handler.
+        const stillMissing = Array.from(relatedIds).filter(id => !relatedEntriesMap.has(id))
+        if (stillMissing.length > 0) {
+          const relatedMembers = await tenantDb.member.findMany({
+            where: { id: { in: stillMissing }, tenantId },
+            select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
+          })
+          relatedMembers.forEach(m => relatedEntriesMap.set(m.id, m))
+        }
+
         for (const fieldSlug of fieldsToPopulate) {
           const val = parsedData[fieldSlug]
           if (typeof val === "string") {

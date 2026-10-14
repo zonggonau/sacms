@@ -110,6 +110,17 @@ async function resolveRelation(tenantId: string, idOrSlug: string, targetModel: 
     return null
   }
 
+  if (targetModel === 'member') {
+    const member = await db.member.findFirst({
+      where: { id: idOrSlug, tenantId },
+      select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
+    })
+    // Deliberately excludes passwordHash and any other member-auth internals
+    // — this is the public-facing content API, and a populated relation
+    // must never leak credential material.
+    return member || null
+  }
+
   // Try to find as content entry (default)
   const entry = await db.contentEntry.findFirst({
     where: { id: idOrSlug, tenantId },

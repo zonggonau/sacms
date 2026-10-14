@@ -377,7 +377,7 @@ export async function GET(
         try {
           rd = typeof re.data === 'string' ? JSON.parse(re.data as string) : re.data
         } catch { rd = {} }
-        
+
         relatedEntriesMap.set(re.id, {
           id: re.id,
           ...rd,
@@ -385,6 +385,19 @@ export async function GET(
           status: re.status
         })
       })
+
+      // Relation fields targeting Member (end-user accounts, e.g. an
+      // "author"/"owner" field) resolve from a different table — batch
+      // fetch whatever the contentEntry pass above didn't find. Only the
+      // public-safe subset of columns is ever returned (no passwordHash).
+      const stillMissing = Array.from(allRelatedIds).filter(id => !relatedEntriesMap.has(id))
+      if (stillMissing.length > 0) {
+        const relatedMembers = await tenantDb.member.findMany({
+          where: { id: { in: stillMissing }, tenantId },
+          select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
+        })
+        relatedMembers.forEach(m => relatedEntriesMap.set(m.id, m))
+      }
     }
 
     // 3. Map relations back to entries + availableLocales (Synchronously)

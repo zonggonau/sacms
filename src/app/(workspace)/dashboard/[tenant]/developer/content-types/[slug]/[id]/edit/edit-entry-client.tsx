@@ -286,6 +286,7 @@ export default function CTBEditEntryClient({
             onChange={v => handleFieldChange(field.slug, v)}
             tenantSlug={tenantSlug}
             targetSlug={targetSlug}
+            targetModel={field.options?.targetModel}
             required={field.required}
             multiple={isRelMultiple}
             relationType={field.options?.relationType}

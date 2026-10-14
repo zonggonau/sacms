@@ -293,6 +293,7 @@ export default function CTBNewEntryClient({
             onChange={v => handleFieldChange(field.slug, v)}
             tenantSlug={tenantSlug}
             targetSlug={targetSlug}
+            targetModel={field.options?.targetModel}
             required={field.required}
             multiple={isMultiple}
             relationType={field.options?.relationType}

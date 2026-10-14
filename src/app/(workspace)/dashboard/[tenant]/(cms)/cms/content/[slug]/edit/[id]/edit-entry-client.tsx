@@ -426,6 +426,7 @@ export default function CMSEditEntryClient({
               value={value as any}
               onChange={v => handleFieldChange(field.slug, v)}
               targetSlug={targetSlug}
+              targetModel={field.options?.targetModel}
               tenantSlug={tenantSlug}
               required={field.required}
               multiple={isMultiple}

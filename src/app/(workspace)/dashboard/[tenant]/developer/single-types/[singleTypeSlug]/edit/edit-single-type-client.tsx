@@ -261,10 +261,22 @@ export default function EditSingleTypeClient({
       }
     } catch (e) {}
 
+    if (typeof options !== 'object' || options === null) options = {}
+
     if (field.type === 'slug' && field.autoGenerate) {
-      if (typeof options !== 'object' || options === null) options = {}
       options.autoGenerate = true
       options.sourceField = field.sourceField
+    }
+
+    if (field.type === 'relation') {
+      // The target picker only updates the field's top-level
+      // relationType/targetModel/targetSlug state (see field-config-modal's
+      // onTargetModelChange) — without this, a changed target never made it
+      // into the persisted options, so editing an existing relation field's
+      // target silently reverted to whatever options already had on load.
+      options.relationType = field.relationType || options.relationType
+      options.targetModel = field.targetModel || options.targetModel || "content-type"
+      options.targetSlug = field.targetSlug ?? options.targetSlug ?? ""
     }
 
     return options
@@ -290,6 +302,7 @@ export default function EditSingleTypeClient({
           required: f.required,
           unique: f.unique,
           options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? (f.targetSlug || undefined) : undefined,
           relationType: f.relationType || undefined,
           targetModel: f.targetModel || undefined,
           targetSlug: f.targetSlug || undefined,

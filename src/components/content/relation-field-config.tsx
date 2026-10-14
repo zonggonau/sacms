@@ -22,6 +22,7 @@ const RELATION_TYPES = [
 const TARGET_MODELS = [
   { value: "content-type", label: "Content Type" },
   { value: "single-type", label: "Single Type" },
+  { value: "member", label: "Member (End-User)" },
 ]
 
 interface TypeItem {
@@ -136,8 +137,9 @@ export function RelationFieldConfig({
         </div>
       </div>
 
-      {/* Target slug selector */}
-      {targetModel && (
+      {/* Target slug selector — not applicable to "member": every tenant has
+          exactly one Member table, there's nothing to pick between. */}
+      {targetModel && targetModel !== "member" && (
         <div className="space-y-1">
           <Label className="text-xs">Target *</Label>
           {loading ? (
@@ -157,6 +159,11 @@ export function RelationFieldConfig({
             </Select>
           )}
         </div>
+      )}
+      {targetModel === "member" && (
+        <p className="text-[11px] text-muted-foreground">
+          Field ini akan menyimpan referensi ke akun Member (end-user) workspace ini — mis. "Pemilik Akun" atau "Penulis".
+        </p>
       )}
     </div>
   )
