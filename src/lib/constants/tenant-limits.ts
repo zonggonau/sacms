@@ -37,11 +37,11 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     credits: 300,
     price_usd: 9,
     price_idr: 149000,
-    description: "Top-up 300 AI credits untuk Next.js frontend builds.",
+    description: "Top-up 300 AI credits untuk AI Schema Builder & fitur AI di CMS.",
     features: [
       "300 AI Credits",
-      "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik ke SaCMS Cloud Hosting",
+      "AI Schema Builder & Iterasi via Prompt",
+      "Fitur AI di CMS Editor",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -55,8 +55,8 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     description: "Top-up 1.500 AI credits dengan antrean prioritas.",
     features: [
       "1.500 AI Credits",
-      "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik ke SaCMS Cloud Hosting",
+      "AI Schema Builder & Iterasi via Prompt",
+      "Fitur AI di CMS Editor",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -69,8 +69,8 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     description: "Top-up 5.000 AI credits untuk tim produksi.",
     features: [
       "5.000 AI Credits",
-      "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik ke SaCMS Cloud Hosting",
+      "AI Schema Builder & Iterasi via Prompt",
+      "Fitur AI di CMS Editor",
       "Digunakan di Semua Workspace"
     ]
   },
@@ -84,8 +84,8 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
     description: "Top-up 15.000 AI credits untuk agensi dengan volume tinggi.",
     features: [
       "15.000 AI Credits",
-      "Iterasi Desain AI Cepat",
-      "Deploy 1-Klik ke SaCMS Cloud Hosting",
+      "AI Schema Builder & Iterasi via Prompt",
+      "Fitur AI di CMS Editor",
       "Digunakan di Semua Workspace"
     ]
   }

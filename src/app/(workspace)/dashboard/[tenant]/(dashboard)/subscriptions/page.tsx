@@ -546,7 +546,7 @@ export default function TenantSubscriptionsPage() {
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-500" /> AI Plan Builder ({aiCreditPacks.length || 4})
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" /> AI Plan ({aiCreditPacks.length || 4})
                 <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   AI
                 </span>
@@ -674,7 +674,7 @@ export default function TenantSubscriptionsPage() {
             </div>
           )}
 
-          {/* AI Plan Builder Section */}
+          {/* AI Plan Section */}
           {!isEnterpriseMode && activeSection === 'ai_plans' && (
             <div className="space-y-6">
               {/* Header Title, Description, and AI Credit Balance */}
@@ -685,7 +685,7 @@ export default function TenantSubscriptionsPage() {
                       <Sparkles className="h-4 w-4" />
                     </div>
                     <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">
-                      AI Plan Builder (Credits)
+                      AI Plan (Credits)
                     </h2>
                   </div>
                   <p className="text-xs text-muted-foreground max-w-2xl">
@@ -709,7 +709,7 @@ export default function TenantSubscriptionsPage() {
               {/* AI Credit Packs Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {(aiCreditPacks.length > 0 ? aiCreditPacks : [
-                  { id: "ai_pack_starter", name: "Starter Credits", credits: 300, price_idr: 149000, price_usd: 9, description: "Top-up 300 AI credits untuk Next.js frontend builds.", features: ["300 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
+                  { id: "ai_pack_starter", name: "Starter Credits", credits: 300, price_idr: 149000, price_usd: 9, description: "Top-up 300 AI credits untuk AI Schema Builder & fitur AI di CMS.", features: ["300 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
                   { id: "ai_pack_pro", name: "Pro Credits", credits: 1500, price_idr: 449000, price_usd: 29, badge: "Most Popular", description: "Top-up 1.500 AI credits dengan antrean prioritas.", features: ["1.500 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
                   { id: "ai_pack_business", name: "Business Credits", credits: 5000, price_idr: 1199000, price_usd: 79, description: "Top-up 5.000 AI credits untuk tim produksi.", features: ["5.000 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
                   { id: "ai_pack_agency", name: "Agency Credits", credits: 15000, price_idr: 2299000, price_usd: 149, badge: "Best Value", description: "Top-up 15.000 AI credits untuk agensi dengan volume tinggi.", features: ["15.000 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
