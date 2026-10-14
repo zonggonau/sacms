@@ -105,9 +105,13 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return { transactions: [], total: 0, page, totalPages: 1 }
 
-    // Fetch user memberships to also get tenant subscriptions
+    // Fetch user memberships to also get tenant subscriptions — only for
+    // tenants this user can actually manage billing for. Without the role
+    // filter, any invited member/editor/viewer of a workspace would see
+    // that workspace's full payment history (order IDs, amounts, plan) on
+    // their own personal billing page, which only the owner/admin should see.
     const memberships = await db.tenantMember.findMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user.id, role: { in: ["owner", "admin"] } },
       select: { tenantId: true }
     })
     const tenantIds = memberships.map(m => m.tenantId).filter(Boolean) as string[]
@@ -179,7 +183,25 @@ export async function checkTransactionStatusAction(orderId: string) {
       include: { subscription: true }
     })
 
-    if (!transaction || transaction.subscription?.userId !== session.user.id) {
+    if (!transaction || !transaction.subscription) {
+      return { success: false, error: "Transaction not found" }
+    }
+
+    // Authorize by CURRENT standing, not by who happened to run the
+    // original checkout: subscription.userId is set once at creation time
+    // and goes stale after an ownership transfer or member offboarding.
+    // A personal account-level subscription (tenantId null) has no
+    // membership concept, so it stays creator-only.
+    const sub = transaction.subscription
+    const authorized = sub.tenantId === null
+      ? sub.userId === session.user.id
+      : session.user.role === "super_admin" ||
+        (await db.tenantMember.findFirst({
+          where: { tenantId: sub.tenantId, userId: session.user.id, role: { in: ["owner", "admin"] } },
+          select: { id: true },
+        })) !== null
+
+    if (!authorized) {
       return { success: false, error: "Transaction not found" }
     }
 

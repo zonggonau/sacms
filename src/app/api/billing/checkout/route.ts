@@ -6,6 +6,7 @@ import { getPaymentProvider } from "@/lib/payment"
 import { getDynamicAccountPrices, getDynamicWorkspacePrices } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
+import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
 import { STORAGE_ADDON_ID, STORAGE_ADDON_PRICE_IDR, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
 import {
   MANAGED_INFRA_MONTHLY_FEE_IDR,
@@ -45,14 +46,57 @@ export async function POST(request: NextRequest) {
     let dbTenant: any = null;
 
     if (isAiCreditPack) {
-      const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
-      const pack = AI_CREDIT_PACKS.find(p => p.id === planId)
-      if (!pack) {
+      // Prefer the admin-editable CMS pricing table (sacms-ai-pricing) over
+      // the hardcoded AI_CREDIT_PACKS fallback, mirroring how plan pricing
+      // below already prefers its CMS table — otherwise a pack added only
+      // in the CMS 400s here, and a pack whose price/credits an admin
+      // changed in the CMS still gets charged/granted at the old hardcoded
+      // amount since the UI shows the CMS value but checkout never read it.
+      let packFound = false
+      try {
+        const aiPricingType = await db.contentType.findFirst({ where: { slug: "sacms-ai-pricing" } })
+        if (aiPricingType) {
+          const entries = await db.contentEntry.findMany({
+            where: { contentTypeId: aiPricingType.id, status: "PUBLISHED" },
+          })
+          const match = entries.find((e) => {
+            let d = e.data
+            if (typeof d === "string") {
+              try { d = JSON.parse(d) } catch { d = {} }
+            }
+            const data = d as any
+            return (data.pack_slug || e.id) === planId
+          })
+          if (match) {
+            let d = match.data
+            if (typeof d === "string") {
+              try { d = JSON.parse(d) } catch { d = {} }
+            }
+            const data = d as any
+            amount = Number(data.price) || 0
+            planName = data.name || "AI Credits"
+            creditAmount = Number(data.credits) || 0
+            packFound = true
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching dynamic AI credit pack price:", e)
+      }
+
+      if (!packFound) {
+        const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+        const pack = AI_CREDIT_PACKS.find(p => p.id === planId)
+        if (!pack) {
+          return NextResponse.json({ error: "Invalid AI credit pack" }, { status: 400 })
+        }
+        amount = pack.price_idr
+        planName = pack.name
+        creditAmount = pack.credits
+      }
+
+      if (!amount || !creditAmount) {
         return NextResponse.json({ error: "Invalid AI credit pack" }, { status: 400 })
       }
-      amount = pack.price_idr
-      planName = pack.name
-      creditAmount = pack.credits
       isAddon = true
     } else if (isAccountPlan) {
       // Logic for account plan pricing
@@ -188,6 +232,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Independent of the price-based isDowngrade check below (which only
+    // fires while subscription.status === 'active' and can misfire if the
+    // account/workspace CMS price tables diverge — see calculateProratedAmount),
+    // block an account-plan downgrade that would leave the user owning more
+    // workspaces than the target plan allows, mirroring the same guard in
+    // PUT /api/auth/user/plan.
+    if (isAccountPlan) {
+      const targetConfig = USER_PLAN_LIMITS[planId]
+      if (targetConfig) {
+        const currentUser = await db.user.findUnique({ where: { id: session.user.id }, select: { plan: true } })
+        const currentConfig = USER_PLAN_LIMITS[currentUser?.plan || "free"]
+        if ((currentConfig?.max_workspaces ?? 0) > targetConfig.max_workspaces) {
+          const { getGlobalWorkspaceId } = await import("@/lib/settings")
+          const ownedWorkspaces = await db.tenantMember.count({
+            where: {
+              userId: session.user.id,
+              role: "owner",
+              tenantId: { notIn: [await getGlobalWorkspaceId()] },
+            },
+          })
+          if (ownedWorkspaces > targetConfig.max_workspaces) {
+            return NextResponse.json(
+              {
+                error: `Cannot downgrade to "${planId}". You currently own ${ownedWorkspaces} workspaces but the plan allows max ${targetConfig.max_workspaces}. Please delete or transfer workspaces first.`,
+                currentWorkspaces: ownedWorkspaces,
+                maxAllowed: targetConfig.max_workspaces,
+              },
+              { status: 400 },
+            )
+          }
+        }
+      }
+    }
+
     const today = new Date();
     const formattedDate = `${today.getDate().toString().padStart(2, '0')}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getFullYear()}`;
 
@@ -214,7 +292,8 @@ export async function POST(request: NextRequest) {
         subscription.plan,
         planId,
         subscription.currentPeriodStart,
-        subscription.currentPeriodEnd
+        subscription.currentPeriodEnd,
+        isAccountPlan
       )
       if (proration.isDowngrade && subscription.status === 'active') {
         return NextResponse.json(

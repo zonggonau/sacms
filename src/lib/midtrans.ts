@@ -320,7 +320,8 @@ export async function calculateProratedAmount(
   currentPlan: PlanType,
   newPlan: PlanType,
   currentPeriodStart: Date | string | null,
-  currentPeriodEnd: Date | string | null
+  currentPeriodEnd: Date | string | null,
+  isAccountPlan: boolean = false
 ): Promise<{
   fullPrice: number
   proratedPrice: number
@@ -331,7 +332,12 @@ export async function calculateProratedAmount(
   amountDue: number
   isDowngrade: boolean
 }> {
-  const dynamicPrices = await getDynamicWorkspacePrices()
+  // Account (personal) and workspace (tenant) plans are priced from two
+  // independently admin-edited CMS tables that can share slugs ("pro")
+  // at different prices — pricing both off the workspace table regardless
+  // of which product is being bought mismatches the credit against what
+  // was actually paid, and can make isDowngrade wrong in either direction.
+  const dynamicPrices = isAccountPlan ? await getDynamicAccountPrices() : await getDynamicWorkspacePrices()
   const currentPlanPrice = dynamicPrices[currentPlan]?.monthly || 0
   const newPlanPrice = dynamicPrices[newPlan]?.monthly || 0
   const isDowngrade = currentPlanPrice > newPlanPrice

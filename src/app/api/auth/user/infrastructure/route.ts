@@ -3,17 +3,29 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { rateLimit } from "@/lib/rate-limit"
+import { assertPublicHost, SsrfError } from "@/lib/safe-url"
 
 const MASK = "••••••••"
+const DB_URL_SCHEMES = ["postgres:", "postgresql:"]
 
 // GET /api/auth/user/infrastructure - masked view of the current user's
 // master DB/S3 override. Real secrets never leave the server here; use
 // ?reveal=databaseUrl|s3SecretKey|s3AccessKey to fetch one real value on
-// demand (audited).
+// demand (rate-limited and audited under a dedicated action distinct from
+// an ordinary settings write, so "who viewed this secret" is searchable on
+// its own in the audit log).
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  // Gated the same as PUT: a user downgraded off Enterprise can no longer
+  // set these values, so they shouldn't be able to keep viewing/revealing
+  // whatever was set while they still were.
+  if (session.user.plan !== "enterprise") {
+    return NextResponse.json({ error: "Forbidden: Enterprise plan required" }, { status: 403 })
   }
 
   const user = await db.user.findUnique({
@@ -25,6 +37,11 @@ export async function GET(req: NextRequest) {
   const reveal = req.nextUrl.searchParams.get("reveal")
 
   if (reveal) {
+    const rl = await rateLimit(`infra-reveal:${session.user.id}`, { limit: 10, windowSeconds: 60 })
+    if (!rl.success) {
+      return NextResponse.json({ error: "Too many reveal requests. Try again shortly." }, { status: 429 })
+    }
+
     const REVEALABLE = ["databaseUrl", "s3AccessKey", "s3SecretKey"] as const
     if (!REVEALABLE.includes(reveal as any)) {
       return NextResponse.json({ error: "Invalid field" }, { status: 400 })
@@ -36,8 +53,8 @@ export async function GET(req: NextRequest) {
     }
     logAudit({
       userId: session.user.id,
-      action: AuditAction.SETTINGS_UPDATED,
-      entity: "UserMasterInfraRevealed",
+      action: AuditAction.SECRET_REVEALED,
+      entity: "UserMasterInfra",
       data: { field: reveal },
     })
     return NextResponse.json({ field: reveal, value: values[reveal] })
@@ -77,6 +94,30 @@ export async function PUT(req: NextRequest) {
     const nextAccessKey = s3AccessKey === MASK ? existingStorage.accessKeyId || "" : s3AccessKey || ""
     const nextSecretKey = s3SecretKey === MASK ? existingStorage.secretAccessKey || "" : s3SecretKey || ""
 
+    // This value is used to open a real server-side Postgres connection
+    // for every tenant this user creates (see src/lib/database.ts's
+    // acquireTenantClient via src/app/api/tenant/create/route.ts) — an
+    // unvalidated host here is a direct SSRF into the production network.
+    if (nextDatabaseUrl) {
+      let parsedDbUrl: URL
+      try {
+        parsedDbUrl = new URL(nextDatabaseUrl)
+      } catch {
+        return NextResponse.json({ error: "Invalid database URL" }, { status: 400 })
+      }
+      if (!DB_URL_SCHEMES.includes(parsedDbUrl.protocol)) {
+        return NextResponse.json({ error: "Database URL must use the postgres:// or postgresql:// scheme" }, { status: 400 })
+      }
+      try {
+        await assertPublicHost(parsedDbUrl.hostname)
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof SsrfError ? `Database URL rejected: ${e.message}` : "Invalid database URL" },
+          { status: 400 },
+        )
+      }
+    }
+
     await db.user.update({
       where: { id: session.user.id },
       data: {
@@ -93,7 +134,14 @@ export async function PUT(req: NextRequest) {
     logAudit({
       userId: session.user.id,
       action: AuditAction.SETTINGS_UPDATED,
-      entity: "UserMasterInfraUpdated",
+      entity: "UserMasterInfra",
+      data: {
+        databaseHostChanged: (existing?.masterDatabaseUrl || "") !== nextDatabaseUrl,
+        bucket: s3Bucket || "",
+        region: s3Region || "",
+        accessKeyChanged: (existingStorage.accessKeyId || "") !== nextAccessKey,
+        secretKeyChanged: (existingStorage.secretAccessKey || "") !== nextSecretKey,
+      },
     })
 
     return NextResponse.json({ success: true })

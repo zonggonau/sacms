@@ -74,6 +74,7 @@ export const AuditAction = {
 
   // Settings
   SETTINGS_UPDATED: "settings.updated",
+  SECRET_REVEALED: "settings.secret_revealed",
 
   // Frontend Builder
   FRONTEND_BUILD_GENERATED: "frontend_build.generated",

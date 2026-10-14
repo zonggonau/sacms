@@ -23,30 +23,36 @@ import { InvoiceDetailDialog, TransactionInvoiceItem } from "@/components/dashbo
 
 export default function BillingClient({
   initialAccountPlans,
-  initialAiCreditPacks,
   initialActiveWorkspacesCount,
   initialUsage,
   initialAiCreditUsage,
   initialTransactions,
   initialTransactionsTotalPages,
-  isEnterpriseMode,
   initialMasterInfra
 }: {
   initialAccountPlans: any[]
-  initialAiCreditPacks?: any[]
   initialActiveWorkspacesCount: number
   initialUsage: any
   initialAiCreditUsage?: { used: number, total: number, remaining: number, isUnlimited: boolean }
   initialTransactions: any[]
   initialTransactionsTotalPages?: number
-  isEnterpriseMode?: boolean
   initialMasterInfra?: { databaseUrl: string, storageConfig: any }
 }) {
   const { data: session, status, update } = useSafeSession()
   const router = useRouter()
-  
+
+  // The "Infrastructure" tab lets a user set the DB/S3 override every new
+  // workspace of theirs inherits — it's gated on THIS user's own account
+  // plan, same as the API routes that back it (GET/PUT
+  // /api/auth/user/infrastructure both require plan === "enterprise").
+  // It used to be gated on the platform's global/instance license instead,
+  // which showed the tab to every user on an Enterprise-licensed instance
+  // (even ones on the free plan, who'd then get a 403 on Save) and, on a
+  // non-Enterprise-licensed instance, hid Plans/Transaction History for
+  // everyone regardless of their own plan.
+  const isUserEnterprise = session?.user?.plan === "enterprise"
+
   const [accountPlans, setAccountPlans] = useState<any[]>(initialAccountPlans)
-  const [aiCreditPacks, setAiCreditPacks] = useState<any[]>(initialAiCreditPacks || [])
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
   const [activeWorkspacesCount, setActiveWorkspacesCount] = useState(initialActiveWorkspacesCount)
   const [usage, setUsage] = useState<{current: number, max: number | null, allowed: boolean, plan: string} | null>(initialUsage)
@@ -270,17 +276,15 @@ export default function BillingClient({
       <Tabs defaultValue="plans" className="w-full">
         <TabsList className={cn(
           "grid w-full p-1 bg-muted/40 border border-border/80 rounded-2xl h-auto gap-1",
-          isEnterpriseMode ? "grid-cols-2 max-w-[400px]" : "grid-cols-2 max-w-[400px]"
+          isUserEnterprise ? "grid-cols-3 max-w-[560px]" : "grid-cols-2 max-w-[400px]"
         )}>
           <TabsTrigger value="plans" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
             Subscription Plans
           </TabsTrigger>
-          {!isEnterpriseMode && (
-            <TabsTrigger value="history" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
-              Transaction History
-            </TabsTrigger>
-          )}
-          {isEnterpriseMode && (
+          <TabsTrigger value="history" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
+            Transaction History
+          </TabsTrigger>
+          {isUserEnterprise && (
             <TabsTrigger value="infrastructure" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
               Infrastructure
             </TabsTrigger>
@@ -366,8 +370,7 @@ export default function BillingClient({
           </section>
 
           {/* ── 1. ACCOUNT PLANS (YEARLY PRICING) ── */}
-          {!isEnterpriseMode && (
-            <section className="space-y-3">
+          <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold tracking-tight text-foreground">Paket Akun (Langganan Tahunan)</h3>
@@ -458,8 +461,7 @@ export default function BillingClient({
                   )
                 })}
               </div>
-            </section>
-          )}
+          </section>
 
           {/* ── 3. ENTERPRISE LICENSE ──
               No tenantId passed: this page isn't scoped to one workspace, so
@@ -477,9 +479,8 @@ export default function BillingClient({
           </div>
         </TabsContent>
 
-        {!isEnterpriseMode && (
-          <TabsContent value="history" className="mt-6 space-y-6">
-            
+        <TabsContent value="history" className="mt-6 space-y-6">
+
             {/* Header & Metrics Summary */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
@@ -830,10 +831,9 @@ export default function BillingClient({
               </CardContent>
             </Card>
 
-          </TabsContent>
-        )}
+        </TabsContent>
 
-        {isEnterpriseMode && (
+        {isUserEnterprise && (
           <TabsContent value="infrastructure" className="mt-6">
             <div className="flex justify-between items-center mb-6">
               <div>

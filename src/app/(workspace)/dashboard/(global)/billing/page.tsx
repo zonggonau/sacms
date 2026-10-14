@@ -5,7 +5,6 @@ import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
 import { db } from "@/lib/database"
 import { cleanPrice, formatRupiah } from "@/lib/plan-pricing"
-import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions)
@@ -13,22 +12,6 @@ export default async function BillingPage() {
   if (!session) {
     redirect("/login")
   }
-
-  // Account-level billing isn't scoped to one workspace, so "enterprise
-  // mode" here reflects the platform's own global workspace license — not
-  // session.user.id, which getTenantAccess() can never resolve to a real
-  // Tenant (user ids and tenant ids are different id spaces), so that
-  // always silently evaluated to false before this fix.
-  const { isEnterpriseTenant } = await import("@/lib/license")
-  // getGlobalWorkspaceId() returns whatever the "globalTenantId" setting
-  // holds — a slug OR an id — but isEnterpriseTenant()/validateLicense()
-  // only ever look Tenant up by exact id, so resolve it to the real id first.
-  const globalWorkspaceSlugOrId = await getGlobalWorkspaceId()
-  const globalWorkspace = await db.tenant.findFirst({
-    where: { OR: [{ id: globalWorkspaceSlugOrId }, { slug: globalWorkspaceSlugOrId }] },
-    select: { id: true },
-  })
-  const enterprise = globalWorkspace ? await isEnterpriseTenant(globalWorkspace.id) : false
 
   // 1. Fetch Account Plans directly from DB
   let accountPlans: any[] = []
@@ -128,7 +111,14 @@ export default async function BillingPage() {
       }
     ]
 
-    if (accountPlans.length < 3) {
+    // Only fall back to the fully hardcoded set when NOTHING is published —
+    // this must match getDynamicAccountPrices()'s own fallback rule exactly
+    // (it only reverts to hardcoded defaults with zero published entries,
+    // otherwise returning exactly the published slugs). Reverting here on
+    // "fewer than 3" used to discard real published plans and show
+    // hardcoded ones a user could click but checkout would then reject as
+    // "not found", since checkout reads the CMS table directly.
+    if (accountPlans.length === 0) {
       accountPlans = canonicalPlans
     }
 
@@ -204,43 +194,14 @@ export default async function BillingPage() {
     console.error("Failed to fetch master infra:", err)
   }
 
-  // 5. Fetch AI Credit Packs from SaCMS Global
-  const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
-  let aiCreditPacks = AI_CREDIT_PACKS
-  try {
-    const aiEntries = await db.contentEntry.findMany({
-      where: { contentType: { slug: "sacms-ai-pricing" }, status: "PUBLISHED" },
-      orderBy: { createdAt: "asc" }
-    })
-    if (aiEntries.length > 0) {
-      aiCreditPacks = aiEntries.map(t => {
-        const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
-        return {
-          id: d.pack_slug || t.id,
-          name: d.name || "AI Credits",
-          credits: Number(d.credits) || 0,
-          price_usd: Number(d.price_usd) || 0,
-          price_idr: Number(d.price) || 0,
-          badge: d.badge || undefined,
-          description: d.description || "",
-          features: Array.isArray(d.features) ? d.features : []
-        }
-      }).sort((a, b) => a.price_idr - b.price_idr)
-    }
-  } catch (err) {
-    console.error("Failed to fetch AI credit packs from DB:", err)
-  }
-
   return (
-    <BillingClient 
+    <BillingClient
       initialAccountPlans={accountPlans}
-      initialAiCreditPacks={aiCreditPacks}
       initialActiveWorkspacesCount={activeWorkspacesCount}
       initialUsage={usage}
       initialAiCreditUsage={aiCreditUsage}
       initialTransactions={transactions}
       initialTransactionsTotalPages={transactionsTotalPages}
-      isEnterpriseMode={enterprise}
       initialMasterInfra={masterInfra}
     />
   )
