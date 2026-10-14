@@ -233,10 +233,13 @@ export default function CheckoutPage() {
               }
             })
 
-            // Automatically reset button loading state once popup is active
-            setTimeout(() => {
-              setLoading(false)
-            }, 2000)
+            // The four callbacks above already cover every way the Snap
+            // popup can resolve (paid, pending, errored, or manually
+            // closed) — a blind 2-second timeout used to reset `loading`
+            // regardless of whether the popup was still open, reopening a
+            // window to double-submit a second /api/billing/checkout
+            // request (and a second PaymentTransaction/Snap token) before
+            // the first one resolved.
           } catch (snapErr) {
             console.warn("snap.pay error, redirecting to hosted payment page:", snapErr)
             if (data.redirect_url) {

@@ -1,8 +1,6 @@
-import { fulfillAddonOrder, mergeProviderResponse } from "@/lib/billing/addon-fulfillment"
 import { NextRequest, NextResponse } from "next/server"
 import { getPaymentProvider } from "@/lib/payment"
-import { db } from "@/lib/database"
-import { triggerWebhooks } from "@/lib/webhooks"
+import { applyPaymentOutcome } from "@/lib/billing/payment-success"
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,261 +18,28 @@ export async function POST(request: NextRequest) {
 
     const { orderId, status, paymentType, transactionId, transactionTime, fraudStatus } = verified
 
-    const transaction = await db.paymentTransaction.findUnique({
-      where: { orderId },
-      include: {
-        subscription: {
-          include: {
-            tenant: true,
-            user: true,
-          },
-        },
-      },
-    })
-
-    if (!transaction) {
-      console.error("Transaction not found:", orderId)
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
-    }
-
     const paymentSuccess = status === "success"
     const paymentFailed = status === "failed" || status === "cancelled" || status === "expired"
 
-    // Idempotency check: if already processed, return early to prevent duplicate invoices
-    if ((transaction.status === "success" && paymentSuccess) || 
-        (transaction.status === "failed" && paymentFailed)) {
-      return NextResponse.json({ success: true, message: "Already processed" })
+    if (!paymentSuccess && !paymentFailed) {
+      // Still pending/unresolved on the provider's side — nothing to apply yet.
+      return NextResponse.json({ success: true, message: "No terminal status yet" })
     }
 
-    await db.paymentTransaction.update({
-      where: { id: transaction.id },
-      data: {
-        status: paymentSuccess ? "success" : paymentFailed ? "failed" : "pending",
-        paymentType: paymentType || null,
-        transactionId: transactionId || null,
-        transactionTime: transactionTime || null,
-        fraudStatus: fraudStatus || null,
-        rawResponse: mergeProviderResponse(transaction.rawResponse, body) as any,
-      },
+    const result = await applyPaymentOutcome(orderId, paymentSuccess ? "success" : "failed", {
+      rawProviderPayload: body,
+      paymentType: paymentType || null,
+      transactionId: transactionId || null,
+      transactionTime: transactionTime || null,
+      fraudStatus: fraudStatus || null,
     })
 
-    if (paymentSuccess) {
-      if (transaction.subscriptionId) {
-        await db.subscription.update({
-          where: { id: transaction.subscriptionId },
-          data: {
-            status: "active",
-            currentPeriodStart: new Date(),
-          },
-        })
-
-        await db.invoice.create({
-          data: {
-            subscriptionId: transaction.subscriptionId,
-            amount: transaction.amount,
-            currency: "IDR",
-            status: "paid",
-            paidAt: new Date(),
-            midtransInvoiceId: transaction.orderId
-          },
-        })
+    if (!result.applied) {
+      if (result.alreadyProcessed) {
+        return NextResponse.json({ success: true, message: "Already processed" })
       }
-
-      // Only update main plan if it's a regular subscription (orderId starts with SUB)
-      // If it starts with ADD, it's an addon purchase
-      // If it starts with ACC, it's an account upgrade
-      // If it starts with DOM, it's a custom domain purchase via Vercel Registrar
-      if (orderId.startsWith("SUB") && transaction.subscription) {
-        const tenantId = transaction.subscription.tenantId!
-        const planName = transaction.subscription.plan
-        const hostingExpiry = transaction.subscription.currentPeriodEnd || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-
-        await db.tenant.update({
-          where: { id: tenantId },
-          data: {
-            plan: planName,
-            hostingStatus: "active",
-            hostingExpiresAt: hostingExpiry,
-          } as any,
-        })
-
-      } else if (orderId.startsWith("ACC") && transaction.subscription) {
-        await db.user.update({
-          where: { id: transaction.subscription.userId },
-          data: { plan: transaction.subscription.plan },
-        })
-      } else if (orderId.startsWith("AIC")) {
-        const raw = (transaction.rawResponse as any) || {}
-        let creditsToAdd = Number(raw.credits || 0)
-        const addonId = raw.addonId || ""
-
-        if (!creditsToAdd) {
-          const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
-          const pack = AI_CREDIT_PACKS.find(p => p.id === addonId)
-          if (pack) creditsToAdd = pack.credits
-        }
-
-        if (creditsToAdd > 0 && transaction.subscription?.userId) {
-          await db.user.update({
-            where: { id: transaction.subscription.userId },
-            data: { aiCreditsExtra: { increment: creditsToAdd } },
-          })
-          await db.aiQuotaLedger.create({
-            data: {
-              userId: transaction.subscription.userId,
-              action: "topup_credits",
-              credits: creditsToAdd,
-              tokens: creditsToAdd * 1000,
-              model: "topup_pack"
-            }
-          })
-          console.log(`✅ AI Credit Top-Up applied successfully for user ${transaction.subscription.userId}: +${creditsToAdd} credits (${transaction.orderId})`)
-        }
-      } else if (orderId.startsWith("ADD")) {
-        const tenantId = transaction.subscription?.tenantId
-        if (tenantId) {
-          const raw = (transaction.rawResponse as any) || {}
-          const addonId = raw.addonId || ""
-
-          // Check built-in top-up packs
-          if (addonId === "topup_ai_500k") {
-            await db.tenant.update({
-              where: { id: tenantId },
-              data: { aiCreditsExtra: { increment: 500000 } } as any
-            })
-          } else if (addonId === "topup_ai_2m") {
-            await db.tenant.update({
-              where: { id: tenantId },
-              data: { aiCreditsExtra: { increment: 2000000 } } as any
-            })
-          } else if (await fulfillAddonOrder({ tenantId, orderId: transaction.orderId, raw, userId: transaction.subscription?.userId })) {
-            // storage add-on or managed database/storage service
-          } else if (addonId === "topup_api_500k") {
-            await db.tenant.update({
-              where: { id: tenantId },
-              data: { apiCallsExtra: { increment: 500000 } } as any
-            })
-          } else if (addonId === "hosting_annual_1yr" || addonId === "hosting_bundle_domain_1yr") {
-            const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-            await db.tenant.update({
-              where: { id: tenantId },
-              data: {
-                hostingStatus: "active",
-                hostingExpiresAt: oneYearFromNow,
-              } as any
-            })
-            await Promise.all([
-              db.setting.upsert({
-                where: { key: `${tenantId}_hostingStatus` },
-                update: { value: "active" },
-                create: { tenantId, key: `${tenantId}_hostingStatus`, value: "active" }
-              }),
-              db.setting.upsert({
-                where: { key: `${tenantId}_hostingExpiresAt` },
-                update: { value: oneYearFromNow.toISOString() },
-                create: { tenantId, key: `${tenantId}_hostingExpiresAt`, value: oneYearFromNow.toISOString() }
-              })
-            ])
-          }
-          console.log(`✅ Addon top-up applied successfully for tenant ${tenantId}: ${addonId} (${transaction.orderId})`)
-        }
-      } else if (orderId.startsWith("DOM")) {
-        const raw = (transaction.rawResponse as any) || {}
-        const tenantId = raw.tenantId || transaction.subscription?.tenantId
-        const domainName = raw.domainName
-        const expectedPriceUsd = raw.expectedPriceUsd || 14
-        const contactInformation = raw.contactInformation
-
-        if (tenantId && domainName) {
-          const { purchaseDomain } = await import("@/lib/vercel-registrar")
-          const purchaseRes = await purchaseDomain(domainName, {
-            expectedPrice: expectedPriceUsd,
-            years: raw.periodYears || 1,
-            autoRenew: false,
-            contactInformation: contactInformation || {
-              firstName: "Tenant",
-              lastName: "Owner",
-              address1: "Jakarta",
-              city: "Jakarta",
-              state: "DKI Jakarta",
-              postalCode: "10000",
-              country: "ID",
-              phone: "+62.812000000",
-              email: "domain@sacms.local",
-            },
-          })
-
-          if (purchaseRes.success) {
-            const currentCount = await db.customDomain.count({ where: { tenantId } })
-            await db.customDomain.upsert({
-              where: { domain: domainName },
-              create: {
-                tenantId,
-                domain: domainName,
-                status: "verified",
-                verifiedAt: new Date(),
-                isPrimary: currentCount === 0,
-              },
-              update: {
-                status: "verified",
-                verifiedAt: new Date(),
-              },
-            })
-
-            const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } })
-            if (tenant) {
-              const { getRedis } = await import("@/lib/redis")
-              const redis = getRedis()
-              if (redis) {
-                await redis.set(`domain:${domainName}`, tenant.slug)
-              }
-            }
-            console.log(`✅ Domain ${domainName} successfully registered on Vercel & linked to tenant ${tenantId}`)
-          } else {
-            console.error(`❌ Domain purchase on Vercel failed for ${domainName}:`, purchaseRes.error)
-          }
-        }
-      }
-
-      if (transaction.subscription?.tenant) {
-        await triggerWebhooks(
-          transaction.subscription.tenantId!,
-          "payment.completed",
-          {
-            orderId,
-            amount: transaction.amount,
-            plan: transaction.subscription.plan,
-          }
-        )
-      }
-    }
-
-    if (paymentFailed) {
-      await db.subscription.update({
-        where: { id: transaction.subscriptionId! },
-        data: { status: "expired" },
-      })
-
-      await db.invoice.create({
-        data: {
-          subscriptionId: transaction.subscriptionId!,
-          amount: transaction.amount,
-          currency: "IDR",
-          status: "failed",
-        },
-      })
-
-      if (transaction.subscription?.tenant) {
-        await triggerWebhooks(
-          transaction.subscription.tenantId!,
-          "payment.failed",
-          {
-            orderId,
-            amount: transaction.amount,
-            reason: status,
-          }
-        )
-      }
+      console.error("Transaction not found:", orderId)
+      return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
     }
 
     return NextResponse.json({ success: true })

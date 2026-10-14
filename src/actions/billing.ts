@@ -167,7 +167,7 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
 }
 
 import { getPaymentProvider } from "@/lib/payment"
-import { logAudit, AuditAction } from "@/lib/audit-log"
+import { applyPaymentOutcome } from "@/lib/billing/payment-success"
 
 export async function checkTransactionStatusAction(orderId: string) {
   try {
@@ -191,57 +191,22 @@ export async function checkTransactionStatusAction(orderId: string) {
     const result = await provider.getTransactionStatus(orderId)
 
     if (result.status !== transaction.status) {
-      // Update the database
-      await db.paymentTransaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: result.status,
+      if (result.status === "success") {
+        await applyPaymentOutcome(orderId, "success", {
           paymentType: result.paymentType,
-          transactionId: result.transactionId
-        }
-      })
-
-      // If it's success, update subscription and apply plan changes
-      if (result.status === "success" && transaction.subscriptionId) {
-        await db.subscription.update({
-          where: { id: transaction.subscriptionId },
-          data: { 
-            status: "active",
-            currentPeriodStart: new Date(),
-          }
+          transactionId: result.transactionId,
         })
-
-        // Also create the invoice
-        await db.invoice.create({
-          data: {
-            subscriptionId: transaction.subscriptionId,
-            amount: transaction.amount,
-            currency: "IDR",
-            status: "paid",
-            paidAt: new Date(),
-            midtransInvoiceId: transaction.orderId
-          },
+      } else if (result.status === "failed" || result.status === "expired" || result.status === "cancelled") {
+        await applyPaymentOutcome(orderId, "failed", {
+          paymentType: result.paymentType,
+          transactionId: result.transactionId,
         })
-
-        // Apply plan change to User or Tenant based on Order Prefix
-        if (orderId.startsWith("SUB") && transaction.subscription?.tenantId) {
-          await db.tenant.update({
-            where: { id: transaction.subscription.tenantId },
-            data: { plan: transaction.subscription.plan },
-          })
-        } else if (orderId.startsWith("ACC")) {
-          await db.user.update({
-            where: { id: transaction.subscription.userId },
-            data: { plan: transaction.subscription.plan },
-          })
-        }
-
-        logAudit({
-          userId: session.user.id,
-          action: AuditAction.SETTINGS_UPDATED,
-          entity: "PaymentTransactionSynced",
-          entityId: transaction.id,
-          data: { orderId, newStatus: result.status, plan: transaction.subscription.plan },
+      } else {
+        // Still pending on the provider's side — just mirror the raw status,
+        // no fulfillment side effects yet.
+        await db.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: { status: result.status, paymentType: result.paymentType, transactionId: result.transactionId },
         })
       }
     }

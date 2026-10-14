@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getPaymentProvider } from "@/lib/payment"
-import { getDynamicAccountPrices, getDynamicWorkspacePrices, PlanType, calculatePeriodEndDate } from "@/lib/midtrans"
+import { getDynamicAccountPrices, getDynamicWorkspacePrices } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 import { STORAGE_ADDON_ID, STORAGE_ADDON_PRICE_IDR, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
@@ -190,18 +190,15 @@ export async function POST(request: NextRequest) {
 
     const today = new Date();
     const formattedDate = `${today.getDate().toString().padStart(2, '0')}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getFullYear()}`;
-    
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const countToday = await db.paymentTransaction.count({
-      where: {
-        createdAt: { gte: todayStart }
-      }
-    });
-    
-    const sequenceNumber = 1001 + countToday;
+
+    // A random suffix, not just a sequential counter — sequential order ids
+    // (SUB-ddmmyyyy1001, 1002, ...) are trivially enumerable by any
+    // authenticated user, which matters because PaymentTransaction lookups
+    // by orderId are a real access boundary elsewhere (status route).
+    const { randomBytes } = await import("crypto")
+    const randomSuffix = randomBytes(4).toString("hex");
     const prefix = isAiCreditPack ? 'AIC' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB'));
-    const orderId = `${prefix}-${formattedDate}${sequenceNumber}`;
+    const orderId = `${prefix}-${formattedDate}-${randomSuffix}`;
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
@@ -250,34 +247,36 @@ export async function POST(request: NextRequest) {
         data: {
           userId: session.user.id,
           tenantId: (isAccountPlan || isAiCreditPack) ? null : dbTenant.id,
-          plan: isAddon ? "free" : planId,
+          // Always start at the unpaid baseline — never the plan being
+          // checked out. Writing the intended plan/period here (the old
+          // behavior) meant an abandoned, never-paid checkout permanently
+          // changed what the NEXT checkout's calculateProratedAmount() reads
+          // as "currently active", letting a tenant collect proration credit
+          // against a plan they never actually bought. The intended plan is
+          // only applied once payment is confirmed — see applyPaymentOutcome
+          // in src/lib/billing/payment-success.ts, which reads it back from
+          // this transaction's rawResponse.intendedPlan below.
+          plan: "free",
           status: 'pending',
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: calculatePeriodEndDate(planId as PlanType, interval as any),
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
         },
       })
     }
- else {
-      // Only update main plan if it's NOT an addon
-      if (!isAddon) {
-        subscription = await db.subscription.update({
-          where: { id: subscription.id },
-          data: {
-            plan: planId,
-            currentPeriodEnd: calculatePeriodEndDate(planId as PlanType, interval as any),
-          },
-        })
-      }
-    }
+    // else: never write plan/currentPeriodEnd here for any order type —
+    // see the comment above. The existing subscription row is left exactly
+    // as the last successful payment set it.
 
-    // Store addon/AI credit info in rawResponse for later processing in the
-    // webhook. Omit the field entirely for plain plan upgrades — a nullable
-    // Json column must not be written as literal `null` (Prisma rejects it).
+    // Store what was actually checked out — addon/AI-credit metadata, or
+    // (for a plain plan upgrade/downgrade) the intended plan + interval —
+    // for applyPaymentOutcome to apply once payment is confirmed. Never
+    // write the field as literal `null`; Prisma rejects that for a Json
+    // column, so the addon/non-addon shapes just differ in which keys they carry.
     const rawResponse = isAiCreditPack
       ? { isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" }
       : isAddon
         ? { isAddon, addonId: planId, ...(renewsAddonId && planId === STORAGE_ADDON_ID ? { renewsAddonId } : {}) }
-        : undefined
+        : { intendedPlan: planId, intendedInterval: interval }
 
     // Create payment transaction record
     const transaction = await db.paymentTransaction.create({
