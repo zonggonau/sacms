@@ -20,18 +20,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
-
-// Curated shortlist from the Vercel AI Gateway catalog — one subscription
-// covers all of these, this is just a reasonable spread of providers/price
-// points rather than dumping the full multi-hundred-model catalog on the user.
-export const SCHEMA_MODEL_OPTIONS = [
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Cepat & hemat — default Vercel Gateway" },
-  { value: "google/gemini-3-flash", label: "Gemini 3 Flash", hint: "Generasi terbaru Google" },
-  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini", hint: "Cepat & efisien OpenAI" },
-  { value: "openai/gpt-4o", label: "GPT-4o", hint: "Flagship multimodal OpenAI" },
-  { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", hint: "Arsitektur kompleks & presisi" },
-  { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", hint: "Responsif & hemat Claude" },
-] as const
+import { SCHEMA_MODEL_OPTIONS } from "@/lib/ai/schema-models"
 
 export const QUICK_PROMPT_INSPIRATIONS = [
   {
@@ -90,6 +79,9 @@ interface SchemaPlan {
   contentTypes: SchemaModel[]
   singleTypes: SchemaModel[]
   components: SchemaModel[]
+  /** True if the real AI call failed/wasn't configured and a canned blueprint was used instead. */
+  usedFallback?: boolean
+  fallbackReason?: string
 }
 
 interface SchemaTemplateItem {
@@ -216,6 +208,12 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
       if (!res.ok) throw new Error(data?.error || "Gagal merencanakan skema")
       setPlan(data.plan)
       setStep("review")
+      if (data.plan?.usedFallback) {
+        toast({
+          title: "AI Gateway Tidak Tersedia",
+          description: "Skema ini dibuat dari blueprint cadangan, bukan hasil AI sesungguhnya — tidak ada kredit yang dipotong. Cek konfigurasi Vercel AI Gateway di Admin > Pengaturan > Mesin AI.",
+        })
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal Membuat Skema", description: err.message })
     } finally {
@@ -313,12 +311,24 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
           <div className="text-center space-y-1.5">
             <div className="flex items-center justify-center gap-2 mb-1">
-              <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1">
-                <Zap className="h-3 w-3" /> Vercel AI Gateway
-              </Badge>
+              {plan.usedFallback ? (
+                <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Blueprint Cadangan (bukan AI)
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1">
+                  <Zap className="h-3 w-3" /> Vercel AI Gateway
+                </Badge>
+              )}
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">{plan.title}</h2>
             <p className="text-xs text-muted-foreground">{plan.summary}</p>
+            {plan.usedFallback && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 max-w-md mx-auto">
+                Vercel AI Gateway tidak merespons, jadi skema ini disusun dari blueprint cadangan, bukan hasil AI sesungguhnya. Tidak ada kredit yang dipotong untuk hasil ini.
+                {plan.fallbackReason && <span className="block text-muted-foreground mt-0.5">({plan.fallbackReason})</span>}
+              </p>
+            )}
           </div>
 
           {isTemplateMode && (
@@ -375,10 +385,10 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             ))}
           </div>
 
-          <div className="flex items-center justify-center pt-1">
+          <div className="flex flex-col items-center gap-1.5 pt-1">
             <Button
               onClick={handleConfirmSchema}
-              disabled={isImporting}
+              disabled={isImporting || allModels.length === 0}
               className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto"
             >
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -386,6 +396,9 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
                 ? (isTemplateMode ? "Menyimpan Template..." : "Menyimpan Skema...")
                 : (isTemplateMode ? "Simpan sebagai Template" : "Konfirmasi & Simpan Schema")}
             </Button>
+            {allModels.length === 0 && (
+              <p className="text-[11px] text-destructive">Tidak ada struktur yang bisa disimpan — ubah prompt dan coba lagi.</p>
+            )}
           </div>
         </div>
       </div>

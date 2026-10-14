@@ -1,40 +1,30 @@
 import { NextResponse } from "next/server"
-import { getDomainBlueprints } from "@/lib/ai/domain-knowledge"
 import { generateSystemSchema } from "@/lib/ai-schema-generator"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { isAllowedSchemaModel, DEFAULT_SCHEMA_MODEL } from "@/lib/ai/schema-models"
 
 export const POST = withStaffAuth(async (req, _context, { access, session }) => {
-    const { prompt, templateId, model } = await req.json()
+    const { prompt, model } = await req.json()
     const tenant = access.tenant
-
-    // 1. Check if matching pre-baked template requested
-    if (templateId) {
-      const blueprints = await getDomainBlueprints()
-      const template = blueprints.find(t => t.id === templateId)
-      if (template) {
-        return NextResponse.json({
-          success: true,
-          isPrebaked: true,
-          plan: {
-            domain: template.category,
-            title: template.name,
-            summary: `Blueprint instan siap pakai untuk ${template.name}`,
-            contentTypes: template.schema.contentTypes,
-            singleTypes: template.schema.singleTypes,
-            components: template.schema.components || [],
-            frontendPrompt: template.frontendPrompt,
-            estimatedCredits: 0
-          }
-        })
-      }
-    }
 
     if (!prompt) {
       return apiError("validation", { message: "Prompt is required" })
     }
 
-    // 2. Generate Schema Plan via AI (Safe Mode Planning)
-    const schema = await generateSystemSchema(prompt, tenant.id, session.user.id, model)
+    // The dropdown only ever offers SCHEMA_MODEL_OPTIONS — reject anything
+    // else server-side too, since all tenants share one Vercel AI Gateway
+    // key and an unlisted model id would bill that shared key for whatever
+    // the request asked for, outside the curated price/provider spread.
+    if (model !== undefined && !isAllowedSchemaModel(model)) {
+      return apiError("validation", { message: "Model AI tidak dikenal. Pilih salah satu dari daftar yang tersedia." })
+    }
+
+    const { schema, usedFallback, fallbackReason } = await generateSystemSchema(
+      prompt,
+      tenant.id,
+      session.user.id,
+      model || DEFAULT_SCHEMA_MODEL,
+    )
 
     const totalFields = schema.contentTypes.reduce((acc, ct) => acc + (ct.fields?.length || 0), 0) +
       schema.singleTypes.reduce((acc, st) => acc + (st.fields?.length || 0), 0)
@@ -50,7 +40,11 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
         singleTypes: schema.singleTypes,
         components: schema.components || [],
         frontendPrompt: prompt,
-        estimatedCredits: 25
+        // Matches the flat creditsCost the generator actually reserves — see
+        // ai-schema-generator.ts. Fallback runs never reserve/spend credits.
+        estimatedCredits: usedFallback ? 0 : 5,
+        usedFallback,
+        fallbackReason,
       }
     })
 }, { minRole: "admin" })

@@ -21,7 +21,13 @@ const modelSchema = z.object({
   slug: z.string(),
   description: z.string().optional(),
   fields: z.array(fieldSchema),
-  dummyData: z.array(z.record(z.string(), z.any())).optional().describe("An array of 2-3 highly realistic, varied dummy data objects matching the fields defined. For singleTypes, provide just 1 object.")
+  // Kept for the static heuristic/blueprint fallback data below, which
+  // hardcodes a few example records — free, since it isn't AI-generated.
+  // The live LLM call never sees this field (see aiModelSchema): nothing
+  // downstream (materializeSchemaIntoTenant, the review-step UI) reads
+  // dummyData, so asking a real model to generate 2-3 "highly realistic"
+  // records per collection was pure wasted output-token spend.
+  dummyData: z.array(z.record(z.string(), z.any())).optional()
 })
 
 const systemSchema = z.object({
@@ -31,6 +37,21 @@ const systemSchema = z.object({
 })
 
 export type GeneratedSystemSchema = z.input<typeof systemSchema>
+
+// Schema actually sent to generateObject for the live LLM call — same shape
+// minus dummyData (see the comment on modelSchema above).
+const aiModelSchema = z.object({
+  name: z.string(),
+  slug: z.string(),
+  description: z.string().optional(),
+  fields: z.array(fieldSchema),
+})
+
+const aiSystemSchema = z.object({
+  contentTypes: z.array(aiModelSchema).describe("Collection types (e.g., Rooms, Products, Facilities, Articles)"),
+  singleTypes: z.array(aiModelSchema).describe("Single types (e.g., HotelSettings, StoreConfig, SiteProfile)"),
+  components: z.array(aiModelSchema).describe("Reusable components (e.g., SEO, Contact, Badge)"),
+})
 
 const FIELD_TYPE_DOCS = FIELD_TYPES.map(
   (f) => `- ${f.type} (${f.category} - ${f.label}): ${f.description}`
@@ -56,9 +77,6 @@ Field Selection Rules:
 - Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
 - Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
 
-For each collection, provide 2 to 3 realistic, concise mock records in 'dummyData'.
-For Single Types, provide 1 complete initial record in 'dummyData'.
-
 All slugs must be snake_case or kebab-case lowercase.`
 
 async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
@@ -79,11 +97,11 @@ async function generateWithAi(prompt: string, tenantId?: string, userId?: string
 
     // Pass the real zod schema straight to generateObject instead of asking
     // for JSON in the prompt and hand-parsing it — the model's output is
-    // validated against systemSchema at generation time, provider-agnostic.
+    // validated against aiSystemSchema at generation time, provider-agnostic.
     const result = await withAiRetry(() =>
       generateObject({
         model,
-        schema: systemSchema,
+        schema: aiSystemSchema,
         system: SYSTEM_PROMPT,
         prompt,
         maxOutputTokens: 16000,
@@ -390,14 +408,24 @@ export function generateHeuristicSchema(prompt: string): GeneratedSystemSchema {
     }
 }
 
-export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
+export interface GenerateSystemSchemaResult {
+  schema: GeneratedSystemSchema
+  /** True if the real LLM call failed/was unavailable and a canned blueprint or heuristic was used instead. */
+  usedFallback: boolean
+  /** The error that triggered the fallback — surfaced to the admin instead of silently swallowed. */
+  fallbackReason?: string
+}
+
+export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GenerateSystemSchemaResult> {
   // 1. Coba AI LLM via Vercel AI Gateway
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
-    return await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
+    const schema = await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
+    return { schema, usedFallback: false }
   } catch (error: any) {
     console.warn("[AI Schema] AI generation failed or not configured:", error.message)
-    
+    const fallbackReason = error?.message || "AI generation gagal tanpa pesan error"
+
     // 2. Intelligent Blueprint Matcher: cek apakah prompt cocok dengan koleksi blueprint kaya di DOMAIN_KNOWLEDGE_LIBRARY
     try {
       const { DOMAIN_KNOWLEDGE_LIBRARY } = await import("./ai/domain-knowledge-types")
@@ -409,9 +437,13 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
       if (matched) {
         console.log(`[AI Schema] Matched domain knowledge blueprint: ${matched.name}`)
         return {
-          contentTypes: matched.schema.contentTypes as any,
-          singleTypes: matched.schema.singleTypes as any,
-          components: (matched.schema.components || []) as any,
+          schema: {
+            contentTypes: matched.schema.contentTypes as any,
+            singleTypes: matched.schema.singleTypes as any,
+            components: (matched.schema.components || []) as any,
+          },
+          usedFallback: true,
+          fallbackReason,
         }
       }
     } catch (bpErr) {
@@ -420,6 +452,6 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
 
     // 3. Fallback Heuristic Generator Terstruktur
     console.log("[AI Schema] Using High-Accuracy Multi-Collection Domain Synthesizer...")
-    return generateHeuristicSchema(prompt)
+    return { schema: generateHeuristicSchema(prompt), usedFallback: true, fallbackReason }
   }
 }
