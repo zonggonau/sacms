@@ -48,9 +48,11 @@ export default function TenantSubscriptionsPage() {
   const { toast } = useToast()
 
   const tabParam = searchParams?.get('tab')
-  const initialSection: 'plans' | 'ai_plans' | 'addons' = 
+  const initialSection: 'plans' | 'ai_plans' | 'storage' | 'addons' =
     (tabParam === 'ai-plans' || tabParam === 'ai_plans' || tabParam === 'ai')
       ? 'ai_plans'
+      : tabParam === 'storage'
+      ? 'storage'
       : (tabParam === 'addons' ? 'addons' : 'plans')
 
   const [subscription, setSubscription] = useState<Subscription>({ id: '', plan: 'free', status: 'active', currentPeriodEnd: null })
@@ -61,7 +63,7 @@ export default function TenantSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
-  const [activeSection, setActiveSection] = useState<'plans' | 'ai_plans' | 'addons'>(initialSection)
+  const [activeSection, setActiveSection] = useState<'plans' | 'ai_plans' | 'storage' | 'addons'>(initialSection)
   const [aiUsage, setAiUsage] = useState<{ used: number; total: number; remaining: number; isUnlimited: boolean } | null>(null)
   const [aiCreditPacks, setAiCreditPacks] = useState<any[]>([])
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
@@ -329,7 +331,13 @@ export default function TenantSubscriptionsPage() {
       const order: Record<string, number> = { free: 1, pro: 2, business: 3 }
       return (order[a.id] || 99) - (order[b.id] || 99)
     })
-  const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false)
+  // Storage-related add-ons (extra storage top-up, dedicated BYODB) get
+  // their own tab instead of sitting in the generic add-on grid, mirroring
+  // the Infrastructure page's "Database & Storage" grouping.
+  const STORAGE_QUOTA_TYPES = ['storage', 'managed_infra']
+  const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false && !STORAGE_QUOTA_TYPES.includes(p.quotaType))
+  const storagePlans = plans.filter(p => p.type === "addons" && p.listed !== false && STORAGE_QUOTA_TYPES.includes(p.quotaType))
+  const storageUsage = usage.find((u) => u.unit === "bytes")
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -550,6 +558,23 @@ export default function TenantSubscriptionsPage() {
                 <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                   AI
                 </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('storage')
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('tab', 'storage')
+                  window.history.replaceState({}, '', url.toString())
+                }}
+                className={cn(
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
+                  activeSection === 'storage'
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <HardDrive className="h-3.5 w-3.5" /> Storage ({storagePlans.length})
               </button>
               <button
                 type="button"
@@ -785,6 +810,57 @@ export default function TenantSubscriptionsPage() {
             </div>
           )}
 
+          {/* Storage Section */}
+          {!isEnterpriseMode && activeSection === 'storage' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Storage & Database</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Tambah kapasitas storage workspace atau gunakan database & storage sendiri.</p>
+              </div>
+
+              {storageUsage && (
+                <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <HardDrive className="h-4 w-4 text-primary" />
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pemakaian Storage</span>
+                      </div>
+                      {Math.min(100, (storageUsage.current / storageUsage.limit) * 100) > 80 && (
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-baseline justify-between">
+                        <p className="text-xl font-black text-foreground">
+                          {(storageUsage.current / (1024 ** 3)).toFixed(1)} GB
+                        </p>
+                        <p className="text-[10px] font-semibold text-muted-foreground">
+                          Limit: {(storageUsage.limit / (1024 ** 3)).toFixed(1)} GB
+                        </p>
+                      </div>
+                      <Progress value={Math.min(100, (storageUsage.current / storageUsage.limit) * 100)} className="h-1.5 bg-muted rounded-full" />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <ActiveServices tenantSlug={tenantSlug} />
+              {storagePlans.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl">
+                  <HardDrive className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="font-bold text-xs text-foreground">Belum ada opsi storage tersedia</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {storagePlans.map((addon) => (
+                    <AddonCard key={addon.id} addon={addon} tenantSlug={tenantSlug} activeAddons={activeAddons} router={router} formatPrice={formatPrice} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Add-ons Section */}
           {!isEnterpriseMode && activeSection === 'addons' && (
             <div className="space-y-3">
@@ -792,7 +868,6 @@ export default function TenantSubscriptionsPage() {
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Add-on & Ekstra Kuota</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground">Tambahan kuota dan fitur di luar paket utama workspace.</p>
               </div>
-              <ActiveServices tenantSlug={tenantSlug} />
               {addonPlans.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl">
                   <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
@@ -801,79 +876,7 @@ export default function TenantSubscriptionsPage() {
               ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {addonPlans.map((addon) => (
-                  <Card key={addon.id} className="border border-border/80 bg-card/60 shadow-xs rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-200">
-                    <CardContent className="p-4">
-                      <div className="flex flex-col sm:flex-row justify-between gap-4">
-                        <div className="space-y-3 flex-1">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl border border-primary/20 bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                              {addon.icon === 'Shield' && <Shield className="h-4 w-4" />}
-                              {addon.icon === 'ShieldCheck' && <ShieldCheck className="h-4 w-4" />}
-                              {addon.icon === 'Sparkles' && <Sparkles className="h-4 w-4" />}
-                              {addon.icon === 'Zap' && <Zap className="h-4 w-4" />}
-                              {addon.icon === 'Database' && <Database className="h-4 w-4" />}
-                              {addon.icon === 'Bot' && <Bot className="h-4 w-4" />}
-                              {addon.icon === 'HardDrive' && <HardDrive className="h-4 w-4" />}
-                              {addon.icon === 'FileText' && <FileText className="h-4 w-4" />}
-                              {!['Shield', 'ShieldCheck', 'Sparkles', 'Zap', 'Database', 'Bot', 'HardDrive', 'FileText'].includes(addon.icon) && (
-                                addon.name.toLowerCase().includes('backup') ? <History className="h-4 w-4" /> : <Package className="h-4 w-4" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="text-sm font-bold tracking-tight text-foreground">{addon.name}</p>
-                              <p className="text-xs font-black text-primary">
-                                {addon.priceLabel ? (
-                                  <span>{addon.priceLabel}</span>
-                                ) : (
-                                  <>
-                                    {formatPrice(addon.price)}
-                                    <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                                      {addon.billingPeriod === "month" || !addon.isTopup ? "/bulan" : "(Sekali Bayar)"}
-                                    </span>
-                                  </>
-                                )}
-                              </p>
-                            </div>
-                          </div>
-                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                            {addon.features.map((feature: string) => (
-                              <li key={feature} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Check className="h-3 w-3 text-primary shrink-0" strokeWidth={2.5} /> {feature}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="flex sm:flex-col justify-end gap-2 shrink-0">
-                          {addon.priceLabel && addon.price === 0 ? (
-                            <Button 
-                              variant="outline"
-                              disabled
-                              className="font-bold rounded-xl px-4 h-9 shadow-none text-xs border-border bg-muted/30 text-muted-foreground"
-                            >
-                              {addon.buttonText || "Termasuk"}
-                            </Button>
-                          ) : (
-                            <Button 
-                              className={cn(
-                                "font-bold rounded-xl px-4 h-9 shadow-xs text-xs",
-                                !addon.isTopup && activeAddons.includes(addon.id) 
-                                  ? "bg-muted text-muted-foreground cursor-default hover:bg-muted" 
-                                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
-                              )}
-                              onClick={() => (addon.isTopup || !activeAddons.includes(addon.id)) && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
-                              disabled={!addon.isTopup && activeAddons.includes(addon.id)}
-                            >
-                              {!addon.isTopup && activeAddons.includes(addon.id) ? (
-                                <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" strokeWidth={3} /> Aktif</span>
-                              ) : (
-                                addon.buttonText || "Beli Add-on"
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <AddonCard key={addon.id} addon={addon} tenantSlug={tenantSlug} activeAddons={activeAddons} router={router} formatPrice={formatPrice} />
                 ))}
               </div>
               )}
@@ -1052,6 +1055,91 @@ export default function TenantSubscriptionsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** One purchasable add-on/top-up card — shared by the Storage and Add-on tabs. */
+function AddonCard({ addon, tenantSlug, activeAddons, router, formatPrice }: {
+  addon: any
+  tenantSlug: string
+  activeAddons: string[]
+  router: ReturnType<typeof useRouter>
+  formatPrice: (amount: number) => string
+}) {
+  return (
+    <Card className="border border-border/80 bg-card/60 shadow-xs rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-200">
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl border border-primary/20 bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                {addon.icon === 'Shield' && <Shield className="h-4 w-4" />}
+                {addon.icon === 'ShieldCheck' && <ShieldCheck className="h-4 w-4" />}
+                {addon.icon === 'Sparkles' && <Sparkles className="h-4 w-4" />}
+                {addon.icon === 'Zap' && <Zap className="h-4 w-4" />}
+                {addon.icon === 'Database' && <Database className="h-4 w-4" />}
+                {addon.icon === 'Bot' && <Bot className="h-4 w-4" />}
+                {addon.icon === 'HardDrive' && <HardDrive className="h-4 w-4" />}
+                {addon.icon === 'FileText' && <FileText className="h-4 w-4" />}
+                {!['Shield', 'ShieldCheck', 'Sparkles', 'Zap', 'Database', 'Bot', 'HardDrive', 'FileText'].includes(addon.icon) && (
+                  addon.name.toLowerCase().includes('backup') ? <History className="h-4 w-4" /> : <Package className="h-4 w-4" />
+                )}
+              </div>
+              <div>
+                <p className="text-sm font-bold tracking-tight text-foreground">{addon.name}</p>
+                <p className="text-xs font-black text-primary">
+                  {addon.priceLabel ? (
+                    <span>{addon.priceLabel}</span>
+                  ) : (
+                    <>
+                      {formatPrice(addon.price)}
+                      <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                        {addon.billingPeriod === "month" || !addon.isTopup ? "/bulan" : "(Sekali Bayar)"}
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+              {addon.features.map((feature: string) => (
+                <li key={feature} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Check className="h-3 w-3 text-primary shrink-0" strokeWidth={2.5} /> {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="flex sm:flex-col justify-end gap-2 shrink-0">
+            {addon.priceLabel && addon.price === 0 ? (
+              <Button
+                variant="outline"
+                disabled
+                className="font-bold rounded-xl px-4 h-9 shadow-none text-xs border-border bg-muted/30 text-muted-foreground"
+              >
+                {addon.buttonText || "Termasuk"}
+              </Button>
+            ) : (
+              <Button
+                className={cn(
+                  "font-bold rounded-xl px-4 h-9 shadow-xs text-xs",
+                  !addon.isTopup && activeAddons.includes(addon.id)
+                    ? "bg-muted text-muted-foreground cursor-default hover:bg-muted"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                )}
+                onClick={() => (addon.isTopup || !activeAddons.includes(addon.id)) && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
+                disabled={!addon.isTopup && activeAddons.includes(addon.id)}
+              >
+                {!addon.isTopup && activeAddons.includes(addon.id) ? (
+                  <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" strokeWidth={3} /> Aktif</span>
+                ) : (
+                  addon.buttonText || "Beli Add-on"
+                )}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

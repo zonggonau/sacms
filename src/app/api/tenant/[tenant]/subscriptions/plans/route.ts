@@ -217,8 +217,110 @@ export async function GET(
       }
     }
 
-    // ─── LOAD ADDONS DYNAMICALLY FROM GLOBAL CMS ───
-    let addonPlans: any[] = []
+    // ─── LOAD ADDONS: system topups + CMS overlay ───
+    // These hardcoded ids are wired into real billing logic server-side
+    // (checkout's BUILTIN_TOPUPS map, fulfillment, usage enforcement
+    // upsell links like "Beli Storage Tambahan") — they must always be
+    // resolvable here, same as checkout itself always recognizes them
+    // regardless of what's published in the CMS. Replacing this whole
+    // list with CMS entries whenever ANY were published used to make
+    // every hardcoded topup vanish — including ones an admin never
+    // touched in the CMS — the moment a single custom CMS addon went
+    // live, breaking any page still linking to them by id (404/"plan not
+    // found" at checkout). CMS entries now only add to or override this
+    // list by addon_slug, never replace it wholesale.
+    const SYSTEM_ADDONS: any[] = [
+      {
+        id: "topup_ai_500k",
+        name: "AI Booster (500K Tokens)",
+        type: "addons",
+        price: 25000,
+        features: ["+500.000 Extra AI Tokens", "No expiration date", "Works with all AI Writers & Generators"],
+        popular: true,
+        buttonText: "Top Up Now",
+        icon: "Bot",
+        isTopup: true,
+        quotaType: "ai_tokens",
+        amountUnits: 500000
+      },
+      {
+        id: "topup_ai_2m",
+        name: "AI Power Pack (2M Tokens)",
+        type: "addons",
+        price: 75000,
+        features: ["+2.000.000 Extra AI Tokens", "Best value for content teams", "Priority generation speed"],
+        popular: false,
+        buttonText: "Top Up Now",
+        icon: "Zap",
+        isTopup: true,
+        quotaType: "ai_tokens",
+        amountUnits: 2000000
+      },
+      {
+        id: "topup_storage_10gb",
+        name: "Extra Storage (10 GB / bulan)",
+        type: "addons",
+        price: 50000,
+        billingPeriod: "month",
+        features: ["+10 GB storage selama 1 bulan", "Beli lagi untuk memperpanjang", "Aktif langsung"],
+        popular: false,
+        buttonText: "Top Up Now",
+        icon: "HardDrive",
+        isTopup: true,
+        quotaType: "storage",
+        amountUnits: 10 * 1024 * 1024 * 1024
+      },
+      {
+        id: "managed_byodb_setup",
+        name: "Database & Storage Sendiri",
+        type: "addons",
+        price: 3500000,
+        billingPeriod: "month",
+        features: [
+          "Setup Rp2.500.000 sekali + Rp1.000.000/bulan (bulan pertama termasuk)",
+          "Server PostgreSQL & storage disiapkan tim IT SaCMS",
+          "Disambungkan ke workspace ini, tanpa kuota storage SaCMS",
+        ],
+        popular: false,
+        priceLabel: "Rp2.500.000 setup + Rp1.000.000/bulan",
+        buttonText: "Pesan Layanan",
+        icon: "Database",
+        isTopup: true,
+        quotaType: "managed_infra",
+        amountUnits: 1
+      },
+      {
+        // Bought from the workspace's service list ("Perpanjang"), not from the catalogue.
+        id: "managed_byodb_monthly",
+        name: "Database & Storage Sendiri — Perpanjangan 1 Bulan",
+        type: "addons",
+        price: 1000000,
+        billingPeriod: "month",
+        listed: false,
+        features: ["Layanan database & storage sendiri diperpanjang 1 bulan"],
+        popular: false,
+        buttonText: "Perpanjang",
+        icon: "Database",
+        isTopup: true,
+        quotaType: "managed_infra",
+        amountUnits: 1
+      },
+      {
+        id: "topup_api_500k",
+        name: "Extra API Quota (500K Calls)",
+        type: "addons",
+        price: 30000,
+        features: ["+500.000 API Requests", "Burst traffic support", "No throttle guarantee"],
+        popular: false,
+        buttonText: "Top Up Now",
+        icon: "Database",
+        isTopup: true,
+        quotaType: "api_calls",
+        amountUnits: 500000
+      }
+    ]
+
+    const addonMap = new Map<string, any>(SYSTEM_ADDONS.map(a => [a.id, a]))
 
     if (addonContentType) {
       const addonEntries = await db.contentEntry.findMany({
@@ -230,121 +332,28 @@ export async function GET(
         orderBy: { createdAt: "asc" }
       })
 
-      if (addonEntries.length > 0) {
-        addonPlans = addonEntries.map(entry => {
-          const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
-          const numericPrice = cleanPrice(d.price)
-          const isTopup = d.is_topup === true || d.is_topup === "true" || d.unit === "once"
+      for (const entry of addonEntries) {
+        const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
+        const numericPrice = cleanPrice(d.price)
+        const isTopup = d.is_topup === true || d.is_topup === "true" || d.unit === "once"
+        const id = d.addon_slug || entry.id
 
-          return {
-            id: d.addon_slug || entry.id,
-            name: d.name || "Unnamed Addon",
-            type: "addons",
-            price: numericPrice,
-            priceLabel: d.price_label || "",
-            features: d.description ? [d.description] : (Array.isArray(d.features) ? d.features : ["Feature upgrade"]),
-            popular: false,
-            buttonText: d.price_label ? (numericPrice === 0 ? "Included" : "Activate") : (isTopup ? "Top Up Now" : "Activate"),
-            icon: d.icon || "Package",
-            isTopup: isTopup
-          }
+        addonMap.set(id, {
+          id,
+          name: d.name || "Unnamed Addon",
+          type: "addons",
+          price: numericPrice,
+          priceLabel: d.price_label || "",
+          features: d.description ? [d.description] : (Array.isArray(d.features) ? d.features : ["Feature upgrade"]),
+          popular: false,
+          buttonText: d.price_label ? (numericPrice === 0 ? "Included" : "Activate") : (isTopup ? "Top Up Now" : "Activate"),
+          icon: d.icon || "Package",
+          isTopup: isTopup
         })
       }
     }
 
-    // Fallback addons only if CMS has 0 addon entries
-    if (addonPlans.length === 0) {
-      addonPlans = [
-        {
-          id: "topup_ai_500k",
-          name: "AI Booster (500K Tokens)",
-          type: "addons",
-          price: 25000,
-          features: ["+500.000 Extra AI Tokens", "No expiration date", "Works with all AI Writers & Generators"],
-          popular: true,
-          buttonText: "Top Up Now",
-          icon: "Bot",
-          isTopup: true,
-          quotaType: "ai_tokens",
-          amountUnits: 500000
-        },
-        {
-          id: "topup_ai_2m",
-          name: "AI Power Pack (2M Tokens)",
-          type: "addons",
-          price: 75000,
-          features: ["+2.000.000 Extra AI Tokens", "Best value for content teams", "Priority generation speed"],
-          popular: false,
-          buttonText: "Top Up Now",
-          icon: "Zap",
-          isTopup: true,
-          quotaType: "ai_tokens",
-          amountUnits: 2000000
-        },
-        {
-          id: "topup_storage_10gb",
-          name: "Extra Storage (10 GB / bulan)",
-          type: "addons",
-          price: 50000,
-          billingPeriod: "month",
-          features: ["+10 GB storage selama 1 bulan", "Beli lagi untuk memperpanjang", "Aktif langsung"],
-          popular: false,
-          buttonText: "Top Up Now",
-          icon: "HardDrive",
-          isTopup: true,
-          quotaType: "storage",
-          amountUnits: 10 * 1024 * 1024 * 1024
-        },
-        {
-          id: "managed_byodb_setup",
-          name: "Database & Storage Sendiri",
-          type: "addons",
-          price: 3500000,
-          billingPeriod: "month",
-          features: [
-            "Setup Rp2.500.000 sekali + Rp1.000.000/bulan (bulan pertama termasuk)",
-            "Server PostgreSQL & storage disiapkan tim IT SaCMS",
-            "Disambungkan ke workspace ini, tanpa kuota storage SaCMS",
-          ],
-          popular: false,
-          priceLabel: "Rp2.500.000 setup + Rp1.000.000/bulan",
-          buttonText: "Pesan Layanan",
-          icon: "Database",
-          isTopup: true,
-          quotaType: "managed_infra",
-          amountUnits: 1
-        },
-        {
-          // Bought from the workspace's service list ("Perpanjang"), not from the catalogue.
-          id: "managed_byodb_monthly",
-          name: "Database & Storage Sendiri — Perpanjangan 1 Bulan",
-          type: "addons",
-          price: 1000000,
-          billingPeriod: "month",
-          listed: false,
-          features: ["Layanan database & storage sendiri diperpanjang 1 bulan"],
-          popular: false,
-          buttonText: "Perpanjang",
-          icon: "Database",
-          isTopup: true,
-          quotaType: "managed_infra",
-          amountUnits: 1
-        },
-        {
-          id: "topup_api_500k",
-          name: "Extra API Quota (500K Calls)",
-          type: "addons",
-          price: 30000,
-          features: ["+500.000 API Requests", "Burst traffic support", "No throttle guarantee"],
-          popular: false,
-          buttonText: "Top Up Now",
-          icon: "Database",
-          isTopup: true,
-          quotaType: "api_calls",
-          amountUnits: 500000
-        }
-      ]
-    }
+    const addonPlans = Array.from(addonMap.values())
 
     const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
     let aiCreditPacks = AI_CREDIT_PACKS
