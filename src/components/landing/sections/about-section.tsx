@@ -1,6 +1,7 @@
 "use client"
 
 import type { AboutData } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function AboutSection({ about }: { about: AboutData | null }) {
   const title = about?.title || "Smart Content Management System"
@@ -26,7 +27,7 @@ export function AboutSection({ about }: { about: AboutData | null }) {
           
           <div 
             className="text-base sm:text-lg text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
-            dangerouslySetInnerHTML={{ __html: description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
           />
           
           {about?.mission && (

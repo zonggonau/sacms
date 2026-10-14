@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import type { FaqItem } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
   const [openFaq, setOpenFaq] = useState<number | null>(0)
@@ -80,7 +81,7 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
                   <div className="overflow-hidden">
                       <div 
                         className="px-5 pb-5 sm:px-6 sm:pb-6 text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: item.answer || "" }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.answer) }}
                       />
                   </div>
                 </div>

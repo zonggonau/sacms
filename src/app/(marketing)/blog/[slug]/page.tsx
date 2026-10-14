@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import type { Metadata } from "next"
 import { getLandingData } from "@/lib/public-api"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 import { type BlogPost } from "@/components/blog/blog-explorer"
 import { 
   Calendar, 
@@ -243,7 +244,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             {post.content ? (
               <div 
                 className="prose prose-neutral dark:prose-invert max-w-none prose-headings:font-black prose-headings:tracking-tight prose-h2:text-2xl prose-h2:mt-8 prose-h2:mb-4 prose-h3:text-xl prose-p:leading-relaxed prose-p:text-muted-foreground prose-li:text-muted-foreground prose-strong:text-foreground prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded-md prose-code:font-mono prose-code:text-xs"
-                dangerouslySetInnerHTML={{ __html: post.content }}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
               />
             ) : (
               <div className="text-muted-foreground leading-relaxed space-y-4">

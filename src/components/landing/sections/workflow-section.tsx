@@ -2,6 +2,7 @@
 
 import { getIcon } from "../icon-map"
 import type { WorkflowStep } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }) {
   const defaultSteps: WorkflowStep[] = [
@@ -78,7 +79,7 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
                     <h3 className="text-base font-bold text-foreground mb-2">{step.title}</h3>
-                    <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: step.description || '' }} />
+                    <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: sanitizeHtml(step.description) }} />
                   </div>
                 </div>
               </div>

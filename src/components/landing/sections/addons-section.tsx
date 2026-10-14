@@ -3,6 +3,7 @@
 import { getIcon } from "../icon-map"
 import { formatRupiah } from "@/lib/utils"
 import type { AddonItem } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
   if (!addons || addons.length === 0) return null
@@ -62,7 +63,7 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: addon.description || '' }} />
+                  <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: sanitizeHtml(addon.description) }} />
                 </div>
               </div>
             )

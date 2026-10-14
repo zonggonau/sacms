@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { HeroData } from "../types"
 import { useSession } from "next-auth/react"
 import { LayoutDashboard, Database, Shield, Zap, CreditCard, Sparkles } from "lucide-react"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 function HighlightedHeadline({ text }: { text: string }) {
   const words = (text || "").split(" ")
@@ -54,7 +55,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
 
         <div 
           className="text-base md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both [&>p]:mb-0 [&_p]:mb-0"
-          dangerouslySetInnerHTML={{ __html: subheadlineText }}
+          dangerouslySetInnerHTML={{ __html: sanitizeHtml(subheadlineText) }}
         />
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-500 fill-mode-both">

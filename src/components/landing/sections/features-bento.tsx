@@ -3,6 +3,7 @@
 import { getIcon } from "../icon-map"
 import type { FeatureItem } from "../types"
 import { Cpu, Server, Layers, LayoutTemplate, HardDrive, CreditCard } from "lucide-react"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
   // Default localized features fallback
@@ -82,7 +83,7 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
                     </h3>
                     <div 
                       className="text-muted-foreground leading-relaxed text-xs sm:text-sm [&>p]:mb-0 [&_p]:mb-0" 
-                      dangerouslySetInnerHTML={{ __html: feature.description || '' }} 
+                      dangerouslySetInnerHTML={{ __html: sanitizeHtml(feature.description) }}
                     />
                   </div>
                 </div>

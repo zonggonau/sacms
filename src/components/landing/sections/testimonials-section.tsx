@@ -2,6 +2,7 @@
 
 import { Quote } from "lucide-react"
 import type { TestimonialItem } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function TestimonialsSection({ testimonials = [] }: { testimonials?: TestimonialItem[] }) {
   if (!testimonials || testimonials.length === 0) return null
@@ -40,7 +41,7 @@ export function TestimonialsSection({ testimonials = [] }: { testimonials?: Test
               <div className="relative z-10">
                 <Quote className="w-8 h-8 text-primary/20 mb-4 group-hover:text-primary/40 transition-colors duration-300" />
                 <div className="text-sm sm:text-base text-muted-foreground leading-relaxed mb-6 italic font-medium [&>p]:mb-0 [&_p]:mb-0">
-                  &quot;<span dangerouslySetInnerHTML={{ __html: t.content || '' }} />&quot;
+                  &quot;<span dangerouslySetInnerHTML={{ __html: sanitizeHtml(t.content) }} />&quot;
                 </div>
               </div>
               

@@ -5,6 +5,7 @@ import Link from "next/link"
 import type { CtaData } from "../types"
 import { useSession } from "next-auth/react"
 import { LayoutDashboard } from "lucide-react"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function CtaBanner({ cta }: { cta: CtaData | null }) {
   const { data: session, status } = useSession()
@@ -36,7 +37,7 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
             </h2>
             <div 
               className="text-sm sm:text-base md:text-lg text-primary-foreground/90 font-medium mb-8 leading-relaxed max-w-2xl mx-auto [&>p]:mb-0 [&_p]:mb-0"
-              dangerouslySetInnerHTML={{ __html: description }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
             />
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
               {isAuthenticated ? (

@@ -3,6 +3,7 @@
 import { Check, Sparkles, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 interface PricingGridProps {
   plans?: any[]
@@ -108,7 +109,7 @@ export function PricingGrid({
                     {plan.description && (
                       <div
                         className="text-xs text-muted-foreground mb-6 min-h-[36px] font-medium leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: plan.description }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(plan.description) }}
                       />
                     )}
 

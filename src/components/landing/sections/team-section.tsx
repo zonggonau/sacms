@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import type { OwnerItem } from "../types"
+import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function TeamSection({ owners }: { owners: OwnerItem[] }) {
   if (owners.length === 0) return null
@@ -53,7 +54,7 @@ export function TeamSection({ owners }: { owners: OwnerItem[] }) {
                 <p className="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 mb-4 tracking-wide uppercase">{owner.role}</p>
                 <div 
                   className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-6 font-medium [&>p]:mb-0 [&_p]:mb-0"
-                  dangerouslySetInnerHTML={{ __html: owner.bio || "" }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(owner.bio) }}
                 />
                 
                 {owner.linkedin && (
