@@ -22,14 +22,9 @@ export default function CmsError({
         <AlertTriangle className="h-8 w-8" />
       </div>
       <h2 className="text-xl font-black tracking-tight mb-2">Gagal Memuat CMS</h2>
-      <p className="text-sm text-muted-foreground max-w-sm mb-2">
-        Terjadi kesalahan saat memuat halaman content manager.
+      <p className="text-sm text-muted-foreground max-w-sm mb-6">
+        Terjadi kesalahan saat memuat halaman content manager. Tim kami sudah diberi tahu — coba muat ulang halaman ini.
       </p>
-      {error?.message && (
-        <code className="text-xs text-rose-500 bg-rose-500/5 border border-rose-500/20 rounded-lg px-3 py-1.5 mb-6 max-w-sm truncate block">
-          {error.message}
-        </code>
-      )}
       <div className="flex items-center gap-3">
         <Button
           onClick={() => reset()}

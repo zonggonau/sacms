@@ -11,6 +11,7 @@ import { createSingleTypeSchema, updateSingleTypeSchema, saveSingleTypeDataSchem
 import { processAutoSlugs } from "@/lib/slug"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
+import { validateContentEntry } from "@/lib/content-validations"
 
 export async function getSingleTypesAction(tenantSlug: string) {
   try {
@@ -85,7 +86,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
   }
 }
 
-export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string) {
+export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string, locale?: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -121,7 +122,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
     if (!singleType) return { error: "Single type not found" }
 
     const assignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId: tenantId, singleTypeId: singleType.id }
+      where: { tenantId: tenantId, singleTypeId: singleType.id, locale: locale || "id" }
     })
 
     let parsedData = {}
@@ -133,14 +134,15 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
 
     const formattedFields = parseSchemaFieldOptions(singleType.schemaFields)
 
-    return { 
+    return {
       singleType: {
         ...singleType,
         fields: formattedFields,
         data: parsedData,
+        locale: locale || "id",
         publishedAt: assignment?.publishedAt || null,
         isGlobal: singleType.tenantId === null,
-      } 
+      }
     }
   } catch (error) {
     console.error("Error fetching single type:", error)
@@ -367,7 +369,7 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
   }
 }
 
-export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId: string, data: any, publish?: boolean) {
+export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId: string, data: any, publish?: boolean, locale?: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -386,6 +388,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
+    const targetLocale = locale || "id"
 
     const singleType = await tenantDb.singleType.findFirst({
       where: {
@@ -403,6 +406,16 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
 
     let processedData = result.data
     if (processedData) {
+      // Validate against the SingleType's own field definitions (types,
+      // required) before persisting — the zod shape check above only knows
+      // this is *some* record, not that it matches this schema.
+      const schemaValidation = await validateContentEntry(singleType.schemaFields as any, processedData, {
+        enforceRequired: !!publish,
+      })
+      if (!schemaValidation.success) {
+        return { error: "Validasi gagal", details: schemaValidation.errors ?? undefined } as any
+      }
+
       processedData = await processAutoSlugs(
         tenantId,
         singleTypeId,
@@ -415,7 +428,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
     }
 
     const existingAssignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId: tenantId, singleTypeId },
+      where: { tenantId: tenantId, singleTypeId, locale: targetLocale },
     })
 
     let assignment
@@ -424,6 +437,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
         data: {
           tenantId: tenantId,
           singleTypeId,
+          locale: targetLocale,
           enabled: true,
           data: (processedData ? processedData : Prisma.JsonNull) as any,
           publishedAt: publish ? new Date() : null,
@@ -434,7 +448,11 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
       assignment = await tenantDb.tenantSingleTypeAssignment.update({
         where: { id: existingAssignment.id },
         data: {
-          data: processedData ? JSON.stringify(processedData) : undefined,
+          // Store the object directly (Json column) — matching the create
+          // branch above and the public API's PUT route. The previous
+          // JSON.stringify(...) here double-encoded it, forcing every
+          // reader to defensively check typeof === 'string'.
+          data: processedData ? (processedData as any) : undefined,
           publishedAt: publish ? new Date() : undefined,
         },
         include: { singleType: true },
@@ -448,7 +466,9 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
     return {
       singleType: {
         ...assignment.singleType,
-        data: assignment.data ? JSON.parse(assignment.data as string) : null,
+        data: assignment.data
+          ? (typeof assignment.data === "string" ? JSON.parse(assignment.data) : assignment.data)
+          : null,
         publishedAt: assignment.publishedAt,
       }
     }

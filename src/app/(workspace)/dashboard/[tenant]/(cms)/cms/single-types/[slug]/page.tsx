@@ -82,7 +82,7 @@ export default function CMSSingleTypeDetailPage() {
     setLoading(true)
     try {
       const [stRes, locRes] = await Promise.all([
-        getSingleTypeBySlugAction(tenantSlug, singleTypeSlug),
+        getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, locale),
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
@@ -106,7 +106,7 @@ export default function CMSSingleTypeDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [tenantSlug, singleTypeSlug])
+  }, [tenantSlug, singleTypeSlug, locale])
 
   useEffect(() => {
     if (session?.user?.id) fetchData()
@@ -123,7 +123,7 @@ export default function CMSSingleTypeDetailPage() {
     if (!singleType) return
     setSaving(true)
     try {
-      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish)
+      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish, locale)
       if (res && !res.error) {
         toast({ 
           title: publish ? "Halaman Diterbitkan" : "Draft Disimpan", 
@@ -149,8 +149,8 @@ export default function CMSSingleTypeDetailPage() {
           {field.name}
           {field.required && <span className="text-destructive font-bold">*</span>}
         </Label>
-        {["text", "richText", "textarea"].includes(field.type) && (
-          <AIAssistantDialog 
+        {canEdit && ["text", "richText", "textarea"].includes(field.type) && (
+          <AIAssistantDialog
             fieldName={field.name}
             contentTypeSlug={singleType?.slug || ""} 
             tenantSlug={tenantSlug} 
@@ -264,9 +264,13 @@ export default function CMSSingleTypeDetailPage() {
   if (!singleType) return null
 
   const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
+  // Fail closed: if membership can't be resolved (stale session cache,
+  // slug/id mismatch), default to the lowest-privilege role instead of
+  // "owner" — the server still rejects the actual write either way, but the
+  // UI itself shouldn't show write affordances it can't back up.
   const effectiveRole = isPlatformStaff(session?.user?.role)
     ? "owner"
-    : (tenantMembership?.role || "owner")
+    : (tenantMembership?.role || "viewer")
   const customPermissions = Array.isArray(tenantMembership?.customPermissions)
     ? tenantMembership.customPermissions as string[]
     : null

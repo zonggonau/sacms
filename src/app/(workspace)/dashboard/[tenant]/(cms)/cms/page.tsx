@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isWorkspaceAdmin } from "@/lib/rbac/staff"
+import { withCache } from "@/lib/cache"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,7 +49,10 @@ export default async function CMSDashboardPage({
       where: { tenantId },
       _count: { _all: true },
     }),
-    tenantDb.media.count({ where: { tenantId } }).catch(() => 0), // Fallback if schema differs
+    tenantDb.media.count({ where: { tenantId } }).catch((err) => {
+      console.error(`[CMS Dashboard] media.count failed for tenant ${tenantId}:`, err)
+      return 0
+    }),
     tenantDb.contentEntry.findMany({
       where: { tenantId },
       select: {
@@ -61,7 +66,9 @@ export default async function CMSDashboardPage({
       orderBy: { updatedAt: "desc" },
       take: 20,
     }),
-    db.user.findMany({ where: { role: "super_admin" }, select: { id: true } })
+    // Platform-wide and rarely changing — cached instead of re-scanning the
+    // whole users table on every tenant's dashboard load.
+    withCache("super-admin-ids", () => db.user.findMany({ where: { role: "super_admin" }, select: { id: true } }), 300),
   ])
 
   const superAdminIds = new Set(superAdmins.map(u => u.id))
@@ -119,12 +126,14 @@ export default async function CMSDashboardPage({
             </Link>
           </Button>
 
-          <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
-            <Link href={`/dashboard/${tenantSlug}/developer/content-types`}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              Kelola Skema
-            </Link>
-          </Button>
+          {(isWorkspaceAdmin(access.role) || access.isGlobal) && (
+            <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
+              <Link href={`/dashboard/${tenantSlug}/developer/content-types`}>
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Kelola Skema
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 
