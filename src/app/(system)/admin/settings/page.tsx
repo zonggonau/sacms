@@ -102,7 +102,6 @@ export default function AdminSettingsPage() {
     maintenanceMessage: "Platform SaCMS sedang dalam pemeliharaan terjadwal. Silakan coba kembali beberapa saat lagi.",
     maintenanceIpWhitelist: "127.0.0.1",
     apiRateLimitPerMinute: "120",
-    globalCorsPolicy: "wildcard",
     ipBlacklist: "",
     webhookMaxRetries: "3",
 

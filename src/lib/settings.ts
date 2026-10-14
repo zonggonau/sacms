@@ -18,7 +18,6 @@ export interface PlatformSettings {
   maintenanceMessage: string
   maintenanceIpWhitelist: string
   apiRateLimitPerMinute: string
-  globalCorsPolicy: "wildcard" | "strict_tenant"
   ipBlacklist: string
   webhookMaxRetries: string
   maxUploadFileSizeMb: string
@@ -69,7 +68,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   maintenanceMessage: "Platform SaCMS sedang dalam pemeliharaan terjadwal. Silakan coba kembali beberapa saat lagi.",
   maintenanceIpWhitelist: "127.0.0.1",
   apiRateLimitPerMinute: "120",
-  globalCorsPolicy: "wildcard",
   ipBlacklist: "",
   webhookMaxRetries: "3",
   maxUploadFileSizeMb: "25",
