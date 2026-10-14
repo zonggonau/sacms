@@ -11,11 +11,27 @@ export const GET = withStaffAuth(
     const action = searchParams.get("action")
     const entity = searchParams.get("entity")
     const userId = searchParams.get("userId")
+    const search = searchParams.get("search")?.trim()
 
     const where: Record<string, unknown> = { tenantId: access.tenantId }
     if (action) where.action = action
     if (entity) where.entity = entity
     if (userId) where.userId = userId
+
+    if (search) {
+      // AuditLog has no Prisma relation to User, so a name/email match has
+      // to be resolved to userIds first, then OR'd in alongside the
+      // action/entity text match below.
+      const matchingUsers = await db.user.findMany({
+        where: { OR: [{ name: { contains: search, mode: "insensitive" } }, { email: { contains: search, mode: "insensitive" } }] },
+        select: { id: true },
+      })
+      where.OR = [
+        { action: { contains: search, mode: "insensitive" } },
+        { entity: { contains: search, mode: "insensitive" } },
+        ...(matchingUsers.length > 0 ? [{ userId: { in: matchingUsers.map((u) => u.id) } }] : []),
+      ]
+    }
 
     const [total, logs] = await Promise.all([
       db.auditLog.count({ where }),

@@ -4,6 +4,7 @@ import { deleteFromStorage } from "@/lib/r2"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
 import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 /** PATCH — update media metadata (needs media.upload). */
 export const PATCH = withStaffAuth(async (request, context, { access }) => {
@@ -29,7 +30,7 @@ export const PATCH = withStaffAuth(async (request, context, { access }) => {
 })
 
 /** DELETE — remove a media asset and its stored file (needs media.delete). */
-export const DELETE = withStaffAuth(async (_request, context, { access }) => {
+export const DELETE = withStaffAuth(async (_request, context, { access, session }) => {
   if (!roleHasPermission(access.role, PERMISSIONS.MEDIA_DELETE)) {
     return apiError("forbidden", { message: "Missing media.delete permission" })
   }
@@ -51,6 +52,15 @@ export const DELETE = withStaffAuth(async (_request, context, { access }) => {
   triggerWebhooks(access.tenantId, WebhookEvents.MEDIA_DELETED, {
     media: { id: media.id, name: media.name },
   }).catch(() => {})
+
+  logAudit({
+    tenantId: access.tenantId,
+    userId: session.user.id,
+    action: AuditAction.MEDIA_DELETED,
+    entity: "Media",
+    entityId: mediaId,
+    data: { name: media.name, mimeType: media.mimeType },
+  })
 
   return NextResponse.json({ success: true })
 })

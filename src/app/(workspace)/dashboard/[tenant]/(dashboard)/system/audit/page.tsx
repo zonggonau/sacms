@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,6 +57,7 @@ export default function TenantAuditLogsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [actionFilter, setActionFilter] = useState<string>("all")
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -93,15 +94,21 @@ export default function TenantAuditLogsPage() {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
   const fetchLogs = async (p: number = 1) => {
     if (!tenantSlug || !session?.user) return
     setRefreshing(true)
     try {
-      const queryParams = new URLSearchParams({ 
-        page: String(p), 
-        limit: "20" 
+      const queryParams = new URLSearchParams({
+        page: String(p),
+        limit: "20"
       })
       if (actionFilter !== "all") queryParams.set("action", actionFilter)
+      if (debouncedSearch) queryParams.set("search", debouncedSearch)
 
       const res = await fetch(`/api/tenant/${tenantSlug}/audit-logs?${queryParams}`)
       if (res.ok) {
@@ -120,8 +127,12 @@ export default function TenantAuditLogsPage() {
   };
 
   useEffect(() => {
+    setPage(1)
+  }, [debouncedSearch])
+
+  useEffect(() => {
     if (session?.user) fetchLogs(page)
-  }, [tenantSlug, session, page, actionFilter])
+  }, [tenantSlug, session, page, actionFilter, debouncedSearch])
 
   const handleCopyJson = () => {
     if (!selectedLog?.data) return
@@ -142,17 +153,6 @@ export default function TenantAuditLogsPage() {
     if (act.includes("PUBLISH")) return <Badge className="bg-primary/10 text-primary border-primary/20 font-bold text-[9px] px-2 py-0.5 rounded-full">{act}</Badge>
     return <Badge variant="outline" className="font-bold text-[9px] px-2 py-0.5 rounded-full border-border/80 text-muted-foreground">{act}</Badge>
   }
-
-  const filteredLogs = useMemo(() => {
-    if (!searchQuery.trim()) return logs
-    const q = searchQuery.toLowerCase()
-    return logs.filter(l => 
-      l.action.toLowerCase().includes(q) || 
-      l.entity.toLowerCase().includes(q) ||
-      (l.user?.name && l.user.name.toLowerCase().includes(q)) ||
-      (l.user?.email && l.user.email.toLowerCase().includes(q))
-    )
-  }, [logs, searchQuery])
 
   if (status === "loading" || loadingTenants || (loading && !refreshing)) {
     return (
@@ -282,7 +282,7 @@ export default function TenantAuditLogsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLogs.length === 0 ? (
+                  {logs.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center py-20 text-muted-foreground">
                         <ClipboardList className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
@@ -291,7 +291,7 @@ export default function TenantAuditLogsPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredLogs.map((log) => (
+                    logs.map((log) => (
                       <TableRow key={log.id} className="hover:bg-muted/40 border-b border-border/60 transition-colors group">
                         <TableCell className="pl-6 py-3">
                           <div className="flex flex-col">

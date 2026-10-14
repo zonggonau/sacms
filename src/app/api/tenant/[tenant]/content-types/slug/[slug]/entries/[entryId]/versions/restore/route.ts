@@ -55,12 +55,12 @@ export const POST = withStaffAuth(
     })
 
     logAudit({
-      action: AuditAction.CONTENT_UPDATED,
+      action: AuditAction.CONTENT_VERSION_RESTORED,
       userId: session.user.id,
       tenantId: access.tenantId ?? undefined,
       entity: "ContentEntry",
       entityId: entryId,
-      data: { action: "restore_version", restoredFromVersion: targetVersion.version },
+      data: { restoredFromVersion: targetVersion.version, newVersion: newVersionNumber },
     })
 
     return NextResponse.json({ success: true, entry: updatedEntry })

@@ -6,6 +6,7 @@ import { uploadTenantMedia } from "@/lib/r2"
 import type { Media } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 // GET - list media for a workspace
 export const GET = withStaffAuth(async (_request, context, { access }) => {
@@ -128,6 +129,15 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       triggerWebhooks(tenantId, WebhookEvents.MEDIA_UPLOADED, {
         media: { id: media.id, name: media.name, mimeType: media.mimeType, size: media.size, url: media.url },
       }).catch(() => {})
+
+      logAudit({
+        tenantId,
+        userId,
+        action: AuditAction.MEDIA_UPLOADED,
+        entity: "Media",
+        entityId: media.id,
+        data: { name: media.name, mimeType: media.mimeType, size: media.size },
+      })
     }
 
     return NextResponse.json({

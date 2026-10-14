@@ -4,6 +4,7 @@ import { randomBytes, createHash } from "crypto"
 import { validateBody } from "@/lib/validate"
 import { createApiTokenSchema } from "@/lib/validations"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 function generateToken(): string {
   return `cf_${randomBytes(32).toString("hex")}`
@@ -59,6 +60,19 @@ export const POST = withStaffAuth(
     })
 
     const { token: _storedHash, ...safeApiToken } = apiToken
+
+    // Never log the plaintext token or its hash — name/type/permissions
+    // only, matching the "secret values never appear in logged data"
+    // convention already followed elsewhere in this codebase.
+    logAudit({
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      action: AuditAction.TOKEN_CREATED,
+      entity: "ApiToken",
+      entityId: apiToken.id,
+      data: { name: apiToken.name, type: apiToken.type, permissions: apiToken.permissions },
+    })
+
     return NextResponse.json({
       token: {
         ...safeApiToken,

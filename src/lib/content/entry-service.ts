@@ -678,10 +678,23 @@ export async function updateContentEntry(
   }
 
   await invalidateContentCaches(tenantSlug, input.contentTypeSlug)
+
+  // Distinguish publish/unpublish from a plain field edit — these used to
+  // all collapse into CONTENT_UPDATED, so the audit log couldn't tell a
+  // routine edit apart from a page going live or coming down, even though
+  // AuditAction.CONTENT_PUBLISHED/CONTENT_UNPUBLISHED already exist for
+  // exactly this (and the webhook events right above already make the
+  // same distinction).
+  let auditAction: string = existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED
+  if (existingLocaleEntry) {
+    if (entry.status === "PUBLISHED" && prevStatus !== "PUBLISHED") auditAction = AuditAction.CONTENT_PUBLISHED
+    else if (prevStatus === "PUBLISHED" && entry.status !== "PUBLISHED") auditAction = AuditAction.CONTENT_UNPUBLISHED
+  }
+
   logAudit({
     tenantId: tenantId ?? undefined,
     userId: uid ?? undefined,
-    action: existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED,
+    action: auditAction,
     entity: "content_entry",
     entityId: entry.id,
     data: { contentType: input.contentTypeSlug, status: entry.status, locale: targetLocale },

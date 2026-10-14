@@ -4,6 +4,7 @@ import { validateBody } from "@/lib/validate"
 import { updateWebhookSchema } from "@/lib/validations"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { assertPublicUrl, SsrfError } from "@/lib/safe-url"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 /** Fields safe to return — never the signing `secret`. */
 const WEBHOOK_SELECT = {
@@ -24,7 +25,7 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
 
 /** PUT /api/tenant/[tenant]/webhooks/[webhookId] — update (admin/owner only). */
 export const PUT = withStaffAuth(
-  async (request, context, { access }) => {
+  async (request, context, { access, session }) => {
     const { webhookId } = await context.params
     const webhook = await db.webhook.findFirst({ where: { id: webhookId, tenantId: access.tenantId } })
     if (!webhook) return apiError("not_found", { message: "Webhook not found" })
@@ -56,6 +57,21 @@ export const PUT = withStaffAuth(
       data: updateData,
       select: WEBHOOK_SELECT,
     })
+
+    logAudit({
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      action: AuditAction.WEBHOOK_UPDATED,
+      entity: "Webhook",
+      entityId: webhookId,
+      data: {
+        name: updated.name,
+        url: updated.url,
+        changedFields: Object.keys(updateData),
+        secretRotated: secret !== undefined,
+      },
+    })
+
     return NextResponse.json({ webhook: updated })
   },
   { minRole: "admin" },
@@ -63,13 +79,23 @@ export const PUT = withStaffAuth(
 
 /** DELETE /api/tenant/[tenant]/webhooks/[webhookId] — delete (admin/owner only). */
 export const DELETE = withStaffAuth(
-  async (_request, context, { access }) => {
+  async (_request, context, { access, session }) => {
     const { webhookId } = await context.params
     const webhook = await db.webhook.findFirst({ where: { id: webhookId, tenantId: access.tenantId } })
     if (!webhook) return apiError("not_found", { message: "Webhook not found" })
 
     await db.webhookLog.deleteMany({ where: { webhookId } })
     await db.webhook.delete({ where: { id: webhookId } })
+
+    logAudit({
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      action: AuditAction.WEBHOOK_DELETED,
+      entity: "Webhook",
+      entityId: webhookId,
+      data: { name: webhook.name, url: webhook.url },
+    })
+
     return NextResponse.json({ success: true })
   },
   { minRole: "admin" },

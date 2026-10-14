@@ -494,6 +494,10 @@ model AuditLog {
   data      Json?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // The tenant audit-log page and the cron retention job both filter/sort
+  // on exactly this pair — without it, both degrade to a full scan + sort
+  // over a table shared by every tenant as it grows.
+  @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
 

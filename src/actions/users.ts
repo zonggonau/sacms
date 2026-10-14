@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions, hashPassword } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
 
@@ -159,6 +160,15 @@ export async function createMemberAction(tenantSlug: string, data: z.infer<typeo
 
     revalidatePath(`/dashboard/${tenantSlug}/users`)
 
+    logAudit({
+      tenantId,
+      userId: session.user.id,
+      action: AuditAction.MEMBER_ADDED,
+      entity: "TenantMember",
+      entityId: member.id,
+      data: { email, role, addedBy: session.user.id },
+    })
+
     return { member }
   } catch (error) {
     console.error("Error adding member:", error)
@@ -222,6 +232,17 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
           data: updateData
         })
       }
+
+      if (role && role !== member.role) {
+        logAudit({
+          tenantId: access.tenantId,
+          userId: session.user.id,
+          action: AuditAction.MEMBER_ROLE_CHANGED,
+          entity: "TenantMember",
+          entityId: memberId,
+          data: { targetUserId: member.userId, targetEmail: member.user?.email, fromRole: member.role, toRole: role, changedBy: session.user.id },
+        })
+      }
     }
 
     if (password) {
@@ -237,6 +258,19 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
           data: { password: hashedPassword }
         })
       }
+
+      // No dedicated AuditAction exists for "an admin reset someone else's
+      // password" — logged under SETTINGS_UPDATED (same fallback pattern
+      // used elsewhere, e.g. billing.ts's PaymentTransactionSynced) rather
+      // than leaving a credential reset with zero trace.
+      logAudit({
+        tenantId: access.tenantId,
+        userId: session.user.id,
+        action: AuditAction.SETTINGS_UPDATED,
+        entity: "MemberPassword",
+        entityId: memberId,
+        data: { targetUserId: member.userId, targetEmail: member.user?.email, resetBy: session.user.id },
+      })
     }
 
     revalidatePath(`/dashboard/${tenantSlug}/users`)
@@ -277,6 +311,16 @@ export async function deleteMemberAction(tenantSlug: string, memberId: string) {
     }
 
     revalidatePath(`/dashboard/${tenantSlug}/users`)
+
+    logAudit({
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      action: AuditAction.MEMBER_REMOVED,
+      entity: "TenantMember",
+      entityId: memberId,
+      data: { targetUserId: member.userId, removedBy: session.user.id },
+    })
+
     return { success: true }
   } catch (error) {
     console.error("Error deleting member:", error)
