@@ -20,12 +20,15 @@ export default async function EditContentTypePage({
 
   let initialContentType: any = null
   let initialFields: any[] = []
+  let notFound = false
 
   try {
     const response = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
-    if (response.contentType) {
+    if (!response.contentType) {
+      notFound = true
+    } else {
       initialContentType = response.contentType
-      
+
       initialFields = (response.contentType.fields || []).map((f: any) => {
         let showInCms = f.showInCms !== false
         let extra: any = {
@@ -63,6 +66,11 @@ export default async function EditContentTypePage({
     }
   } catch (error) {
     console.error("Failed to fetch content type for edit:", error)
+    notFound = true
+  }
+
+  if (notFound) {
+    redirect(`/dashboard/${tenantSlug}/developer/content-types`)
   }
 
   return (

@@ -20,12 +20,15 @@ export default async function EditSingleTypePage({
 
   let initialSingleType: any = null
   let initialFields: any[] = []
+  let notFound = false
 
   try {
     const response = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug)
-    if (response.singleType) {
+    if (!response.singleType) {
+      notFound = true
+    } else {
       initialSingleType = response.singleType
-      
+
       initialFields = (response.singleType.fields || []).map((f: any) => {
         let extra: any = {
           relationType: "",
@@ -57,6 +60,11 @@ export default async function EditSingleTypePage({
     }
   } catch (error) {
     console.error("Failed to fetch single type for edit:", error)
+    notFound = true
+  }
+
+  if (notFound) {
+    redirect(`/dashboard/${tenantSlug}/developer/single-types`)
   }
 
   return (

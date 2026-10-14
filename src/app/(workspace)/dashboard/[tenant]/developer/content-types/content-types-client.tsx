@@ -321,10 +321,15 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
               <Trash2 className="h-4 w-4" /> Hapus Tipe Konten?
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Tindakan ini akan menghapus skema <strong className="text-foreground font-bold">"{deleteDialog.contentType?.name}"</strong> beserta seluruh data entrinya secara permanen.
+              Tindakan ini akan menghapus skema <strong className="text-foreground font-bold">"{deleteDialog.contentType?.name}"</strong>{" "}
+              {(deleteDialog.contentType?.entryCount ?? 0) > 0 ? (
+                <>beserta <strong className="text-destructive font-bold">{deleteDialog.contentType?.entryCount.toLocaleString()} entri data</strong> di dalamnya secara permanen.</>
+              ) : (
+                <>secara permanen. Skema ini belum memiliki entri data.</>
+              )}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-3 py-2">
             <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs">
               <p className="font-semibold text-destructive">Ketik nama skema persis untuk konfirmasi:</p>

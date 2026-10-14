@@ -20,12 +20,15 @@ export default async function ComponentDetailPage({
 
   let initialComponent: any = null
   let initialFields: any[] = []
+  let notFound = false
 
   try {
     const response = await getComponentBySlugAction(tenantSlug, componentSlug)
-    if (response.component) {
+    if (!response.component) {
+      notFound = true
+    } else {
       initialComponent = response.component
-      
+
       initialFields = (response.component.fields || []).map((f: any) => {
         let extra: any = {
           relationType: "",
@@ -57,6 +60,11 @@ export default async function ComponentDetailPage({
     }
   } catch (error) {
     console.error("Failed to fetch component for detail page:", error)
+    notFound = true
+  }
+
+  if (notFound) {
+    redirect(`/dashboard/${tenantSlug}/developer/components`)
   }
 
   return (

@@ -297,6 +297,7 @@ export default function EditComponentClient({
           relationType: f.relationType || undefined,
           targetModel: f.targetModel || undefined,
           targetSlug: f.targetSlug || undefined,
+          relationSlug: f.type === "relation" ? (f.targetSlug || undefined) : undefined,
           componentSlug: f.componentSlug || undefined,
           repeatable: f.repeatable,
           order: i,
