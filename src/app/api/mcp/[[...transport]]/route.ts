@@ -20,7 +20,7 @@ import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
-import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
+import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
 import { hashMemberPassword } from "@/lib/member-auth"
 import { safeFetch } from "@/lib/safe-url"
 import { rateLimit, getTenantRateLimit } from "@/lib/rate-limit"
@@ -150,7 +150,93 @@ export function permissionDenied(scope: Scope) {
   }
 }
 
+// ─── Slug Normalization ───────────────────────────────────────────────────────
 
+/**
+ * Normalizes any input into the same slug shape the manual UI forms enforce
+ * via regex (/^[a-z0-9][a-z0-9-]*$/) — the ad hoc per-tool `.replace(...)`
+ * calls this replaces could still produce a slug starting with "-" or
+ * containing "_", inconsistent with (and looser than) anything created by
+ * hand through the Developer Portal.
+ */
+function toSafeSlug(input: string, fallback = "item"): string {
+  const slug = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "")
+  return slug || fallback
+}
+
+// ─── Relational Dependency Guards ──────────────────────────────────────────────
+// Mirror the checks in src/actions/{content-types,single-types,components}.ts
+// so an MCP delete tool can't silently leave a relation/component field
+// dangling — unlike the Developer Portal UI, an agent calling these tools
+// gets no confirmation dialog, so the guard has to be the thing that stops it.
+
+type TenantPrismaClient = Awaited<ReturnType<typeof getTenantDb>>
+
+async function checkRelationDependents(
+  tenantDb: TenantPrismaClient,
+  tenantId: string,
+  targetSlug: string,
+  exclude: { contentTypeId: string } | { singleTypeId: string },
+): Promise<{ fieldName: string; parentName: string } | null> {
+  const fields = await tenantDb.schemaField.findMany({
+    where: {
+      relationSlug: targetSlug,
+      NOT: exclude,
+      OR: [
+        { contentType: { tenantId } },
+        { singleType: { tenantId } },
+        { component: { tenantId } },
+        { contentType: { tenantId: null } },
+        { singleType: { tenantId: null } },
+        { component: { tenantId: null } },
+      ],
+    },
+    include: { contentType: true, singleType: true, component: true },
+  })
+  if (fields.length === 0) return null
+  const f = fields[0]
+  return {
+    fieldName: f.name,
+    parentName: f.contentType?.name || f.singleType?.name || f.component?.name || "skema lain",
+  }
+}
+
+async function countComponentDependents(
+  tenantDb: TenantPrismaClient,
+  tenantId: string,
+  targetSlug: string,
+): Promise<number> {
+  const allFields = await tenantDb.schemaField.findMany({
+    where: {
+      OR: [
+        { contentType: { tenantId } },
+        { singleType: { tenantId } },
+        { component: { tenantId } },
+        { contentType: { tenantId: null } },
+        { singleType: { tenantId: null } },
+        { component: { tenantId: null } },
+      ],
+    },
+    select: { options: true },
+  })
+  return allFields.filter((field) => {
+    if (!field.options) return false
+    let parsedOptions: any = field.options
+    if (typeof parsedOptions === "string") {
+      try {
+        parsedOptions = JSON.parse(parsedOptions)
+      } catch {
+        return false
+      }
+    }
+    return parsedOptions?.componentSlug === targetSlug
+  }).length
+}
 
 // ─── MCP Handler with Complete CRUD Capabilities ─────────────────────────────
 
@@ -176,20 +262,20 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const [contentTypes, singleTypes, components] = await Promise.all([
-          tenantDb.contentType.findMany({ 
-            where: { tenantId: auth.tenantId }, 
-            include: { schemaFields: { orderBy: { order: "asc" } } } 
+          tenantDb.contentType.findMany({
+            where: { tenantId: auth.tenantId, draftTemplateId: null },
+            include: { schemaFields: { orderBy: { order: "asc" } } }
           }),
-          tenantDb.singleType.findMany({ 
-            where: { tenantId: auth.tenantId }, 
-            include: { 
+          tenantDb.singleType.findMany({
+            where: { tenantId: auth.tenantId, draftTemplateId: null },
+            include: {
               schemaFields: { orderBy: { order: "asc" } },
               tenants: { where: { tenantId: auth.tenantId }, take: 1 }
-            } 
+            }
           }),
-          tenantDb.component.findMany({ 
-            where: { tenantId: auth.tenantId }, 
-            include: { schemaFields: { orderBy: { order: "asc" } } } 
+          tenantDb.component.findMany({
+            where: { tenantId: auth.tenantId, draftTemplateId: null },
+            include: { schemaFields: { orderBy: { order: "asc" } } }
           }),
         ])
 
@@ -351,8 +437,8 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const contentTypes = await tenantDb.contentType.findMany({
-          where: { tenantId: auth.tenantId },
-          include: { 
+          where: { tenantId: auth.tenantId, draftTemplateId: null },
+          include: {
             schemaFields: { orderBy: { order: "asc" } },
             _count: { select: { entries: true } }
           },
@@ -398,12 +484,13 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const ct = await tenantDb.contentType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug, tenantId: auth.tenantId },
               { id: slug, tenantId: auth.tenantId },
             ]
           },
-          include: { 
+          include: {
             schemaFields: { orderBy: { order: "asc" } },
             _count: { select: { entries: true } }
           }
@@ -450,7 +537,7 @@ const handler = createMcpHandler(
             z.object({
               name: z.string().describe("Field display name (e.g. 'Title', 'Price')"),
               slug: z.string().describe("Field slug (e.g. 'title', 'price')"),
-              type: z.string().describe("Field type identifier (e.g. 'text', 'textarea', 'richText', 'currency', 'date', 'mediaMultiple', 'relation', 'repeater', etc. See 'list_field_types' for full list)"),
+              type: z.enum(VALID_FIELD_TYPES).describe("Field type identifier (e.g. 'text', 'textarea', 'richText', 'currency', 'date', 'mediaMultiple', 'relation', 'repeater', etc. See 'list_field_types' for full list)"),
               required: z.boolean().optional().default(false),
               unique: z.boolean().optional().default(false),
               localizable: z.boolean().optional().default(true),
@@ -465,12 +552,12 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "-")
+        const cleanSlug = toSafeSlug(slug)
         const tenantDb = await getTenantDb(auth.tenantSlug)
 
         // Check if slug already exists
         const existing = await tenantDb.contentType.findFirst({
-          where: { tenantId: auth.tenantId, slug: cleanSlug }
+          where: { tenantId: auth.tenantId, slug: cleanSlug, draftTemplateId: null }
         })
         if (existing) {
           return { content: [{ type: "text" as const, text: `❌ A Content Type with slug '${cleanSlug}' already exists.` }] }
@@ -487,7 +574,7 @@ const handler = createMcpHandler(
             schemaFields: {
               create: (fields || []).map((f, idx) => ({
                 name: f.name,
-                slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
+                slug: toSafeSlug(f.slug),
                 type: f.type,
                 required: f.required || false,
                 unique: f.unique || false,
@@ -532,14 +619,14 @@ const handler = createMcpHandler(
             z.object({
               name: z.string(),
               slug: z.string(),
-              type: z.string(),
+              type: z.enum(VALID_FIELD_TYPES),
               required: z.boolean().optional().default(false),
               unique: z.boolean().optional().default(false),
               localizable: z.boolean().optional().default(true),
               relationSlug: z.string().optional(),
               options: z.record(z.string(), z.any()).optional(),
             })
-          ).optional().describe("New list of fields. If provided, replaces the schema field set."),
+          ).optional().describe("New list of fields. If provided (including an empty array), replaces the schema field set."),
         },
       },
       async ({ slug, name, description, showInCms, fields }) => {
@@ -550,6 +637,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const ct = await tenantDb.contentType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug, tenantId: auth.tenantId },
               { id: slug, tenantId: auth.tenantId },
@@ -558,25 +646,27 @@ const handler = createMcpHandler(
         })
         if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
 
-        // Update fields if provided
-        if (fields && fields.length > 0) {
+        // Update fields if provided — an explicit empty array clears them.
+        if (fields !== undefined) {
           await tenantDb.schemaField.deleteMany({
             where: { contentTypeId: ct.id }
           })
-          await tenantDb.schemaField.createMany({
-            data: fields.map((f, idx) => ({
-              contentTypeId: ct.id,
-              name: f.name,
-              slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
-              type: f.type,
-              required: f.required || false,
-              unique: f.unique || false,
-              localizable: f.localizable ?? true,
-              relationSlug: f.relationSlug || null,
-              options: f.options || {},
-              order: idx,
-            }))
-          })
+          if (fields.length > 0) {
+            await tenantDb.schemaField.createMany({
+              data: fields.map((f, idx) => ({
+                contentTypeId: ct.id,
+                name: f.name,
+                slug: toSafeSlug(f.slug),
+                type: f.type,
+                required: f.required || false,
+                unique: f.unique || false,
+                localizable: f.localizable ?? true,
+                relationSlug: f.relationSlug || null,
+                options: f.options || {},
+                order: idx,
+              }))
+            })
+          }
         }
 
         const updated = await tenantDb.contentType.update({
@@ -618,6 +708,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const ct = await tenantDb.contentType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug, tenantId: auth.tenantId },
               { id: slug, tenantId: auth.tenantId },
@@ -625,6 +716,17 @@ const handler = createMcpHandler(
           }
         })
         if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
+
+        const dependent = await checkRelationDependents(tenantDb, auth.tenantId, ct.slug, { contentTypeId: ct.id })
+        if (dependent) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Cannot delete Content Type '${ct.name}' — field '${dependent.fieldName}' on '${dependent.parentName}' still references it via relationSlug. Remove or repoint that field first.`
+            }],
+            isError: true,
+          }
+        }
 
         await tenantDb.contentType.delete({
           where: { id: ct.id }
@@ -912,8 +1014,8 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const singleTypes = await tenantDb.singleType.findMany({
-          where: { tenantId: auth.tenantId },
-          include: { 
+          where: { tenantId: auth.tenantId, draftTemplateId: null },
+          include: {
             schemaFields: { orderBy: { order: "asc" } },
             tenants: { where: { tenantId: auth.tenantId }, take: 1 }
           },
@@ -959,12 +1061,13 @@ const handler = createMcpHandler(
         const targetLocale = locale || "id"
         const st = await tenantDb.singleType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: singleTypeSlug, tenantId: auth.tenantId },
               { id: singleTypeSlug, tenantId: auth.tenantId },
             ]
           },
-          include: { 
+          include: {
             schemaFields: { orderBy: { order: "asc" } },
             tenants: { where: { tenantId: auth.tenantId } }
           },
@@ -1009,7 +1112,7 @@ const handler = createMcpHandler(
             z.object({
               name: z.string(),
               slug: z.string(),
-              type: z.string(),
+              type: z.enum(VALID_FIELD_TYPES),
               required: z.boolean().optional().default(false),
               options: z.record(z.string(), z.any()).optional(),
             })
@@ -1023,11 +1126,11 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "-")
+        const cleanSlug = toSafeSlug(slug)
         const tenantDb = await getTenantDb(auth.tenantSlug)
 
         const existing = await tenantDb.singleType.findFirst({
-          where: { tenantId: auth.tenantId, slug: cleanSlug }
+          where: { tenantId: auth.tenantId, slug: cleanSlug, draftTemplateId: null }
         })
         if (existing) return { content: [{ type: "text" as const, text: `❌ Single Type '${cleanSlug}' already exists.` }] }
 
@@ -1042,7 +1145,7 @@ const handler = createMcpHandler(
             schemaFields: {
               create: (fields || []).map((f, idx) => ({
                 name: f.name,
-                slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
+                slug: toSafeSlug(f.slug),
                 type: f.type,
                 required: f.required || false,
                 options: f.options || {},
@@ -1094,6 +1197,7 @@ const handler = createMcpHandler(
         const targetLocale = locale || "id"
         const st = await tenantDb.singleType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: singleTypeSlug, tenantId: auth.tenantId },
               { id: singleTypeSlug, tenantId: auth.tenantId },
@@ -1146,11 +1250,11 @@ const handler = createMcpHandler(
             z.object({
               name: z.string(),
               slug: z.string(),
-              type: z.string(),
+              type: z.enum(VALID_FIELD_TYPES),
               required: z.boolean().optional().default(false),
               options: z.record(z.string(), z.any()).optional(),
             })
-          ).optional().describe("New list of fields. If provided, replaces the schema field set."),
+          ).optional().describe("New list of fields. If provided (including an empty array), replaces the schema field set."),
         },
       },
       async ({ singleTypeSlug, name, description, fields }) => {
@@ -1161,6 +1265,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const st = await tenantDb.singleType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: singleTypeSlug, tenantId: auth.tenantId },
               { id: singleTypeSlug, tenantId: auth.tenantId },
@@ -1169,22 +1274,24 @@ const handler = createMcpHandler(
         })
         if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }] }
 
-        // Update fields if provided
-        if (fields && fields.length > 0) {
+        // Update fields if provided — an explicit empty array clears them.
+        if (fields !== undefined) {
           await tenantDb.schemaField.deleteMany({
             where: { singleTypeId: st.id }
           })
-          await tenantDb.schemaField.createMany({
-            data: fields.map((f, idx) => ({
-              singleTypeId: st.id,
-              name: f.name,
-              slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
-              type: f.type,
-              required: f.required || false,
-              options: f.options || {},
-              order: idx,
-            }))
-          })
+          if (fields.length > 0) {
+            await tenantDb.schemaField.createMany({
+              data: fields.map((f, idx) => ({
+                singleTypeId: st.id,
+                name: f.name,
+                slug: toSafeSlug(f.slug),
+                type: f.type,
+                required: f.required || false,
+                options: f.options || {},
+                order: idx,
+              }))
+            })
+          }
         }
 
         const updated = await tenantDb.singleType.update({
@@ -1226,6 +1333,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const st = await tenantDb.singleType.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: singleTypeSlug, tenantId: auth.tenantId },
               { id: singleTypeSlug, tenantId: auth.tenantId },
@@ -1233,6 +1341,17 @@ const handler = createMcpHandler(
           }
         })
         if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }] }
+
+        const dependent = await checkRelationDependents(tenantDb, auth.tenantId, st.slug, { singleTypeId: st.id })
+        if (dependent) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Cannot delete Single Type '${st.name}' — field '${dependent.fieldName}' on '${dependent.parentName}' still references it via relationSlug. Remove or repoint that field first.`
+            }],
+            isError: true,
+          }
+        }
 
         await tenantDb.singleType.delete({ where: { id: st.id } })
 
@@ -1264,7 +1383,7 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const components = await tenantDb.component.findMany({
-          where: { tenantId: auth.tenantId },
+          where: { tenantId: auth.tenantId, draftTemplateId: null },
           include: { schemaFields: { orderBy: { order: "asc" } } },
           orderBy: { name: "asc" },
         })
@@ -1303,7 +1422,7 @@ const handler = createMcpHandler(
             z.object({
               name: z.string(),
               slug: z.string(),
-              type: z.string(),
+              type: z.enum(VALID_FIELD_TYPES),
               required: z.boolean().optional().default(false),
               options: z.record(z.string(), z.any()).optional(),
             })
@@ -1315,11 +1434,11 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "-")
+        const cleanSlug = toSafeSlug(slug)
         const tenantDb = await getTenantDb(auth.tenantSlug)
 
         const existing = await tenantDb.component.findFirst({
-          where: { tenantId: auth.tenantId, slug: cleanSlug }
+          where: { tenantId: auth.tenantId, slug: cleanSlug, draftTemplateId: null }
         })
         if (existing) return { content: [{ type: "text" as const, text: `❌ Component '${cleanSlug}' already exists.` }] }
 
@@ -1333,7 +1452,7 @@ const handler = createMcpHandler(
             schemaFields: {
               create: (fields || []).map((f, idx) => ({
                 name: f.name,
-                slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
+                slug: toSafeSlug(f.slug),
                 type: f.type,
                 required: f.required || false,
                 options: f.options || {},
@@ -1378,6 +1497,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const c = await tenantDb.component.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: componentSlug, tenantId: auth.tenantId },
               { id: componentSlug, tenantId: auth.tenantId },
@@ -1422,11 +1542,11 @@ const handler = createMcpHandler(
             z.object({
               name: z.string(),
               slug: z.string(),
-              type: z.string(),
+              type: z.enum(VALID_FIELD_TYPES),
               required: z.boolean().optional().default(false),
               options: z.record(z.string(), z.any()).optional(),
             })
-          ).optional().describe("New list of fields. If provided, replaces the component's field set."),
+          ).optional().describe("New list of fields. If provided (including an empty array), replaces the component's field set."),
         },
       },
       async ({ componentSlug, name, category, description, fields }) => {
@@ -1437,6 +1557,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const c = await tenantDb.component.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: componentSlug, tenantId: auth.tenantId },
               { id: componentSlug, tenantId: auth.tenantId },
@@ -1445,22 +1566,24 @@ const handler = createMcpHandler(
         })
         if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }] }
 
-        // Update fields if provided
-        if (fields && fields.length > 0) {
+        // Update fields if provided — an explicit empty array clears them.
+        if (fields !== undefined) {
           await tenantDb.schemaField.deleteMany({
             where: { componentId: c.id }
           })
-          await tenantDb.schemaField.createMany({
-            data: fields.map((f, idx) => ({
-              componentId: c.id,
-              name: f.name,
-              slug: f.slug.toLowerCase().trim().replace(/[^a-z0-9-_]/g, "_"),
-              type: f.type,
-              required: f.required || false,
-              options: f.options || {},
-              order: idx,
-            }))
-          })
+          if (fields.length > 0) {
+            await tenantDb.schemaField.createMany({
+              data: fields.map((f, idx) => ({
+                componentId: c.id,
+                name: f.name,
+                slug: toSafeSlug(f.slug),
+                type: f.type,
+                required: f.required || false,
+                options: f.options || {},
+                order: idx,
+              }))
+            })
+          }
         }
 
         const updated = await tenantDb.component.update({
@@ -1502,6 +1625,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const c = await tenantDb.component.findFirst({
           where: {
+            draftTemplateId: null,
             OR: [
               { slug: componentSlug, tenantId: auth.tenantId },
               { id: componentSlug, tenantId: auth.tenantId },
@@ -1509,6 +1633,17 @@ const handler = createMcpHandler(
           }
         })
         if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }] }
+
+        const usedByCount = await countComponentDependents(tenantDb, auth.tenantId, c.slug)
+        if (usedByCount > 0) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Cannot delete Component '${c.name}' — still used by ${usedByCount} schema field${usedByCount === 1 ? "" : "s"}. Remove or repoint those fields first.`
+            }],
+            isError: true,
+          }
+        }
 
         await tenantDb.component.delete({ where: { id: c.id } })
 
