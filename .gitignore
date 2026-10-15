@@ -23,6 +23,10 @@ node_modules
 # misc
 .DS_Store
 *.pem
+# License RSA public key is a verification key, not a secret — it must ship
+# in the Docker image (see Dockerfile) or parseLicenseKey() ENOENTs in every
+# deployed container. license-private.pem stays ignored; never add it here.
+!keys/license-public.pem
 
 # debug
 npm-debug.log*

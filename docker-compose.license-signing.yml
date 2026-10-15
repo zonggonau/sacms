@@ -1,0 +1,20 @@
+# Override for OUR OWN SaaS production infra only — mounts the RSA private
+# key so the "Generate" button on /admin/enterprise/licenses can sign new
+# license keys.
+#
+# DO NOT include this file, or any copy of keys/license-private.pem, in
+# anything shipped to a customer appliance (e.g. a standalone government
+# deployment — see scripts/shell/standalone-gov-deploy.sh). The base
+# docker-compose.yml never references the private key; only this override
+# does, and only our own servers should ever run it:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.license-signing.yml up -d
+#
+# If the private key is ever present on a customer's own box, their
+# first-registered user (who becomes super_admin automatically) could use
+# that same admin endpoint to self-mint new licenses, defeating the whole
+# licensing model.
+services:
+  app:
+    volumes:
+      - ./keys/license-private.pem:/app/keys/license-private.pem:ro

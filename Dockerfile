@@ -17,6 +17,11 @@ COPY --chown=nextjs:nodejs node_modules ./node_modules
 COPY --chown=nextjs:nodejs prisma ./prisma
 COPY --chown=nextjs:nodejs scripts ./scripts
 COPY --chown=nextjs:nodejs package.json bun.lock ./
+# Only the RSA public key — it's a verification key, safe to ship. The
+# private key (keys/license-private.pem) must NEVER be added here; it stays
+# off this shared image and is only ever mounted into our own SaaS infra via
+# docker-compose.license-signing.yml.
+COPY --chown=nextjs:nodejs keys/license-public.pem ./keys/license-public.pem
 
 USER nextjs
 EXPOSE 3000
