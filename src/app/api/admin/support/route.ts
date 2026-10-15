@@ -47,4 +47,4 @@ export const GET = withAdminAuth(async (request) => {
     }
 
     return NextResponse.json({ tickets, summary })
-})
+}, { allowRoles: ["admin"] })

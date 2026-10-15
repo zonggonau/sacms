@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import {
   Headphones,
@@ -35,6 +36,7 @@ import { cn } from "@/lib/utils"
 export default function AdminSupportPage() {
   const { data: session } = useSession()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [tickets, setTickets] = useState<any[]>([])
@@ -71,6 +73,10 @@ export default function AdminSupportPage() {
         const data = await res.json()
         setTickets(data.tickets || [])
         setSummary(data.summary || { total: 0, open: 0, inProgress: 0, resolved: 0, urgent: 0 })
+      } else if (res.status === 403) {
+        toast({ variant: "destructive", title: "Akses Ditolak", description: "Role Anda tidak punya izin melihat tiket support." })
+      } else {
+        toast({ variant: "destructive", title: "Gagal Memuat", description: `Server mengembalikan status ${res.status}.` })
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Gagal memuat tiket support" })
@@ -82,13 +88,12 @@ export default function AdminSupportPage() {
   const fetchTicketDetail = async (ticketId: string) => {
     try {
       setTicketDetailLoading(true)
-      // Find tenant slug
-      const found = tickets.find(t => t.id === ticketId)
-      const tenantSlug = found?.tenant?.slug || "global"
-      const res = await fetch(`/api/tenant/${tenantSlug}/support/${ticketId}`)
+      const res = await fetch(`/api/admin/support/${ticketId}`)
       if (res.ok) {
         const data = await res.json()
         setSelectedTicket(data.ticket)
+      } else {
+        toast({ variant: "destructive", title: "Gagal Memuat", description: `Tidak bisa membuka tiket ini (HTTP ${res.status}).` })
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Gagal memuat detail tiket" })
@@ -101,12 +106,20 @@ export default function AdminSupportPage() {
     fetchTickets()
   }, [statusFilter, categoryFilter])
 
+  // Deep-link from the notification email (?ticketId=...) — the link used
+  // to land on the bare list with nothing pre-selected, forcing staff to
+  // manually find the ticket every time.
+  useEffect(() => {
+    const ticketId = searchParams.get("ticketId")
+    if (ticketId) fetchTicketDetail(ticketId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Live Stream SSE connection for active ticket in Admin Helpdesk
   useEffect(() => {
     if (!selectedTicket?.id) return
 
-    const tenantSlug = selectedTicket.tenant?.slug || "global"
-    const eventSource = new EventSource(`/api/tenant/${tenantSlug}/support/${selectedTicket.id}/stream`)
+    const eventSource = new EventSource(`/api/admin/support/${selectedTicket.id}/stream`)
 
     eventSource.addEventListener("message", (event) => {
       try {
@@ -168,8 +181,7 @@ export default function AdminSupportPage() {
 
     try {
       setSendingReply(true)
-      const tenantSlug = selectedTicket.tenant?.slug || "global"
-      const res = await fetch(`/api/tenant/${tenantSlug}/support/${selectedTicket.id}`, {
+      const res = await fetch(`/api/admin/support/${selectedTicket.id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -200,8 +212,7 @@ export default function AdminSupportPage() {
     if (!selectedTicket) return
     try {
       setUpdatingStatus(true)
-      const tenantSlug = selectedTicket.tenant?.slug || "global"
-      const res = await fetch(`/api/tenant/${tenantSlug}/support/${selectedTicket.id}`, {
+      const res = await fetch(`/api/admin/support/${selectedTicket.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus })
@@ -210,6 +221,8 @@ export default function AdminSupportPage() {
         toast({ title: "Status Diperbarui", description: `Tiket diubah ke status ${newStatus}` })
         setSelectedTicket((prev: any) => ({ ...prev, status: newStatus }))
         fetchTickets()
+      } else {
+        toast({ variant: "destructive", title: "Gagal", description: `Server mengembalikan status ${res.status}.` })
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Gagal memperbarui status" })
@@ -284,6 +297,7 @@ export default function AdminSupportPage() {
                   <SelectItem value="open" className="text-xs">Menunggu CS</SelectItem>
                   <SelectItem value="in_progress" className="text-xs">Diproses</SelectItem>
                   <SelectItem value="resolved" className="text-xs">Selesai</SelectItem>
+                  <SelectItem value="closed" className="text-xs">Ditutup</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -291,6 +305,7 @@ export default function AdminSupportPage() {
                 <SelectTrigger className="h-8 rounded-xl text-xs bg-card"><SelectValue placeholder="Kategori" /></SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="all" className="text-xs">Semua Kategori</SelectItem>
+                  <SelectItem value="general" className="text-xs">Umum</SelectItem>
                   <SelectItem value="technical" className="text-xs">Teknis & CMS</SelectItem>
                   <SelectItem value="infrastructure" className="text-xs">Database / Storage</SelectItem>
                   <SelectItem value="domain" className="text-xs">Custom Domain</SelectItem>
@@ -325,10 +340,11 @@ export default function AdminSupportPage() {
                           "text-[9px] px-1.5 py-0 capitalize font-bold",
                           t.status === "open" && "bg-blue-500/10 text-blue-600 border-blue-500/20",
                           t.status === "in_progress" && "bg-amber-500/10 text-amber-600 border-amber-500/20",
-                          t.status === "resolved" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                          t.status === "resolved" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+                          t.status === "closed" && "bg-muted text-muted-foreground border-border/60"
                         )}
                       >
-                        {t.status === "open" ? "Baru" : t.status === "in_progress" ? "Diproses" : "Selesai"}
+                        {t.status === "open" ? "Baru" : t.status === "in_progress" ? "Diproses" : t.status === "closed" ? "Ditutup" : "Selesai"}
                       </Badge>
                       <span className="text-[10px] text-muted-foreground">
                         {new Date(t.updatedAt).toLocaleDateString("id-ID", { month: "short", day: "numeric" })}
@@ -420,7 +436,7 @@ export default function AdminSupportPage() {
                       )}
                     >
                       <div className="flex items-center justify-between gap-3 text-[10px] font-bold mb-1 opacity-85">
-                        <span>{isAdmin ? "👨‍💻 Anda (Tim IT SaCMS)" : `👤 ${selectedTicket.user?.name || "Owner"}`}</span>
+                        <span>{isAdmin ? (isMe ? "👨‍💻 Anda (Tim IT SaCMS)" : "👨‍💻 Rekan Staf (Tim IT SaCMS)") : `👤 ${selectedTicket.user?.name || "Owner"}`}</span>
                         <span>{new Date(msg.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
                       </div>
                       <p className="whitespace-pre-wrap">{msg.message}</p>
