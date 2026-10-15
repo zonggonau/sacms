@@ -46,6 +46,44 @@ export async function proxy(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] || ""
   const ip = getClientIp(request)
 
+  // ==================== ENTERPRISE LICENSE HARD LOCKOUT ====================
+  // Standalone/self-hosted installs (e.g. a government appliance) enforce
+  // their license expiry here — deliberately structured as its own
+  // self-contained block, separate from the admin-togglable maintenance-mode
+  // check below, so this can never be disabled by a tenant's own admin (who,
+  // on a single-tenant appliance, IS the first-registered super_admin — see
+  // src/actions/auth.ts). The flag is refreshed by src/app/api/cron/license-check/route.ts
+  // (which reuses validateLicense() from src/lib/license.ts — no license
+  // logic lives here). Fails OPEN on any Redis error: a transient infra
+  // hiccup on our side should never turn into an outage for a paying
+  // customer — see the plan's "Keputusan fail-open" note.
+  const lockoutRedis = getRedis()
+  if (lockoutRedis) {
+    try {
+      const lockout = await lockoutRedis.get<any>("system:license-lockout")
+      if (
+        lockout?.locked &&
+        !pathname.startsWith("/api/health") &&
+        !pathname.startsWith("/api/cron/") &&
+        pathname !== "/license-expired"
+      ) {
+        if (pathname.startsWith("/api/")) {
+          return new NextResponse(
+            JSON.stringify({ error: "license_expired", locked: true, reason: lockout.reason }),
+            { status: 503, headers: { "Content-Type": "application/json" } }
+          )
+        }
+        const rewriteUrl = request.nextUrl.clone()
+        rewriteUrl.pathname = "/license-expired"
+        const response = NextResponse.rewrite(rewriteUrl)
+        applySecurityHeaders(response, pathname)
+        return response
+      }
+    } catch {
+      // Fail open — see comment above.
+    }
+  }
+
   // ==================== PLATFORM SETTINGS & MAINTENANCE CHECK ====================
   const redis = getRedis()
   if (redis) {

@@ -1,3 +1,7 @@
 # min hour day month weekday — times are UTC
 # 01:00 UTC = 08:00 WIB: storage add-on and managed database/storage reminders and expiry
 0 1 * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/billing-reminders
+# Hourly: re-validate the enterprise license (offline RSA+expiry, online if
+# LICENSE_SERVER_URL is set) and refresh the lockout flag src/proxy.ts reads.
+# Only load-bearing on a standalone/self-hosted install (LICENSE_KEY env var).
+0 * * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/license-check
