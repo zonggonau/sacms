@@ -2,6 +2,21 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { z } from "zod/v4"
 import { withAdminAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { logAudit, AuditAction } from "@/lib/audit-log"
+
+/** Never return these straight from a Prisma `update()`/`findUnique()` call —
+ *  password is a bcrypt hash, the other two are raw Enterprise DB/S3
+ *  credentials (see src/app/api/auth/user/infrastructure/route.ts, which
+ *  masks the exact same fields for the self-service version of this data). */
+const SAFE_USER_SELECT = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  image: true,
+  createdAt: true,
+  updatedAt: true,
+} as const
 
 /** Roles a platform admin may assign. `super_admin` and `developer`
  *  (cross-tenant platform staff — see lib/platform-roles.ts) are added
@@ -92,7 +107,21 @@ export const PATCH = withAdminAuth(
       }
     }
 
-    const user = await db.user.update({ where: { id: userId }, data: updateData })
+    const user = await db.user.update({ where: { id: userId }, data: updateData, select: SAFE_USER_SELECT })
+
+    logAudit({
+      userId: session.user.id,
+      action: AuditAction.SETTINGS_UPDATED,
+      entity: "User",
+      entityId: userId,
+      data: {
+        targetEmail: user.email,
+        changedFields: Object.keys(updateData),
+        ...(updateData.role !== undefined ? { roleChangedFrom: target.role, roleChangedTo: updateData.role } : {}),
+        passwordReset: "password" in updateData,
+      },
+    })
+
     return NextResponse.json({ user })
   },
   { allowRoles: ["admin"] },
@@ -125,7 +154,12 @@ export const DELETE = withAdminAuth(
       }
     }
 
-    // Check email confirmation if provided
+    // The "type the user's email to confirm" step is real friction against
+    // a mis-click in the dashboard UI, but it was only ever checked WHEN
+    // a confirmEmail value was present — an empty/omitted body skipped the
+    // check entirely, so a direct API call (curl/console fetch) from an
+    // already-authenticated admin session deleted the target with zero
+    // confirmation. Now required, not optional.
     let confirmEmail: string | null = null
     try {
       const body = await request.json()
@@ -135,7 +169,7 @@ export const DELETE = withAdminAuth(
       confirmEmail = url.searchParams.get("confirmEmail")
     }
 
-    if (confirmEmail && confirmEmail.trim().toLowerCase() !== targetUser.email.trim().toLowerCase()) {
+    if (!confirmEmail || confirmEmail.trim().toLowerCase() !== targetUser.email.trim().toLowerCase()) {
       return apiError("validation", { message: "Konfirmasi email tidak sesuai. Penghapusan dibatalkan." })
     }
 
@@ -159,6 +193,14 @@ export const DELETE = withAdminAuth(
       await tx.session.deleteMany({ where: { userId } })
       await tx.tenantMember.deleteMany({ where: { userId } })
       await tx.user.delete({ where: { id: userId } })
+    })
+
+    logAudit({
+      userId: session.user.id,
+      action: AuditAction.SETTINGS_UPDATED,
+      entity: "User",
+      entityId: userId,
+      data: { targetEmail: targetUser.email, targetRole: targetUser.role, deleted: true },
     })
 
     return NextResponse.json({ success: true })

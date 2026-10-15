@@ -27,6 +27,15 @@ export const POST = withAdminAuth(
       return NextResponse.json({ error: "User tidak ditemukan" }, { status: 404 })
     }
 
+    // Same guard PATCH/DELETE already enforce on this user: a plain admin
+    // touching a super_admin's verification status is exactly how a
+    // lower-privileged account could lock every super_admin out of
+    // password login (credential login is blocked while emailVerified is
+    // null — see src/lib/auth.ts) despite having no business doing so.
+    if (user.role === "super_admin" && session.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Only a super admin can change a super admin's verification status" }, { status: 403 })
+    }
+
     // 1. Manual Verification by Super Admin
     if (action === "manual_verify") {
       await db.user.update({

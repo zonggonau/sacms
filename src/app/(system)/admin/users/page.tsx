@@ -89,6 +89,9 @@ function getRoleBadge(role: string): { label: string; className: string } {
       return { label: "DEVELOPER", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" }
     case "user":
       return { label: "USER", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" }
+    case "employee":
+    case "karyawan":
+      return { label: "STAF INTERNAL", className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" }
     default:
       return { label: "ACCOUNT OWNER", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" }
   }
@@ -108,7 +111,8 @@ function AdminUsersContent() {
     }
   }, [tabParam])
   
-  const isAdmin = session?.user?.role === "super_admin" || session?.user?.role === "admin"
+  const isSuperAdmin = session?.user?.role === "super_admin"
+  const isAdmin = isSuperAdmin || session?.user?.role === "admin"
 
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,6 +121,7 @@ function AdminUsersContent() {
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [totalUsersCount, setTotalUsersCount] = useState(0)
+  const [userStats, setUserStats] = useState({ superAdminCount: 0, accountOwnerCount: 0, withWorkspaceCount: 0 })
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
@@ -268,6 +273,9 @@ function AdminUsersContent() {
           setTotalPages(data.pagination.totalPages)
           setPage(data.pagination.page)
           setTotalUsersCount(data.pagination.total)
+        }
+        if (data.stats) {
+          setUserStats(data.stats)
         }
       }
     } catch (error) {
@@ -441,9 +449,15 @@ function AdminUsersContent() {
             note: data.override.note || ""
           })
         }
+      } else {
+        // Used to fail silently here (console.error only) — the dialog stayed
+        // open with empty fields and a stopped spinner, indistinguishable
+        // from "no override set yet" rather than a real permission/server error.
+        const err = await res.json().catch(() => ({}))
+        toast({ variant: "destructive", title: "Gagal Memuat", description: err.error || `Server mengembalikan status ${res.status}.` })
       }
     } catch (error) {
-      console.error("Failed to fetch overrides:", error)
+      toast({ variant: "destructive", title: "Kesalahan Jaringan", description: "Gagal menghubungi server." })
     } finally {
       setOverrideLoading(false)
     }
@@ -586,8 +600,16 @@ function AdminUsersContent() {
                         <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
                           <SelectItem value="owner" className="text-xs rounded-lg font-medium">Account Owner (Pemilik Workspace)</SelectItem>
-                          <SelectItem value="developer" className="text-xs rounded-lg font-medium">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
-                          <SelectItem value="super_admin" className="text-xs rounded-lg font-medium">Super Admin (Platform Master)</SelectItem>
+                          <SelectItem value="user" className="text-xs rounded-lg font-medium">User (Akun Registrasi Mandiri)</SelectItem>
+                          <SelectItem value="admin" className="text-xs rounded-lg font-medium">Platform Admin</SelectItem>
+                          <SelectItem value="employee" className="text-xs rounded-lg font-medium">Staf Internal (Employee)</SelectItem>
+                          <SelectItem value="karyawan" className="text-xs rounded-lg font-medium">Staf Internal (Karyawan)</SelectItem>
+                          {isSuperAdmin && (
+                            <>
+                              <SelectItem value="developer" className="text-xs rounded-lg font-medium">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
+                              <SelectItem value="super_admin" className="text-xs rounded-lg font-medium">Super Admin (Platform Master)</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -647,7 +669,7 @@ function AdminUsersContent() {
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 <div className="text-2xl font-black text-foreground tracking-tight">
-                  {users.filter((u) => u.role === "super_admin").length}
+                  {userStats.superAdminCount}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Akses platform penuh</p>
               </CardContent>
@@ -661,7 +683,7 @@ function AdminUsersContent() {
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 <div className="text-2xl font-black text-foreground tracking-tight">
-                  {users.filter((u) => u.role !== "super_admin" && u.role !== "developer").length}
+                  {userStats.accountOwnerCount}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Pemilik akun & tenant</p>
               </CardContent>
@@ -675,7 +697,7 @@ function AdminUsersContent() {
               </CardHeader>
               <CardContent className="p-5 pt-0">
                 <div className="text-2xl font-black text-foreground tracking-tight">
-                  {users.filter((u) => u.tenants && u.tenants.length > 0).length}
+                  {userStats.withWorkspaceCount}
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">Memiliki workspace aktif</p>
               </CardContent>
@@ -933,8 +955,16 @@ function AdminUsersContent() {
                   <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                   <SelectContent className="rounded-xl border-border bg-card">
                     <SelectItem value="owner" className="text-xs rounded-lg">Account Owner</SelectItem>
-                    <SelectItem value="developer" className="text-xs rounded-lg">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
-                    <SelectItem value="super_admin" className="text-xs rounded-lg">Super Admin</SelectItem>
+                    <SelectItem value="user" className="text-xs rounded-lg">User (Akun Registrasi Mandiri)</SelectItem>
+                    <SelectItem value="admin" className="text-xs rounded-lg">Platform Admin</SelectItem>
+                    <SelectItem value="employee" className="text-xs rounded-lg">Staf Internal (Employee)</SelectItem>
+                    <SelectItem value="karyawan" className="text-xs rounded-lg">Staf Internal (Karyawan)</SelectItem>
+                    {isSuperAdmin && (
+                      <>
+                        <SelectItem value="developer" className="text-xs rounded-lg">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
+                        <SelectItem value="super_admin" className="text-xs rounded-lg">Super Admin</SelectItem>
+                      </>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
