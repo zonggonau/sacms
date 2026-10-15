@@ -8,10 +8,19 @@ export const GET = withAdminAuth(async () => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-    // System tenants are hidden from stats
+    // System tenants are hidden from stats. Matches the slug+id pattern
+    // used everywhere else this exclusion happens (src/app/api/tenants/
+    // route.ts, src/lib/auth.ts, src/lib/plan-enforcement.ts) — a slug-only
+    // check only worked here because the global tenant's slug and id
+    // happen to be equal today; if that slug is ever edited via
+    // /admin/tenants, a slug-only filter silently starts folding the
+    // platform's own internal workspace into every number on this page.
     const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId()
-    const SYSTEM_SLUGS = [globalId]
-    const notSystemTenant = { slug: { notIn: SYSTEM_SLUGS } }
+    const notSystemTenant = {
+      slug: { notIn: [globalId, "sacms-global", "sacms"] },
+      id: { not: globalId },
+    }
+    const notSystemTenantId = { tenantId: { not: globalId } }
 
     const [
       financialReports,
@@ -59,9 +68,9 @@ export const GET = withAdminAuth(async () => {
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
-      db.apiToken.count(),
-      db.media.count(),
-      db.media.aggregate({ _sum: { size: true } }),
+      db.apiToken.count({ where: notSystemTenantId }),
+      db.media.count({ where: notSystemTenantId }),
+      db.media.aggregate({ where: notSystemTenantId, _sum: { size: true } }),
       db.tenant.findMany({
         where: notSystemTenant,
         select: {

@@ -70,6 +70,7 @@ export default function GlobalAdminDashboard() {
   })
   const [health, setHealth] = useState<SystemHealth | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null)
 
@@ -85,10 +86,16 @@ export default function GlobalAdminDashboard() {
         fetch("/api/admin/stats"),
         fetch("/api/admin/system/health").catch(() => null)
       ])
-      
+
       if (statsRes.ok) {
         const data = await statsRes.json()
         setStats((prev) => ({ ...prev, ...data }))
+        setFetchError(null)
+      } else {
+        // A real outage and an empty-but-healthy platform used to look
+        // identical here (both render as zeroed-out stats) — surface the
+        // failure explicitly instead of silently keeping stale/zero numbers.
+        setFetchError(`Gagal memuat statistik (HTTP ${statsRes.status}). Angka di bawah mungkin tidak akurat.`)
       }
       if (healthRes && healthRes.ok) {
         const hData = await healthRes.json()
@@ -96,6 +103,7 @@ export default function GlobalAdminDashboard() {
       }
     } catch (error) {
       console.error("Failed to fetch admin dashboard stats:", error)
+      setFetchError("Gagal menghubungi server. Angka di bawah mungkin tidak akurat.")
     } finally {
       setLoading(false)
     }
@@ -181,6 +189,14 @@ export default function GlobalAdminDashboard() {
             </div>
           </div>
 
+          {/* Data Fetch Error Banner */}
+          {fetchError && (
+            <div className="p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 bg-rose-500/10 text-rose-600 border border-rose-500/30">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>{fetchError}</span>
+            </div>
+          )}
+
           {/* Action Notification */}
           {actionMessage && (
             <div className={`p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition-all ${
@@ -223,9 +239,12 @@ export default function GlobalAdminDashboard() {
                     </div>
                   </div>
                   <div className="text-2xl font-black text-foreground tracking-tight">{formatRupiah(stats.mrr || stats.monthlyRevenue)}</div>
+                  {!stats.mrr && stats.monthlyRevenue > 0 && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5">*Pendapatan terealisasi bulan ini, bukan recurring run-rate — mesin MRR sedang tidak tersedia.</p>
+                  )}
                   <div className="flex items-center gap-1.5 mt-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <Zap className="h-3 w-3" />
-                    <span>Margin Kotor {stats.grossMarginPercent > 0 ? `${stats.grossMarginPercent}%` : "89.4%"}</span>
+                    <span>Margin Kotor {stats.grossMarginPercent > 0 ? `${stats.grossMarginPercent}%` : "N/A"}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -336,25 +355,15 @@ export default function GlobalAdminDashboard() {
                 {actionLoading === "flush_cache" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5 text-primary" />}
                 Flush Edge Redis Cache
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={!!actionLoading} 
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!!actionLoading}
                 onClick={() => handleQuickAction("retry_dlq")}
                 className="rounded-xl text-xs font-bold h-9 border-border/80 shadow-xs"
               >
                 {actionLoading === "retry_dlq" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Activity className="mr-1.5 h-3.5 w-3.5 text-amber-500" />}
                 Retry Webhook DLQ
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                disabled={!!actionLoading} 
-                onClick={() => handleQuickAction("sync_pricing")}
-                className="rounded-xl text-xs font-bold h-9 border-border/80 shadow-xs"
-              >
-                {actionLoading === "sync_pricing" ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Zap className="mr-1.5 h-3.5 w-3.5 text-emerald-500" />}
-                Sinkronkan Katalog Pricing
               </Button>
             </CardContent>
           </Card>

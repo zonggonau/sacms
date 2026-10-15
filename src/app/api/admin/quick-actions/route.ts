@@ -12,8 +12,37 @@ export const POST = withAdminAuth(async (request) => {
       const redis = getRedis()
       if (redis) {
         try {
-          await redis.flushdb()
-          return NextResponse.json({ success: true, message: "Redis Edge Cache berhasil dibersihkan." })
+          // Scoped to the actual edge/content cache key prefixes (see
+          // getCache/setCache call sites across src/app/api/public/**) —
+          // never a bare FLUSHDB. That used to also wipe the custom/
+          // white-label domain routing map (`domain:*`, read by
+          // src/proxy.ts with no DB fallback) and every rate-limit/
+          // brute-force-lockout counter (`cf:rl:*`), taking down every
+          // tenant's custom domain and resetting every login lockout
+          // platform-wide on a single click.
+          const CACHE_KEY_PATTERNS = [
+            "public_api:*",
+            "public_api_global:*",
+            "public_api_single:*",
+            "public_api_single_global:*",
+            "single:*",
+            "graphql:*",
+            "img_transform:*",
+            "content:*",
+          ]
+          let deleted = 0
+          for (const pattern of CACHE_KEY_PATTERNS) {
+            let cursor = 0
+            do {
+              const [newCursor, keys] = await redis.scan(cursor, { match: pattern, count: 200 })
+              cursor = Number(newCursor)
+              if (keys.length > 0) {
+                await redis.del(...keys)
+                deleted += keys.length
+              }
+            } while (cursor !== 0)
+          }
+          return NextResponse.json({ success: true, message: `Edge Cache dibersihkan (${deleted} key dihapus). Mapping domain kustom dan rate-limit tidak tersentuh.` })
         } catch (e: any) {
           return NextResponse.json({ success: false, message: `Gagal flush Redis: ${e.message}` }, { status: 500 })
         }
@@ -75,12 +104,6 @@ export const POST = withAdminAuth(async (request) => {
         success: true, 
         message: `Retry ${deadLetters.length} Webhook: Berhasil ${successCount}, Gagal ${failedCount}` 
       })
-    }
-
-    if (action === "sync_pricing") {
-      // Execute global seed sync API
-      const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId()
-      return NextResponse.json({ success: true, message: "Global pricing dan catalog template berhasil disinkronkan." })
     }
 
     return apiError("validation", { message: "Invalid action" })
