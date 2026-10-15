@@ -369,7 +369,22 @@ export default function BillingClient({
             </Card>
           </section>
 
-          {/* ── 1. ACCOUNT PLANS (YEARLY PRICING) ── */}
+          {/* ── 1. ENTERPRISE LICENSE ──
+              No tenantId passed: this page isn't scoped to one workspace, so
+              the banner falls back to its own getGlobalWorkspaceIdAction()
+              resolution (see enterprise-license-banner.tsx) — same as
+              workspace-manager.tsx's usage. Shown above the yearly account
+              plans so any workspace user notices it, not just enterprise
+              customers (it also doubles as the self-service "activate a
+              license key" entry point). */}
+          <div>
+            <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
+            {session?.user?.id && (
+              <EnterpriseLicenseBanner hideActivation={false} />
+            )}
+          </div>
+
+          {/* ── 2. ACCOUNT PLANS (YEARLY PRICING) ── */}
           <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -462,21 +477,6 @@ export default function BillingClient({
                 })}
               </div>
           </section>
-
-          {/* ── 3. ENTERPRISE LICENSE ──
-              No tenantId passed: this page isn't scoped to one workspace, so
-              the banner falls back to its own getGlobalWorkspaceIdAction()
-              resolution (see enterprise-license-banner.tsx) — same as
-              workspace-manager.tsx's usage. Passing session.user.id here
-              used to send a user id where a tenant id/slug was required,
-              which getTenantAccess() can never resolve, so this always
-              silently showed "no license" regardless of real status. */}
-          <div className="mt-6">
-            <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
-            {session?.user?.id && (
-              <EnterpriseLicenseBanner hideActivation={false} />
-            )}
-          </div>
         </TabsContent>
 
         <TabsContent value="history" className="mt-6 space-y-6">
