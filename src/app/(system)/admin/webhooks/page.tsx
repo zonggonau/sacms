@@ -128,23 +128,30 @@ export default function AdminWebhooksPage() {
     }
   }, [status, router])
 
-  const fetchData = async () => {
+  const fetchData = async (scope?: "webhooks" | "logs" | "dlq") => {
     try {
       const params = new URLSearchParams({
         webhooksPage: String(webhooksPage),
         logsPage: String(logsPage),
         dlqPage: String(dlqPage),
       })
+      if (scope) params.set("scope", scope)
       const res = await fetch(`/api/admin/webhooks?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
-        setWebhooks(data.webhooks || [])
-        setLogs(data.recentLogs || [])
-        setDeadLetters(data.deadLetters || [])
+        if (!scope || scope === "webhooks") {
+          setWebhooks(data.webhooks || [])
+          setWebhooksTotalPages(data.webhooksTotalPages || 1)
+        }
+        if (!scope || scope === "logs") {
+          setLogs(data.recentLogs || [])
+          setLogsTotalPages(data.logsTotalPages || 1)
+        }
+        if (!scope || scope === "dlq") {
+          setDeadLetters(data.deadLetters || [])
+          setDlqTotalPages(data.dlqTotalPages || 1)
+        }
         setStats(data.stats || null)
-        setWebhooksTotalPages(data.webhooksTotalPages || 1)
-        setLogsTotalPages(data.logsTotalPages || 1)
-        setDlqTotalPages(data.dlqTotalPages || 1)
       } else {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal memuat data webhook" })
       }
@@ -156,11 +163,20 @@ export default function AdminWebhooksPage() {
     }
   }
 
+  // Initial load (and the manual "Muat Ulang" button) fetches all three tabs together.
   useEffect(() => {
     if (isAdmin) {
       fetchData()
     }
-  }, [isAdmin, webhooksPage, logsPage, dlqPage])
+  }, [isAdmin])
+
+  // Paging one tab used to refetch (and re-render) the other two tabs as a
+  // side effect, since all three shared one fetchData call keyed on all
+  // three page numbers. Each tab's pager now only refreshes its own tab —
+  // guarded by `!loading` so these don't double-fire the initial full fetch above.
+  useEffect(() => { if (isAdmin && !loading) fetchData("webhooks") }, [webhooksPage])
+  useEffect(() => { if (isAdmin && !loading) fetchData("logs") }, [logsPage])
+  useEffect(() => { if (isAdmin && !loading) fetchData("dlq") }, [dlqPage])
 
   const handleRetry = async (deadLetterId: string) => {
     setRetryingId(deadLetterId)
@@ -354,21 +370,21 @@ export default function AdminWebhooksPage() {
                   className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
                 >
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  Dead Letter Queue ({deadLetters.length})
+                  Dead Letter Queue ({stats?.deadLetterCount ?? deadLetters.length})
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="logs" 
+                <TabsTrigger
+                  value="logs"
                   className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
                 >
                   <Activity className="w-3.5 h-3.5" />
-                  Log Pengiriman Terbaru ({logs.length})
+                  Log Pengiriman Terbaru ({(stats?.successLogsCount ?? 0) + (stats?.failedLogsCount ?? 0)})
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="webhooks" 
+                <TabsTrigger
+                  value="webhooks"
                   className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
                 >
                   <Webhook className="w-3.5 h-3.5" />
-                  Daftar Webhook Tenant ({webhooks.length})
+                  Daftar Webhook Tenant ({stats?.totalWebhooks ?? webhooks.length})
                 </TabsTrigger>
               </TabsList>
 

@@ -71,6 +71,8 @@ export const AuditAction = {
   WEBHOOK_CREATED: "webhook.created",
   WEBHOOK_UPDATED: "webhook.updated",
   WEBHOOK_DELETED: "webhook.deleted",
+  WEBHOOK_DLQ_REPLAYED: "webhook.dlq_replayed",
+  WEBHOOK_DLQ_PURGED: "webhook.dlq_purged",
 
   // Settings
   SETTINGS_UPDATED: "settings.updated",

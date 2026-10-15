@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
-import { safeFetch } from "@/lib/safe-url"
+import { replayDeadLetter } from "@/lib/webhooks"
 
 export const GET = withAdminAuth(
   async (request) => {
@@ -10,64 +10,74 @@ export const GET = withAdminAuth(
     const webhooksPage = parseInt(searchParams.get("webhooksPage") || "1")
     const logsPage = parseInt(searchParams.get("logsPage") || "1")
     const dlqPage = parseInt(searchParams.get("dlqPage") || "1")
+    // Paging one tab used to refetch and re-render the other two tabs' lists
+    // too, since all three were always fetched together. `scope` lets the
+    // client ask for just the tab whose page actually changed.
+    const scope = searchParams.get("scope") as "webhooks" | "logs" | "dlq" | null
     const PAGE_SIZE = 30
 
     const [
       webhooks, webhooksTotal, recentLogs, logsTotal, deadLetters, dlqTotal,
       activeWebhooksCount, successLogsCount, failedLogsCount,
     ] = await Promise.all([
-      db.webhook.findMany({
-        select: {
-          id: true,
-          tenantId: true,
-          name: true,
-          url: true,
-          enabled: true,
-          lastTriggeredAt: true,
-          failureCount: true,
-          createdAt: true,
-          updatedAt: true,
-          hookType: true,
-          events: true,
-          // secret is deliberately excluded — never return it to the admin UI
-          tenant: {
-            select: { id: true, name: true, slug: true }
-          },
-          _count: {
-            select: { deadLetters: true, logs: true }
-          }
-        },
-        orderBy: { updatedAt: "desc" },
-        skip: (webhooksPage - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-      db.webhook.count(),
-      db.webhookLog.findMany({
-        include: {
-          webhook: {
-            select: { id: true, name: true, url: true, tenantId: true }
-          }
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (logsPage - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-      db.webhookLog.count(),
-      db.webhookDeadLetter.findMany({
-        include: {
-          webhook: {
+      !scope || scope === "webhooks"
+        ? db.webhook.findMany({
             select: {
               id: true,
+              tenantId: true,
               name: true,
               url: true,
-              tenant: { select: { id: true, name: true, slug: true } }
-            }
-          }
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (dlqPage - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
+              enabled: true,
+              lastTriggeredAt: true,
+              failureCount: true,
+              createdAt: true,
+              updatedAt: true,
+              hookType: true,
+              events: true,
+              // secret is deliberately excluded — never return it to the admin UI
+              tenant: {
+                select: { id: true, name: true, slug: true }
+              },
+              _count: {
+                select: { deadLetters: true, logs: true }
+              }
+            },
+            orderBy: { updatedAt: "desc" },
+            skip: (webhooksPage - 1) * PAGE_SIZE,
+            take: PAGE_SIZE,
+          })
+        : [],
+      db.webhook.count(),
+      !scope || scope === "logs"
+        ? db.webhookLog.findMany({
+            include: {
+              webhook: {
+                select: { id: true, name: true, url: true, tenantId: true }
+              }
+            },
+            orderBy: { createdAt: "desc" },
+            skip: (logsPage - 1) * PAGE_SIZE,
+            take: PAGE_SIZE,
+          })
+        : [],
+      db.webhookLog.count(),
+      !scope || scope === "dlq"
+        ? db.webhookDeadLetter.findMany({
+            include: {
+              webhook: {
+                select: {
+                  id: true,
+                  name: true,
+                  url: true,
+                  tenant: { select: { id: true, name: true, slug: true } }
+                }
+              }
+            },
+            orderBy: { createdAt: "desc" },
+            skip: (dlqPage - 1) * PAGE_SIZE,
+            take: PAGE_SIZE,
+          })
+        : [],
       db.webhookDeadLetter.count(),
       db.webhook.count({ where: { enabled: true } }),
       db.webhookLog.count({ where: { success: true } }),
@@ -103,91 +113,48 @@ export const POST = withAdminAuth(
     if (action === "retry" && deadLetterId) {
       const deadLetter = await db.webhookDeadLetter.findUnique({
         where: { id: deadLetterId },
-        include: { webhook: true }
+        select: { id: true, webhookId: true, event: true, webhook: { select: { tenantId: true } } },
       })
 
       if (!deadLetter) {
         return apiError("not_found", { message: "Dead letter not found" })
       }
 
-      // Perform retry delivery
-      let statusCode: number | null = null
-      let success = false
-      let responseBody: any = null
-      let errorMsg: string | null = null
-      const startTime = Date.now()
+      // Reuse the same HMAC-signed, enabled-aware replay path the automated
+      // retry cron uses (processWebhookRetries in lib/webhooks.ts) instead of
+      // a bespoke reimplementation that sent no signature at all, ignored
+      // webhook.enabled, and used non-canonical X-SaCMS-* headers instead of
+      // the X-Webhook-* convention every other delivery path uses.
+      const success = await replayDeadLetter(deadLetterId)
 
-      try {
-        const payloadData = typeof deadLetter.payload === "string" 
-          ? JSON.parse(deadLetter.payload) 
-          : deadLetter.payload
-
-        const res = await safeFetch(deadLetter.webhook.url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-SaCMS-Event": deadLetter.event,
-            "X-SaCMS-Delivery": deadLetter.id,
-            "X-SaCMS-Retry": String(deadLetter.attempts + 1),
-            ...(deadLetter.webhook.headers as Record<string, string> || {}),
-          },
-          body: JSON.stringify(payloadData),
-          signal: AbortSignal.timeout(10000)
-        })
-
-        statusCode = res.status
-        success = res.ok
-        try {
-          responseBody = await res.json()
-        } catch {
-          responseBody = { statusText: res.statusText }
-        }
-      } catch (err: any) {
-        errorMsg = err.message || "Network delivery error"
+      if (success) {
+        // Mirror processWebhookRetries: a successful replay clears the
+        // circuit-breaker failure count the same way an organic success would.
+        await db.webhook.update({ where: { id: deadLetter.webhookId }, data: { failureCount: 0 } }).catch(() => {})
       }
 
-      const duration = Date.now() - startTime
-
-      // Log the retry attempt
-      await db.webhookLog.create({
-        data: {
-          webhookId: deadLetter.webhookId,
-          event: deadLetter.event,
-          statusCode,
-          success,
-          duration,
-          error: errorMsg,
-          payload: deadLetter.payload as any,
-          response: responseBody as any,
-        }
+      logAudit({
+        userId: session.user.id,
+        action: AuditAction.WEBHOOK_DLQ_REPLAYED,
+        entity: "WebhookDeadLetter",
+        entityId: deadLetterId,
+        tenantId: deadLetter.webhook.tenantId,
+        data: { event: deadLetter.event, success },
       })
 
       if (success) {
-        // Remove from DLQ if delivered successfully
-        await db.webhookDeadLetter.delete({
-          where: { id: deadLetterId }
-        })
         return NextResponse.json({ success: true, message: "Webhook retry delivered successfully" })
-      } else {
-        // Update attempts and last error
-        await db.webhookDeadLetter.update({
-          where: { id: deadLetterId },
-          data: {
-            attempts: { increment: 1 },
-            lastError: errorMsg || `HTTP ${statusCode}`,
-            updatedAt: new Date()
-          }
-        })
-        return NextResponse.json({ success: false, error: errorMsg || `HTTP ${statusCode}` }, { status: 400 })
       }
+      const updated = await db.webhookDeadLetter.findUnique({ where: { id: deadLetterId }, select: { lastError: true } })
+      return NextResponse.json({ success: false, error: updated?.lastError || "Delivery failed" }, { status: 400 })
     }
 
     if (action === "purge_all") {
       const { count } = await db.webhookDeadLetter.deleteMany({})
       logAudit({
         userId: session.user.id,
-        action: AuditAction.SETTINGS_UPDATED,
-        entity: "WebhookDeadLetterQueuePurged",
+        action: AuditAction.WEBHOOK_DLQ_PURGED,
+        entity: "WebhookDeadLetter",
         data: { count },
       })
       return NextResponse.json({ success: true, message: "Dead letter queue purged" })
