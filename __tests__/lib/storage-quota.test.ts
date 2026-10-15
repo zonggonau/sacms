@@ -11,9 +11,10 @@ import { db } from "@/lib/database"
 import { getTenantPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 import { checkStorageUpload, enforcePlanLimit, getStorageQuota } from "@/lib/plan-enforcement"
-import { STORAGE_ADDON_BYTES, addOneMonth, grantStorageAddon } from "@/lib/billing/storage-addon"
+import { addOneMonth, addOneYear, grantStorageAddon } from "@/lib/billing/storage-addon"
 
 const MB = 1024 * 1024
+const TEN_GB = 10 * 1024 * 1024 * 1024
 const mockDb = db as any
 
 function setWorkspace({
@@ -43,12 +44,12 @@ describe("storage quota", () => {
   })
 
   it("counts generated image versions and adds only active add-ons to the plan quota", async () => {
-    setWorkspace({ planMb: 100, sizeBytes: 30 * MB, variantBytes: 2 * MB, addonBytes: STORAGE_ADDON_BYTES })
+    setWorkspace({ planMb: 100, sizeBytes: 30 * MB, variantBytes: 2 * MB, addonBytes: TEN_GB })
 
     const quota = await getStorageQuota("t1")
 
-    expect(quota).toMatchObject({ usedBytes: 32 * MB, planBytes: 100 * MB, addonBytes: STORAGE_ADDON_BYTES })
-    expect(quota.limitBytes).toBe(100 * MB + STORAGE_ADDON_BYTES)
+    expect(quota).toMatchObject({ usedBytes: 32 * MB, planBytes: 100 * MB, addonBytes: TEN_GB })
+    expect(quota.limitBytes).toBe(100 * MB + TEN_GB)
     const where = mockDb.storageAddon.aggregate.mock.calls[0][0].where
     expect(where.tenantId).toBe("t1")
     expect(where.expiresAt.gt).toBeInstanceOf(Date)
@@ -112,21 +113,26 @@ describe("storage add-on", () => {
     mockDb.storageAddon = { upsert: vi.fn(async ({ create }: any) => create) }
   })
 
-  it("grants 10 GB for one month, once per payment order", async () => {
+  it("grants whatever tier size was paid for one year, once per payment order", async () => {
     const now = new Date("2026-09-17T10:00:00Z")
 
-    await grantStorageAddon("t1", "ADD-170920261001", { now })
+    await grantStorageAddon("t1", "ADD-170920261001", TEN_GB, { now })
 
     const args = mockDb.storageAddon.upsert.mock.calls[0][0]
     expect(args.where).toEqual({ orderId: "ADD-170920261001" })
     expect(args.update).toEqual({})
-    expect(args.create).toMatchObject({ tenantId: "t1", bytes: BigInt(STORAGE_ADDON_BYTES), startsAt: now })
-    expect(args.create.expiresAt.toISOString()).toBe("2026-10-17T10:00:00.000Z")
+    expect(args.create).toMatchObject({ tenantId: "t1", bytes: BigInt(TEN_GB), startsAt: now })
+    expect(args.create.expiresAt.toISOString()).toBe("2027-09-17T10:00:00.000Z")
   })
 
   it("ends on the last day of a shorter month", () => {
     expect(addOneMonth(new Date("2026-01-31T00:00:00Z")).toISOString()).toBe("2026-02-28T00:00:00.000Z")
     expect(addOneMonth(new Date("2028-01-31T00:00:00Z")).toISOString()).toBe("2028-02-29T00:00:00.000Z")
     expect(addOneMonth(new Date("2026-12-15T00:00:00Z")).toISOString()).toBe("2027-01-15T00:00:00.000Z")
+  })
+
+  it("ends on the last day of February when the purchase date was a leap day", () => {
+    expect(addOneYear(new Date("2028-02-29T00:00:00Z")).toISOString()).toBe("2029-02-28T00:00:00.000Z")
+    expect(addOneYear(new Date("2026-09-17T10:00:00Z")).toISOString()).toBe("2027-09-17T10:00:00.000Z")
   })
 })

@@ -130,6 +130,23 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
       .catch(() => {})
   }, [tenantSlug, session])
 
+  // Storage tiers (5/10/20/50/100GB, 1TB) are CMS-driven, not fixed ids —
+  // fetched here only to resolve which tier id a "Perpanjang" button should
+  // renew with (matched by byte size), never hardcoded.
+  const [storageTiers, setStorageTiers] = useState<{ id: string; amountUnits?: number }[]>([])
+  useEffect(() => {
+    if (!tenantSlug || !session?.user) return
+    fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const tiers = (data?.plans || []).filter((p: any) => p.type === "addons" && p.quotaType === "storage")
+        setStorageTiers(tiers)
+      })
+      .catch(() => {})
+  }, [tenantSlug, session])
+
+  const matchingTierId = (bytes: number) => storageTiers.find((t) => t.amountUnits === bytes)?.id
+
   const hasDedicated = Boolean(databaseUrl && databaseUrl.trim() !== "")
 
   if (loading) {
@@ -304,50 +321,54 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                 Tambah Kapasitas Storage
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Butuh ruang lebih untuk media workspace ini? Tambah kapasitas langsung dari SaCMS, aktif seketika setelah pembayaran.
+                Butuh ruang lebih untuk media workspace ini? Tambah kapasitas langsung dari SaCMS, berlaku 1 tahun dan aktif seketika setelah pembayaran.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-3">
               <p className="text-xs text-foreground">
-                <span className="font-bold">+10 GB</span> per add-on &middot; <span className="font-bold">Rp50.000/bulan</span> &middot; bisa dibeli berkali-kali
+                Mulai dari <span className="font-bold">5 GB</span> hingga <span className="font-bold">1 TB</span>, sekali bayar untuk <span className="font-bold">1 tahun</span> &middot; bisa dibeli berkali-kali
               </p>
               {storageAddons.length > 0 ? (
                 <div className="space-y-2">
-                  {storageAddons.map((addon) => (
-                    <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/60">
-                      <div>
-                        <p className="font-semibold text-foreground">+{Math.round(addon.bytes / 1024 ** 3)} GB</p>
-                        <p className="text-muted-foreground">
-                          Berlaku sampai{" "}
-                          {new Date(addon.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                        </p>
+                  {storageAddons.map((addon) => {
+                    const renewPlanId = matchingTierId(addon.bytes)
+                    const renewHref = renewPlanId
+                      ? `/dashboard/${tenantSlug}/subscriptions/checkout?plan=${renewPlanId}&renew=${addon.id}`
+                      : `/dashboard/${tenantSlug}/subscriptions?tab=storage`
+                    return (
+                      <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                        <div>
+                          <p className="font-semibold text-foreground">+{Math.round(addon.bytes / 1024 ** 3)} GB</p>
+                          <p className="text-muted-foreground">
+                            Berlaku sampai{" "}
+                            {new Date(addon.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                          </p>
+                        </div>
+                        {addon.renewed ? (
+                          <span className="text-muted-foreground">Sudah diperpanjang</span>
+                        ) : (
+                          <Button
+                            asChild
+                            size="sm"
+                            variant="outline"
+                            className="rounded-xl h-8 text-xs font-bold shrink-0"
+                          >
+                            <Link href={renewHref}>Perpanjang</Link>
+                          </Button>
+                        )}
                       </div>
-                      {addon.renewed ? (
-                        <span className="text-muted-foreground">Sudah diperpanjang</span>
-                      ) : (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="outline"
-                          className="rounded-xl h-8 text-xs font-bold shrink-0"
-                        >
-                          <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb&renew=${addon.id}`}>
-                            Perpanjang
-                          </Link>
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                    )
+                  })}
                   <Button asChild size="sm" className="rounded-xl h-8 text-xs font-bold">
-                    <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb`}>
-                      Beli Add-on Lagi (+10 GB)
+                    <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
+                      Beli Storage Lagi
                     </Link>
                   </Button>
                 </div>
               ) : (
                 <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
-                  <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb`}>
-                    Beli Storage Tambahan (+10 GB)
+                  <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
+                    Beli Storage Tambahan
                   </Link>
                 </Button>
               )}

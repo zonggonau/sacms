@@ -1,21 +1,33 @@
 import { db } from "@/lib/database"
 
 /**
- * Storage add-on: extra storage on top of a workspace's plan quota, valid for one month.
- * Each purchase is its own row, so two purchases in the same month add up. Renewing an
- * add-on starts the new month when the renewed one expires, so there is no gap and no
- * overlap.
+ * Storage add-on: extra storage on top of a workspace's plan quota, sold as
+ * a flat one-year top-up. Tiers (5/10/20/50/100GB, 1TB) and their prices are
+ * NOT hardcoded here — they live in the "sacms-addons" CMS content type
+ * (entries with quota_type: "storage", seeded by scripts/seed/seed-storage-addons.ts)
+ * so an admin can add/retire tiers or change prices without a deploy. Only
+ * the one-year duration is fixed in code, since every tier is sold on that
+ * same term by design. Each purchase is its own row, so two purchases in
+ * the same year add up. Renewing an add-on starts the new year when the
+ * renewed one expires, so there is no gap and no overlap.
  */
 
-export const STORAGE_ADDON_ID = "topup_storage_10gb"
-export const STORAGE_ADDON_BYTES = 10 * 1024 * 1024 * 1024
-export const STORAGE_ADDON_PRICE_IDR = 50_000
+export const STORAGE_QUOTA_TYPE = "storage"
 
 /** Same day next month, or that month's last day when it is shorter (31 Jan → 28/29 Feb). */
 export function addOneMonth(date: Date): Date {
   const next = new Date(date)
   const day = next.getUTCDate()
   next.setUTCMonth(next.getUTCMonth() + 1)
+  if (next.getUTCDate() < day) next.setUTCDate(0)
+  return next
+}
+
+/** Same day next year, or Feb 28 when the purchase date was a Feb 29. */
+export function addOneYear(date: Date): Date {
+  const next = new Date(date)
+  const day = next.getUTCDate()
+  next.setUTCFullYear(next.getUTCFullYear() + 1)
   if (next.getUTCDate() < day) next.setUTCDate(0)
   return next
 }
@@ -30,12 +42,18 @@ export async function storageAddonRenewalRefusal(tenantId: string, addonId: stri
 }
 
 /**
- * Record a paid storage add-on. Keyed by the payment order, so the Midtrans webhook and the
- * payment status route can both process the same order without granting it twice.
+ * Record a paid storage add-on. `bytes` is whatever tier size was actually
+ * paid for — resolved at checkout time from the CMS catalog and carried in
+ * the payment's rawResponse (see addon-fulfillment.ts) — never a fixed
+ * constant, so a later catalog/price edit can't silently change what an
+ * already-paid order grants. Keyed by the payment order, so the Midtrans
+ * webhook and the payment status route can both process the same order
+ * without granting it twice.
  */
 export async function grantStorageAddon(
   tenantId: string,
   orderId: string,
+  bytes: number,
   options: { renewsAddonId?: string | null; now?: Date } = {},
 ) {
   const now = options.now ?? new Date()
@@ -56,9 +74,9 @@ export async function grantStorageAddon(
     create: {
       tenantId,
       orderId,
-      bytes: BigInt(STORAGE_ADDON_BYTES),
+      bytes: BigInt(bytes),
       startsAt,
-      expiresAt: addOneMonth(startsAt),
+      expiresAt: addOneYear(startsAt),
       ...(renewsAddonId ? { renewsAddonId } : {}),
     },
   })

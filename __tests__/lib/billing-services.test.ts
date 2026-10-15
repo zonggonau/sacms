@@ -20,6 +20,7 @@ import { runBillingReminders } from "@/lib/billing/reminders"
 
 const mockDb = db as any
 const now = new Date("2026-09-17T10:00:00Z")
+const FIVE_GB = 5 * 1024 ** 3
 
 function managedDb(existing: any, tenant: any = { databaseUrl: null, storageConfig: null }) {
   const tx = {
@@ -51,10 +52,10 @@ describe("storage add-on renewal", () => {
       upsert: vi.fn(async ({ create }: any) => create),
     }
 
-    const created = await grantStorageAddon("t1", "ADD-2", { renewsAddonId: "a1", now })
+    const created = await grantStorageAddon("t1", "ADD-2", FIVE_GB, { renewsAddonId: "a1", now })
 
     expect(created.startsAt).toEqual(expiresAt)
-    expect(created.expiresAt.toISOString()).toBe("2026-10-30T00:00:00.000Z")
+    expect(created.expiresAt.toISOString()).toBe("2027-09-30T00:00:00.000Z")
     expect(created.renewsAddonId).toBe("a1")
   })
 
@@ -65,7 +66,7 @@ describe("storage add-on renewal", () => {
       upsert: vi.fn(async ({ create }: any) => create),
     }
 
-    const created = await grantStorageAddon("t1", "ADD-2", { renewsAddonId: "a1", now })
+    const created = await grantStorageAddon("t1", "ADD-2", FIVE_GB, { renewsAddonId: "a1", now })
 
     expect(created.startsAt).toEqual(now)
   })
@@ -77,7 +78,7 @@ describe("storage add-on renewal", () => {
       upsert: vi.fn(async ({ create }: any) => create),
     }
 
-    const created = await grantStorageAddon("t1", "ADD-3", { renewsAddonId: "a1", now })
+    const created = await grantStorageAddon("t1", "ADD-3", FIVE_GB, { renewsAddonId: "a1", now })
 
     expect(created.startsAt).toEqual(now)
     expect(created.renewsAddonId).toBeUndefined()

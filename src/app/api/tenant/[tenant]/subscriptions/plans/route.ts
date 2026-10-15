@@ -256,20 +256,12 @@ export async function GET(
         quotaType: "ai_tokens",
         amountUnits: 2000000
       },
-      {
-        id: "topup_storage_10gb",
-        name: "Extra Storage (10 GB / bulan)",
-        type: "addons",
-        price: 50000,
-        billingPeriod: "month",
-        features: ["+10 GB storage selama 1 bulan", "Beli lagi untuk memperpanjang", "Aktif langsung"],
-        popular: false,
-        buttonText: "Top Up Now",
-        icon: "HardDrive",
-        isTopup: true,
-        quotaType: "storage",
-        amountUnits: 10 * 1024 * 1024 * 1024
-      },
+      // Storage tiers (5/10/20/50/100GB, 1TB) are deliberately NOT hardcoded
+      // here — they're fully CMS-driven (sacms-addons entries with
+      // quota_type: "storage", seeded by scripts/seed/seed-storage-addons.ts)
+      // so sizes and prices can change without a deploy. If every such
+      // entry is ever deleted, storage tiers simply disappear from the
+      // catalogue — same behavior as emptying any other pricing content type.
       {
         id: "managed_byodb_setup",
         name: "Database & Storage Sendiri",
@@ -348,7 +340,15 @@ export async function GET(
           popular: false,
           buttonText: d.price_label ? (numericPrice === 0 ? "Included" : "Activate") : (isTopup ? "Top Up Now" : "Activate"),
           icon: d.icon || "Package",
-          isTopup: isTopup
+          isTopup: isTopup,
+          // Carried through so quota-specific tabs/fulfillment (e.g. the
+          // Storage tab, checkout's addon fulfillment) can recognize a
+          // CMS-defined addon the same way they recognize a hardcoded one —
+          // without this, a CMS-only entry (like the seeded storage tiers)
+          // would silently fall outside any quota-aware behavior.
+          ...(d.quota_type ? { quotaType: d.quota_type } : {}),
+          ...(d.amount_units !== undefined ? { amountUnits: Number(d.amount_units) || 0 } : {}),
+          ...(d.billing_period ? { billingPeriod: d.billing_period } : {}),
         })
       }
     }

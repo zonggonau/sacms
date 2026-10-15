@@ -7,7 +7,7 @@ import { getDynamicAccountPrices, getDynamicWorkspacePrices } from "@/lib/midtra
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
-import { STORAGE_ADDON_ID, STORAGE_ADDON_PRICE_IDR, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
+import { STORAGE_QUOTA_TYPE, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
 import {
   MANAGED_INFRA_MONTHLY_FEE_IDR,
   MANAGED_INFRA_MONTHLY_ID,
@@ -41,6 +41,8 @@ export async function POST(request: NextRequest) {
     let planName = planId
     let isAddon = false
     let creditAmount = 0
+    let addonQuotaType: string | undefined
+    let addonAmountUnits: number | undefined
     let targetId = tenantId || session.user.id
 
     let dbTenant: any = null;
@@ -137,7 +139,6 @@ export async function POST(request: NextRequest) {
       const BUILTIN_TOPUPS: Record<string, { name: string; price: number; quotaType: string; amountUnits: number }> = {
         topup_ai_500k: { name: "AI Booster (500K Tokens)", price: 25000, quotaType: "ai_tokens", amountUnits: 500000 },
         topup_ai_2m: { name: "AI Power Pack (2M Tokens)", price: 75000, quotaType: "ai_tokens", amountUnits: 2000000 },
-        [STORAGE_ADDON_ID]: { name: "Extra Storage (10 GB / bulan)", price: STORAGE_ADDON_PRICE_IDR, quotaType: "storage", amountUnits: 10 * 1024 * 1024 * 1024 },
         [MANAGED_INFRA_SETUP_ID]: { name: "Database & Storage Sendiri — Setup + Bulan Pertama", price: MANAGED_INFRA_SETUP_FEE_IDR + MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
         [MANAGED_INFRA_MONTHLY_ID]: { name: "Database & Storage Sendiri — Perpanjangan 1 Bulan", price: MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
         topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
@@ -145,23 +146,16 @@ export async function POST(request: NextRequest) {
         hosting_bundle_domain_1yr: { name: "Cloud Edge Hosting + Domain .com (1 Tahun)", price: 850000, quotaType: "hosting_bundle", amountUnits: 1 },
       }
 
-      if (isManagedInfraProduct(planId)) {
-        const refusal = await managedInfraOrderRefusal(tenant.id, planId)
-        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
-      }
-      if (renewsAddonId) {
-        const refusal = planId === STORAGE_ADDON_ID
-          ? await storageAddonRenewalRefusal(tenant.id, renewsAddonId)
-          : "Hanya add-on storage yang bisa diperpanjang."
-        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
-      }
-
       if (BUILTIN_TOPUPS[planId]) {
         const topup = BUILTIN_TOPUPS[planId]
         amount = topup.price
         planName = topup.name
         isAddon = true
+        addonQuotaType = topup.quotaType
+        addonAmountUnits = topup.amountUnits
       } else {
+        // Storage tiers (5/10/20/50/100GB, 1TB — see scripts/seed/seed-storage-addons.ts)
+        // and any other CMS-only addon resolve here, never as a BUILTIN_TOPUPS entry.
         const pricingContentTypes = await db.contentType.findMany({
           where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing", "sacms-addons"] } }
         })
@@ -171,14 +165,14 @@ export async function POST(request: NextRequest) {
           const planEntries = await db.contentEntry.findMany({
             where: { contentTypeId: { in: contentTypeIds }, status: "PUBLISHED" }
           })
-          
+
           const planEntry = planEntries.find(e => {
             let d = e.data
             if (typeof d === 'string') {
               try { d = JSON.parse(d) } catch (e) { d = {} }
             }
             const data = d as any
-            return data.plan_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
+            return data.plan_slug === planId || data.addon_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
           })
 
           if (planEntry) {
@@ -187,7 +181,7 @@ export async function POST(request: NextRequest) {
               try { d = JSON.parse(d) } catch (e) { d = {} }
             }
             const data = d as any
-            
+
             let rawPrice = data.price || "0"
             let monthlyPrice = 0
             let yearlyPrice = 0
@@ -196,7 +190,7 @@ export async function POST(request: NextRequest) {
             } else {
               monthlyPrice = Number(rawPrice) || 0
             }
-            
+
             if (data.yearly_price !== undefined) {
               yearlyPrice = Number(data.yearly_price)
             } else {
@@ -207,6 +201,10 @@ export async function POST(request: NextRequest) {
             planName = data.name || planId
             const addonContentType = pricingContentTypes.find(ct => ct.slug === "sacms-addons")
             isAddon = addonContentType?.id === planEntry.contentTypeId
+            if (isAddon) {
+              addonQuotaType = data.quota_type || undefined
+              addonAmountUnits = data.amount_units !== undefined ? (Number(data.amount_units) || 0) : undefined
+            }
           } else {
             const dynamicPrices = await getDynamicWorkspacePrices()
             const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
@@ -229,6 +227,17 @@ export async function POST(request: NextRequest) {
             amount = interval === 'year' ? base * 10 : base
           }
         }
+      }
+
+      if (isManagedInfraProduct(planId)) {
+        const refusal = await managedInfraOrderRefusal(tenant.id, planId)
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
+      }
+      if (renewsAddonId) {
+        const refusal = addonQuotaType === STORAGE_QUOTA_TYPE
+          ? await storageAddonRenewalRefusal(tenant.id, renewsAddonId)
+          : "Hanya add-on storage yang bisa diperpanjang."
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
       }
     }
 
@@ -354,7 +363,13 @@ export async function POST(request: NextRequest) {
     const rawResponse = isAiCreditPack
       ? { isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" }
       : isAddon
-        ? { isAddon, addonId: planId, ...(renewsAddonId && planId === STORAGE_ADDON_ID ? { renewsAddonId } : {}) }
+        ? {
+            isAddon,
+            addonId: planId,
+            ...(addonQuotaType ? { quotaType: addonQuotaType } : {}),
+            ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
+            ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
+          }
         : { intendedPlan: planId, intendedInterval: interval }
 
     // Create payment transaction record
