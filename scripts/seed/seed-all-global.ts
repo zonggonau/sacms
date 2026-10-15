@@ -250,20 +250,20 @@ const SEED_DATA: Record<string, any> = {
   "sacms-landing-page": {
     hero_badge: "",
     hero_title: "Build smarter. Manage easier. Scale faster.",
-    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan database terisolasi per workspace, integrasi AI Assistant dari IDE, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
     hero_cta_primary: "Coba Gratis Sekarang",
     hero_cta_secondary: "Dokumentasi API",
     hero_image: "",
     
     features: [
-      { title: "Hybrid Multi-Tenancy & Dedicated Appliance", description: "Mulai dari shared multi-tenant hemat biaya hingga Dedicated PostgreSQL 17 + MinIO Appliance terisolasi penuh untuk privasi data absolut.", icon: "Layers", is_main: true, tag: "Infrastruktur" },
+      { title: "Hybrid Multi-Tenancy & Dedicated Appliance", description: "Mulai dari shared multi-tenant hemat biaya hingga Dedicated Database & Storage Appliance terisolasi penuh untuk privasi data absolut.", icon: "Layers", is_main: true, tag: "Infrastruktur" },
       { title: "Deploy Frontend 1-Command via MCP", description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.", icon: "Rocket", is_main: true, tag: "AI Powered" },
-      { title: "Dynamic GraphQL, REST API & MCP", description: "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol (MCP).", icon: "Database", is_main: true, tag: "Developer" },
+      { title: "Dynamic GraphQL, REST API & MCP", description: "Skema otomatis sesuai data model Anda, query filter canggih yang familiar bagi developer, dan integrasi AI IDE via Model Context Protocol (MCP).", icon: "Database", is_main: true, tag: "Developer" },
       { title: "SaCMS Custom DNS & Registrar", description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.", icon: "Globe", is_main: false, tag: "Networking" },
       { title: "Sistem Billing Otomatis Midtrans", description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.", icon: "CreditCard", is_main: true, tag: "Fintech" },
       { title: "Enterprise RBAC & 7-Stage Workflow", description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.", icon: "ShieldCheck", is_main: true, tag: "Keamanan" },
-      { title: "Rate-Limiting Cerdas & Edge Cache", description: "Didukung Upstash Redis di Edge. Mencegah klien tertentu memonopoli resource API yang bisa memperlambat klien lainnya.", icon: "Activity", is_main: false, tag: "Performa" },
-      { title: "Penyimpanan Media S3-Compatible", description: "Terintegrasi langsung dengan Cloudflare R2 / AWS S3 untuk penyimpanan gambar super murah dengan egress fee $0 dan performa CDN global.", icon: "HardDrive", is_main: false, tag: "Media" },
+      { title: "Rate-Limiting Cerdas & Edge Cache", description: "Didukung sistem caching edge performa tinggi — mencegah klien tertentu memonopoli resource API yang bisa memperlambat klien lainnya.", icon: "Activity", is_main: false, tag: "Performa" },
+      { title: "Penyimpanan Media Tanpa Batas", description: "Object storage performa tinggi untuk aset media Anda, dengan biaya egress $0 dan CDN global.", icon: "HardDrive", is_main: false, tag: "Media" },
     ],
 
     workflows: [
@@ -274,7 +274,7 @@ const SEED_DATA: Record<string, any> = {
     ],
 
     faqs: [
-      { question: "Apa perbedaan Shared Database vs Dedicated Appliance?", answer: "Shared Database cocok untuk proyek standar dan UMKM yang mengutamakan efisiensi biaya. Dedicated Appliance mem-provisioning database PostgreSQL 17 dan MinIO S3 terisolasi penuh untuk privasi data 100% dan kebutuhan enterprise/pemerintah." },
+      { question: "Apa perbedaan Shared Database vs Dedicated Appliance?", answer: "Shared Database cocok untuk proyek standar dan UMKM yang mengutamakan efisiensi biaya. Dedicated Appliance mem-provisioning database dan storage terisolasi penuh untuk privasi data 100% dan kebutuhan enterprise/pemerintah." },
       { question: "Bagaimana cara membangun frontend dengan IDE menggunakan SaCMS?", answer: "Hubungkan AI IDE (Antigravity, VS Code, Cursor, dll) ke SaCMS lewat Model Context Protocol (MCP) menggunakan API Key workspace Anda. AI agent di IDE bisa langsung membaca skema, query/tulis konten, dan deploy frontend ke SaCMS Cloud Hosting lewat tool deploy_to_sacms — semua tanpa keluar dari editor." },
       { question: "Bagaimana alur integrasi Custom Domain SaCMS?", answer: "Cukup masukkan nama domain Anda (misal: website.com atau subdomain.klien.com). SaCMS menyediakan instruksi DNS A-Record dan CNAME otomatis lengkap dengan verifikasi DNS dan challenge token." },
       { question: "Metode pembayaran apa saja yang didukung?", answer: "Seluruh pembayaran lokal via Midtrans: QRIS, GoPay, OVO, ShopeePay, Transfer Virtual Account bank terkemuka, dan Kartu Kredit Visa/Mastercard." },
@@ -291,14 +291,14 @@ const SEED_DATA: Record<string, any> = {
       { 
         name: "Januar Fonda", 
         role: "Head of Engineering", 
-        bio: "Fokus pada integrasi GraphQL performa tinggi, Next.js 16 App Router, dan sistem automasi AI coding.", 
+        bio: "Fokus pada integrasi GraphQL performa tinggi, arsitektur web modern, dan sistem automasi AI coding.",
         avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar", 
         linkedin: "https://linkedin.com" 
       },
       { 
         name: "Tim SaCMS", 
         role: "Product & Infrastructure", 
-        bio: "Membangun dedicated PostgreSQL 17 appliance dan sistem billing otomatis untuk pasar enterprise.", 
+        bio: "Membangun dedicated database appliance dan sistem billing otomatis untuk pasar enterprise.",
         avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Team", 
         linkedin: "https://linkedin.com" 
       }
@@ -325,7 +325,7 @@ const SEED_DATA: Record<string, any> = {
         name: "Budi Santoso", 
         role: "CTO", 
         company: "Tech Media Group", 
-        content: "Arsitektur multi-tenant dengan isolasi data PostgreSQL 17 memberi rasa aman bagi klien enterprise kami.", 
+        content: "Arsitektur multi-tenant dengan isolasi data tingkat enterprise memberi rasa aman bagi klien enterprise kami.",
         avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi", 
         rating: 5 
       }
@@ -346,14 +346,14 @@ const SEED_DATA: Record<string, any> = {
 
     cta_banner: {
       title: "Build smarter. Manage easier. Scale faster.",
-      description: "Mulai gunakan SaCMS (Smart Content Management System) hari ini. Nikmati arsitektur multi-tenant murni, performa Next.js 16 secepat kilat, dan tagihan Midtrans otomatis.",
+      description: "Mulai gunakan SaCMS (Smart Content Management System) hari ini. Nikmati arsitektur multi-tenant murni, performa secepat kilat, dan tagihan otomatis.",
       button_primary_text: "Coba Gratis Sekarang",
       button_secondary_text: "Baca Dokumentasi API",
     },
 
     about: {
       title: "Tentang SaCMS — Smart Content Management System",
-      description: "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated PostgreSQL 17 Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
+      description: "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated Database Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
       mission: "Membantu para developer dan bisnis membangun produk digital lebih cerdas (Build smarter), mengelola konten lebih mudah (Manage easier), dan menskalakan infrastruktur lebih cepat (Scale faster).",
       founded: "2026",
       image: ""
@@ -472,7 +472,7 @@ const SEED_DATA: Record<string, any> = {
         "Unlimited Content Schemas & Tipe Data",
         "500 Entri Konten Dinamis",
         "1 Anggota Tim",
-        "100 MB Cloudflare R2 Storage",
+        "100 MB Cloud Storage",
         "1.000 API Calls / bulan",
         "Fair-Use Bandwidth ~2 GB/bulan (Shared Cloud Edge)",
         "50 Bonus AI Credits Awal (Top-Up jika habis)",
