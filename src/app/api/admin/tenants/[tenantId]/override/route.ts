@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { withAdminAuth } from "@/lib/api/route-helpers"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 const overrideSchema = z.object({
   maxContentTypes: z.number().int().nonnegative().nullable().optional(),
@@ -43,11 +44,31 @@ export const POST = withAdminAuth(async (request, context, { session }) => {
     update: values,
     create: { tenantId, ...values, createdBy: creator },
   })
+
+  logAudit({
+    tenantId,
+    userId: session.user.id,
+    action: AuditAction.SETTINGS_UPDATED,
+    entity: "TenantQuotaOverride",
+    entityId: tenantId,
+    data: values,
+  })
+
   return NextResponse.json({ override })
 })
 
-export const DELETE = withAdminAuth(async (_request, context) => {
+export const DELETE = withAdminAuth(async (_request, context, { session }) => {
   const { tenantId } = await context.params
   await db.customPlanOverride.deleteMany({ where: { tenantId } })
+
+  logAudit({
+    tenantId,
+    userId: session.user.id,
+    action: AuditAction.SETTINGS_UPDATED,
+    entity: "TenantQuotaOverride",
+    entityId: tenantId,
+    data: { removed: true },
+  })
+
   return NextResponse.json({ success: true })
 })

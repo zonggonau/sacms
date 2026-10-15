@@ -21,10 +21,8 @@ interface TenantDeleteModalProps {
   onOpenChange?: (open: boolean) => void
   onClose?: () => void
   tenant: Tenant | null
-  confirmationText?: string
-  confirmation?: string
-  setConfirmationText?: (text: string) => void
-  setConfirmation?: (text: string) => void
+  confirmation: string
+  setConfirmation: (text: string) => void
   onConfirm: () => void
   isSubmitting: boolean
 }
@@ -34,9 +32,7 @@ export function TenantDeleteModal({
   onOpenChange,
   onClose,
   tenant,
-  confirmationText,
   confirmation,
-  setConfirmationText,
   setConfirmation,
   onConfirm,
   isSubmitting
@@ -54,11 +50,8 @@ export function TenantDeleteModal({
     }
   }
 
-  const currentText = confirmationText ?? confirmation ?? ""
-  const handleTextChange = (val: string) => {
-    if (setConfirmationText) setConfirmationText(val)
-    if (setConfirmation) setConfirmation(val)
-  }
+  const currentText = confirmation
+  const handleTextChange = (val: string) => setConfirmation(val)
 
   const handleAutoFill = () => {
     handleTextChange(tenant.name)

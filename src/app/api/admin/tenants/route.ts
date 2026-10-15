@@ -4,14 +4,18 @@ import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { randomBytes } from "crypto"
 import { slugify } from "@/lib/slug"
-import { withAdminAuth } from "@/lib/api/route-helpers"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
+import { logAudit, AuditAction } from "@/lib/audit-log"
+import { assertPublicHost, SsrfError } from "@/lib/safe-url"
+
+const MASK = "••••••••"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
   description: z.string().max(500).optional().nullable(),
   plan: z.string().optional(),
   status: z.string().optional(),
-  databaseUrl: z.string().url().optional().or(z.literal("")),
+  databaseUrl: z.string().optional().or(z.literal("")),
 })
 
 /**
@@ -126,13 +130,41 @@ export const GET = withAdminAuth(async (request) => {
       db.tenant.count({ where })
     ])
 
-    return NextResponse.json({ tenants, total, page, totalPages: Math.ceil(total / limit) })
+    // databaseUrl is a full Postgres connection string including the
+    // password — it used to go out raw in this bulk list response (visible
+    // in the Network tab for every row with a dedicated DB) before the
+    // admin ever opened a single tenant's edit modal. Masked here; the
+    // real value is only ever revealed one tenant at a time via GET
+    // /api/admin/tenants/[tenantId]?reveal=databaseUrl (audited).
+    const safeTenants = tenants.map((t) => ({ ...t, databaseUrl: t.databaseUrl ? MASK : null }))
+
+    return NextResponse.json({ tenants: safeTenants, total, page, totalPages: Math.ceil(total / limit) })
 })
 
 export const POST = withAdminAuth(async (request, _context, { session }) => {
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
     const { name, description, plan, status, databaseUrl } = result.data
+
+    // Same SSRF guard as the PATCH route below — this value is used to
+    // open a real server-side Postgres connection for this tenant on every
+    // request it makes (src/lib/database.ts's acquireTenantClient).
+    if (databaseUrl) {
+      let parsedDbUrl: URL
+      try {
+        parsedDbUrl = new URL(databaseUrl)
+      } catch {
+        return apiError("validation", { message: "Invalid database URL" })
+      }
+      if (!["postgres:", "postgresql:"].includes(parsedDbUrl.protocol)) {
+        return apiError("validation", { message: "Database URL must use the postgres:// or postgresql:// scheme" })
+      }
+      try {
+        await assertPublicHost(parsedDbUrl.hostname)
+      } catch (e) {
+        return apiError("validation", { message: e instanceof SsrfError ? `Database URL rejected: ${e.message}` : "Invalid database URL" })
+      }
+    }
 
     // 1. Auto-generate unique slug based on name
     const slug = await generateUniqueSlug(name)
@@ -182,6 +214,14 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
       })
 
       return newTenant
+    })
+
+    logAudit({
+      userId: session.user.id,
+      action: AuditAction.TENANT_CREATED,
+      entity: "Tenant",
+      entityId: tenant.id,
+      data: { name: tenant.name, slug: tenant.slug, plan: tenant.plan, status: tenant.status, createdByAdmin: true },
     })
 
     return NextResponse.json({ tenant })

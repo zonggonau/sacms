@@ -127,6 +127,8 @@ export default function AdminTenantsPage() {
     try {
       const res = await fetch(`/api/admin/tenants/${tenantToDelete.id}`, {
         method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
       })
       if (res.ok) {
         toast({ title: "Berhasil", description: "Workspace berhasil dihapus" })
@@ -369,7 +371,7 @@ export default function AdminTenantsPage() {
             mode="create"
           />
 
-          <TenantFormModal 
+          <TenantFormModal
             isOpen={isEditOpen}
             onClose={() => setIsEditOpen(false)}
             onSubmit={handleUpdate}
@@ -377,6 +379,7 @@ export default function AdminTenantsPage() {
             setFormData={setFormData}
             isSubmitting={isSubmitting}
             mode="edit"
+            tenantId={selectedTenant?.id}
           />
 
           <TenantDeleteModal 

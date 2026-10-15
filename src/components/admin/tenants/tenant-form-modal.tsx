@@ -1,4 +1,5 @@
-import { Loader2 } from "lucide-react"
+import { useState } from "react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,6 +24,7 @@ import { DEFAULT_LIMITS } from "@/lib/constants/tenant-limits"
 import React from "react"
 
 const TENANT_PLANS = Object.keys(DEFAULT_LIMITS)
+const MASK = "••••••••"
 
 interface TenantFormModalProps {
   isOpen: boolean
@@ -30,6 +32,8 @@ interface TenantFormModalProps {
   onClose?: () => void
   isEditing?: boolean
   mode?: "create" | "edit"
+  /** Needed only to reveal the real databaseUrl on demand while editing. */
+  tenantId?: string
   formData: {
     name: string
     slug: string
@@ -49,13 +53,47 @@ export function TenantFormModal({
   onClose,
   isEditing,
   mode,
+  tenantId,
   formData,
   setFormData,
   onSubmit,
   isSubmitting
 }: TenantFormModalProps) {
-  const isSystemTenant = false // formData.slug === globalTenantId
   const isEditMode = isEditing ?? (mode === "edit")
+  // Same heuristic used server-side (api/admin/tenants/[tenantId]/route.ts)
+  // and in tenant-table.tsx — this used to be hardcoded `false`, so none of
+  // the disabled={isSystemTenant} guards below ever actually protected the
+  // global tenant's own edit form.
+  const isSystemTenant = isEditMode && (
+    formData.slug === SYSTEM_TENANT_SLUG ||
+    formData.slug === "sacms" ||
+    formData.name.toLowerCase() === "sacms global"
+  )
+  const [revealing, setRevealing] = useState(false)
+  const [revealed, setRevealed] = useState(false)
+
+  const handleRevealDatabaseUrl = async () => {
+    if (revealed) {
+      // Toggling back off just re-masks the field visually; the real
+      // value already came from the server once, so no extra audit noise
+      // for a pure UI toggle.
+      setFormData({ ...formData, databaseUrl: MASK })
+      setRevealed(false)
+      return
+    }
+    if (!tenantId) return
+    setRevealing(true)
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenantId}?reveal=databaseUrl`)
+      if (res.ok) {
+        const data = await res.json()
+        setFormData({ ...formData, databaseUrl: data.value || "" })
+        setRevealed(true)
+      }
+    } finally {
+      setRevealing(false)
+    }
+  }
 
   const handleClose = (open: boolean) => {
     if (!open) {
@@ -143,19 +181,37 @@ export function TenantFormModal({
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="databaseUrl" className="flex items-center gap-2">
-              Database URL
-              <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">Enterprise</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="databaseUrl" className="flex items-center gap-2">
+                Database URL
+                <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider">Enterprise</span>
+              </Label>
+              {isEditMode && tenantId && formData.databaseUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRevealDatabaseUrl}
+                  disabled={revealing}
+                  className="h-6 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+                >
+                  {revealing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : revealed ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                  {revealed ? "Sembunyikan" : "Tampilkan"}
+                </Button>
+              )}
+            </div>
             <Input
               id="databaseUrl"
               placeholder="postgresql://user:pass@host:5432/db"
               value={formData.databaseUrl}
               onChange={(e) => setFormData({ ...formData, databaseUrl: e.target.value })}
               disabled={isSystemTenant}
+              type={isEditMode && formData.databaseUrl === MASK ? "password" : "text"}
             />
             <p className="text-xs text-muted-foreground">
-              Optional. Leave blank to use the shared database pool. Require Enterprise license to function.
+              {isEditMode && formData.databaseUrl === MASK
+                ? "Tersimpan — klik \"Tampilkan\" untuk melihat/mengubahnya, atau kosongkan untuk kembali ke shared pool."
+                : "Optional. Leave blank to use the shared database pool. Require Enterprise license to function."}
             </p>
           </div>
 

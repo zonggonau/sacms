@@ -139,17 +139,27 @@ export function TenantTable({ tenants, loading, onEdit, onDelete, onOverride, on
                     
                     <DropdownMenuSeparator />
                     
-                    <DropdownMenuItem onClick={() => onEdit(tenant)} className="cursor-pointer text-xs rounded-lg">
+                    <DropdownMenuItem
+                      onClick={() => !isGlobal && onEdit(tenant)}
+                      disabled={isGlobal}
+                      title={isGlobal ? "Workspace sistem global tidak boleh diubah dari sini" : undefined}
+                      className="cursor-pointer text-xs rounded-lg"
+                    >
                       <Edit className="h-3.5 w-3.5 mr-2" /> Ubah Rincian
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => onOverride(tenant)} className="cursor-pointer text-xs rounded-lg">
                       <Sliders className="h-3.5 w-3.5 mr-2" /> Kustomisasi Kuota
                     </DropdownMenuItem>
-                    
+
                     <DropdownMenuSeparator />
-                    
+
                     {tenant.status === "active" ? (
-                      <DropdownMenuItem onClick={() => onStatusChange(tenant.id, "suspended")} className="text-amber-600 focus:text-amber-600 cursor-pointer text-xs rounded-lg">
+                      <DropdownMenuItem
+                        onClick={() => !isGlobal && onStatusChange(tenant.id, "suspended")}
+                        disabled={isGlobal}
+                        title={isGlobal ? "Workspace sistem global tidak boleh ditangguhkan" : undefined}
+                        className="text-amber-600 focus:text-amber-600 cursor-pointer text-xs rounded-lg"
+                      >
                         <Ban className="h-3.5 w-3.5 mr-2" /> Tangguhkan Workspace
                       </DropdownMenuItem>
                     ) : (
