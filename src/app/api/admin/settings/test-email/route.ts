@@ -2,21 +2,36 @@ import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 import { Resend } from "resend"
 import { withAdminAuth } from "@/lib/api/route-helpers"
+import { isUnchangedSecretValue } from "@/lib/settings-secrets"
+import { getResolvedMailConfig } from "@/lib/settings"
+import { assertPublicHost, SsrfError } from "@/lib/safe-url"
 
 export const POST = withAdminAuth(async (request, _context, { session }) => {
   try {
     const body = await request.json()
-    const { 
-      targetEmail, 
-      resendApiKey, 
-      resendFrom, 
-      smtpHost, 
-      smtpPort, 
-      smtpSecure, 
-      smtpUser, 
-      smtpPass, 
-      smtpFrom 
+    let {
+      targetEmail,
+      resendApiKey,
+      resendFrom,
+      smtpHost,
+      smtpPort,
+      smtpSecure,
+      smtpUser,
+      smtpPass,
+      smtpFrom
     } = body
+
+    // The form sends the mask placeholder back when the admin hasn't
+    // revealed/retyped the real secret — reading it literally (as this
+    // route used to) sends "••••••••" to Resend/SMTP as the actual
+    // credential, failing with a misleading auth error even though the
+    // stored credential is valid. Resolve against the stored value instead,
+    // same convention test-ai/route.ts already follows.
+    if (typeof resendApiKey !== "string" || isUnchangedSecretValue(resendApiKey) || typeof smtpPass !== "string" || isUnchangedSecretValue(smtpPass)) {
+      const stored = await getResolvedMailConfig()
+      if (typeof resendApiKey !== "string" || isUnchangedSecretValue(resendApiKey)) resendApiKey = stored.resendApiKey
+      if (typeof smtpPass !== "string" || isUnchangedSecretValue(smtpPass)) smtpPass = stored.smtpPass
+    }
 
     const recipient = targetEmail || session.user.email
     if (!recipient) {
@@ -62,6 +77,10 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
     // Test SMTP
     if (smtpHost && smtpPort) {
       try {
+        // A real TCP connect + STARTTLS/auth attempt against an
+        // admin-supplied host, with distinct error messages per failure
+        // mode, is otherwise a ready-made internal-network port-scan oracle.
+        await assertPublicHost(smtpHost)
         const transporter = nodemailer.createTransport({
           host: smtpHost,
           port: parseInt(smtpPort),
@@ -82,6 +101,9 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
 
         return NextResponse.json({ success: true, message: `Email tes berhasil dikirim ke ${recipient} via SMTP (${smtpHost}:${smtpPort})!` })
       } catch (err: any) {
+        if (err instanceof SsrfError) {
+          return NextResponse.json({ success: false, message: "SMTP Host tidak valid: harus mengarah ke alamat publik, bukan alamat internal/privat." }, { status: 400 })
+        }
         return NextResponse.json({ success: false, message: `SMTP error: ${err.message}` }, { status: 400 })
       }
     }

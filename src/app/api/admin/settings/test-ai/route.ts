@@ -9,9 +9,23 @@ export const POST = withAdminAuth(async (request) => {
     const { apiKey, baseUrl } = body
 
     let resolvedKey = typeof apiKey === "string" ? apiKey.trim() : ""
-    if (!resolvedKey || isUnchangedSecretValue(resolvedKey)) {
+    let requestedBaseUrl = typeof baseUrl === "string" ? baseUrl.trim() : ""
+    const usingStoredKey = !resolvedKey || isUnchangedSecretValue(resolvedKey)
+    if (usingStoredKey) {
       const config = await getResolvedAiConfig()
       resolvedKey = config.aiGatewayApiKey?.trim() || ""
+      // The real stored key may only ever be sent to the host it's already
+      // trusted against — never to a client-supplied baseUrl. Without this,
+      // clicking "Test Connection" with the key field still masked (the
+      // common case) would send the real Gateway secret to whatever host
+      // the admin typed into the Base URL field, including an attacker's.
+      if (requestedBaseUrl && requestedBaseUrl !== config.aiGatewayBaseUrl) {
+        return NextResponse.json({
+          success: false,
+          message: "Untuk menguji Base URL baru, masukkan/tampilkan API Key secara eksplisit terlebih dahulu — key tersimpan tidak bisa dikirim ke host yang belum disimpan.",
+        }, { status: 400 })
+      }
+      requestedBaseUrl = requestedBaseUrl || config.aiGatewayBaseUrl
     }
 
     if (!resolvedKey) {
@@ -20,7 +34,7 @@ export const POST = withAdminAuth(async (request) => {
 
     // Normalisasi base URL: AI SDK menggunakan /v4/ai untuk inferensi,
     // sedangkan endpoint katalog model Vercel AI Gateway berada di /v1/models.
-    let endpoint = (baseUrl || "https://ai-gateway.vercel.sh").trim().replace(/\/$/, "")
+    let endpoint = (requestedBaseUrl || "https://ai-gateway.vercel.sh").trim().replace(/\/$/, "")
     if (endpoint.endsWith("/v4/ai")) {
       endpoint = `${endpoint.slice(0, -"/v4/ai".length)}/v1/models`
     } else if (endpoint.endsWith("/v1")) {

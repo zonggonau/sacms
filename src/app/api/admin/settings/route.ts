@@ -1,10 +1,27 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { z } from "zod"
-import { getPlatformSettings, syncPlatformSettingsCache } from "@/lib/settings"
+import { getPlatformSettings, syncPlatformSettingsCache, type PlatformSettings } from "@/lib/settings"
 import { maskSecretSettings, isSecretSettingKey, isUnchangedSecretValue } from "@/lib/settings-secrets"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { withAdminAuth, readJson } from "@/lib/api/route-helpers"
+import { withAdminAuth, readJson, apiError } from "@/lib/api/route-helpers"
+
+// Fields stored as the literal strings "true"/"false" — anything else would
+// silently break a consumer that only ever checks `=== "true"`.
+const BOOLEAN_SETTINGS = new Set<keyof PlatformSettings>([
+  "autoProvisionSeedData", "maintenanceMode", "autoWebpConvert", "autoGenerateThumbnails", "smtpSecure",
+])
+// Fields consumers parse with Number()/parseInt() — a non-numeric value
+// doesn't error there, it just silently resolves to NaN/0 downstream.
+const NUMERIC_SETTINGS = new Set<keyof PlatformSettings>([
+  "maxWorkspacesPerUser", "defaultStorageLimitMb", "apiRateLimitPerMinute", "webhookMaxRetries",
+  "maxUploadFileSizeMb", "freePlanAiMonthlyWords", "smtpPort", "auditLogRetentionDays", "apiLogRetentionDays",
+])
+const ENUM_SETTINGS: Partial<Record<keyof PlatformSettings, readonly string[]>> = {
+  registrationMode: ["open", "invite_only", "closed"],
+  customDomainPolicy: ["paid_only", "all_plans", "disabled"],
+  midtransMode: ["sandbox", "production"],
+}
 
 // GET /api/admin/settings - all global settings. Secret fields (API keys,
 // SMTP/DB passwords, etc.) are masked — the real values never leave the
@@ -49,6 +66,25 @@ export const PUT = withAdminAuth(async (request, _context, { session }) => {
     ([key, value]) => !(isSecretSettingKey(key) && isUnchangedSecretValue(value)),
   )
 
+  const invalidKeys = entries
+    .filter(([key, value]) => {
+      const str = String(value ?? "")
+      const k = key as keyof PlatformSettings
+      if (BOOLEAN_SETTINGS.has(k)) return str !== "true" && str !== "false"
+      if (NUMERIC_SETTINGS.has(k)) return !/^\d+$/.test(str)
+      if (ENUM_SETTINGS[k]) return !ENUM_SETTINGS[k]!.includes(str)
+      return false
+    })
+    .map(([key]) => key)
+
+  if (invalidKeys.length > 0) {
+    return apiError("validation", { message: `Nilai tidak valid untuk: ${invalidKeys.join(", ")}` })
+  }
+
+  // Fetched before the write so the audit entry below can record what each
+  // non-secret value actually changed from, not just which keys were touched.
+  const previousSettings = await getPlatformSettings()
+
   await Promise.all(
     entries.map(([key, value]) =>
       db.setting.upsert({
@@ -68,8 +104,17 @@ export const PUT = withAdminAuth(async (request, _context, { session }) => {
     entity: "PlatformSettings",
     data: {
       // Never log secret values — only which keys changed, and never a
-      // secret key's value even if it changed (name only).
+      // secret key's value even if it changed (name only). Non-secret keys
+      // (maintenanceMode, registrationMode, etc.) get a real before/after
+      // pair so the trail is actually useful for forensic review.
       updatedKeys: entries.map(([key]) => key),
+      changes: entries
+        .filter(([key]) => !isSecretSettingKey(key))
+        .map(([key, value]) => ({
+          key,
+          from: (previousSettings as unknown as Record<string, unknown>)[key] ?? null,
+          to: value,
+        })),
     },
   })
 
