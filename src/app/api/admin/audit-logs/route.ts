@@ -22,6 +22,8 @@ export const GET = withAdminAuth(async (request) => {
       { userId: { contains: search, mode: "insensitive" } },
       { entityId: { contains: search, mode: "insensitive" } },
       { action: { contains: search, mode: "insensitive" } },
+      { entity: { contains: search, mode: "insensitive" } },
+      { ipAddress: { contains: search, mode: "insensitive" } },
     ]
   }
 

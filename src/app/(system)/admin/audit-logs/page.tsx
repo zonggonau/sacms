@@ -18,7 +18,7 @@ import {
   Terminal, Copy, Check, Info
 } from "lucide-react"
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -35,7 +35,8 @@ interface AuditLog {
   action: string
   entity: string
   entityId: string | null
-  data: string | null
+  // Prisma `Json?` column — the API returns this already parsed, never a string.
+  data: Record<string, unknown> | null
   ipAddress: string | null
   userAgent: string | null
   createdAt: string
@@ -82,33 +83,29 @@ export default function AdminAuditLogsPage() {
     }
   }
 
+  const isSuperAdmin = session?.user?.role === "super_admin"
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
+  // Debounced: covers both the initial load and every actionFilter/search
+  // change in one place — these used to be two separate effects that both
+  // fired fetchLogs(1) on mount (actionFilter starts at "all", search at ""),
+  // doubling the initial network call.
   useEffect(() => {
-    if (session?.user?.role === "super_admin") fetchLogs(1)
-  }, [session, actionFilter])
-
-  useEffect(() => {
-    if (session?.user?.role !== "super_admin") return
+    if (!isSuperAdmin) return
     const timer = setTimeout(() => {
       fetchLogs(1)
-    }, 500)
+    }, search ? 500 : 0)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [isSuperAdmin, actionFilter, search])
 
   const handleCopyJson = () => {
     if (!selectedLog?.data) return
-    try {
-      navigator.clipboard.writeText(JSON.stringify(JSON.parse(selectedLog.data), null, 2))
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch {
-      navigator.clipboard.writeText(selectedLog.data)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    }
+    navigator.clipboard.writeText(JSON.stringify(selectedLog.data, null, 2))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const getActionBadge = (action: string) => {
@@ -119,7 +116,26 @@ export default function AdminAuditLogsPage() {
     return <Badge variant="outline" className="text-[9px] font-bold px-2 py-0.5 rounded-full border-border/60 text-muted-foreground">{action.toUpperCase()}</Badge>
   }
 
-  if (status === "loading" || loading) {
+  if (status === "loading") {
+    return (
+      <div className="flex flex-1 flex-col w-full">
+        <AdminPageSkeleton layout="table" cardsCount={0} />
+      </div>
+    )
+  }
+
+  // fetchLogs above only runs for super_admin — without this, any other
+  // admin-portal role that reaches this page was stuck on the skeleton
+  // forever since `loading` never flips false.
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-12 text-center text-muted-foreground">
+        <p>Akses dibatasi khusus untuk Super Administrator.</p>
+      </div>
+    )
+  }
+
+  if (loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
         <AdminPageSkeleton layout="table" cardsCount={0} />
@@ -153,8 +169,8 @@ export default function AdminAuditLogsPage() {
             <CardContent className="p-3 flex flex-col sm:flex-row items-center gap-3">
               <div className="relative flex-1 w-full">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input 
-                  placeholder="Cari berdasarkan Resource ID, User ID, atau kata kunci..." 
+                <Input
+                  placeholder="Cari berdasarkan Resource ID, User ID, IP, atau nama Aksi..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-9 h-9 rounded-xl text-xs bg-background border-border/80" 
@@ -165,13 +181,49 @@ export default function AdminAuditLogsPage() {
                   <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
                   <SelectValue placeholder="Kategori Aksi" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-card">
+                <SelectContent className="rounded-xl border-border bg-card max-h-80">
                   <SelectItem value="all" className="text-xs rounded-lg">Semua Aksi</SelectItem>
-                  <SelectItem value="auth.login" className="text-xs rounded-lg">Otentikasi / Login</SelectItem>
-                  <SelectItem value="content.created" className="text-xs rounded-lg">Pembuatan Konten</SelectItem>
-                  <SelectItem value="content.published" className="text-xs rounded-lg">Publikasi Konten</SelectItem>
-                  <SelectItem value="tenant.created" className="text-xs rounded-lg">Workspace Baru</SelectItem>
-                  <SelectItem value="settings.updated" className="text-xs rounded-lg">Konfigurasi Sistem</SelectItem>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Otentikasi</SelectLabel>
+                    <SelectItem value="auth.login" className="text-xs rounded-lg">Login</SelectItem>
+                    <SelectItem value="auth.register" className="text-xs rounded-lg">Registrasi</SelectItem>
+                    <SelectItem value="auth.logout" className="text-xs rounded-lg">Logout</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Konten</SelectLabel>
+                    <SelectItem value="content.created" className="text-xs rounded-lg">Konten Dibuat</SelectItem>
+                    <SelectItem value="content.updated" className="text-xs rounded-lg">Konten Diperbarui</SelectItem>
+                    <SelectItem value="content.deleted" className="text-xs rounded-lg">Konten Dihapus</SelectItem>
+                    <SelectItem value="content.published" className="text-xs rounded-lg">Konten Dipublikasikan</SelectItem>
+                    <SelectItem value="content.unpublished" className="text-xs rounded-lg">Konten Ditarik</SelectItem>
+                    <SelectItem value="media.uploaded" className="text-xs rounded-lg">Media Diunggah</SelectItem>
+                    <SelectItem value="media.deleted" className="text-xs rounded-lg">Media Dihapus</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Workspace & Anggota</SelectLabel>
+                    <SelectItem value="tenant.created" className="text-xs rounded-lg">Workspace Baru</SelectItem>
+                    <SelectItem value="tenant.updated" className="text-xs rounded-lg">Workspace Diperbarui</SelectItem>
+                    <SelectItem value="tenant.deleted" className="text-xs rounded-lg">Workspace Dihapus</SelectItem>
+                    <SelectItem value="tenant.member_added" className="text-xs rounded-lg">Anggota Ditambahkan</SelectItem>
+                    <SelectItem value="tenant.member_removed" className="text-xs rounded-lg">Anggota Dihapus</SelectItem>
+                    <SelectItem value="tenant.member_role_changed" className="text-xs rounded-lg">Role Anggota Diubah</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Infrastruktur</SelectLabel>
+                    <SelectItem value="api_token.created" className="text-xs rounded-lg">API Token Dibuat</SelectItem>
+                    <SelectItem value="api_token.deleted" className="text-xs rounded-lg">API Token Dihapus</SelectItem>
+                    <SelectItem value="webhook.created" className="text-xs rounded-lg">Webhook Dibuat</SelectItem>
+                    <SelectItem value="webhook.updated" className="text-xs rounded-lg">Webhook Diperbarui</SelectItem>
+                    <SelectItem value="webhook.deleted" className="text-xs rounded-lg">Webhook Dihapus</SelectItem>
+                    <SelectItem value="webhook.dlq_replayed" className="text-xs rounded-lg">DLQ Direplay</SelectItem>
+                    <SelectItem value="webhook.dlq_purged" className="text-xs rounded-lg">DLQ Dikosongkan</SelectItem>
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel className="text-[10px]">Sistem</SelectLabel>
+                    <SelectItem value="settings.updated" className="text-xs rounded-lg">Konfigurasi Sistem</SelectItem>
+                    <SelectItem value="settings.secret_revealed" className="text-xs rounded-lg">Secret Dibuka</SelectItem>
+                    <SelectItem value="single_type.updated" className="text-xs rounded-lg">Single Type Diperbarui</SelectItem>
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </CardContent>
@@ -336,7 +388,7 @@ export default function AdminAuditLogsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payload Data</Label>
-                    <JsonViewer data={JSON.parse(selectedLog.data)} />
+                    <JsonViewer data={selectedLog.data} />
                   </div>
                 </div>
               ) : (
