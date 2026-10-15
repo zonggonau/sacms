@@ -9,8 +9,9 @@ const GraphiQLInner = dynamic(() => import("./graphiql-inner"), {
 
 interface GraphiQLWrapperProps {
   endpoint: string
+  headers?: Record<string, string>
 }
 
-export function GraphiQLWrapper({ endpoint }: GraphiQLWrapperProps) {
-  return <GraphiQLInner endpoint={endpoint} />
+export function GraphiQLWrapper({ endpoint, headers }: GraphiQLWrapperProps) {
+  return <GraphiQLInner endpoint={endpoint} headers={headers} />
 }

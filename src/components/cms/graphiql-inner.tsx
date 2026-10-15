@@ -5,9 +5,11 @@ import { useEffect, useRef, useState } from "react"
 
 interface GraphiQLInnerProps {
   endpoint: string
+  /** Pre-fills the sandbox's Headers panel, e.g. { Authorization: "Bearer cf_..." }. */
+  headers?: Record<string, string>
 }
 
-export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
+export default function GraphiQLInner({ endpoint, headers }: GraphiQLInnerProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +24,10 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
   const [includeCookies, setIncludeCookies] = useState(false)
 
   const isMountedRef = useRef(true)
+  // A stable primitive the effect can depend on — the caller isn't
+  // required to memoize the `headers` object for this to only re-init the
+  // sandbox when its actual content (e.g. the token) changes.
+  const headersKey = JSON.stringify(headers || {})
 
   useEffect(() => {
     isMountedRef.current = true
@@ -71,7 +77,7 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
               // everyone; privileged roles can still introspect on demand.
               document: '# Write a query or mutation, then press the Run button.\\n',
               variables: {},
-              headers: {},
+              headers: JSON.parse(headersKey),
               includeCookies,
               pollForSchemaUpdates: false
             }
@@ -99,7 +105,7 @@ export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
         existingScript.removeEventListener('load', initSandbox)
       }
     }
-  }, [endpoint, includeCookies])
+  }, [endpoint, includeCookies, headersKey])
 
   if (error) {
     return (

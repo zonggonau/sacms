@@ -14,6 +14,7 @@ interface GraphQLTabProps {
 export function GraphQLTab({ tenantSlug, selectedToken }: GraphQLTabProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
   const endpoint = `${origin}/api/public/${tenantSlug}/graphql`
+  const headers = selectedToken?.trim() ? { Authorization: `Bearer ${selectedToken.trim()}` } : undefined
 
   return (
     <div className="space-y-4 animate-in fade-in duration-300">
@@ -31,7 +32,9 @@ export function GraphQLTab({ tenantSlug, selectedToken }: GraphQLTabProps) {
                 </code>
               </div>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Tambahkan header <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px] text-foreground font-semibold">Authorization: Bearer &lt;TOKEN&gt;</code> di panel Headers Sandbox bawah.
+                {selectedToken?.trim()
+                  ? "Header Authorization sudah otomatis terisi di panel Headers Sandbox bawah, dari token yang dipakai di tab REST Explorer."
+                  : <>Belum ada token dipilih di tab REST Explorer — tambahkan header <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px] text-foreground font-semibold">Authorization: Bearer &lt;TOKEN&gt;</code> manual di panel Headers Sandbox bawah.</>}
               </p>
             </div>
           </div>
@@ -45,7 +48,7 @@ export function GraphQLTab({ tenantSlug, selectedToken }: GraphQLTabProps) {
       </Card>
 
       <div className="h-[650px] border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs" style={{ isolation: "isolate" }}>
-        <GraphiQLWrapper endpoint={endpoint} />
+        <GraphiQLWrapper endpoint={endpoint} headers={headers} />
       </div>
     </div>
   )

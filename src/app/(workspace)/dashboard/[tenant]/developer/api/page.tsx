@@ -32,15 +32,17 @@ import { useToast } from "@/hooks/use-toast"
 import { getContentTypesAction } from "@/actions/content-types"
 import { getSingleTypesAction } from "@/actions/single-types"
 import { getApiTokensAction } from "@/actions/api-keys"
+import { recallApiTokenPlain } from "@/lib/api-token-storage"
 import { cn } from "@/lib/utils"
 import { GraphQLTab } from "./graphql-tab"
 import { SwaggerTab } from "./swagger-tab"
 import { SdkTab } from "./sdk-tab"
 
-interface ApiTokenOption {
+interface PrimaryApiToken {
   id: string
+  tenantId: string
   name: string
-  token: string
+  permissions: string[]
 }
 
 interface ContentType {
@@ -105,19 +107,14 @@ function ApiExplorerContent() {
 
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
-  const [availableTokens, setAvailableTokens] = useState<ApiTokenOption[]>([])
+  const [schemaLoaded, setSchemaLoaded] = useState(false)
+  const [primaryToken, setPrimaryToken] = useState<PrimaryApiToken | null>(null)
   const [selectedToken, setSelectedToken] = useState("")
-  
+
   const [exportingOpenApi, setExportingOpenApi] = useState(false)
   const [exportingAiSkill, setExportingAiSkill] = useState(false)
   const [copiedResponse, setCopiedResponse] = useState(false)
   const [copiedSnippet, setCopiedSnippet] = useState(false)
-
-  useEffect(() => {
-    if (tenantSlug && !endpoint) {
-      setEndpoint(`/api/public/${tenantSlug}/content`)
-    }
-  }, [tenantSlug, endpoint])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -138,35 +135,36 @@ function ApiExplorerContent() {
         ])
 
         if (ctData && !ctData.error) {
-          setContentTypes(ctData.contentTypes || [])
-          // Auto set default endpoint to first content type if available
-          if (ctData.contentTypes && ctData.contentTypes.length > 0) {
-            setEndpoint(`/api/public/${tenantSlug}/content/${ctData.contentTypes[0].slug}`)
+          const cts = ctData.contentTypes || []
+          setContentTypes(cts)
+          // Only default the endpoint once we know a real content type
+          // exists — a tenant with zero content types has no valid
+          // `/content/...` path at all, and defaulting to the bare
+          // `/content` collection root (no slug) 404s every time, which
+          // used to happen unconditionally before this schema fetch even
+          // resolved. Leave the field empty instead; the placeholder and
+          // Quick Path Generator guide the user once a schema exists.
+          if (cts.length > 0) {
+            setEndpoint(`/api/public/${tenantSlug}/content/${cts[0].slug}`)
           }
         }
+        setSchemaLoaded(true)
 
         if (stData && !stData.error) {
           setSingleTypes(stData.singleTypes || [])
         }
 
-        const tokenList: ApiTokenOption[] = []
-
-        // Load active user-created API tokens
-        if (tokensData && !tokensData.error && Array.isArray(tokensData.tokens)) {
-          tokensData.tokens.forEach((t: any) => {
-            if (t.token) {
-              tokenList.push({
-                id: t.id,
-                name: `${t.name} (${t.permissions?.join(", ") || "token"})`,
-                token: t.token,
-              })
-            }
-          })
-        }
-
-        setAvailableTokens(tokenList)
-        if (tokenList.length > 0 && !selectedToken) {
-          setSelectedToken(tokenList[0].token)
+        // At most one primary (non-MCP) API token exists per tenant. The
+        // server only ever stores its hash (see src/actions/api-keys.ts),
+        // so the plaintext can only be known here if it was just
+        // created/regenerated in THIS browser tab — recalled from
+        // sessionStorage (see src/lib/api-token-storage.ts), written by
+        // the API Keys page right after create/regenerate.
+        if (tokensData && !tokensData.error && Array.isArray(tokensData.tokens) && tokensData.tokens.length > 0) {
+          const t = tokensData.tokens[0]
+          setPrimaryToken({ id: t.id, tenantId: t.tenantId, name: t.name, permissions: Array.isArray(t.permissions) ? t.permissions.filter((p: unknown): p is string => typeof p === "string") : [] })
+          const recalled = recallApiTokenPlain(t.tenantId, t.id)
+          if (recalled) setSelectedToken(recalled)
         }
       } catch (err) {
         console.error("Error fetching explorer data:", err)
@@ -323,11 +321,20 @@ function ApiExplorerContent() {
   }
 
   const handleSendRequest = async () => {
+    if (!endpoint.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Endpoint Kosong",
+        description: "Pilih rute dari Quick Path Generator atau ketik endpoint-nya dulu.",
+      })
+      return
+    }
+
     if (!selectedToken.trim()) {
       toast({
         variant: "destructive",
         title: "Autentikasi Diperlukan",
-        description: "Silakan pilih atau masukkan API Token untuk menguji endpoint publik.",
+        description: "Masukkan API Token untuk menguji endpoint publik.",
       })
       return
     }
@@ -551,7 +558,7 @@ function ApiExplorerContent() {
 
             <TabsContent value="rest" className="space-y-6">
 
-          {/* Authentication Banner & Token Selector */}
+          {/* Authentication Banner & Token Input */}
           <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
             <CardContent className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -561,7 +568,11 @@ function ApiExplorerContent() {
                 <div>
                   <p className="text-xs font-bold text-foreground">Kredensial Autentikasi API</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Header: <code className="bg-muted px-1 py-0.5 rounded font-mono text-[10px] text-foreground font-semibold">Authorization: Bearer &lt;TOKEN&gt;</code>
+                    {!primaryToken
+                      ? "Belum ada API Key di workspace ini."
+                      : selectedToken
+                      ? "Otomatis terisi dari key yang baru dibuat/di-generate ulang."
+                      : `Key "${primaryToken.name}" sudah ada, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — salin dari halaman API Keys atau generate ulang.`}
                   </p>
                 </div>
               </div>
@@ -573,20 +584,7 @@ function ApiExplorerContent() {
                   placeholder="Masukkan API Key (cf_...)"
                   className="font-mono text-xs bg-muted/20 border-border/80 rounded-xl h-9 text-foreground flex-1"
                 />
-                {availableTokens.length > 0 ? (
-                  <Select value={selectedToken} onValueChange={setSelectedToken}>
-                    <SelectTrigger className="h-9 min-w-[130px] rounded-xl text-xs bg-background border-border/80 shrink-0">
-                      <SelectValue placeholder="Pilih Key" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border bg-card">
-                      {availableTokens.map((t) => (
-                        <SelectItem key={t.id} value={t.token} className="text-xs font-mono">
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
+                {!primaryToken && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -685,6 +683,11 @@ function ApiExplorerContent() {
                         className="font-mono text-xs bg-muted/20 border-border/80 rounded-xl h-9 text-foreground flex-1"
                       />
                     </div>
+                    {schemaLoaded && contentTypes.length === 0 && singleTypes.length === 0 && !endpoint && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                        Workspace ini belum punya Content Type atau Single Type — buat satu dulu di Developer Portal, lalu Quick Path Generator di atas akan terisi otomatis.
+                      </p>
+                    )}
                   </div>
 
                   {/* JSON Payload (for POST / PUT) */}
@@ -714,7 +717,7 @@ function ApiExplorerContent() {
                   {/* Send Request Button */}
                   <Button
                     onClick={handleSendRequest}
-                    disabled={loading}
+                    disabled={loading || !endpoint.trim()}
                     className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-10 rounded-xl shadow-xs"
                   >
                     {loading ? (

@@ -46,6 +46,7 @@ import { useConfirm } from "@/components/ui/confirm-dialog"
 import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction, regenerateApiTokenAction } from "@/actions/api-keys"
 import { createMcpTokenAction, regenerateMcpTokenAction, deleteMcpTokenAction } from "@/actions/mcp-tokens"
 import { rememberMcpTokenPlain, forgetMcpTokenPlain } from "@/lib/mcp-token-storage"
+import { rememberApiTokenPlain, forgetApiTokenPlain } from "@/lib/api-token-storage"
 
 interface ApiToken {
   id: string
@@ -231,6 +232,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
         if (res.token) {
           setTokensList(prev => [res.token as any, ...prev])
           setRevealedTokenId(res.token.id)
+          if (res.plainToken) rememberApiTokenPlain(tenantId, res.token.id, res.plainToken)
         }
         setShowTokenDialog(true)
         toast({
@@ -263,6 +265,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
       } else {
         setTokensList(prev => prev.filter(t => t.id !== tokenId))
         setRevealedTokenId(prev => (prev === tokenId ? null : prev))
+        forgetApiTokenPlain(tenantId, tokenId)
         toast({
           title: "Berhasil",
           description: "API key berhasil dihapus",
@@ -296,6 +299,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
           setTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
         }
         setRevealedTokenId(token.id)
+        if (res.plainToken) rememberApiTokenPlain(tenantId, token.id, res.plainToken)
         setShowTokenDialog(true)
         toast({
           title: "Berhasil",
