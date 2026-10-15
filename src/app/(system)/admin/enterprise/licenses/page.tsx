@@ -101,6 +101,7 @@ export default function EnterpriseLicensesPage() {
   const [copiedKey, setCopiedKey] = useState(false)
   const [confirmGenerate, setConfirmGenerate] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [pendingRevoke, setPendingRevoke] = useState<License | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [togglingRevokeId, setTogglingRevokeId] = useState<string | null>(null)
 
@@ -108,6 +109,7 @@ export default function EnterpriseLicensesPage() {
     try {
       const params = new URLSearchParams({ page: String(page), limit: "20" })
       if (debouncedSearch) params.set("search", debouncedSearch)
+      if (statusFilter !== "all") params.set("status", statusFilter)
       const res = await fetch(`/api/admin/license/list?${params.toString()}`)
       if (res.ok) {
         const data = await res.json()
@@ -136,7 +138,12 @@ export default function EnterpriseLicensesPage() {
 
   useEffect(() => {
     fetchLicenses()
-  }, [debouncedSearch, page])
+  }, [debouncedSearch, statusFilter, page])
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value)
+    setPage(1)
+  }
 
   const handleCopyKey = async (key: string) => {
     try {
@@ -284,15 +291,6 @@ export default function EnterpriseLicensesPage() {
       setTogglingRevokeId(null)
     }
   }
-
-  const filteredLicenses = licenses.filter((lic) => {
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && lic.status === "active" && !lic.isExpired) ||
-      (statusFilter === "expired" && (lic.isExpired || lic.status === "expired")) ||
-      (statusFilter === "revoked" && lic.status === "revoked")
-    return matchesStatus
-  })
 
   if (!session?.user || session.user.role !== "super_admin") {
     return (
@@ -515,7 +513,7 @@ export default function EnterpriseLicensesPage() {
                 className="pl-9 h-9 rounded-xl text-xs bg-card border-border/80"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
               <SelectTrigger className="w-full sm:w-[160px] h-9 rounded-xl text-xs bg-card border-border/80">
                 <SelectValue placeholder="Semua Status" />
               </SelectTrigger>
@@ -554,7 +552,7 @@ export default function EnterpriseLicensesPage() {
                         ))}
                       </TableRow>
                     ))
-                  ) : filteredLicenses.length === 0 ? (
+                  ) : licenses.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="py-20 text-center">
                         <div className="flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
@@ -571,12 +569,17 @@ export default function EnterpriseLicensesPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredLicenses.map((lic) => (
+                    licenses.map((lic) => (
                       <TableRow key={lic.id} className="hover:bg-muted/20 transition-colors border-b border-border/40 last:border-0">
                         <TableCell className="pl-5 py-3.5">
                           <div className="font-bold text-xs text-foreground">{lic.customerName}</div>
                           {lic.customerEmail && (
                             <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{lic.customerEmail}</div>
+                          )}
+                          {lic.displayKey && (
+                            <div className="text-[10px] text-muted-foreground/70 font-mono mt-0.5" title="Serial lisensi (disamarkan)">
+                              {lic.displayKey}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">{lic.organization || "-"}</TableCell>
@@ -628,7 +631,7 @@ export default function EnterpriseLicensesPage() {
                                   ? "text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
                                   : "text-amber-600 hover:text-amber-600 hover:bg-amber-500/10"
                               )}
-                              onClick={() => handleToggleRevoke(lic)}
+                              onClick={() => lic.status === "revoked" ? handleToggleRevoke(lic) : setPendingRevoke(lic)}
                               title={lic.status === "revoked" ? "Aktifkan kembali lisensi" : "Cabut lisensi (tetap berlaku walau sedang dipakai)"}
                             >
                               {togglingRevokeId === lic.id ? (
@@ -704,6 +707,31 @@ export default function EnterpriseLicensesPage() {
                 >
                   {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
                   {isDeleting ? "Menghapus..." : "Hapus Lisensi"}
+                </Button>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {/* Revoke Confirmation — cuts off a paying customer's access instantly, unlike Reactivate */}
+          <AlertDialog open={!!pendingRevoke} onOpenChange={(open) => !open && setPendingRevoke(null)}>
+            <AlertDialogContent className="rounded-2xl border-border/80 shadow-xl bg-card max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-base font-bold text-foreground">Cabut Lisensi "{pendingRevoke?.customerName}"?</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs leading-relaxed text-muted-foreground">
+                  Lisensi ini akan langsung berhenti lolos validasi, walau masih dipakai aktif oleh pelanggan. Bisa diaktifkan kembali kapan saja dari halaman ini.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">
+                <AlertDialogCancel className="rounded-xl text-xs font-bold h-9">Batal</AlertDialogCancel>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    if (pendingRevoke) handleToggleRevoke(pendingRevoke)
+                    setPendingRevoke(null)
+                  }}
+                  className="rounded-xl text-xs font-bold h-9"
+                >
+                  Ya, Cabut Lisensi
                 </Button>
               </AlertDialogFooter>
             </AlertDialogContent>
