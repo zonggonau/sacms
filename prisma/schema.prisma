@@ -718,6 +718,13 @@ model EnterpriseLicense {
   organization    String?
   type            String   @default("enterprise") // enterprise | partner | trial
   features        Json?    // ["self-host", "unlimited-workspaces", ...]
+  /// Pooled storage grant (GB) for an ACCOUNT-level license (shared across
+  /// every workspace the license holder owns — see isEnterpriseTenant(userId)
+  /// usage in plan-enforcement.ts). Null for licenses that don't grant pooled
+  /// storage (e.g. a self-hosted instance-wide license, which stays fully
+  /// unmetered via a separate mechanism). Admin-editable here independent of
+  /// the signed key itself — see validateLicense()'s dbRecord override.
+  storageGb       Int?
   maxInstances    Int      @default(1)
   issuedAt        DateTime @default(now())
   expiresAt       DateTime
@@ -741,6 +748,9 @@ model LicenseCache {
   customerEmail   String?
   type            String
   features        Json?
+  /// Cached copy of EnterpriseLicense.storageGb (or the signed payload's
+  /// value when no local EnterpriseLicense row exists) — see license.ts.
+  storageGb       Int?
   issuedAt        DateTime
   expiresAt       DateTime
   lastValidatedAt DateTime

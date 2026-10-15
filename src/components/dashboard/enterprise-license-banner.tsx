@@ -26,12 +26,20 @@ interface EnterpriseLicenseInfo {
   organization?: string
   type?: string
   features?: string[]
+  storageGb?: number | null
+  storageUsedBytes?: number | null
+  storageLimitBytes?: number | null
   expiresAt?: string
   issuedAt?: string
   daysRemaining?: number
   totalDays?: number
   status?: string
   error?: string
+}
+
+function formatBytesGb(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024)
+  return gb >= 1024 ? `${(gb / 1024).toFixed(gb % 1024 === 0 ? 0 : 1)} TB` : `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB`
 }
 
 import { useParams } from "next/navigation"
@@ -258,6 +266,48 @@ export function EnterpriseLicenseBanner({
             <Progress value={Math.min(progressPct, 100)} className="h-1.5" />
           </div>
         )}
+
+        {license.storageLimitBytes != null && license.storageUsedBytes != null && (() => {
+          const storagePct = license.storageLimitBytes > 0
+            ? Math.round((license.storageUsedBytes / license.storageLimitBytes) * 100)
+            : 0
+          const storageFull = storagePct >= 100
+          const storageWarning = storagePct >= 90
+          return (
+            <div className="mt-4 pt-4 border-t border-border/60">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[11px] font-bold text-foreground">
+                  Storage Gabungan (Semua Workspace)
+                </span>
+                <span className={cn(
+                  "text-[11px] font-mono font-bold",
+                  storageFull ? "text-red-500" : storageWarning ? "text-yellow-500" : "text-muted-foreground"
+                )}>
+                  {formatBytesGb(license.storageUsedBytes)} / {formatBytesGb(license.storageLimitBytes)}
+                </span>
+              </div>
+              <Progress
+                value={Math.min(storagePct, 100)}
+                className={cn("h-1.5", storageFull ? "[&>div]:bg-red-500" : storageWarning ? "[&>div]:bg-yellow-500" : undefined)}
+              />
+              {storageWarning && (
+                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-[11px] text-muted-foreground">
+                    {storageFull
+                      ? "Kuota storage gabungan sudah penuh — upload baru di semua workspace Anda bisa ditolak."
+                      : "Kuota storage gabungan hampir penuh."}
+                  </p>
+                  <a href="mailto:admin@sacms.cloud?subject=Permintaan%20Upgrade%20Storage%20Enterprise">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] font-semibold rounded-xl border-border">
+                      <ExternalLink className="w-3 h-3 mr-1.5" />
+                      Upgrade Storage
+                    </Button>
+                  </a>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </CardContent>
     </Card>
   )

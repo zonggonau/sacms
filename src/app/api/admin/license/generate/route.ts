@@ -12,13 +12,19 @@ import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 export const POST = withAdminAuth(
   async (request, _context, { session }) => {
     const body = await request.json()
-    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features } = body
+    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb } = body
 
     if (!customerName || !expiresAt) {
       return apiError("validation", { message: "customerName and expiresAt are required" })
     }
 
     const expDate = new Date(expiresAt)
+    // Account-level pooled storage grant (GB) — see schema.prisma's
+    // EnterpriseLicense.storageGb and plan-enforcement.ts's
+    // getOwnerStorageLicense(). Optional: a plain self-hosted/partner/trial
+    // license doesn't need one.
+    const storageGbValue: number | undefined =
+      storageGb === undefined || storageGb === null || storageGb === "" ? undefined : Number(storageGb)
 
     // Generate license key
     const licenseKey = generateLicenseKey({
@@ -28,6 +34,7 @@ export const POST = withAdminAuth(
       org: organization,
       type: type as "enterprise" | "partner" | "trial",
       features: features || ["self-host", "unlimited-workspaces"],
+      storageGb: storageGbValue,
       exp: Math.floor(expDate.getTime() / 1000),
     })
 
@@ -40,6 +47,7 @@ export const POST = withAdminAuth(
         organization,
         type,
         features: features || ["self-host", "unlimited-workspaces"],
+        storageGb: storageGbValue ?? null,
         expiresAt: expDate,
         createdBy: session.user.email,
       },
@@ -50,7 +58,7 @@ export const POST = withAdminAuth(
       action: AuditAction.SETTINGS_UPDATED,
       entity: "EnterpriseLicenseGenerated",
       entityId: license.id,
-      data: { customerName, customerEmail, organization, type, expiresAt: expDate.toISOString() },
+      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, expiresAt: expDate.toISOString() },
     })
 
     return NextResponse.json({
@@ -59,6 +67,7 @@ export const POST = withAdminAuth(
       customerName: license.customerName,
       customerEmail: license.customerEmail,
       type: license.type,
+      storageGb: license.storageGb,
       expiresAt: license.expiresAt,
     })
   },

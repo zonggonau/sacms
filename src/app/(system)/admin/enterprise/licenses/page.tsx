@@ -58,6 +58,7 @@ import {
   ChevronRight,
   ShieldOff,
   ShieldCheck,
+  HardDrive,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -68,6 +69,7 @@ interface License {
   customerEmail: string
   organization: string
   type: string
+  storageGb: number | null
   expiresAt: string
   isExpired: boolean
   daysRemaining: number
@@ -96,6 +98,11 @@ export default function EnterpriseLicensesPage() {
     organization: "",
     type: "enterprise",
     expiresIn: "365",
+    // Pooled storage grant (GB), shared across every workspace the
+    // customer owns once they activate this key on their account — see
+    // getOwnerStorageLicense() in plan-enforcement.ts. "none" = no pooled
+    // storage (e.g. partner/trial keys, or a self-hosted instance license).
+    storageGb: "none",
   })
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
@@ -104,6 +111,9 @@ export default function EnterpriseLicensesPage() {
   const [pendingRevoke, setPendingRevoke] = useState<License | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [togglingRevokeId, setTogglingRevokeId] = useState<string | null>(null)
+  const [editingStorageFor, setEditingStorageFor] = useState<License | null>(null)
+  const [storageGbInput, setStorageGbInput] = useState("")
+  const [savingStorage, setSavingStorage] = useState(false)
 
   const fetchLicenses = async () => {
     try {
@@ -191,6 +201,7 @@ export default function EnterpriseLicensesPage() {
           customerEmail: form.customerEmail,
           organization: form.organization,
           type: form.type,
+          storageGb: form.storageGb === "none" ? undefined : Number(form.storageGb),
           expiresAt: expiresAt.toISOString(),
         }),
       })
@@ -206,6 +217,7 @@ export default function EnterpriseLicensesPage() {
           organization: "",
           type: "enterprise",
           expiresIn: "365",
+          storageGb: "none",
         })
         toast({
           title: "Lisensi Dibuat",
@@ -260,6 +272,43 @@ export default function EnterpriseLicensesPage() {
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const openUpgradeStorage = (lic: License) => {
+    setEditingStorageFor(lic)
+    setStorageGbInput(lic.storageGb ? String(lic.storageGb) : "")
+  }
+
+  const handleSaveStorage = async () => {
+    if (!editingStorageFor) return
+    const gb = storageGbInput.trim() === "" ? null : Number(storageGbInput)
+    if (gb !== null && (!Number.isInteger(gb) || gb <= 0)) {
+      toast({ title: "Nilai tidak valid", description: "Masukkan jumlah GB berupa bilangan positif, atau kosongkan.", variant: "destructive" })
+      return
+    }
+    setSavingStorage(true)
+    try {
+      const res = await fetch(`/api/admin/license/${editingStorageFor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storageGb: gb }),
+      })
+      if (res.ok) {
+        toast({
+          title: "Kuota Storage Diperbarui",
+          description: gb ? `Kuota gabungan ${editingStorageFor.customerName} kini ${gb} GB.` : `Kuota gabungan khusus untuk ${editingStorageFor.customerName} dihapus.`,
+        })
+        setEditingStorageFor(null)
+        fetchLicenses()
+      } else {
+        const errData = await res.json()
+        toast({ title: "Gagal", description: errData.error || "Terjadi kesalahan", variant: "destructive" })
+      }
+    } catch {
+      toast({ title: "Terjadi Kesalahan", description: "Gagal memperbarui kuota storage", variant: "destructive" })
+    } finally {
+      setSavingStorage(false)
     }
   }
 
@@ -404,6 +453,25 @@ export default function EnterpriseLicensesPage() {
                           <SelectItem value="trial" className="text-xs rounded-lg">Trial (Evaluasi)</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="storageGb" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota Storage Gabungan</Label>
+                      <Select
+                        value={form.storageGb}
+                        onValueChange={(v) => setForm({ ...form, storageGb: v })}
+                      >
+                        <SelectTrigger id="storageGb" className="h-9 rounded-xl text-xs bg-muted/20 border-border/80">
+                          <SelectValue placeholder="Pilih kuota" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="none" className="text-xs rounded-lg">Tidak ada (bukan lisensi akun)</SelectItem>
+                          <SelectItem value="100" className="text-xs rounded-lg">100 GB</SelectItem>
+                          <SelectItem value="250" className="text-xs rounded-lg">250 GB</SelectItem>
+                          <SelectItem value="500" className="text-xs rounded-lg">500 GB</SelectItem>
+                          <SelectItem value="1024" className="text-xs rounded-lg">1 TB</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Dibagi rata ke semua workspace milik pelanggan ini.</p>
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="duration" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Masa Berlaku</Label>
@@ -587,6 +655,11 @@ export default function EnterpriseLicensesPage() {
                           <Badge variant="outline" className="text-[9px] uppercase font-bold rounded-full border-border/60">
                             {lic.type}
                           </Badge>
+                          {lic.storageGb ? (
+                            <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                              {lic.storageGb >= 1024 ? `${(lic.storageGb / 1024).toFixed(lic.storageGb % 1024 === 0 ? 0 : 1)} TB` : `${lic.storageGb} GB`} pool
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           <div className="text-foreground">{new Date(lic.expiresAt).toLocaleDateString('id-ID')}</div>
@@ -620,6 +693,15 @@ export default function EnterpriseLicensesPage() {
                               title="Salin kunci lisensi"
                             >
                               <Copy className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+                              onClick={() => openUpgradeStorage(lic)}
+                              title="Atur kuota storage gabungan"
+                            >
+                              <HardDrive className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -736,6 +818,42 @@ export default function EnterpriseLicensesPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
+
+          <Dialog open={!!editingStorageFor} onOpenChange={(open) => !open && setEditingStorageFor(null)}>
+            <DialogContent className="rounded-2xl border-border/80 shadow-xl bg-card max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold">Kuota Storage Gabungan — {editingStorageFor?.customerName}</DialogTitle>
+                <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
+                  Dibagi rata ke semua workspace milik pelanggan ini setelah lisensi diaktifkan di akun mereka. Kosongkan untuk menghapus kuota gabungan (lisensi jadi tidak membuka storage pool apa pun).
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-1 py-2">
+                <Label htmlFor="storageGbEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota (GB)</Label>
+                <Input
+                  id="storageGbEdit"
+                  type="number"
+                  min={1}
+                  value={storageGbInput}
+                  onChange={(e) => setStorageGbInput(e.target.value)}
+                  placeholder="contoh: 100, 250, 500, 1024"
+                  className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                />
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">
+                <Button type="button" variant="outline" onClick={() => setEditingStorageFor(null)} className="rounded-xl text-xs font-bold h-9">
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleSaveStorage}
+                  disabled={savingStorage}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs"
+                >
+                  {savingStorage ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                  Simpan
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

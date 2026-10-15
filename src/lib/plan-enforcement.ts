@@ -1,7 +1,7 @@
 import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
-import { isEnterpriseTenant } from "./license"
+import { isEnterpriseTenant, validateLicense } from "./license"
 import { isPlatformStaff } from "./platform-roles"
 /**
  * Plan Enforcement Module
@@ -76,6 +76,39 @@ async function isInstanceEnterpriseLicensed(): Promise<boolean> {
   }
 }
 
+/** The user who owns this workspace (TenantMember role "owner"), if any. */
+async function getTenantOwnerId(tenantId: string): Promise<string | null> {
+  const owner = await db.tenantMember.findFirst({ where: { tenantId, role: "owner" }, select: { userId: true } })
+  return owner?.userId ?? null
+}
+
+/**
+ * An ACCOUNT-level enterprise license (activated via /api/user/license/activate,
+ * keyed by the user's own id — see isEnterpriseTenant(userId) elsewhere) grants
+ * a pooled storage allowance shared across every workspace this owner owns.
+ * Deliberately bounded by the license's own storageGb, not unlimited — unlike
+ * isInstanceEnterpriseLicensed() above, which is a different, fully-unmetered
+ * mechanism for a whole self-hosted instance.
+ */
+export async function getOwnerStorageLicense(ownerId: string): Promise<{ licensed: boolean; limitBytes: number }> {
+  try {
+    const result = await validateLicense(ownerId)
+    if (result.valid && result.type === "enterprise" && result.storageGb) {
+      return { licensed: true, limitBytes: result.storageGb * 1024 * MB }
+    }
+  } catch {
+    // Ignore and treat as unlicensed
+  }
+  return { licensed: false, limitBytes: 0 }
+}
+
+/** Total storage used across every workspace this owner owns — the shared pool's usage. */
+export async function getOwnerPooledStorageUsedBytes(ownerId: string): Promise<number> {
+  const ownedTenants = await db.tenantMember.findMany({ where: { userId: ownerId, role: "owner" }, select: { tenantId: true } })
+  const perTenantBytes = await Promise.all(ownedTenants.map((t) => getStorageUsedBytes(t.tenantId)))
+  return perTenantBytes.reduce((sum, bytes) => sum + bytes, 0)
+}
+
 async function getStorageUsedBytes(tenantId: string): Promise<number> {
   const tenantDb = await getTenantDb(tenantId)
   try {
@@ -104,6 +137,31 @@ export async function getStorageQuota(tenantId: string): Promise<StorageQuota> {
 
   const planBytes = (override?.maxStorage ?? planConfig.max_storage) * MB
   const addonBytes = Number(addons?._sum?.bytes ?? 0)
+
+  // Pooled account-level enterprise storage: only relevant when this
+  // workspace isn't already unmetered some other way (instance-wide
+  // license, or its own BYOS bucket). Regular Pro/Business tenants are
+  // untouched — they keep taking storage from their own plan exactly as
+  // before. Checked per-call rather than cached: cheap (one TenantMember
+  // lookup + one license validation, same cost as isInstanceEnterpriseLicensed
+  // above), and storage usage changes too often to risk a stale cap.
+  if (!instanceLicensed && !tenant?.storageConfig) {
+    const ownerId = await getTenantOwnerId(tenantId)
+    if (ownerId) {
+      const ownerLicense = await getOwnerStorageLicense(ownerId)
+      if (ownerLicense.licensed) {
+        const pooledUsedBytes = await getOwnerPooledStorageUsedBytes(ownerId)
+        return {
+          usedBytes: pooledUsedBytes,
+          limitBytes: ownerLicense.limitBytes,
+          planBytes: ownerLicense.limitBytes,
+          addonBytes: 0,
+          planSlug: "enterprise",
+        }
+      }
+    }
+  }
+
   const metered = !tenant?.storageConfig && !instanceLicensed
 
   return {

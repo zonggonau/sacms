@@ -72,6 +72,11 @@ export async function POST(request: NextRequest) {
   // 4. Cache the license keyed by the user's own id — LicenseCache.id can be
   // any string (tenant id elsewhere, user id here); isEnterpriseTenant(userId)
   // already reads it this way, matching this write.
+  // DB value wins when our own admin panel issued this key (lets an admin
+  // adjust the storage grant later without reissuing it) — falls back to
+  // whatever was actually signed into the key otherwise.
+  const storageGb = dbRecord?.storageGb ?? payload.storageGb
+
   await upsertLicenseCache({
     valid: true,
     customerName: payload.name,
@@ -79,6 +84,7 @@ export async function POST(request: NextRequest) {
     organization: payload.org,
     type: payload.type,
     features: payload.features,
+    storageGb,
     expiresAt: new Date(payload.exp * 1000),
     issuedAt: new Date(payload.iat * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
@@ -90,6 +96,7 @@ export async function POST(request: NextRequest) {
     message: "License activated successfully",
     customerName: payload.name,
     type: payload.type,
+    storageGb,
     expiresAt: new Date(payload.exp * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
   })

@@ -9,6 +9,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getCachedLicense, validateLicense, parseLicenseKey } from "@/lib/license"
+import { getOwnerPooledStorageUsedBytes } from "@/lib/plan-enforcement"
 import { db } from "@/lib/database"
 import { apiError } from "@/lib/api/route-helpers"
 
@@ -55,6 +56,17 @@ export async function GET() {
       }
     }
 
+    // Pooled storage: usage across every workspace this user owns, checked
+    // against the license's own storageGb grant — same numbers
+    // getStorageQuota() in plan-enforcement.ts uses to actually enforce
+    // uploads, surfaced here so the UI can warn before the ceiling is hit.
+    let storageUsedBytes: number | null = null
+    let storageLimitBytes: number | null = null
+    if (license.type === "enterprise" && license.storageGb) {
+      storageUsedBytes = await getOwnerPooledStorageUsedBytes(userId)
+      storageLimitBytes = license.storageGb * 1024 * 1024 * 1024
+    }
+
     return NextResponse.json({
       valid: true,
       status: "active",
@@ -63,6 +75,9 @@ export async function GET() {
       organization: license.organization,
       type: license.type,
       features: license.features,
+      storageGb: license.storageGb,
+      storageUsedBytes,
+      storageLimitBytes,
       expiresAt: license.expiresAt,
       issuedAt: license.issuedAt,
       daysRemaining: license.daysRemaining,
