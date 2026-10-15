@@ -4,9 +4,11 @@
  * A tenant may have at most one primary ApiToken (any `type` other than
  * "mcp" — MCP tokens are a separate credential managed from the MCP page).
  * Both the dashboard's Developer & API → API Keys page and the MCP server's
- * `get_or_create_api_key`/`update_api_key_permissions` tools key off this
- * same query so they agree on what "the" key is, instead of each minting
- * their own.
+ * `get_or_create_api_key` tool key off this same query so they agree on
+ * what "the" key is, instead of each minting their own. (A sibling
+ * `update_api_key_permissions` tool existed briefly but was removed — see
+ * api/mcp/[[...transport]]/route.ts — since rotating/reconfiguring a
+ * tenant's live production credential has no legitimate MCP use case.)
  */
 import { db } from "@/lib/database"
 import { randomBytes, createHash } from "crypto"

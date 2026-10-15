@@ -332,15 +332,12 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa izin API key aktif (read, write, delete, schema, webhooks) untuk menentukan apakah membangun komponen read-only atau interaktif.", inputs: [] },
   { name: "get_api_info", category: "webhook", description: "Mengambil dokumentasi REST API lengkap, daftar endpoint, sintaks filtering, dan contoh kode integrasi untuk workspace ini.", inputs: ["baseUrl?"] },
   { name: "get_or_create_api_key", category: "webhook", description: "Mengambil API key utama REST/GraphQL workspace ini, membuatnya sekali jika belum ada. Aman dipanggil berulang — key yang sudah ada selalu dipakai ulang, tidak pernah digandakan. Secret plaintext hanya ditampilkan sekali saat pertama dibuat.", inputs: [] },
-  { name: "update_api_key_permissions", category: "webhook", description: "Mengganti seluruh set izin (read/write/delete) pada API key utama workspace. Hanya bisa memberi izin yang token MCP Anda sendiri sudah miliki.", inputs: ["permissions"] },
-  { name: "regenerate_api_key", category: "webhook", description: "Merotasi secret API key utama workspace — id/nama/izin tetap sama, secret baru. Secret lama langsung berhenti berfungsi.", inputs: [] },
-
-  // Multi-Tenant End-User & Member Auth MCP Tools
-  { name: "list_members", category: "member", description: "Mendaftar akun end-user/member website dengan filter pencarian, role, dan status.", inputs: ["page", "pageSize", "search", "role", "status"] },
-  { name: "get_member", category: "member", description: "Mengambil data detail profil dan metadata member spesifik berdasarkan ID atau email.", inputs: ["idOrEmail"] },
-  { name: "create_member", category: "member", description: "Mendaftarkan member baru secara programatik dengan password ter-hash bcrypt.", inputs: ["email", "password", "name", "role", "metadata"] },
-  { name: "update_member", category: "member", description: "Mengubah profil member yang ada — role, status ('active'/'suspended'), password baru, atau metadata kustom.", inputs: ["idOrEmail", "name", "role", "status", "password", "metadata"] },
-  { name: "delete_member", category: "member", description: "Menghapus permanen akun member dan me-revoke seluruh sesi login aktifnya.", inputs: ["idOrEmail"] },
+  // update_api_key_permissions, regenerate_api_key, dan seluruh tool Member
+  // (list/get/create/update/delete_member) sudah DIHAPUS dari server MCP
+  // (lihat komentar di api/mcp/[[...transport]]/route.ts, akhir bagian 7
+  // dan akhir bagian 8) — blast radius produksi terlalu besar untuk token
+  // MCP yang tidak punya konsep role manusia. Jangan ditambahkan lagi di
+  // sini kecuali tool-nya memang didaftarkan ulang di server.
 
   // Hosting & Cloud Deployment MCP Tools
   { name: "deploy_to_sacms", category: "hosting", description: "Deploy file source code website/frontend langsung ke SaCMS Cloud Hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },

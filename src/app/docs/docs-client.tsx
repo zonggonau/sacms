@@ -532,22 +532,11 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [],
     sampleResponse: { status: "created", id: "key_abc123", name: "Primary API Key", permissions: ["read", "write"], apiKey: "sacms_live_xxxxxxxxxxxxxxxx" }
   },
-  {
-    name: "update_api_key_permissions",
-    title: "Update Workspace API Key Permissions",
-    description: "Adjust the read/write/delete permissions on the workspace's primary REST/GraphQL API key — replaces the full permission set. You can only grant permissions your own MCP token already has.",
-    inputs: [
-      { name: "permissions", type: "array", required: true, description: 'Full replacement set of permissions, e.g. ["read","write"]' }
-    ],
-    sampleResponse: { status: "updated", id: "key_abc123", permissions: ["read", "write"] }
-  },
-  {
-    name: "regenerate_api_key",
-    title: "Regenerate Workspace API Key Secret",
-    description: "Rotate the workspace's primary REST/GraphQL API key — same key (id, name, permissions), brand new secret. The old secret stops working immediately.",
-    inputs: [],
-    sampleResponse: { status: "regenerated", id: "key_abc123", apiKey: "sacms_live_yyyyyyyyyyyyyyyy" }
-  },
+  // update_api_key_permissions and regenerate_api_key were REMOVED from the
+  // MCP server (see the comment at the end of section 7 in
+  // api/mcp/[[...transport]]/route.ts) — both mutate the tenant's primary
+  // production credential with no human role concept behind an MCP token.
+  // Do not re-add these entries unless the tool is registered again server-side.
 
   // ─── 8. Hosting & Cloud Deployment (SaCMS Cloud Hosting) ───
   {
@@ -607,68 +596,13 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: { ok: true, message: "✅ Proteksi deployment dinonaktifkan." }
   },
 
-  // ─── 9. Multi-Tenant End-Users & Member Auth ───
-  {
-    name: "list_members",
-    title: "List End-User Members",
-    description: "List registered members/end-users for this workspace with filtering by search, role, or status.",
-    inputs: [
-      { name: "page", type: "number", required: false, default: "1", description: "Page number (1-based)" },
-      { name: "pageSize", type: "number", required: false, default: "20", description: "Items per page (max 100)" },
-      { name: "search", type: "string", required: false, description: "Search keyword for email or name" },
-      { name: "role", type: "string", required: false, description: "Filter by member role (e.g. 'member', 'vip', 'subscriber')" },
-      { name: "status", type: "string", required: false, description: "Filter by member status (e.g. 'active', 'suspended')" }
-    ],
-    sampleResponse: {
-      members: [{ id: "mbr_abc", email: "jane@example.com", name: "Jane Doe", role: "member", status: "active" }],
-      pagination: { page: 1, pageSize: 20, total: 1, totalPages: 1 }
-    }
-  },
-  {
-    name: "get_member",
-    title: "Get End-User Member",
-    description: "Get detailed profile, metadata, and active sessions of a specific end-user member by ID or email.",
-    inputs: [
-      { name: "idOrEmail", type: "string", required: true, description: "Member ID (cuid) or email address" }
-    ],
-    sampleResponse: { id: "mbr_abc", email: "jane@example.com", name: "Jane Doe", role: "member", status: "active", sessions: [] }
-  },
-  {
-    name: "create_member",
-    title: "Create End-User Member",
-    description: "Programmatically create a new member/end-user for this workspace with a bcrypt-hashed password.",
-    inputs: [
-      { name: "email", type: "string", required: true, description: "Member email address" },
-      { name: "password", type: "string", required: true, description: "Plaintext password (min 6 chars, hashed with bcrypt before storage)" },
-      { name: "name", type: "string", required: false, description: "Full name of the member" },
-      { name: "role", type: "string", required: false, default: "member", description: "Member role (e.g. 'vip', 'subscriber')" },
-      { name: "metadata", type: "object", required: false, description: "Custom JSON metadata/attributes" }
-    ],
-    sampleResponse: { id: "mbr_new", email: "jane@example.com", role: "member", status: "active" }
-  },
-  {
-    name: "update_member",
-    title: "Update End-User Member",
-    description: "Update an existing member's profile, role, status ('active' | 'suspended' | 'pending_verification'), password, or custom metadata.",
-    inputs: [
-      { name: "idOrEmail", type: "string", required: true, description: "Member ID or email" },
-      { name: "name", type: "string", required: false, description: "Updated full name" },
-      { name: "role", type: "string", required: false, description: "Updated role" },
-      { name: "status", type: "string", required: false, description: "'active' | 'suspended' | 'pending_verification'" },
-      { name: "password", type: "string", required: false, description: "New plaintext password (min 6 chars, re-hashed)" },
-      { name: "metadata", type: "object", required: false, description: "Custom JSON metadata, merged with existing" }
-    ],
-    sampleResponse: { id: "mbr_abc", email: "jane@example.com", status: "suspended" }
-  },
-  {
-    name: "delete_member",
-    title: "Delete End-User Member",
-    description: "Permanently delete an end-user member and invalidate all of their active sessions.",
-    inputs: [
-      { name: "idOrEmail", type: "string", required: true, description: "Member ID or email to delete" }
-    ],
-    sampleResponse: { deleted: true, email: "jane@example.com" }
-  }
+  // Member (end-user) management intentionally has no MCP tools — see the
+  // comment at the very end of api/mcp/[[...transport]]/route.ts. Members
+  // are managed through the dashboard's Users & Permissions section; the
+  // tools that used to live here (list/get/create/update/delete_member)
+  // skipped the dashboard's role/status validation entirely and were
+  // removed rather than patched. Do not re-add this section unless those
+  // tools are registered again server-side.
 ]
 
 interface PlatformConfig {
