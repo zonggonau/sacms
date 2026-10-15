@@ -50,7 +50,6 @@ import {
   Send,
   Plus,
   Image as ImageIcon,
-  KeyRound,
   Lock,
   Copy,
   LogIn,
@@ -58,7 +57,6 @@ import {
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { UsageTab } from "@/components/dashboard/usage-tab"
-import { EnterpriseLicenseBanner } from "@/components/dashboard/enterprise-license-banner"
 import { getContentTypesAction } from "@/actions/content-types"
 
 export default function TenantSettingsPage() {
@@ -667,14 +665,6 @@ export default function TenantSettingsPage() {
               </TabsTrigger>
 
               <TabsTrigger
-                value="license"
-                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
-              >
-                <KeyRound className="h-3.5 w-3.5 mr-1.5" />
-                License
-              </TabsTrigger>
-
-              <TabsTrigger
                 value="danger"
                 className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 data-[state=active]:bg-rose-600 data-[state=active]:text-white data-[state=active]:shadow-xs"
               >
@@ -1227,17 +1217,6 @@ export default function TenantSettingsPage() {
             {/* TAB: USAGE */}
             <TabsContent value="usage" className="space-y-6">
               <UsageTab tenantSlug={tenantSlug} />
-            </TabsContent>
-
-            {/* TAB: LICENSE — real tenant context here (tenantSlug from the
-                URL), so EnterpriseLicenseBanner's activate POST actually
-                resolves a workspace the caller owns. This tab is the fix for
-                there being no discoverable way to activate a workspace's
-                own enterprise license key — a standalone page for this
-                existed at /dashboard/[tenant]/settings/license but nothing
-                in the app ever linked to it. */}
-            <TabsContent value="license" className="space-y-6">
-              <EnterpriseLicenseBanner tenantId={tenantSlug} />
             </TabsContent>
 
             {/* TAB: DANGER ZONE */}

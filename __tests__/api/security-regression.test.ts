@@ -88,20 +88,16 @@ describe("P0-4  /api/admin/users/[userId] DELETE", () => {
 })
 
 // ── P0-5: license/activate requires auth ────────────────────────────────────
-describe("P0-5  /api/tenant/[tenant]/license/activate", () => {
+// The per-workspace activate route (/api/tenant/[tenant]/license/activate)
+// this originally covered was removed — license activation is account-level
+// only now (/api/user/license/activate, unlimited-workspace-creation
+// bypass). Same "no session, no activation" property, migrated to match.
+describe("P0-5  /api/user/license/activate", () => {
   it("rejects an unauthenticated POST", async () => {
     mockSession.mockResolvedValue(null as any)
-    const { POST } = await import("@/app/api/tenant/[tenant]/license/activate/route")
-    const res = await POST(jsonReq({ licenseKey: "x" }, "POST"), ctx({ tenant: "acme" }) as any)
+    const { POST } = await import("@/app/api/user/license/activate/route")
+    const res = await POST(jsonReq({ licenseKey: "x" }, "POST") as any)
     expect(res.status).toBe(401)
-  })
-
-  it("rejects a member who is not an owner", async () => {
-    mockSession.mockResolvedValue({ user: { id: "u", role: "user" } } as any)
-    mockAccess.mockResolvedValue({ tenantId: "t1", role: "editor", userId: "u", tenant: { slug: "acme", name: "Acme" }, isGlobal: false } as any)
-    const { POST } = await import("@/app/api/tenant/[tenant]/license/activate/route")
-    const res = await POST(jsonReq({ licenseKey: "x" }, "POST"), ctx({ tenant: "acme" }) as any)
-    expect(res.status).toBe(403)
   })
 })
 
