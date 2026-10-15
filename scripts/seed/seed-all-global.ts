@@ -225,6 +225,16 @@ const COLLECTION_TYPES = [
       { slug: "price_label", name: "Price Label", type: "text",   required: false, order: 5 },
       { slug: "unit",        name: "Unit",        type: "text",   required: false, order: 6 },
       { slug: "feature_key", name: "Feature Key", type: "text",   required: false, order: 7 },
+      // Fields below support top-up addons (e.g. storage tiers) that need a
+      // checkout alias, a yearly price, and a machine-readable quota amount
+      // in addition to the display fields above.
+      { slug: "plan_slug",     name: "Plan Slug (checkout alias)", type: "text",    required: false, order: 8 },
+      { slug: "yearly_price",  name: "Yearly Price",               type: "number",  required: false, order: 9 },
+      { slug: "is_topup",      name: "Is Top-up",                  type: "boolean", required: false, order: 10 },
+      { slug: "quota_type",    name: "Quota Type",                 type: "text",    required: false, order: 11 },
+      { slug: "amount_units",  name: "Amount Units (bytes)",       type: "number",  required: false, order: 12 },
+      { slug: "billing_period",name: "Billing Period",             type: "text",    required: false, order: 13 },
+      { slug: "features",     name: "Features",                   type: "json",    required: false, order: 14 },
     ],
   },
   {
@@ -244,6 +254,34 @@ const COLLECTION_TYPES = [
 // ──────────────────────────────────────────────────────────
 // SEED DATA
 // ──────────────────────────────────────────────────────────
+
+// Storage top-up tiers — previously only seeded by the standalone
+// scripts/seed/seed-storage-addons.ts, which the "Seed Data" button never
+// ran. Folded in here so one click provisions these too. Pricing/sizes are
+// the same ones already established there — not re-decided here.
+const GB = 1024 * 1024 * 1024
+const STORAGE_ADDON_TIERS = [
+  { sizeLabel: "5 GB", gb: 5, price: 199_000 },
+  { sizeLabel: "10 GB", gb: 10, price: 349_000 },
+  { sizeLabel: "20 GB", gb: 20, price: 599_000 },
+  { sizeLabel: "50 GB", gb: 50, price: 1_299_000 },
+  { sizeLabel: "100 GB", gb: 100, price: 2_199_000 },
+  { sizeLabel: "1 TB", gb: 1024, price: 14_999_000 },
+].map((tier) => ({
+  addon_slug: `storage_${tier.gb >= 1024 ? "1tb" : `${tier.gb}gb`}_1y`,
+  plan_slug: `storage_${tier.gb >= 1024 ? "1tb" : `${tier.gb}gb`}_1y`,
+  name: `Storage +${tier.sizeLabel} / Tahun`,
+  description: `+${tier.sizeLabel} kapasitas storage workspace, berlaku 1 tahun sejak aktif.`,
+  icon: "HardDrive",
+  price: tier.price,
+  yearly_price: tier.price,
+  unit: "once",
+  is_topup: true,
+  quota_type: "storage",
+  amount_units: tier.gb * GB,
+  billing_period: "year",
+  features: [`+${tier.sizeLabel} Storage`, "Berlaku 1 Tahun", "Aktif Langsung Setelah Bayar", "Bisa Diperpanjang Kapan Saja"],
+}))
 
 const SEED_DATA: Record<string, any> = {
   // ───── LANDING PAGE (Single Type with Components) ─────
@@ -607,7 +645,8 @@ const SEED_DATA: Record<string, any> = {
   // ───── ADDONS (Collection) ─────
   "sacms-addons": [
     { name: "AI Writer", addon_slug: "ai_writer", feature_key: "ai", price_label: "Included in Pro", description: "Generate content effortlessly.", icon: "Sparkles" },
-    { name: "Advanced Audit", addon_slug: "adv_audit", feature_key: "audit", price_label: "Enterprise Only", description: "Keep track of every action.", icon: "ShieldCheck" }
+    { name: "Advanced Audit", addon_slug: "adv_audit", feature_key: "audit", price_label: "Enterprise Only", description: "Keep track of every action.", icon: "ShieldCheck" },
+    ...STORAGE_ADDON_TIERS,
   ],
 
   // ───── POSTS (Collection) ─────
