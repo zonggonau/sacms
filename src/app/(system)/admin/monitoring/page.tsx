@@ -76,18 +76,20 @@ interface ContaboInstance {
   availableUpgrades: { productId: string; name: string; additionalPrice?: { price: number; currency: string } }[]
 }
 
-type PendingVpsAction = { instanceId: number; action: "start" | "restart" | "shutdown" } | null
+type PendingVpsAction = { instanceId: number; action: "start" | "restart" | "shutdown" | "enable-backup" } | null
 
 const VPS_ACTION_LABEL: Record<string, string> = {
   start: "Nyalakan",
   restart: "Restart",
   shutdown: "Shutdown (Graceful)",
+  "enable-backup": "Aktifkan Backup",
 }
 
 const VPS_ACTION_WARNING: Record<string, string> = {
   start: "Server akan dinyalakan. Tidak ada downtime tambahan jika server memang sedang mati.",
   restart: "Server produksi akan di-restart sekarang. Semua koneksi aktif (termasuk request yang sedang berjalan) akan terputus selama proses reboot (biasanya 30-90 detik).",
   shutdown: "Server produksi akan dimatikan secara graceful (ACPI shutdown). SaCMS Cloud akan DOWN total sampai Anda menyalakannya kembali secara manual dari halaman ini atau panel Contabo.",
+  "enable-backup": "Ini mengaktifkan add-on Automated Backup berbayar dari Contabo untuk instance ini — akan muncul sebagai biaya tambahan di billing Contabo Anda. Tindakan ini tidak bisa dibatalkan dari halaman ini.",
 }
 
 export default function AdminMonitoringPage() {
@@ -109,7 +111,6 @@ export default function AdminMonitoringPage() {
   const [vpsLoading, setVpsLoading] = useState(true)
   const [pendingVpsAction, setPendingVpsAction] = useState<PendingVpsAction>(null)
   const [runningVpsAction, setRunningVpsAction] = useState(false)
-  const [enablingBackupFor, setEnablingBackupFor] = useState<number | null>(null)
   
   // Filter States
   const [searchQuery, setSearchQuery] = useState("")
@@ -165,15 +166,17 @@ export default function AdminMonitoringPage() {
     }
   }, [page, debouncedSearch, statusFilter, methodFilter])
 
+  const isSuperAdmin = session?.user?.role === "super_admin"
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin") {
+    if (isSuperAdmin) {
       fetchData()
     }
-  }, [session, fetchData])
+  }, [isSuperAdmin, fetchData])
 
   // Auto-refresh logic
   useEffect(() => {
@@ -202,10 +205,10 @@ export default function AdminMonitoringPage() {
   }, [])
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin") {
+    if (isSuperAdmin) {
       fetchVpsData()
     }
-  }, [session, fetchVpsData])
+  }, [isSuperAdmin, fetchVpsData])
 
   const handleRunVpsAction = async () => {
     if (!pendingVpsAction) return
@@ -218,31 +221,18 @@ export default function AdminMonitoringPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Aksi gagal dijalankan")
-      toast({ title: "Perintah Terkirim", description: `${VPS_ACTION_LABEL[pendingVpsAction.action]} sedang diproses oleh Contabo.` })
+      toast({
+        title: pendingVpsAction.action === "enable-backup" ? "Add-on Backup Diaktifkan" : "Perintah Terkirim",
+        description: pendingVpsAction.action === "enable-backup"
+          ? "Automated Backup sedang diaktifkan oleh Contabo untuk instance ini."
+          : `${VPS_ACTION_LABEL[pendingVpsAction.action]} sedang diproses oleh Contabo.`,
+      })
       setPendingVpsAction(null)
       setTimeout(fetchVpsData, 3000)
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal", description: err.message || "Terjadi kesalahan" })
     } finally {
       setRunningVpsAction(false)
-    }
-  }
-
-  const handleEnableBackup = async (instanceId: number) => {
-    setEnablingBackupFor(instanceId)
-    try {
-      const res = await fetch(`/api/admin/infrastructure/vps/${instanceId}/actions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "enable-backup" }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Gagal mengaktifkan add-on")
-      toast({ title: "Add-on Backup Diaktifkan", description: "Automated Backup sedang diaktifkan oleh Contabo untuk instance ini." })
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal", description: err.message || "Terjadi kesalahan" })
-    } finally {
-      setEnablingBackupFor(null)
     }
   }
 
@@ -253,7 +243,27 @@ export default function AdminMonitoringPage() {
     return <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border" variant="outline">{code}</Badge>
   }
 
-  if (status === "loading" || loading) {
+  if (status === "loading") {
+    return (
+      <div className="flex flex-1 flex-col w-full">
+        <AdminPageSkeleton layout="table" cardsCount={4} />
+      </div>
+    )
+  }
+
+  // fetchData/fetchVpsData above only run for super_admin — without this,
+  // any other admin-portal role that reaches this page (the shared layout
+  // admits admin/employee/karyawan) was stuck on the skeleton forever since
+  // `loading` never flips false.
+  if (!isSuperAdmin) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-12 text-center text-muted-foreground">
+        <p>Akses dibatasi khusus untuk Super Administrator.</p>
+      </div>
+    )
+  }
+
+  if (loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
         <AdminPageSkeleton layout="table" cardsCount={4} />
@@ -435,11 +445,10 @@ export default function AdminMonitoringPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={enablingBackupFor === instance.instanceId}
-                        onClick={() => handleEnableBackup(instance.instanceId)}
+                        onClick={() => setPendingVpsAction({ instanceId: instance.instanceId, action: "enable-backup" })}
                         className="h-8 rounded-lg text-[11px] font-bold"
                       >
-                        {enablingBackupFor === instance.instanceId ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <HardDrive className="h-3 w-3 mr-1" />}
+                        <HardDrive className="h-3 w-3 mr-1" />
                         Aktifkan Backup
                       </Button>
                       <a href="https://my.contabo.com/account/billing" target="_blank" rel="noopener noreferrer">
@@ -662,7 +671,11 @@ export default function AdminMonitoringPage() {
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
-                  {pendingVpsAction ? `${VPS_ACTION_LABEL[pendingVpsAction.action]} Server Produksi?` : ""}
+                  {pendingVpsAction
+                    ? pendingVpsAction.action === "enable-backup"
+                      ? `${VPS_ACTION_LABEL[pendingVpsAction.action]}?`
+                      : `${VPS_ACTION_LABEL[pendingVpsAction.action]} Server Produksi?`
+                    : ""}
                 </AlertDialogTitle>
                 <AlertDialogDescription className="text-xs leading-relaxed text-muted-foreground">
                   {pendingVpsAction ? VPS_ACTION_WARNING[pendingVpsAction.action] : ""}

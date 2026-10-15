@@ -38,6 +38,9 @@ interface NavItem {
   icon: React.ElementType
   badge?: string
   exact?: boolean
+  /** API behind this page is super_admin-only with no allowRoles override —
+   *  hide it from a plain admin instead of linking to a page that 403s/hangs. */
+  superAdminOnly?: boolean
 }
 
 interface NavSection {
@@ -72,8 +75,8 @@ const adminNavSections: NavSection[] = [
   {
     label: "SYSTEM & AUDIT",
     items: [
-      { title: "Monitoring", href: "/admin/monitoring", icon: Activity },
-      { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList },
+      { title: "Monitoring", href: "/admin/monitoring", icon: Activity, superAdminOnly: true },
+      { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList, superAdminOnly: true },
       { title: "Platform Settings", href: "/admin/settings", icon: Settings },
     ],
   },
@@ -158,7 +161,18 @@ export function GlobalAdminSidebar() {
       })
     }))
 
-    if (!role || role === "super_admin" || role === "admin" || (permittedPaths && permittedPaths.includes("*"))) return sectionsWithBadges
+    if (!role || role === "super_admin" || (permittedPaths && permittedPaths.includes("*"))) return sectionsWithBadges
+
+    if (role === "admin") {
+      // Monitoring and Audit Logs 403/hang for a plain admin (their backing
+      // APIs are super_admin-only) — drop them instead of linking to a dead end.
+      return sectionsWithBadges
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !item.superAdminOnly),
+        }))
+        .filter((section) => section.items.length > 0)
+    }
 
     if (!permittedPaths) return [] // Loading state
 

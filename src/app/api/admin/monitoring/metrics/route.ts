@@ -8,16 +8,13 @@ import { withAdminAuth } from "@/lib/api/route-helpers"
 // Real, live-checked component health — replaces a previous hardcoded
 // "always HEALTHY" panel that never reflected actual system state.
 async function checkComponentHealth() {
-  const [apiGateway, database, midtrans, webhookWorker] = await Promise.all([
-    (async () => {
-      const start = Date.now()
-      try {
-        await db.$queryRaw`SELECT 1`
-        return { name: "API Gateway", status: "HEALTHY" as const, detail: `${Date.now() - start}ms` }
-      } catch {
-        return { name: "API Gateway", status: "DOWN" as const, detail: "Unreachable" }
-      }
-    })(),
+  // A standalone "API Gateway" entry used to run the exact same `SELECT 1`
+  // as "Database Cluster" below — since this code only runs if this very
+  // request already reached the gateway, that check could never report
+  // anything but HEALTHY, giving false assurance independent of real DB
+  // state. There's no separate gateway layer to probe from in-process code,
+  // so it's dropped rather than faked.
+  const [database, midtrans, webhookWorker] = await Promise.all([
     (async () => {
       const start = Date.now()
       try {
@@ -47,7 +44,7 @@ async function checkComponentHealth() {
       }
     })(),
   ])
-  return [apiGateway, database, midtrans, webhookWorker]
+  return [database, midtrans, webhookWorker]
 }
 
 // GET /api/admin/monitoring/metrics - Get system metrics
