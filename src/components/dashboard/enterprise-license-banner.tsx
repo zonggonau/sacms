@@ -37,7 +37,20 @@ interface EnterpriseLicenseInfo {
 import { useParams } from "next/navigation"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 
-export function EnterpriseLicenseBanner({ tenantId, hideActivation = false }: { tenantId?: string, hideActivation?: boolean }) {
+export function EnterpriseLicenseBanner({
+  tenantId,
+  hideActivation = false,
+  hideActivateButton = false,
+}: {
+  tenantId?: string
+  /** Hides the whole "no license" card (status text included) — use only where showing an
+   *  enterprise-license notice at all makes no sense in that context. */
+  hideActivation?: boolean
+  /** Keeps the "no license" card (status text + "Hubungi Admin") but drops just the
+   *  "Aktivasi Key" button/form. Use where no real tenant is in context — the button's POST
+   *  needs a tenant the caller is a member of, which doesn't exist here. */
+  hideActivateButton?: boolean
+}) {
   const params = useParams() as { tenant?: string }
   const { toast } = useToast()
   const [license, setLicense] = useState<EnterpriseLicenseInfo | null>(null)
@@ -133,20 +146,22 @@ export function EnterpriseLicenseBanner({ tenantId, hideActivation = false }: { 
                   Hubungi Admin
                 </Button>
               </a>
-              {!showActivate ? (
-                <Button variant="default" size="sm" onClick={() => setShowActivate(true)} className="h-8 text-xs font-semibold rounded-xl bg-primary text-primary-foreground">
-                  <KeyRound className="w-3 h-3 mr-1.5" />
-                  Aktivasi Key
-                </Button>
-              ) : (
-                <Button variant="ghost" size="sm" onClick={() => setShowActivate(false)} className="h-8 text-xs font-semibold rounded-xl">
-                  Batal
-                </Button>
+              {!hideActivateButton && (
+                !showActivate ? (
+                  <Button variant="default" size="sm" onClick={() => setShowActivate(true)} className="h-8 text-xs font-semibold rounded-xl bg-primary text-primary-foreground">
+                    <KeyRound className="w-3 h-3 mr-1.5" />
+                    Aktivasi Key
+                  </Button>
+                ) : (
+                  <Button variant="ghost" size="sm" onClick={() => setShowActivate(false)} className="h-8 text-xs font-semibold rounded-xl">
+                    Batal
+                  </Button>
+                )
               )}
             </div>
           </div>
-          
-          {showActivate && (
+
+          {!hideActivateButton && showActivate && (
             <form onSubmit={handleActivate} className="mt-4 pt-4 border-t border-border/80 space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Serial Key Lisensi Enterprise</label>

@@ -372,12 +372,14 @@ export default function BillingClient({
           {/* ── 1. ENTERPRISE LICENSE ──
               No tenantId passed: this page isn't scoped to one workspace, so
               the banner falls back to its own getGlobalWorkspaceIdAction()
-              resolution (see enterprise-license-banner.tsx) — it only ever
-              shows the INSTANCE-wide license status here, same as
-              workspace-manager.tsx's usage. hideActivation MUST stay true:
-              the "Aktivasi Key" form POSTs to
+              resolution (see enterprise-license-banner.tsx) — it shows the
+              INSTANCE-wide license status here. hideActivation stays false
+              so the "Mode Standar / Hubungi Admin" card is still visible to
+              every workspace user (that's the whole point of showing this
+              section at all) — but hideActivateButton is true, because the
+              "Aktivasi Key" form would POST to
               /api/tenant/<globalTenantId>/license/activate, which requires
-              the caller to be a TenantMember of that tenant — but the global
+              the caller to be a TenantMember of that tenant. The global
               tenant deliberately has no real members (it's a hidden,
               content-only construct, see src/app/api/tenants/route.ts's
               listing exclusion), so that POST 403s "You are not a member of
@@ -388,7 +390,7 @@ export default function BillingClient({
           <div>
             <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
             {session?.user?.id && (
-              <EnterpriseLicenseBanner hideActivation={true} />
+              <EnterpriseLicenseBanner hideActivateButton={true} />
             )}
           </div>
 
