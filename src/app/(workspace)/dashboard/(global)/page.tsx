@@ -211,7 +211,7 @@ export default async function WorkspaceSelectionPage() {
         {
           id: "enterprise-standalone",
           name: "Standalone Database",
-          desc: "Diisolasi pada instance PostgreSQL terpisah untuk performa dan keamanan maksimal.",
+          desc: "Diisolasi pada instance database terpisah untuk performa dan keamanan maksimal.",
           priceAmount: 0,
           yearlyPrice: 0,
           features: ["Dedicated DB", "High Performance", "Data Isolation"]

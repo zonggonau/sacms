@@ -232,7 +232,7 @@ export function HostingDeploymentsView({
           setVercelDeployment({
             url: formattedUrl,
             subdomain: host,
-            projectId: activeProjectId || "kabnabire",
+            projectId: activeProjectId || "my-project",
             customDomain: activeCustomDomain,
             status: "READY",
           })
@@ -631,7 +631,7 @@ export function HostingDeploymentsView({
                       <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
                         <div className="text-[11px] text-muted-foreground font-medium">Project Name & ID:</div>
                         <div className="font-mono font-bold text-foreground mt-0.5 truncate">
-                          {vercelDeployment.projectId || "kabnabire"}
+                          {vercelDeployment.projectId || "my-project"}
                         </div>
                       </div>
 
@@ -662,7 +662,7 @@ export function HostingDeploymentsView({
                       <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
                         <div className="text-[11px] text-muted-foreground font-medium">Framework & Engine:</div>
                         <div className="font-bold text-foreground mt-0.5 flex items-center gap-1.5">
-                          <Zap className="h-3.5 w-3.5 text-amber-500" /> Next.js 16 (Turbopack)
+                          <Zap className="h-3.5 w-3.5 text-amber-500" /> SaCMS Deployment Engine
                         </div>
                       </div>
 
@@ -1459,7 +1459,7 @@ export function HostingDeploymentsView({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold">URL Deployment Live *</Label>
                   <Input
-                    placeholder="https://kabnabire-prod.example.com"
+                    placeholder="https://my-project-prod.example.com"
                     value={linkUrlInput}
                     onChange={(e) => setLinkUrlInput(e.target.value)}
                     className="font-mono text-xs rounded-xl h-10"
@@ -1471,7 +1471,7 @@ export function HostingDeploymentsView({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold">Project ID / Name (Opsional)</Label>
                   <Input
-                    placeholder="kabnabire"
+                    placeholder="my-project"
                     value={linkProjectIdInput}
                     onChange={(e) => setLinkProjectIdInput(e.target.value)}
                     className="font-mono text-xs rounded-xl h-10"

@@ -28,7 +28,7 @@ function VerifyEmailInner() {
 
     if (!code || !tenant) {
       setState("error")
-      setMessage("This link is missing its confirmation code.")
+      setMessage("Tautan ini tidak memiliki kode konfirmasi.")
       return
     }
 
@@ -41,15 +41,15 @@ function VerifyEmailInner() {
         const data = await res.json().catch(() => ({}))
         if (res.ok) {
           setState("done")
-          setMessage("Your email address is confirmed. You can close this tab and sign in.")
+          setMessage("Alamat email Anda telah dikonfirmasi. Anda bisa menutup tab ini dan masuk kembali.")
         } else {
           setState("error")
-          setMessage(data.error || "This confirmation link is invalid or has expired.")
+          setMessage(data.error || "Tautan konfirmasi ini tidak valid atau sudah kedaluwarsa.")
         }
       })
       .catch(() => {
         setState("error")
-        setMessage("Could not reach the server. Please try again in a moment.")
+        setMessage("Tidak dapat menghubungi server. Silakan coba lagi sesaat lagi.")
       })
   }, [code, tenant])
 
@@ -62,20 +62,20 @@ function VerifyEmailInner() {
         {state === "working" && (
           <>
             <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Confirming your email address…</p>
+            <p className="text-sm text-muted-foreground">Mengonfirmasi alamat email Anda…</p>
           </>
         )}
         {state === "done" && (
           <>
             <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
-            <h1 className="text-lg font-black tracking-tight text-foreground">Email confirmed</h1>
+            <h1 className="text-lg font-black tracking-tight text-foreground">Email terkonfirmasi</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
           </>
         )}
         {state === "error" && (
           <>
             <XCircle className="mx-auto h-10 w-10 text-destructive" />
-            <h1 className="text-lg font-black tracking-tight text-foreground">Confirmation failed</h1>
+            <h1 className="text-lg font-black tracking-tight text-foreground">Konfirmasi gagal</h1>
             <p className="text-sm text-muted-foreground">{message}</p>
           </>
         )}

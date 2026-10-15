@@ -280,7 +280,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                 <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipe Database</span>
                   <p className="text-xs font-bold text-foreground">
-                    {hasDedicated ? "PostgreSQL 17 Terisolasi" : "PostgreSQL 17 Bersama"}
+                    {hasDedicated ? "Database Terisolasi" : "Database Bersama"}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
                     {hasDedicated ? "Dedicated Tenant Engine" : "Shared Multi-Tenant Engine"}

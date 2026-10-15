@@ -49,6 +49,8 @@ export async function generateMetadata({ params }: BlogDetailPageProps): Promise
   if (!post) {
     return {
       title: "Artikel Tidak Ditemukan — SaCMS",
+      description: "Artikel yang Anda cari tidak ditemukan atau sudah dipindahkan.",
+      robots: { index: false, follow: true },
     }
   }
 
@@ -64,8 +66,7 @@ export async function generateMetadata({ params }: BlogDetailPageProps): Promise
       post.category || "Headless CMS",
       "SaCMS Blog",
       "Smart Content Management System",
-      "Next.js 16",
-      "PostgreSQL 17",
+      "Headless CMS Architecture",
       "API Architecture"
     ],
     alternates: {

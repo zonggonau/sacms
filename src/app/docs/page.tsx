@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     "MCP Server",
     "Dynamic GraphQL",
     "REST API Strapi Alternative",
-    "Next.js 16 App Router CMS",
+    "Headless CMS REST & GraphQL API",
     "Multi-Tenant API"
   ],
   alternates: {

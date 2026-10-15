@@ -123,11 +123,11 @@ export default async function Image() {
           }}
         >
           {[
-            "PostgreSQL 17 Appliance",
-            "Dynamic GraphQL & MCP",
+            "Dedicated Database",
+            "GraphQL & AI Integration",
             "1-Prompt AI Engine",
-            "SaCMS Custom DNS",
-            "Midtrans Billing",
+            "Custom Domain",
+            "Automated Billing",
           ].map((pill, i) => (
             <div
               key={i}

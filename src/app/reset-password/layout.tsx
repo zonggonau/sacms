@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 export const metadata: Metadata = {
   title: "Atur Ulang Kata Sandi — SaCMS",
   description: "Masukkan kata sandi baru untuk mengamankan kembali akun SaCMS Anda.",
+  robots: { index: false, follow: true },
 }
 
 export default function ResetPasswordLayout({

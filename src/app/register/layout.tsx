@@ -2,7 +2,8 @@ import type { Metadata } from "next"
 
 export const metadata: Metadata = {
   title: "Daftar Akun Baru — SaCMS",
-  description: "Buat akun SaCMS gratis dan mulai kelola konten Anda dengan Headless CMS modern berbasis Next.js 16.",
+  description: "Buat akun SaCMS gratis dan mulai kelola konten Anda dengan Headless CMS modern.",
+  robots: { index: false, follow: true },
 }
 
 export default function RegisterLayout({

@@ -12,7 +12,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const blogUrl = `${siteUrl}/blog`
   const title = "Blog & Wawasan Arsitektur Headless CMS — SaCMS"
   const description =
-    "Eksplorasi wawasan teknis, arsitektur hybrid multi-tenancy, tutorial Next.js 16 App Router, Dynamic GraphQL, dan strategi optimasi sistem Headless CMS bersama SaCMS."
+    "Eksplorasi wawasan teknis, arsitektur hybrid multi-tenancy, tutorial pengembangan modern, Dynamic GraphQL, dan strategi optimasi sistem Headless CMS bersama SaCMS."
 
   return {
     title,
@@ -20,10 +20,10 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: [
       "SaCMS Blog",
       "Headless CMS Architecture",
-      "Multi-Tenant PostgreSQL 17",
-      "Next.js 16 Tutorial",
+      "Multi-Tenant Headless CMS",
+      "Web Development Tutorial",
       "Dynamic GraphQL",
-      "Upstash Redis Edge Cache",
+      "Edge Caching",
       "Model Context Protocol",
       "Web Engineering Insights"
     ],

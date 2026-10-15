@@ -35,7 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     key: "database",
     label: "Database & Storage",
-    description: "PostgreSQL & Object Storage MinIO/S3",
+    description: "Database terisolasi & Object Storage",
     icon: Database,
   },
   {
@@ -82,7 +82,7 @@ function InfrastructureShell() {
   const [telemetry, setTelemetry] = useState({
     hostingStatus: "Live di SaCMS Cloud",
     domainsCount: 1,
-    databaseType: "PostgreSQL 17",
+    databaseType: "Database Terisolasi",
     envCount: 0,
   })
 
@@ -100,7 +100,7 @@ function InfrastructureShell() {
         setTelemetry({
           hostingStatus: infraData?.deployment?.url ? "Live di SaCMS Cloud" : "Siap Dideploy",
           domainsCount: infraData?.domains?.length || 1,
-          databaseType: hasDb ? "Dedicated / BYODB" : "Shared PostgreSQL 17",
+          databaseType: hasDb ? "Dedicated / BYODB" : "Database Bersama (Shared)",
           envCount: envKeys,
         })
       })

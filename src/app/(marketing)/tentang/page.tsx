@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Tentang SaCMS — Visi, Misi & Tim Pengembang"
   const description =
-    "Pelajari perjalanan SaCMS: Smart Headless CMS multi-tenant pertama yang menggabungkan Next.js 16, PostgreSQL 17, AI Builder, dan isolasi tenant enterprise di Indonesia."
+    "Pelajari perjalanan SaCMS: Smart Headless CMS multi-tenant pertama dengan AI Builder dan isolasi tenant enterprise, dibangun dari Indonesia untuk tim modern di seluruh dunia."
 
   return {
     title: { absolute: title },
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "Headless CMS Indonesia",
       "Tim Pengembang SaCMS",
       "Visi Misi SaCMS",
-      "Next.js CMS Multi-Tenant",
+      "Headless CMS Multi-Tenant",
     ],
     alternates: {
       canonical: `${siteUrl}/tentang`,
@@ -37,6 +37,11 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "SaCMS — Smart Content Management System",
       locale: "id_ID",
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
     },
   }
 }

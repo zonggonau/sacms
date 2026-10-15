@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Paket & Harga SaCMS — Transparan & Terukur untuk Semua Skala"
   const description =
-    "Daftar paket harga SaCMS: Free Starter, Pro Workspace, Dedicated Database Appliance, dan Enterprise License. Pembayaran otomatis QRIS, Bank Transfer via Midtrans."
+    "Daftar paket harga SaCMS: Free Starter, Pro Workspace, Dedicated Database Workspace, dan Enterprise License. Pembayaran otomatis QRIS, Bank Transfer via Midtrans."
 
   return {
     title: { absolute: title },
@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "Harga SaCMS",
       "Paket Headless CMS",
       "SaaS CMS Pricing Indonesia",
-      "Dedicated PostgreSQL Hosting",
+      "Dedicated Database Hosting",
       "Midtrans Billing Headless CMS",
     ],
     alternates: {
@@ -37,6 +37,11 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "SaCMS — Smart Content Management System",
       locale: "id_ID",
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
     },
   }
 }
@@ -69,7 +74,7 @@ export default async function HargaPage() {
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-              Mulai gratis untuk eksperimen dan eksplorasi, lalu upgrade ke dedicated database appliance dan kuota AI tak terbatas saat traffic Anda berkembang.
+              Mulai gratis untuk eksperimen dan eksplorasi, lalu upgrade ke dedicated database dan kuota AI tak terbatas saat traffic Anda berkembang.
             </p>
 
             <div className="pt-3 flex flex-wrap items-center justify-center gap-3">

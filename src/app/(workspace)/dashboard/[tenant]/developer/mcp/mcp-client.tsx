@@ -1045,12 +1045,12 @@ export function MCPDashboardClient({
                       <Image className="h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-foreground">Media & MinIO Management MCP Tool</h3>
+                      <h3 className="text-sm font-bold text-foreground">Media Management MCP Tool</h3>
                       <p className="text-[11px] text-muted-foreground">Upload gambar via URL langsung dari prompt AI agent.</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    AI agent mengunggah gambar ke MinIO, menghasilkan thumbnail, dan mengaitkannya ke field entri.
+                    AI agent mengunggah gambar ke storage, menghasilkan thumbnail, dan mengaitkannya ke field entri.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     <code className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded text-foreground font-bold">upload_media_by_url</code>

@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Fitur Lengkap SaCMS — Arsitektur Headless CMS Multi-Tenant Modern"
   const description =
-    "Eksplorasi fitur komprehensif SaCMS: Dedicated PostgreSQL 17, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, Multi-Reviewer Workflow, dan Midtrans Snap Billing."
+    "Eksplorasi fitur komprehensif SaCMS: database terisolasi per workspace, integrasi AI Assistant dari IDE, custom domain untuk brand Anda, GraphQL API fleksibel, Multi-Reviewer Workflow, dan billing otomatis."
 
   return {
     title: { absolute: title },
@@ -24,10 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: [
       "Fitur SaCMS",
       "Headless CMS Multi-Tenant",
-      "PostgreSQL 17 Native",
+      "Dedicated Database Hosting",
       "AI Schema Generator",
-      "Dynamic GraphQL Next.js",
-      "SaCMS Custom DNS",
+      "Dynamic GraphQL API",
+      "Custom Domain CMS",
     ],
     alternates: {
       canonical: `${siteUrl}/fitur`,
@@ -39,6 +39,11 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: "SaCMS — Smart Content Management System",
       locale: "id_ID",
       type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
     },
   }
 }
@@ -66,11 +71,11 @@ export default async function FiturPage() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
-              Fitur Lengkap untuk Skala Modern
+              Semua yang Tim Konten &amp; Developer Butuhkan
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-              Arsitektur Headless CMS komprehensif yang dirancang untuk performa tinggi, isolasi data enterprise, otomasi deployment, dan efisiensi tim konten.
+              Dari workflow multi-reviewer dan kontrol akses granular per tim, hingga integrasi AI assistant dan custom domain untuk brand Anda sendiri — semua dalam satu platform.
             </p>
 
             <div className="pt-3 flex flex-wrap items-center justify-center gap-3">

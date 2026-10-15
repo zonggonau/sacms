@@ -548,7 +548,7 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "files", type: "array", required: true, description: "Array of { name: filePath, content: sourceCode } to deploy" },
       { name: "envVars", type: "object", required: false, description: "Extra env vars merged on top of the workspace's saved Environment vars" }
     ],
-    sampleResponse: { id: "dpl_abc123", url: "https://my-awesome-site.vercel.app", state: "READY", projectName: "my-awesome-site" }
+    sampleResponse: { id: "dpl_abc123", url: "https://my-awesome-site.sacms.app", state: "READY", projectName: "my-awesome-site" }
   },
   {
     name: "get_deployment_status",
@@ -557,7 +557,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "deploymentId", type: "string", required: true, description: "Deployment ID (e.g. 'dpl_xxx')" }
     ],
-    sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-awesome-site.vercel.app", isReady: true }
+    sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-awesome-site.sacms.app", isReady: true }
   },
   {
     name: "configure_deployment_domain",
@@ -570,7 +570,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: {
       domain: "mysite.com",
       verified: false,
-      dnsConfig: { cnameTarget: "cname.vercel-dns.com", aRecordTarget: "76.76.21.21", configured: false },
+      dnsConfig: { cnameTarget: "cname.sacms.cloud", aRecordTarget: "164.68.116.79", configured: false },
       message: "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
     }
   },

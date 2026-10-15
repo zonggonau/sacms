@@ -117,7 +117,7 @@ export default function SystemJobsPage() {
         name: "Full-text search vector update",
         type: "search_index",
         status: "completed",
-        details: "PostgreSQL trigger auto-updates on INSERT/UPDATE",
+        details: "Auto-updates search index on content changes",
         lastRun: new Date().toISOString(),
       })
 
@@ -127,7 +127,7 @@ export default function SystemJobsPage() {
         name: "Thumbnail generation",
         type: "media_processing",
         status: "completed",
-        details: "Sharp generates 150px, 300px, 600px thumbnails on upload",
+        details: "Generates multiple thumbnail sizes on upload",
         lastRun: new Date().toISOString(),
       })
 

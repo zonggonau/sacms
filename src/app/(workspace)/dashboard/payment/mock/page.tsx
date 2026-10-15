@@ -73,9 +73,9 @@ function MockCheckoutContent() {
           <FlaskConical className="h-4 w-4" />
           Mode Pengembangan — Simulasi Pembayaran
         </div>
-        <CardTitle>Checkout Mock Midtrans</CardTitle>
+        <CardTitle>Simulasi Pembayaran</CardTitle>
         <CardDescription>
-          Tidak ada <code>MIDTRANS_SERVER_KEY</code> dikonfigurasi — pembayaran disimulasikan. Tidak muncul di production dengan kredensial valid.
+          Konfigurasi gateway pembayaran belum lengkap — pembayaran disimulasikan untuk keperluan pengembangan. Tidak muncul di production dengan kredensial valid.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

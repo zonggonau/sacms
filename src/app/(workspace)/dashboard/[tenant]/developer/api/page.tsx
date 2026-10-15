@@ -820,8 +820,8 @@ function ApiExplorerContent() {
                     <TabsContent value="pagination" className="space-y-2 pt-2">
                       {[
                         { title: "Pagination Halaman", code: "page=1&pageSize=25", desc: "Membatasi hasil ke halaman 1 dengan 25 item (maks: 100)" },
-                        { title: "Pagination Format Strapi", code: "pagination[page]=1&pagination[pageSize]=25", desc: "Format standar Strapi" },
-                        { title: "Full-Text Search (FTS)", code: "search=kata_kunci", desc: "Pencarian cepat di semua teks terindeks PostgreSQL" },
+                        { title: "Pagination Format Terstruktur", code: "pagination[page]=1&pagination[pageSize]=25", desc: "Format nested, kompatibel dengan ekosistem headless CMS populer" },
+                        { title: "Full-Text Search (FTS)", code: "search=kata_kunci", desc: "Pencarian full-text cepat di seluruh konten" },
                       ].map((item, idx) => (
                         <div
                           key={idx}

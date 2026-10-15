@@ -31,15 +31,15 @@ function ResetInner() {
   async function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!code || !tenant) {
-      toast.error("This link is missing its reset code.")
+      toast.error("Tautan ini tidak memiliki kode reset.")
       return
     }
     if (password.length < 8) {
-      toast.error("Password must be at least 8 characters.")
+      toast.error("Kata sandi minimal 8 karakter.")
       return
     }
     if (password !== confirm) {
-      toast.error("Passwords do not match.")
+      toast.error("Kata sandi tidak cocok.")
       return
     }
     setLoading(true)
@@ -53,10 +53,10 @@ function ResetInner() {
       if (res.ok) {
         setDone(true)
       } else {
-        toast.error(data.error || "This reset link is invalid or has expired.")
+        toast.error(data.error || "Tautan reset ini tidak valid atau sudah kedaluwarsa.")
       }
     } catch {
-      toast.error("Could not reach the server. Please try again.")
+      toast.error("Tidak dapat menghubungi server. Silakan coba lagi.")
     } finally {
       setLoading(false)
     }
@@ -72,19 +72,19 @@ function ResetInner() {
         {done ? (
           <div className="text-center space-y-3">
             <CheckCircle2 className="mx-auto h-10 w-10 text-primary" />
-            <h1 className="text-lg font-black tracking-tight text-foreground">Password updated</h1>
+            <h1 className="text-lg font-black tracking-tight text-foreground">Kata sandi berhasil diperbarui</h1>
             <p className="text-sm text-muted-foreground">
-              Your password has been changed. You can close this tab and sign in.
+              Kata sandi Anda telah diubah. Anda bisa menutup tab ini dan masuk kembali.
             </p>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div className="space-y-1 text-center">
-              <h1 className="text-lg font-black tracking-tight text-foreground">Choose a new password</h1>
-              <p className="text-sm text-muted-foreground">Enter a new password for your account.</p>
+              <h1 className="text-lg font-black tracking-tight text-foreground">Pilih kata sandi baru</h1>
+              <p className="text-sm text-muted-foreground">Masukkan kata sandi baru untuk akun Anda.</p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="password">New password</Label>
+              <Label htmlFor="password">Kata sandi baru</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -98,14 +98,14 @@ function ResetInner() {
                   type="button"
                   onClick={() => setShow((s) => !s)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  aria-label={show ? "Hide password" : "Show password"}
+                  aria-label={show ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                 >
                   {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="confirm">Confirm password</Label>
+              <Label htmlFor="confirm">Konfirmasi kata sandi</Label>
               <Input
                 id="confirm"
                 type={show ? "text" : "password"}
@@ -117,7 +117,7 @@ function ResetInner() {
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update password
+              Perbarui kata sandi
             </Button>
           </form>
         )}

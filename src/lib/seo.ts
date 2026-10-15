@@ -16,22 +16,21 @@ export const SEO_CONFIG = {
   brandDetail: "Smart Content Management System",
   slogan: "Build smarter. Manage easier. Scale faster.",
   defaultTitle: "SaCMS — Smart Content Management System | Build smarter. Manage easier. Scale faster.",
-  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, SaCMS Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan database terisolasi per workspace, integrasi AI Assistant langsung dari IDE, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
   keywords: [
     "SaCMS",
     "Smart Content Management System",
     "Headless CMS",
     "Multi-Tenant Headless CMS",
-    "PostgreSQL 17 Appliance",
     "Dedicated Database Hosting",
-    "Next.js 16 CMS",
+    "Headless CMS Modern",
     "Dynamic GraphQL",
     "Model Context Protocol",
     "MCP Server",
     "Strapi Alternative",
-    "SaCMS Custom DNS",
-    "Midtrans Billing CMS",
-    "MinIO Media",
+    "Custom Domain CMS",
+    "Automated Billing CMS",
+    "Unlimited Media Storage",
     "SaaS Headless CMS"
   ],
   social: {
@@ -75,24 +74,24 @@ export function generatePlatformJsonLd() {
         "name": "SaCMS",
         "alternateName": "Smart Content Management System",
         "applicationCategory": "BusinessApplication, DeveloperApplication",
-        "operatingSystem": "Cloud, Linux, Docker",
+        "operatingSystem": "Cloud",
         "url": baseUrl,
         "description": SEO_CONFIG.defaultDescription,
         "offers": {
           "@type": "Offer",
           "price": "0",
           "priceCurrency": "IDR",
-          "description": "Free Starter Tier & Dedicated Appliance Enterprise"
+          "description": "Free Starter Tier & Dedicated Enterprise Plan"
         },
         "featureList": [
-          "Hybrid Multi-Tenancy & Dedicated PostgreSQL 17 Appliance",
+          "Hybrid Multi-Tenancy & Dedicated Database per Workspace",
           "AI Schema Generator for Content Types & Relations",
-          "Dynamic GraphQL Schema & Strapi-Style REST API",
+          "Dynamic GraphQL Schema & REST API",
           "Model Context Protocol (MCP) Bridge for AI Coding Assistants",
-          "SaCMS Custom Domain DNS Auto-Verification",
+          "Custom Domain DNS Auto-Verification",
           "Automated QRIS & Virtual Account Billing via Midtrans",
           "7-Stage Content Workflow with Granular RBAC Permissions",
-          "Self-Hosted MinIO Object Storage with 0 Egress Fee"
+          "Unlimited Object Storage with 0 Egress Fee"
         ],
         "author": {
           "@id": `${baseUrl}/#organization`
