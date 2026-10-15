@@ -41,9 +41,11 @@ import {
   ExternalLink, Lock, Code2, AlertTriangle, Pencil, RefreshCw, Plug
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction, regenerateApiTokenAction } from "@/actions/api-keys"
 import { createMcpTokenAction, regenerateMcpTokenAction, deleteMcpTokenAction } from "@/actions/mcp-tokens"
+import { rememberMcpTokenPlain, forgetMcpTokenPlain } from "@/lib/mcp-token-storage"
 
 interface ApiToken {
   id: string
@@ -394,6 +396,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
         if (res.token) {
           setMcpTokensList(prev => [res.token as any, ...prev])
           setRevealedMcpTokenId(res.token.id)
+          if (res.plainToken) rememberMcpTokenPlain(tenantId, res.token.id, res.plainToken)
         }
         setShowMcpTokenDialog(true)
         toast({
@@ -429,6 +432,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
           setMcpTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
         }
         setRevealedMcpTokenId(token.id)
+        if (res.plainToken) rememberMcpTokenPlain(tenantId, token.id, res.plainToken)
         setShowMcpTokenDialog(true)
         toast({
           title: "Berhasil",
@@ -460,6 +464,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
       } else {
         setMcpTokensList(prev => prev.filter(t => t.id !== tokenId))
         setRevealedMcpTokenId(prev => (prev === tokenId ? null : prev))
+        forgetMcpTokenPlain(tenantId, tokenId)
         toast({
           title: "Berhasil",
           description: "Token MCP berhasil dihapus",
@@ -773,17 +778,24 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
                             </TableCell>
                             <TableCell className="text-right pr-6 py-3">
                               <div className="flex items-center justify-end gap-1">
-                                {apiKey.id === revealedTokenId && createdPlainToken && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleCopy(createdPlainToken, "API Key", apiKey.id)}
-                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    title="Salin API Key"
-                                  >
-                                    {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                                  </Button>
-                                )}
+                                {(() => {
+                                  const canCopy = apiKey.id === revealedTokenId && !!createdPlainToken
+                                  return (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => canCopy && handleCopy(createdPlainToken!, "API Key", apiKey.id)}
+                                      disabled={!canCopy}
+                                      className={cn(
+                                        "h-7 w-7 rounded-lg hover:bg-muted",
+                                        canCopy ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/40 cursor-not-allowed hover:bg-transparent"
+                                      )}
+                                      title={canCopy ? "Salin API Key" : "Token hanya ditampilkan sekali saat dibuat/di-generate ulang. Klik Generate Ulang untuk mendapat salinan baru."}
+                                    >
+                                      {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  )
+                                })()}
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -903,17 +915,24 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
                             </TableCell>
                             <TableCell className="text-right pr-6 py-3">
                               <div className="flex items-center justify-end gap-1">
-                                {mcpToken.id === revealedMcpTokenId && createdPlainMcpToken && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleCopy(createdPlainMcpToken, "Token MCP", mcpToken.id)}
-                                    className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                                    title="Salin Token MCP"
-                                  >
-                                    {copiedId === mcpToken.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                                  </Button>
-                                )}
+                                {(() => {
+                                  const canCopy = mcpToken.id === revealedMcpTokenId && !!createdPlainMcpToken
+                                  return (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => canCopy && handleCopy(createdPlainMcpToken!, "Token MCP", mcpToken.id)}
+                                      disabled={!canCopy}
+                                      className={cn(
+                                        "h-7 w-7 rounded-lg hover:bg-muted",
+                                        canCopy ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/40 cursor-not-allowed hover:bg-transparent"
+                                      )}
+                                      title={canCopy ? "Salin Token MCP" : "Token hanya ditampilkan sekali saat dibuat/di-generate ulang. Klik Generate Ulang untuk mendapat salinan baru."}
+                                    >
+                                      {copiedId === mcpToken.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  )
+                                })()}
                                 <Button
                                   variant="ghost"
                                   size="icon"

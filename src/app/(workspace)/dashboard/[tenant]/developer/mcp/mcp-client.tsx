@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { recallMcpTokenPlain } from "@/lib/mcp-token-storage"
 
 interface MCPDashboardClientProps {
   tenantSlug: string
@@ -24,6 +25,8 @@ interface MCPDashboardClientProps {
   plan?: string
   isPaid?: boolean
   subscriptionStatus?: string
+  /** The tenant's MCP token row, if one exists — never its plaintext (see src/lib/mcp-token-storage.ts). */
+  activeMcpToken?: { id: string; name: string } | null
 }
 
 // ─── Config generators per platform ──────────────────────────────────────────
@@ -353,6 +356,7 @@ export function MCPDashboardClient({
   plan = "free",
   isPaid = false,
   subscriptionStatus = "inactive",
+  activeMcpToken = null,
 }: MCPDashboardClientProps) {
   const { toast } = useToast()
 
@@ -364,9 +368,20 @@ export function MCPDashboardClient({
   }, [])
 
   // Token itself is created/regenerated/deleted from /developer/api-keys'
-  // "MCP Token" tab now — this page only consumes a value the user pastes
-  // in below to populate the config snippets/guides.
+  // "MCP Token" tab. The server only ever stores a hash of it, so the
+  // plaintext can only be known here if it was just created/regenerated
+  // in THIS browser tab — picked up from sessionStorage (see
+  // src/lib/mcp-token-storage.ts). Otherwise there is nothing to
+  // auto-fill and the setup snippets fall back to a placeholder.
   const [selectedTokenValue, setSelectedTokenValue] = useState<string>("")
+  useEffect(() => {
+    if (!activeMcpToken) {
+      setSelectedTokenValue("")
+      return
+    }
+    setSelectedTokenValue(recallMcpTokenPlain(tenantId, activeMcpToken.id) || "")
+  }, [tenantId, activeMcpToken])
+  const hasRealToken = selectedTokenValue.length > 0
   const [copiedToken, setCopiedToken] = useState(false)
   const [activePlatform, setActivePlatform] = useState("claude")
 
@@ -564,7 +579,7 @@ export function MCPDashboardClient({
 
           </div>
 
-          {/* Active Token & Key Selector Bar */}
+          {/* Active Token & Key Status Bar */}
           <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
@@ -578,38 +593,54 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Otomatis diinjeksikan pada contoh konfigurasi di bawah.
+                  {!activeMcpToken
+                    ? "Belum ada token MCP — buat satu dulu, lalu nilainya otomatis muncul di sini dan di semua contoh konfigurasi di bawah."
+                    : hasRealToken
+                    ? "Otomatis terinjeksi pada contoh konfigurasi di bawah."
+                    : `Token "${activeMcpToken.name}" sudah dibuat, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — generate ulang untuk mendapat salinan baru yang bisa dipakai di sini.`}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="w-48 sm:w-64">
-                <Input
-                  value={selectedTokenValue}
-                  onChange={(e) => setSelectedTokenValue(e.target.value)}
-                  placeholder="Tempel token mcp_... dari tab MCP Token"
-                  className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
-                />
-              </div>
-
-              <Button
-                variant="secondary"
-                size="icon"
-                title="Salin token"
-                onClick={() => {
-                  handleCopy(effectiveToken, "Token Otorisasi")
-                  setCopiedToken(true)
-                  setTimeout(() => setCopiedToken(false), 2000)
-                }}
-                className="h-9 w-9 rounded-xl shrink-0"
-              >
-                {copiedToken ? (
-                  <Check className="h-3.5 w-3.5 text-primary" />
-                ) : (
-                  <Copy className="h-3.5 w-3.5" />
-                )}
-              </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              {!activeMcpToken ? (
+                <Link href={`/dashboard/${tenantSlug}/developer/api-keys`}>
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
+                    <Key className="mr-1.5 h-3.5 w-3.5" /> Buat Token MCP
+                  </Button>
+                </Link>
+              ) : hasRealToken ? (
+                <>
+                  <Input
+                    value={selectedTokenValue}
+                    readOnly
+                    className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground w-48 sm:w-64"
+                  />
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    title="Salin token"
+                    onClick={() => {
+                      handleCopy(effectiveToken, "Token Otorisasi")
+                      setCopiedToken(true)
+                      setTimeout(() => setCopiedToken(false), 2000)
+                    }}
+                    className="h-9 w-9 rounded-xl shrink-0"
+                  >
+                    {copiedToken ? (
+                      <Check className="h-3.5 w-3.5 text-primary" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <Link href={`/dashboard/${tenantSlug}/developer/api-keys`}>
+                  <Button variant="outline" className="font-bold rounded-xl h-9 px-4 text-xs shadow-xs border-border/80">
+                    Generate Ulang
+                  </Button>
+                </Link>
+              )}
             </div>
           </Card>
 

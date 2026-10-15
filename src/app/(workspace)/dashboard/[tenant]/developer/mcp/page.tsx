@@ -15,10 +15,13 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   const tenantSummary = access.tenant
 
-  // MCP token creation/regeneration/deletion now happens at /developer/
-  // api-keys' "MCP Token" tab — this page only needs tenant/subscription
-  // status to render the config/setup guides.
-  const [tenant, subscription] = await Promise.all([
+  // MCP token creation/regeneration/deletion happens at /developer/
+  // api-keys' "MCP Token" tab — this page only needs to know WHETHER one
+  // exists (its id, to key the sessionStorage hand-off in
+  // src/lib/mcp-token-storage.ts) plus tenant/subscription status to
+  // render the config/setup guides. The plaintext itself is never stored
+  // server-side (only its SHA-256 hash), so it can't be fetched here.
+  const [tenant, subscription, mcpToken] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
@@ -26,6 +29,11 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
     db.subscription.findFirst({
       where: { tenantId: tenantSummary.id },
       orderBy: { createdAt: "desc" },
+    }),
+    db.apiToken.findFirst({
+      where: { tenantId: tenantSummary.id, type: "mcp" },
+      select: { id: true, name: true },
+      orderBy: { createdAt: "asc" },
     }),
   ])
 
@@ -43,6 +51,7 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       plan={currentPlan}
       isPaid={isPaid}
       subscriptionStatus={subscription?.status || "inactive"}
+      activeMcpToken={mcpToken ? { id: mcpToken.id, name: mcpToken.name } : null}
     />
   )
 }
