@@ -158,8 +158,13 @@ export function WorkspaceManager({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
-      {/* Enterprise License Notice */}
-      <EnterpriseLicenseBanner hideActivation={true} />
+      {/* Enterprise License Notice — account-level (scope="user"), not tied to
+          any one workspace: activating here unlocks enforceUserPlanLimit()'s
+          "workspaces" bypass (unlimited workspace creation), via
+          isEnterpriseTenant(userId) in src/lib/plan-enforcement.ts. Full
+          activation form shown (not hideActivation) since this page has no
+          tenant-membership requirement to fail against. */}
+      <EnterpriseLicenseBanner scope="user" />
 
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

@@ -41,6 +41,7 @@ export function EnterpriseLicenseBanner({
   tenantId,
   hideActivation = false,
   hideActivateButton = false,
+  scope = "tenant",
 }: {
   tenantId?: string
   /** Hides the whole "no license" card (status text included) — use only where showing an
@@ -50,6 +51,14 @@ export function EnterpriseLicenseBanner({
    *  "Aktivasi Key" button/form. Use where no real tenant is in context — the button's POST
    *  needs a tenant the caller is a member of, which doesn't exist here. */
   hideActivateButton?: boolean
+  /** "tenant" (default): checks/activates a specific workspace's license via
+   *  /api/tenant/<id>/license/* — that workspace's plan limits (content, storage, team
+   *  members) get bypassed. "user": checks/activates the CALLER's own account-level
+   *  license via /api/user/license/*, which unlocks enforceUserPlanLimit()'s "workspaces"
+   *  bypass (unlimited workspace creation) — see src/lib/plan-enforcement.ts's
+   *  isEnterpriseTenant(userId) check. No tenant involved for this scope; tenantId/params
+   *  are ignored. */
+  scope?: "tenant" | "user"
 }) {
   const params = useParams() as { tenant?: string }
   const { toast } = useToast()
@@ -60,19 +69,27 @@ export function EnterpriseLicenseBanner({
   const [activating, setActivating] = useState(false)
   const [tenant, setTenant] = useState<string>(tenantId || params.tenant || "")
 
+  const apiBase = scope === "user" ? "/api/user/license" : null
+
   const fetchStatus = async () => {
     try {
-      let currentTenant = tenantId || params.tenant
-      if (!currentTenant) {
-        currentTenant = await getGlobalWorkspaceIdAction()
-        setTenant(currentTenant || "")
+      let url: string
+      if (apiBase) {
+        url = `${apiBase}/status`
+      } else {
+        let currentTenant = tenantId || params.tenant
+        if (!currentTenant) {
+          currentTenant = await getGlobalWorkspaceIdAction()
+          setTenant(currentTenant || "")
+        }
+        if (!currentTenant) {
+          setLicense(null)
+          setLoading(false)
+          return
+        }
+        url = `/api/tenant/${currentTenant}/license/status`
       }
-      if (!currentTenant) {
-        setLicense(null)
-        setLoading(false)
-        return
-      }
-      const res = await fetch(`/api/tenant/${currentTenant}/license/status`)
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setLicense(data)
@@ -94,7 +111,7 @@ export function EnterpriseLicenseBanner({
     e.preventDefault()
     setActivating(true)
     try {
-      const res = await fetch(`/api/tenant/${tenant}/license/activate`, {
+      const res = await fetch(apiBase ? `${apiBase}/activate` : `/api/tenant/${tenant}/license/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ licenseKey: licenseKeyInput }),
