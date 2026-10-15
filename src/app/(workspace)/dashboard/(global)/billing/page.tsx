@@ -5,6 +5,7 @@ import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
 import { db } from "@/lib/database"
 import { cleanPrice, formatRupiah } from "@/lib/plan-pricing"
+import { isEnterpriseTenant } from "@/lib/license"
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions)
@@ -128,6 +129,12 @@ export default async function BillingPage() {
     console.error("Failed to fetch account plans:", err)
   }
 
+  // 1b. Account-level Enterprise License status — when active, the yearly
+  // account-plan grid below is hidden entirely (see BillingClient): a
+  // licensed account already has unlimited workspaces and a pooled storage
+  // grant, so "buy more workspace quota" plans don't apply to it.
+  const isAccountEnterpriseLicensed = await isEnterpriseTenant(session.user.id).catch(() => false)
+
   // 2. Fetch Active Workspaces Count & Usage & AI Credits
   let activeWorkspacesCount = 0
   let usage: any = null
@@ -203,6 +210,7 @@ export default async function BillingPage() {
       initialTransactions={transactions}
       initialTransactionsTotalPages={transactionsTotalPages}
       initialMasterInfra={masterInfra}
+      isAccountEnterpriseLicensed={isAccountEnterpriseLicensed}
     />
   )
 }

@@ -65,6 +65,10 @@ interface WorkspaceCreationDialogProps {
   addonPlans?: AddonPlan[]
   dbTemplates?: any[]
   initialTemplateId?: string
+  /** When true, `workspacePlans` is the single license-covered plan the
+   *  caller already prepared (see dashboard/(global)/page.tsx) — skip the
+   *  normal Standar/Pro/Business backfill and render it as-is. */
+  isEnterpriseLicensed?: boolean
 }
 
 /** Visual accent per tier — purely cosmetic, keyed off plan_slug/id. */
@@ -127,12 +131,27 @@ export function WorkspaceCreationDialog({
   onOpenChange,
   workspacePlans = [],
   addonPlans = [],
+  isEnterpriseLicensed = false,
 }: WorkspaceCreationDialogProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Filter rencana paket standar: HANYA Standar, Pro, dan Business
   const standardPlans = useMemo(() => {
+    // Enterprise-licensed account: show exactly the one plan the server
+    // already prepared, not the normal 3-tier backfill below.
+    if (isEnterpriseLicensed) {
+      return workspacePlans.length > 0 ? workspacePlans : [{
+        id: "enterprise-license",
+        plan_slug: "enterprise",
+        name: "Enterprise (Lisensi Anda)",
+        desc: "Workspace ini otomatis tercakup oleh Lisensi Enterprise akun Anda.",
+        priceAmount: 0,
+        yearlyPrice: 0,
+        features: ["Konten & Anggota Tim Tanpa Batas", "Storage dari Pool Lisensi Enterprise"],
+      }]
+    }
+
     const cleanPlans = workspacePlans.filter(p => {
       const s = `${p.plan_slug || ""} ${p.id || ""} ${p.name || ""}`.toLowerCase()
       return !s.includes("vps") && !s.includes("vds") && !s.includes("storage")
@@ -217,7 +236,7 @@ export function WorkspaceCreationDialog({
     }
 
     return [standar, pro, business]
-  }, [workspacePlans])
+  }, [workspacePlans, isEnterpriseLicensed])
 
   const defaultPlanSlug = standardPlans[0]?.plan_slug || standardPlans[0]?.id || "free"
 
@@ -362,11 +381,13 @@ export function WorkspaceCreationDialog({
               <CardContent className="px-5 space-y-4">
                 <SectionHeader
                   step={2}
-                  title="Pilih Paket Cloud"
-                  description="Pilih salah satu dari 3 paket Cloud bawaan (Standar, Pro, Business). Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat."
+                  title={isEnterpriseLicensed ? "Paket Workspace" : "Pilih Paket Cloud"}
+                  description={isEnterpriseLicensed
+                    ? "Workspace ini otomatis memakai Lisensi Enterprise akun Anda — tidak perlu memilih paket."
+                    : "Pilih salah satu dari 3 paket Cloud bawaan (Standar, Pro, Business). Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat."}
                 />
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : "grid-cols-1 sm:grid-cols-3")}>
                     {standardPlans.map((plan) => {
                       const planSlug = plan.plan_slug || plan.id
                       const isSelected = newWorkspace.plan === planSlug
@@ -424,9 +445,9 @@ export function WorkspaceCreationDialog({
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-baseline gap-1">
                                 <span className="text-2xl font-black text-foreground">
-                                  {displayPrice === 0 ? "Gratis" : `Rp ${displayPrice.toLocaleString('id-ID')}`}
+                                  {isEnterpriseLicensed ? "Termasuk dalam Lisensi" : displayPrice === 0 ? "Gratis" : `Rp ${displayPrice.toLocaleString('id-ID')}`}
                                 </span>
-                                {displayPrice > 0 && (
+                                {!isEnterpriseLicensed && displayPrice > 0 && (
                                   <span className="text-xs text-muted-foreground font-semibold">/thn</span>
                                 )}
                               </div>
@@ -529,15 +550,17 @@ export function WorkspaceCreationDialog({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                  Total Estimasi Tagihan
+                  {isEnterpriseLicensed ? "Status Billing" : "Total Estimasi Tagihan"}
                 </p>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <h3 className="text-lg font-black text-foreground truncate">
-                    {calculateTotalPrice() === 0 ? "Rp 0 (Gratis Selamanya)" : `Rp ${calculateTotalPrice().toLocaleString('id-ID')}`}
+                    {isEnterpriseLicensed
+                      ? "Tidak Ada Tagihan Tambahan"
+                      : calculateTotalPrice() === 0 ? "Rp 0 (Gratis Selamanya)" : `Rp ${calculateTotalPrice().toLocaleString('id-ID')}`}
                   </h3>
                   {selectedPlanObj && (
                     <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-md border-border/80 shrink-0">
-                      Paket {selectedPlanObj.name} &bull; Tahunan
+                      {isEnterpriseLicensed ? `Paket ${selectedPlanObj.name}` : <>Paket {selectedPlanObj.name} &bull; Tahunan</>}
                     </Badge>
                   )}
                 </div>

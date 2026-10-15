@@ -199,32 +199,34 @@ export default async function WorkspaceSelectionPage() {
     }
 
     if (isGlobalEnterprise) {
+      // One single option, not a tier pick — every new workspace this
+      // account creates is simply covered by its account-level Enterprise
+      // License (unlimited content/team/API, pooled storage shared across
+      // every workspace the owner has — see EnterpriseLicenseBanner /
+      // getOwnerStorageLicense() in plan-enforcement.ts). No per-workspace
+      // storage addons either: storage isn't metered per workspace under
+      // this license, so offering a storage top-up here would be
+      // meaningless — addonPlans is cleared below for the same reason.
       workspacePlans = [
         {
-          id: "enterprise-shared",
-          name: "Shared Database",
-          desc: "Satu database utama untuk semua tenant. Ideal untuk tenant ringan dan standar.",
+          id: "enterprise-license",
+          plan_slug: "enterprise",
+          name: "Enterprise (Lisensi Anda)",
+          desc: "Workspace ini otomatis tercakup oleh Lisensi Enterprise akun Anda — tanpa batas konten, tim, dan API.",
           priceAmount: 0,
           yearlyPrice: 0,
-          features: ["Shared Pool", "Auto Scaling", "Cost Effective"]
+          max_content_entries: 999999999,
+          max_team_members: 999999999,
+          max_api_calls: 999999999,
+          features: [
+            "Konten & Anggota Tim Tanpa Batas",
+            "API Requests Tanpa Batas",
+            "Storage dari Pool Lisensi Enterprise Anda",
+            "RBAC & Audit Log Penuh",
+          ],
         },
-        {
-          id: "enterprise-standalone",
-          name: "Standalone Database",
-          desc: "Diisolasi pada instance database terpisah untuk performa dan keamanan maksimal.",
-          priceAmount: 0,
-          yearlyPrice: 0,
-          features: ["Dedicated DB", "High Performance", "Data Isolation"]
-        },
-        {
-          id: "enterprise-custom",
-          name: "Custom Infrastructure",
-          desc: "Opsi untuk setup manual di infrastruktur, VPC, atau jaringan khusus instansi.",
-          priceAmount: 0,
-          yearlyPrice: 0,
-          features: ["Custom VPC", "On-Premise Ready", "Priority SLA"]
-        }
       ]
+      addonPlans = []
     }
 
   } catch (e) {
@@ -232,13 +234,14 @@ export default async function WorkspaceSelectionPage() {
   }
 
   return (
-    <WorkspaceManager 
+    <WorkspaceManager
       initialTenants={formattedTenants}
       usage={usage}
       dbTemplates={dbTemplates}
       workspacePlans={workspacePlans}
       addonPlans={addonPlans}
       isSuperAdmin={isSuperAdmin}
+      isAccountEnterpriseLicensed={isGlobalEnterprise}
     />
   )
 }

@@ -68,6 +68,10 @@ interface WorkspaceManagerProps {
   workspacePlans: any[]
   addonPlans: any[]
   isSuperAdmin?: boolean
+  /** Account-level Enterprise License active (see getOwnerStorageLicense()
+   *  in plan-enforcement.ts) — tells the creation dialog to show the single
+   *  license-covered plan instead of the normal Standar/Pro/Business tiers. */
+  isAccountEnterpriseLicensed?: boolean
 }
 
 export function WorkspaceManager({
@@ -76,7 +80,8 @@ export function WorkspaceManager({
   dbTemplates,
   workspacePlans,
   addonPlans,
-  isSuperAdmin
+  isSuperAdmin,
+  isAccountEnterpriseLicensed
 }: WorkspaceManagerProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -657,6 +662,7 @@ export function WorkspaceManager({
         dbTemplates={dbTemplates}
         workspacePlans={workspacePlans}
         addonPlans={addonPlans}
+        isEnterpriseLicensed={isAccountEnterpriseLicensed}
         initialTemplateId={creationTemplateId}
       />
 

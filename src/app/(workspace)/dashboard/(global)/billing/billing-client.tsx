@@ -28,7 +28,8 @@ export default function BillingClient({
   initialAiCreditUsage,
   initialTransactions,
   initialTransactionsTotalPages,
-  initialMasterInfra
+  initialMasterInfra,
+  isAccountEnterpriseLicensed
 }: {
   initialAccountPlans: any[]
   initialActiveWorkspacesCount: number
@@ -37,6 +38,11 @@ export default function BillingClient({
   initialTransactions: any[]
   initialTransactionsTotalPages?: number
   initialMasterInfra?: { databaseUrl: string, storageConfig: any }
+  /** Account-level license (isEnterpriseTenant(userId) — see license.ts),
+   *  distinct from isUserEnterprise below (that one is the paid "Akun
+   *  Bisnis & Agensi" plan tier, unrelated to a license key). When active,
+   *  the yearly account-plan grid is hidden — see section 2 below. */
+  isAccountEnterpriseLicensed?: boolean
 }) {
   const { data: session, status, update } = useSafeSession()
   const router = useRouter()
@@ -390,7 +396,12 @@ export default function BillingClient({
             )}
           </div>
 
-          {/* ── 2. ACCOUNT PLANS (YEARLY PRICING) ── */}
+          {/* ── 2. ACCOUNT PLANS (YEARLY PRICING) ──
+              Hidden entirely when an account-level Enterprise License is
+              active: that license already grants unlimited workspaces and
+              a pooled storage pool (see EnterpriseLicenseBanner above), so
+              "buy more workspace quota" plans don't apply to this account. */}
+          {!isAccountEnterpriseLicensed && (
           <section className="space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -483,6 +494,7 @@ export default function BillingClient({
                 })}
               </div>
           </section>
+          )}
         </TabsContent>
 
         <TabsContent value="history" className="mt-6 space-y-6">
