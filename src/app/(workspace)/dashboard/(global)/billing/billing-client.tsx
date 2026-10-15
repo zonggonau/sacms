@@ -370,27 +370,23 @@ export default function BillingClient({
           </section>
 
           {/* ── 1. ENTERPRISE LICENSE ──
-              No tenantId passed: this page isn't scoped to one workspace, so
-              the banner falls back to its own getGlobalWorkspaceIdAction()
-              resolution (see enterprise-license-banner.tsx) — it shows the
-              INSTANCE-wide license status here. hideActivation stays false
-              so the "Mode Standar / Hubungi Admin" card is still visible to
-              every workspace user (that's the whole point of showing this
-              section at all) — but hideActivateButton is true, because the
-              "Aktivasi Key" form would POST to
-              /api/tenant/<globalTenantId>/license/activate, which requires
-              the caller to be a TenantMember of that tenant. The global
-              tenant deliberately has no real members (it's a hidden,
-              content-only construct, see src/app/api/tenants/route.ts's
-              listing exclusion), so that POST 403s "You are not a member of
-              this workspace" for literally every user, every time. A
-              workspace's own license is activated from its own
-              /dashboard/[tenant]/settings/license page instead, where
-              params.tenant resolves to a real tenant the user owns. */}
+              scope="user": account-level, same as workspace-manager.tsx's
+              /dashboard card — activates via /api/user/license/activate
+              (keyed by session.user.id, not a tenant), which unlocks
+              enforceUserPlanLimit()'s "workspaces" bypass and the pooled
+              storage grant (see plan-enforcement.ts). This used to point at
+              the GLOBAL tenant's status instead (read-only, activate button
+              hidden) — that POST always 403'd "You are not a member of this
+              workspace" since the global tenant deliberately has no real
+              members, so the button was dropped rather than fixed. Now that
+              activation is account-scoped, not tenant-scoped, there's
+              nothing left to 403 against; shown here too (not just
+              /dashboard) since this is also an account-level page and a
+              billing page is a natural place to redeem/upgrade a license. */}
           <div>
             <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
             {session?.user?.id && (
-              <EnterpriseLicenseBanner hideActivateButton={true} />
+              <EnterpriseLicenseBanner scope="user" />
             )}
           </div>
 
