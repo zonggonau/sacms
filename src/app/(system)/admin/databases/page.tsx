@@ -325,9 +325,19 @@ export default function AdminDatabasesPage() {
                             )}
                           </td>
                           <td className="p-4 text-right">
-                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
-                              Active & Routing
-                            </Badge>
+                            {t.status === "active" ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
+                                Active & Routing
+                              </Badge>
+                            ) : t.status === "suspended" ? (
+                              <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold rounded-full">
+                                Ditangguhkan
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
+                                {t.status}
+                              </Badge>
+                            )}
                           </td>
                         </tr>
                       ))

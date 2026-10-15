@@ -17,7 +17,11 @@ export const GET = withAdminAuth(
       pgLatency = Date.now() - startTime
     } catch (err: any) {
       pgStatus = "unhealthy"
-      pgError = err.message || "Database connection error"
+      // Raw driver error text can include the connection string (host, db
+      // name, sometimes credentials in older pg error formats) — never pass
+      // it straight through to the dashboard response.
+      console.error("[admin/databases] PostgreSQL health check failed:", err)
+      pgError = "Database connection error"
     }
 
     // Check Redis Status
@@ -34,7 +38,8 @@ export const GET = withAdminAuth(
         redisLatency = Date.now() - rStartTime
       } catch (err: any) {
         redisStatus = "error"
-        redisError = err.message || "Redis ping failed"
+        console.error("[admin/databases] Redis health check failed:", err)
+        redisError = "Redis ping failed"
       }
     }
 
