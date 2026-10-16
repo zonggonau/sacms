@@ -725,6 +725,11 @@ model EnterpriseLicense {
   /// unmetered via a separate mechanism). Admin-editable here independent of
   /// the signed key itself — see validateLicense()'s dbRecord override.
   storageGb       Int?
+  /// AI credit grant for the license's validity period (account-level only,
+  /// same bypass as storageGb — see enforceUserAiCredits() in
+  /// plan-enforcement.ts). Bounded, not unlimited: once used up, the holder
+  /// renews/upgrades rather than getting free unlimited AI generation.
+  aiCredits       Int?
   maxInstances    Int      @default(1)
   issuedAt        DateTime @default(now())
   expiresAt       DateTime
@@ -751,6 +756,8 @@ model LicenseCache {
   /// Cached copy of EnterpriseLicense.storageGb (or the signed payload's
   /// value when no local EnterpriseLicense row exists) — see license.ts.
   storageGb       Int?
+  /// Cached copy of EnterpriseLicense.aiCredits — see license.ts.
+  aiCredits       Int?
   issuedAt        DateTime
   expiresAt       DateTime
   lastValidatedAt DateTime

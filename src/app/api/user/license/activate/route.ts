@@ -73,9 +73,10 @@ export async function POST(request: NextRequest) {
   // any string (tenant id elsewhere, user id here); isEnterpriseTenant(userId)
   // already reads it this way, matching this write.
   // DB value wins when our own admin panel issued this key (lets an admin
-  // adjust the storage grant later without reissuing it) — falls back to
-  // whatever was actually signed into the key otherwise.
+  // adjust the storage/AI-credit grant later without reissuing it) — falls
+  // back to whatever was actually signed into the key otherwise.
   const storageGb = dbRecord?.storageGb ?? payload.storageGb
+  const aiCredits = dbRecord?.aiCredits ?? payload.aiCredits
 
   await upsertLicenseCache({
     valid: true,
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
     type: payload.type,
     features: payload.features,
     storageGb,
+    aiCredits,
     expiresAt: new Date(payload.exp * 1000),
     issuedAt: new Date(payload.iat * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
     customerName: payload.name,
     type: payload.type,
     storageGb,
+    aiCredits,
     expiresAt: new Date(payload.exp * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
   })

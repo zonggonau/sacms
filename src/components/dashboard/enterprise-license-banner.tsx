@@ -29,6 +29,8 @@ interface EnterpriseLicenseInfo {
   storageGb?: number | null
   storageUsedBytes?: number | null
   storageLimitBytes?: number | null
+  aiCredits?: number | null
+  aiCreditsUsed?: number | null
   expiresAt?: string
   issuedAt?: string
   daysRemaining?: number
@@ -301,6 +303,48 @@ export function EnterpriseLicenseBanner({
                     <Button variant="outline" size="sm" className="h-7 text-[11px] font-semibold rounded-xl border-border">
                       <ExternalLink className="w-3 h-3 mr-1.5" />
                       Upgrade Storage
+                    </Button>
+                  </a>
+                </div>
+              )}
+            </div>
+          )
+        })()}
+
+        {license.aiCredits != null && license.aiCreditsUsed != null && (() => {
+          const creditPct = license.aiCredits > 0
+            ? Math.round((license.aiCreditsUsed / license.aiCredits) * 100)
+            : 0
+          const creditsFull = creditPct >= 100
+          const creditsWarning = creditPct >= 90
+          return (
+            <div className="mt-4 pt-4 border-t border-border/60">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[11px] font-bold text-foreground">
+                  AI Credits (Masa Berlaku Lisensi)
+                </span>
+                <span className={cn(
+                  "text-[11px] font-mono font-bold",
+                  creditsFull ? "text-red-500" : creditsWarning ? "text-yellow-500" : "text-muted-foreground"
+                )}>
+                  {license.aiCreditsUsed.toLocaleString("id-ID")} / {license.aiCredits.toLocaleString("id-ID")}
+                </span>
+              </div>
+              <Progress
+                value={Math.min(creditPct, 100)}
+                className={cn("h-1.5", creditsFull ? "[&>div]:bg-red-500" : creditsWarning ? "[&>div]:bg-yellow-500" : undefined)}
+              />
+              {creditsWarning && (
+                <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+                  <p className="text-[11px] text-muted-foreground">
+                    {creditsFull
+                      ? "AI credits lisensi Anda sudah habis — berlangganan lagi untuk melanjutkan generate AI."
+                      : "AI credits lisensi Anda hampir habis."}
+                  </p>
+                  <a href="mailto:admin@sacms.cloud?subject=Perpanjangan%20AI%20Credits%20Enterprise">
+                    <Button variant="outline" size="sm" className="h-7 text-[11px] font-semibold rounded-xl border-border">
+                      <ExternalLink className="w-3 h-3 mr-1.5" />
+                      Berlangganan Lagi
                     </Button>
                   </a>
                 </div>

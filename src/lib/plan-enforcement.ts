@@ -109,6 +109,26 @@ export async function getOwnerPooledStorageUsedBytes(ownerId: string): Promise<n
   return perTenantBytes.reduce((sum, bytes) => sum + bytes, 0)
 }
 
+/**
+ * This user's own account-level enterprise license, if it grants a bounded
+ * AI credit pool (admin sets this per-license — not every enterprise
+ * license needs one). Deliberately NOT unlimited, unlike the instance-wide
+ * license bypass in enforceUserAiCredits/reserveUserAiCredits below: once
+ * this pool is used up the holder renews/upgrades rather than getting free
+ * unlimited generation.
+ */
+export async function getUserAiCreditLicense(userId: string): Promise<{ licensed: boolean; max: number }> {
+  try {
+    const result = await validateLicense(userId)
+    if (result.valid && result.type === "enterprise" && result.aiCredits) {
+      return { licensed: true, max: result.aiCredits }
+    }
+  } catch {
+    // Ignore and treat as unlicensed
+  }
+  return { licensed: false, max: 0 }
+}
+
 async function getStorageUsedBytes(tenantId: string): Promise<number> {
   const tenantDb = await getTenantDb(tenantId)
   try {
@@ -426,12 +446,13 @@ export async function enforceUserAiCredits(
   userId: string,
   cost: number = 1
 ): Promise<{ allowed: boolean; remaining: number; max: number; current: number; planSlug: string; message: string }> {
-  // Check enterprise & super admin bypass
+  // Instance-wide license (self-hosted install, LICENSE_KEY env var) stays
+  // fully unlimited — distinct from an account-level license below, which
+  // is bounded by its own aiCredits grant instead.
   try {
     const { getGlobalWorkspaceId } = await import('@/lib/settings')
     const globalTenantId = await getGlobalWorkspaceId()
-    let isEnterprise = await isEnterpriseTenant(globalTenantId) || await isEnterpriseTenant(userId)
-    if (isEnterprise) {
+    if (await isEnterpriseTenant(globalTenantId)) {
       return { allowed: true, remaining: 999999, max: 999999, current: 0, planSlug: "enterprise", message: "Enterprise Unlimited" }
     }
   } catch {}
@@ -445,9 +466,19 @@ export async function enforceUserAiCredits(
     return { allowed: true, remaining: 999999, max: 999999, current: user?.aiCreditsUsed || 0, planSlug: "custom", message: "Super Admin Bypass" }
   }
 
-  const planConfig = await getUserPlanConfig(userId)
-  const override = await getUserOverride(userId)
-  const effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+  const accountLicense = await getUserAiCreditLicense(userId)
+  let effectiveMax: number
+  let planSlug: string
+  if (accountLicense.licensed) {
+    effectiveMax = accountLicense.max
+    planSlug = "enterprise"
+  } else {
+    const planConfig = await getUserPlanConfig(userId)
+    const override = await getUserOverride(userId)
+    effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+    planSlug = planConfig.plan_slug
+  }
+
   const currentUsage = user?.aiCreditsUsed || 0
   const remaining = Math.max(0, effectiveMax - currentUsage)
 
@@ -458,10 +489,12 @@ export async function enforceUserAiCredits(
     remaining,
     max: effectiveMax,
     current: currentUsage,
-    planSlug: planConfig.plan_slug,
+    planSlug,
     message: allowed
       ? `OK (${remaining} credits remaining)`
-      : `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`
+      : accountLicense.licensed
+        ? `Kuota AI credits lisensi Enterprise Anda sudah habis (${currentUsage}/${effectiveMax}). Hubungi admin untuk berlangganan lagi.`
+        : `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`
   }
 }
 
@@ -485,11 +518,12 @@ export async function reserveUserAiCredits(
   userId: string,
   cost: number = 1
 ): Promise<{ allowed: boolean; remaining: number; max: number; message: string }> {
+  // Instance-wide license stays unlimited — see enforceUserAiCredits's
+  // comment above for why this is split from the account-level check below.
   try {
     const { getGlobalWorkspaceId } = await import('@/lib/settings')
     const globalTenantId = await getGlobalWorkspaceId()
-    const isEnterprise = await isEnterpriseTenant(globalTenantId) || await isEnterpriseTenant(userId)
-    if (isEnterprise) {
+    if (await isEnterpriseTenant(globalTenantId)) {
       return { allowed: true, remaining: 999999, max: 999999, message: "Enterprise Unlimited" }
     }
   } catch {}
@@ -503,9 +537,15 @@ export async function reserveUserAiCredits(
     return { allowed: true, remaining: 999999, max: 999999, message: "Super Admin Bypass" }
   }
 
-  const planConfig = await getUserPlanConfig(userId)
-  const override = await getUserOverride(userId)
-  const effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+  const accountLicense = await getUserAiCreditLicense(userId)
+  let effectiveMax: number
+  if (accountLicense.licensed) {
+    effectiveMax = accountLicense.max
+  } else {
+    const planConfig = await getUserPlanConfig(userId)
+    const override = await getUserOverride(userId)
+    effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+  }
   const maxUsageAfterReserve = effectiveMax - cost
 
   const result = await db.user.updateMany({
@@ -520,7 +560,9 @@ export async function reserveUserAiCredits(
       allowed: false,
       remaining,
       max: effectiveMax,
-      message: `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`,
+      message: accountLicense.licensed
+        ? `Kuota AI credits lisensi Enterprise Anda sudah habis (${current}/${effectiveMax}). Hubungi admin untuk berlangganan lagi.`
+        : `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`,
     }
   }
 

@@ -12,19 +12,21 @@ import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 export const POST = withAdminAuth(
   async (request, _context, { session }) => {
     const body = await request.json()
-    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb } = body
+    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb, aiCredits } = body
 
     if (!customerName || !expiresAt) {
       return apiError("validation", { message: "customerName and expiresAt are required" })
     }
 
     const expDate = new Date(expiresAt)
-    // Account-level pooled storage grant (GB) — see schema.prisma's
-    // EnterpriseLicense.storageGb and plan-enforcement.ts's
-    // getOwnerStorageLicense(). Optional: a plain self-hosted/partner/trial
-    // license doesn't need one.
+    // Account-level pooled storage / AI-credit grants — see schema.prisma's
+    // EnterpriseLicense.storageGb/aiCredits and plan-enforcement.ts's
+    // getOwnerStorageLicense()/getUserAiCreditLicense(). Optional: a plain
+    // self-hosted/partner/trial license doesn't need either.
     const storageGbValue: number | undefined =
       storageGb === undefined || storageGb === null || storageGb === "" ? undefined : Number(storageGb)
+    const aiCreditsValue: number | undefined =
+      aiCredits === undefined || aiCredits === null || aiCredits === "" ? undefined : Number(aiCredits)
 
     // Generate license key
     const licenseKey = generateLicenseKey({
@@ -35,6 +37,7 @@ export const POST = withAdminAuth(
       type: type as "enterprise" | "partner" | "trial",
       features: features || ["self-host", "unlimited-workspaces"],
       storageGb: storageGbValue,
+      aiCredits: aiCreditsValue,
       exp: Math.floor(expDate.getTime() / 1000),
     })
 
@@ -48,6 +51,7 @@ export const POST = withAdminAuth(
         type,
         features: features || ["self-host", "unlimited-workspaces"],
         storageGb: storageGbValue ?? null,
+        aiCredits: aiCreditsValue ?? null,
         expiresAt: expDate,
         createdBy: session.user.email,
       },
@@ -58,7 +62,7 @@ export const POST = withAdminAuth(
       action: AuditAction.SETTINGS_UPDATED,
       entity: "EnterpriseLicenseGenerated",
       entityId: license.id,
-      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, expiresAt: expDate.toISOString() },
+      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, aiCredits: aiCreditsValue, expiresAt: expDate.toISOString() },
     })
 
     return NextResponse.json({
@@ -68,6 +72,7 @@ export const POST = withAdminAuth(
       customerEmail: license.customerEmail,
       type: license.type,
       storageGb: license.storageGb,
+      aiCredits: license.aiCredits,
       expiresAt: license.expiresAt,
     })
   },

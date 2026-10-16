@@ -27,6 +27,9 @@ export interface LicensePayload {
    *  only) — see EnterpriseLicense.storageGb for the admin-adjustable
    *  current value this is a fallback for. */
   storageGb?: number
+  /** AI credit grant at issuance time (account-level licenses only) — see
+   *  EnterpriseLicense.aiCredits for the admin-adjustable current value. */
+  aiCredits?: number
   iat: number       // issued at (unix)
   exp: number       // expires at (unix)
   jti: string       // unique key ID (for revocation)
@@ -40,6 +43,7 @@ export interface LicenseResult {
   type?: string
   features?: string[]
   storageGb?: number
+  aiCredits?: number
   expiresAt?: Date
   issuedAt?: Date
   daysRemaining?: number
@@ -158,6 +162,7 @@ export async function upsertLicenseCache(result: LicenseResult, tenantId: string
       type: result.type || "",
       features: result.features || [],
       storageGb: result.storageGb ?? null,
+      aiCredits: result.aiCredits ?? null,
       issuedAt: result.issuedAt,
       expiresAt: result.expiresAt,
       lastValidatedAt: new Date(),
@@ -171,6 +176,7 @@ export async function upsertLicenseCache(result: LicenseResult, tenantId: string
       type: result.type || "",
       features: result.features || [],
       storageGb: result.storageGb ?? null,
+      aiCredits: result.aiCredits ?? null,
       issuedAt: result.issuedAt,
       expiresAt: result.expiresAt,
       lastValidatedAt: new Date(),
@@ -196,6 +202,7 @@ export async function getCachedLicense(tenantId: string): Promise<LicenseResult 
       type: cached.type,
       features: cached.features as string[],
       storageGb: cached.storageGb ?? undefined,
+      aiCredits: cached.aiCredits ?? undefined,
       expiresAt: cached.expiresAt,
       issuedAt: cached.issuedAt,
       daysRemaining: Math.max(0, Math.floor((cached.expiresAt.getTime() - Date.now()) / 86400000)),
@@ -272,6 +279,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
       type: payload.type,
       features: payload.features,
       storageGb: dbRecord?.storageGb ?? payload.storageGb,
+      aiCredits: dbRecord?.aiCredits ?? payload.aiCredits,
       expiresAt: new Date(payload.exp * 1000),
       issuedAt: new Date(payload.iat * 1000),
       daysRemaining: 0,
@@ -305,6 +313,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
           type: data.type || payload.type,
           features: data.features || payload.features,
           storageGb: dbRecord?.storageGb ?? data.storageGb ?? payload.storageGb,
+          aiCredits: dbRecord?.aiCredits ?? data.aiCredits ?? payload.aiCredits,
           expiresAt: new Date(data.expiresAt),
           issuedAt: new Date(data.issuedAt),
           daysRemaining: Math.max(0, Math.floor((new Date(data.expiresAt).getTime() - Date.now()) / 86400000)),
@@ -332,6 +341,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
     // back to what was actually signed when there's no local row (e.g. a
     // standalone self-hosted install, which deliberately never gets one).
     storageGb: dbRecord?.storageGb ?? payload.storageGb,
+    aiCredits: dbRecord?.aiCredits ?? payload.aiCredits,
     expiresAt: new Date(payload.exp * 1000),
     issuedAt: new Date(payload.iat * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),

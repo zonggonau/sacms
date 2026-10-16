@@ -70,6 +70,7 @@ interface License {
   organization: string
   type: string
   storageGb: number | null
+  aiCredits: number | null
   expiresAt: string
   isExpired: boolean
   daysRemaining: number
@@ -103,6 +104,10 @@ export default function EnterpriseLicensesPage() {
     // getOwnerStorageLicense() in plan-enforcement.ts. "none" = no pooled
     // storage (e.g. partner/trial keys, or a self-hosted instance license).
     storageGb: "none",
+    // Bounded AI credit grant for the license's validity period — see
+    // getUserAiCreditLicense() in plan-enforcement.ts. "none" = no AI
+    // credits included (falls back to the account's normal plan quota).
+    aiCredits: "none",
   })
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
@@ -111,9 +116,10 @@ export default function EnterpriseLicensesPage() {
   const [pendingRevoke, setPendingRevoke] = useState<License | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [togglingRevokeId, setTogglingRevokeId] = useState<string | null>(null)
-  const [editingStorageFor, setEditingStorageFor] = useState<License | null>(null)
+  const [editingQuotaFor, setEditingQuotaFor] = useState<License | null>(null)
   const [storageGbInput, setStorageGbInput] = useState("")
-  const [savingStorage, setSavingStorage] = useState(false)
+  const [aiCreditsInput, setAiCreditsInput] = useState("")
+  const [savingQuota, setSavingQuota] = useState(false)
 
   const fetchLicenses = async () => {
     try {
@@ -202,6 +208,7 @@ export default function EnterpriseLicensesPage() {
           organization: form.organization,
           type: form.type,
           storageGb: form.storageGb === "none" ? undefined : Number(form.storageGb),
+          aiCredits: form.aiCredits === "none" ? undefined : Number(form.aiCredits),
           expiresAt: expiresAt.toISOString(),
         }),
       })
@@ -218,6 +225,7 @@ export default function EnterpriseLicensesPage() {
           type: "enterprise",
           expiresIn: "365",
           storageGb: "none",
+          aiCredits: "none",
         })
         toast({
           title: "Lisensi Dibuat",
@@ -275,40 +283,46 @@ export default function EnterpriseLicensesPage() {
     }
   }
 
-  const openUpgradeStorage = (lic: License) => {
-    setEditingStorageFor(lic)
+  const openEditQuota = (lic: License) => {
+    setEditingQuotaFor(lic)
     setStorageGbInput(lic.storageGb ? String(lic.storageGb) : "")
+    setAiCreditsInput(lic.aiCredits ? String(lic.aiCredits) : "")
   }
 
-  const handleSaveStorage = async () => {
-    if (!editingStorageFor) return
+  const handleSaveQuota = async () => {
+    if (!editingQuotaFor) return
     const gb = storageGbInput.trim() === "" ? null : Number(storageGbInput)
+    const credits = aiCreditsInput.trim() === "" ? null : Number(aiCreditsInput)
     if (gb !== null && (!Number.isInteger(gb) || gb <= 0)) {
       toast({ title: "Nilai tidak valid", description: "Masukkan jumlah GB berupa bilangan positif, atau kosongkan.", variant: "destructive" })
       return
     }
-    setSavingStorage(true)
+    if (credits !== null && (!Number.isInteger(credits) || credits <= 0)) {
+      toast({ title: "Nilai tidak valid", description: "Masukkan jumlah AI credits berupa bilangan positif, atau kosongkan.", variant: "destructive" })
+      return
+    }
+    setSavingQuota(true)
     try {
-      const res = await fetch(`/api/admin/license/${editingStorageFor.id}`, {
+      const res = await fetch(`/api/admin/license/${editingQuotaFor.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storageGb: gb }),
+        body: JSON.stringify({ storageGb: gb, aiCredits: credits }),
       })
       if (res.ok) {
         toast({
-          title: "Kuota Storage Diperbarui",
-          description: gb ? `Kuota gabungan ${editingStorageFor.customerName} kini ${gb} GB.` : `Kuota gabungan khusus untuk ${editingStorageFor.customerName} dihapus.`,
+          title: "Kuota Diperbarui",
+          description: `Kuota untuk ${editingQuotaFor.customerName} berhasil disimpan.`,
         })
-        setEditingStorageFor(null)
+        setEditingQuotaFor(null)
         fetchLicenses()
       } else {
         const errData = await res.json()
         toast({ title: "Gagal", description: errData.error || "Terjadi kesalahan", variant: "destructive" })
       }
     } catch {
-      toast({ title: "Terjadi Kesalahan", description: "Gagal memperbarui kuota storage", variant: "destructive" })
+      toast({ title: "Terjadi Kesalahan", description: "Gagal memperbarui kuota", variant: "destructive" })
     } finally {
-      setSavingStorage(false)
+      setSavingQuota(false)
     }
   }
 
@@ -472,6 +486,25 @@ export default function EnterpriseLicensesPage() {
                         </SelectContent>
                       </Select>
                       <p className="text-[10px] text-muted-foreground">Dibagi rata ke semua workspace milik pelanggan ini.</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="aiCredits" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota AI Credits</Label>
+                      <Select
+                        value={form.aiCredits}
+                        onValueChange={(v) => setForm({ ...form, aiCredits: v })}
+                      >
+                        <SelectTrigger id="aiCredits" className="h-9 rounded-xl text-xs bg-muted/20 border-border/80">
+                          <SelectValue placeholder="Pilih kuota" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="none" className="text-xs rounded-lg">Tidak ada</SelectItem>
+                          <SelectItem value="300" className="text-xs rounded-lg">300 Credits</SelectItem>
+                          <SelectItem value="1500" className="text-xs rounded-lg">1.500 Credits</SelectItem>
+                          <SelectItem value="5000" className="text-xs rounded-lg">5.000 Credits</SelectItem>
+                          <SelectItem value="15000" className="text-xs rounded-lg">15.000 Credits</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = berlangganan lagi.</p>
                     </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="duration" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Masa Berlaku</Label>
@@ -660,6 +693,11 @@ export default function EnterpriseLicensesPage() {
                               {lic.storageGb >= 1024 ? `${(lic.storageGb / 1024).toFixed(lic.storageGb % 1024 === 0 ? 0 : 1)} TB` : `${lic.storageGb} GB`} pool
                             </div>
                           ) : null}
+                          {lic.aiCredits ? (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                              {lic.aiCredits.toLocaleString("id-ID")} AI credits
+                            </div>
+                          ) : null}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           <div className="text-foreground">{new Date(lic.expiresAt).toLocaleDateString('id-ID')}</div>
@@ -698,8 +736,8 @@ export default function EnterpriseLicensesPage() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
-                              onClick={() => openUpgradeStorage(lic)}
-                              title="Atur kuota storage gabungan"
+                              onClick={() => openEditQuota(lic)}
+                              title="Atur kuota storage & AI credits"
                             >
                               <HardDrive className="w-3.5 h-3.5" />
                             </Button>
@@ -819,36 +857,52 @@ export default function EnterpriseLicensesPage() {
             </AlertDialogContent>
           </AlertDialog>
 
-          <Dialog open={!!editingStorageFor} onOpenChange={(open) => !open && setEditingStorageFor(null)}>
+          <Dialog open={!!editingQuotaFor} onOpenChange={(open) => !open && setEditingQuotaFor(null)}>
             <DialogContent className="rounded-2xl border-border/80 shadow-xl bg-card max-w-sm">
               <DialogHeader>
-                <DialogTitle className="text-base font-bold">Kuota Storage Gabungan — {editingStorageFor?.customerName}</DialogTitle>
+                <DialogTitle className="text-base font-bold">Kuota Lisensi — {editingQuotaFor?.customerName}</DialogTitle>
                 <DialogDescription className="text-xs leading-relaxed text-muted-foreground">
-                  Dibagi rata ke semua workspace milik pelanggan ini setelah lisensi diaktifkan di akun mereka. Kosongkan untuk menghapus kuota gabungan (lisensi jadi tidak membuka storage pool apa pun).
+                  Berlaku untuk akun ini setelah lisensi diaktifkan. Kosongkan salah satu field untuk menghapus kuota itu saja (tidak mempengaruhi field lainnya).
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-1 py-2">
-                <Label htmlFor="storageGbEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota (GB)</Label>
-                <Input
-                  id="storageGbEdit"
-                  type="number"
-                  min={1}
-                  value={storageGbInput}
-                  onChange={(e) => setStorageGbInput(e.target.value)}
-                  placeholder="contoh: 100, 250, 500, 1024"
-                  className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                />
+              <div className="space-y-3 py-2">
+                <div className="space-y-1">
+                  <Label htmlFor="storageGbEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Storage Gabungan (GB)</Label>
+                  <Input
+                    id="storageGbEdit"
+                    type="number"
+                    min={1}
+                    value={storageGbInput}
+                    onChange={(e) => setStorageGbInput(e.target.value)}
+                    placeholder="contoh: 100, 250, 500, 1024"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Dibagi rata ke semua workspace milik pelanggan ini.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="aiCreditsEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">AI Credits</Label>
+                  <Input
+                    id="aiCreditsEdit"
+                    type="number"
+                    min={1}
+                    value={aiCreditsInput}
+                    onChange={(e) => setAiCreditsInput(e.target.value)}
+                    placeholder="contoh: 300, 1500, 5000, 15000"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = pelanggan berlangganan lagi.</p>
+                </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">
-                <Button type="button" variant="outline" onClick={() => setEditingStorageFor(null)} className="rounded-xl text-xs font-bold h-9">
+                <Button type="button" variant="outline" onClick={() => setEditingQuotaFor(null)} className="rounded-xl text-xs font-bold h-9">
                   Batal
                 </Button>
                 <Button
-                  onClick={handleSaveStorage}
-                  disabled={savingStorage}
+                  onClick={handleSaveQuota}
+                  disabled={savingQuota}
                   className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs"
                 >
-                  {savingStorage ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+                  {savingQuota ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
                   Simpan
                 </Button>
               </DialogFooter>

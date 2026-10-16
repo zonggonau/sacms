@@ -67,6 +67,14 @@ export async function GET() {
       storageLimitBytes = license.storageGb * 1024 * 1024 * 1024
     }
 
+    // AI credits: same bounded-pool pattern as storage above — same numbers
+    // enforceUserAiCredits()/reserveUserAiCredits() actually enforce with.
+    let aiCreditsUsed: number | null = null
+    if (license.type === "enterprise" && license.aiCredits) {
+      const user = await db.user.findUnique({ where: { id: userId }, select: { aiCreditsUsed: true } })
+      aiCreditsUsed = user?.aiCreditsUsed ?? 0
+    }
+
     return NextResponse.json({
       valid: true,
       status: "active",
@@ -78,6 +86,8 @@ export async function GET() {
       storageGb: license.storageGb,
       storageUsedBytes,
       storageLimitBytes,
+      aiCredits: license.aiCredits,
+      aiCreditsUsed,
       expiresAt: license.expiresAt,
       issuedAt: license.issuedAt,
       daysRemaining: license.daysRemaining,

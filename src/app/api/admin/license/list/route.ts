@@ -59,6 +59,7 @@ export const GET = withAdminAuth(
       organization: l.organization,
       type: l.type,
       storageGb: l.storageGb,
+      aiCredits: l.aiCredits,
       expiresAt: l.expiresAt,
       isExpired: l.expiresAt < now,
       daysRemaining: Math.max(0, Math.floor((l.expiresAt.getTime() - now.getTime()) / 86400000)),

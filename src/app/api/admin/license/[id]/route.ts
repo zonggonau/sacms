@@ -6,14 +6,15 @@ import { withAdminAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const PatchSchema = z.object({
   status: z.enum(["active", "revoked"]).optional(),
-  // Lets an admin raise/lower an account-level license's pooled storage
-  // grant (see getOwnerStorageLicense() in plan-enforcement.ts) WITHOUT
-  // reissuing the signed key — validateLicense() prefers this DB value over
-  // whatever was originally signed into the key. null clears it back to
-  // whatever the key itself grants.
+  // Lets an admin raise/lower an account-level license's pooled storage /
+  // AI-credit grant (see getOwnerStorageLicense()/getUserAiCreditLicense()
+  // in plan-enforcement.ts) WITHOUT reissuing the signed key —
+  // validateLicense() prefers this DB value over whatever was originally
+  // signed into the key. null clears it back to whatever the key itself grants.
   storageGb: z.number().int().positive().nullable().optional(),
-}).refine((data) => data.status !== undefined || data.storageGb !== undefined, {
-  message: "Provide at least one of status or storageGb",
+  aiCredits: z.number().int().positive().nullable().optional(),
+}).refine((data) => data.status !== undefined || data.storageGb !== undefined || data.aiCredits !== undefined, {
+  message: "Provide at least one of status, storageGb, or aiCredits",
 })
 
 // PATCH /api/admin/license/[id] - revoke/reactivate a license, and/or adjust
@@ -31,34 +32,35 @@ export const PATCH = withAdminAuth(async (request, context, { session }) => {
 
   const body = await readJson(request, PatchSchema)
   if (!body.ok) return body.response
-  const { status, storageGb } = body.data
+  const { status, storageGb, aiCredits } = body.data
 
-  const data: { status?: string; storageGb?: number | null } = {}
+  const data: { status?: string; storageGb?: number | null; aiCredits?: number | null } = {}
   if (status !== undefined && status !== license.status) data.status = status
   if (storageGb !== undefined && storageGb !== license.storageGb) data.storageGb = storageGb
+  if (aiCredits !== undefined && aiCredits !== license.aiCredits) data.aiCredits = aiCredits
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ success: true, status: license.status, storageGb: license.storageGb })
+    return NextResponse.json({ success: true, status: license.status, storageGb: license.storageGb, aiCredits: license.aiCredits })
   }
 
   const updated = await db.enterpriseLicense.update({ where: { id }, data })
 
   // validateLicense()'s Step 1 returns a warm LicenseCache row as-is without
   // re-checking the DB — without clearing it, whoever activated this key
-  // would keep seeing the OLD status/storageGb until their cache happened
-  // to be rebuilt some other way. Same cache-busting need as the standalone
-  // license-check cron (see src/app/api/cron/license-check/route.ts).
+  // would keep seeing the OLD status/storageGb/aiCredits until their cache
+  // happened to be rebuilt some other way. Same cache-busting need as the
+  // standalone license-check cron (see src/app/api/cron/license-check/route.ts).
   await db.licenseCache.deleteMany({ where: { licenseKey: license.licenseKey } }).catch(() => {})
 
   logAudit({
     userId: session.user.id,
     action: AuditAction.SETTINGS_UPDATED,
-    entity: data.status ? (data.status === "revoked" ? "EnterpriseLicenseRevoked" : "EnterpriseLicenseReactivated") : "EnterpriseLicenseStorageAdjusted",
+    entity: data.status ? (data.status === "revoked" ? "EnterpriseLicenseRevoked" : "EnterpriseLicenseReactivated") : "EnterpriseLicenseQuotaAdjusted",
     entityId: id,
     data: { customerName: license.customerName, customerEmail: license.customerEmail, ...data },
   })
 
-  return NextResponse.json({ success: true, status: updated.status, storageGb: updated.storageGb })
+  return NextResponse.json({ success: true, status: updated.status, storageGb: updated.storageGb, aiCredits: updated.aiCredits })
 })
 
 // GET /api/admin/license/[id] - reveal the full plaintext license key for
