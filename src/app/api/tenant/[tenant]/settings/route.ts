@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/database"
+import { db, PrismaClient } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
 import { Prisma } from "@prisma/client"
@@ -66,7 +66,16 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
 
     const { getGlobalWorkspaceId } = await import("@/lib/settings");
     const globalId = await getGlobalWorkspaceId();
-    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
+    // Precise license check — exactly what the PUT handler below gates
+    // databaseUrl/storageConfig writes on (super_admin OR an active
+    // Enterprise License, nothing looser). Kept separate from the broader
+    // `isEnterprise` flag below, which also lights up for an "enterprise"
+    // plan slug or an already-configured databaseUrl — neither of those
+    // implies an actual license, so they'd wrongly show the self-service
+    // BYODB/BYOS card to an account that would then get a 403 trying to save.
+    const hasEnterpriseLicense = await isEnterpriseTenant(globalId, session.user.id)
+
+    let isEnterprise = hasEnterpriseLicense
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
     }
@@ -94,6 +103,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         subscriptionStatus: sub?.status || null,
         daysRemaining,
         isEnterprise,
+        hasEnterpriseLicense,
         // Custom Infrastructure (owner-only)
         databaseUrl: canSeeSecrets ? tenant.databaseUrl || "" : mask(tenant.databaseUrl || ""),
         storageConfig: canSeeSecrets ? tenant.storageConfig || null : (tenant.storageConfig ? { configured: true } : null),
@@ -177,6 +187,44 @@ export const PUT = withStaffAuth(
           { error: "Database & storage sendiri disambungkan oleh tim IT SaCMS. Pesan layanannya di menu Langganan → Add-on." },
           { status: 403 },
         )
+      }
+    }
+
+    // Prove the new connection actually works BEFORE persisting anything —
+    // this is now self-service for the tenant owner (not just SaCMS IT
+    // staff via the manual console), so a typo here would otherwise
+    // silently break this tenant's own CMS the moment it's saved. Clearing
+    // a value back to empty (disconnecting) never needs this — only
+    // connecting to a new, non-empty value does.
+    if (isDbUrlChanging && normalizedNewDbUrl !== "") {
+      const testClient = new PrismaClient({ datasources: { db: { url: normalizedNewDbUrl } } })
+      try {
+        await testClient.$queryRaw`SELECT 1`
+      } catch {
+        return apiError("validation", {
+          message: "Gagal terhubung ke database yang Anda masukkan. Periksa kembali connection string (host, port, username, password, nama database).",
+        })
+      } finally {
+        await testClient.$disconnect().catch(() => {})
+      }
+    }
+
+    if (isStorageChanging && hasCustomStorage) {
+      const { endpoint, accessKey, secretKey, bucket } = storageConfig as Record<string, string>
+      if (!endpoint || !accessKey || !secretKey || !bucket) {
+        return apiError("validation", {
+          message: "Lengkapi semua field storage (endpoint, access key, secret key, bucket) sebelum menyimpan.",
+        })
+      }
+      try {
+        const { createS3Client } = await import("@/lib/s3-client")
+        const { HeadBucketCommand } = await import("@aws-sdk/client-s3")
+        const s3 = createS3Client(endpoint, accessKey, secretKey)
+        await s3.send(new HeadBucketCommand({ Bucket: bucket }))
+      } catch {
+        return apiError("validation", {
+          message: "Gagal terhubung ke storage (MinIO/S3) yang Anda masukkan. Periksa kembali endpoint, access key, secret key, dan nama bucket.",
+        })
       }
     }
 
