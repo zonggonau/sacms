@@ -27,15 +27,18 @@ export async function readProjectFile(tenantDb: PrismaClient, projectId: string,
 
 export async function writeProjectFiles(tenantDb: PrismaClient, projectId: string, files: ProjectFileContent[]) {
   if (files.length === 0) return
-  await tenantDb.$transaction(
-    files.map((file) =>
-      tenantDb.aiSiteFile.upsert({
-        where: { projectId_path: { projectId, path: file.path } },
-        create: { projectId, path: file.path, content: file.content },
-        update: { content: file.content },
-      }),
-    ),
-  )
+  // Sequential, not a batched $transaction([...]) — dedicated-tenant clients
+  // are wrapped in a connection-fallback Proxy (database.ts) whose .catch()
+  // wrapping strips the PrismaPromise branding $transaction's array form
+  // requires, so a batch call throws "All elements of the array need to be
+  // Prisma Client promises."
+  for (const file of files) {
+    await tenantDb.aiSiteFile.upsert({
+      where: { projectId_path: { projectId, path: file.path } },
+      create: { projectId, path: file.path, content: file.content },
+      update: { content: file.content },
+    })
+  }
 }
 
 export async function deleteProjectFiles(tenantDb: PrismaClient, projectId: string, paths: string[]) {

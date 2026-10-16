@@ -35,19 +35,23 @@ export const PUT = withStaffAuth(
     if (!body.ok) return body.response
     const { permissions } = body.data
 
-    await tenantDb.$transaction([
-      tenantDb.memberRolePermission.deleteMany({ where: { memberRoleId: roleId } }),
-      tenantDb.memberRolePermission.createMany({
-        data: permissions.map((p) => ({
-          memberRoleId: roleId,
-          contentTypeSlug: p.contentTypeSlug,
-          action: p.action,
-          granted: p.granted,
-          conditions: (p.conditions ?? null) as any,
-        })),
-        skipDuplicates: true,
-      }),
-    ])
+    // Sequential, not a batched $transaction([...]) — dedicated-tenant
+    // clients are wrapped in a connection-fallback Proxy (database.ts) whose
+    // .catch() wrapping strips the PrismaPromise branding $transaction's
+    // array form requires, so a batch call throws "All elements of the
+    // array need to be Prisma Client promises." for any tenant with a
+    // dedicated database.
+    await tenantDb.memberRolePermission.deleteMany({ where: { memberRoleId: roleId } })
+    await tenantDb.memberRolePermission.createMany({
+      data: permissions.map((p) => ({
+        memberRoleId: roleId,
+        contentTypeSlug: p.contentTypeSlug,
+        action: p.action,
+        granted: p.granted,
+        conditions: (p.conditions ?? null) as any,
+      })),
+      skipDuplicates: true,
+    })
 
     await invalidatePermissionCache(access.tenantId, role.slug)
     return NextResponse.json({ ok: true, count: permissions.length })

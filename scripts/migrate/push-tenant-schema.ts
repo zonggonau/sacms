@@ -89,9 +89,12 @@ async function pushToSingleTenant(slug: string, databaseUrl: string, options: Pu
   const dataLossFlag = options.acceptDataLoss ? "--accept-data-loss" : "";
 
   try {
+    // schema.prisma declares both `url` and `directUrl`; `db push`/`migrate`
+    // always connect via directUrl, so DATABASE_URL alone is silently
+    // ignored and the push lands on the default DB instead. Override both.
     // Uses Bun's bunx instead of npm/npx according to project guidelines
     execSync(`bunx prisma db push ${dataLossFlag}`, {
-      env: { ...process.env, DATABASE_URL: databaseUrl },
+      env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
       stdio: "inherit",
     });
     console.log(`✅ Schema push succeeded for tenant '${slug}'!`);

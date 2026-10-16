@@ -66,27 +66,30 @@ export async function saveMessages(tenantDb: PrismaClient, chatId: string, messa
   if (messages.length === 0) return
 
   // Messages saved together keep their order through strictly increasing timestamps.
+  // Sequential, not a batched $transaction([...]) — dedicated-tenant clients
+  // are wrapped in a connection-fallback Proxy (database.ts) whose .catch()
+  // wrapping strips the PrismaPromise branding $transaction's array form
+  // requires, so a batch call throws "All elements of the array need to be
+  // Prisma Client promises."
   const start = Date.now()
-  await tenantDb.$transaction([
-    ...messages.map((message, index) =>
-      tenantDb.aiSiteChatMessage.upsert({
-        where: { id: message.id },
-        create: {
-          id: message.id,
-          chatId,
-          role: message.role,
-          parts: message.parts as object,
-          metadata: (message.metadata as object | undefined) ?? Prisma.JsonNull,
-          createdAt: new Date(start + index),
-        },
-        update: {
-          parts: message.parts as object,
-          metadata: (message.metadata as object | undefined) ?? Prisma.JsonNull,
-        },
-      }),
-    ),
-    tenantDb.aiSiteChat.update({ where: { id: chatId }, data: { updatedAt: new Date() } }),
-  ])
+  for (const [index, message] of messages.entries()) {
+    await tenantDb.aiSiteChatMessage.upsert({
+      where: { id: message.id },
+      create: {
+        id: message.id,
+        chatId,
+        role: message.role,
+        parts: message.parts as object,
+        metadata: (message.metadata as object | undefined) ?? Prisma.JsonNull,
+        createdAt: new Date(start + index),
+      },
+      update: {
+        parts: message.parts as object,
+        metadata: (message.metadata as object | undefined) ?? Prisma.JsonNull,
+      },
+    })
+  }
+  await tenantDb.aiSiteChat.update({ where: { id: chatId }, data: { updatedAt: new Date() } })
 }
 
 export async function deleteMessages(tenantDb: PrismaClient, chatId: string, messageIds: string[]) {
