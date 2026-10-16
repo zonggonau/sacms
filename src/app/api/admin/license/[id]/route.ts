@@ -17,8 +17,17 @@ const PatchSchema = z.object({
   // EnterpriseLicense.maxInstances. Not nullable (unlike storageGb/aiCredits):
   // there's no "no limit" state, it just goes back to the default of 1.
   maxInstances: z.number().int().positive().optional(),
-}).refine((data) => data.status !== undefined || data.storageGb !== undefined || data.aiCredits !== undefined || data.maxInstances !== undefined, {
-  message: "Provide at least one of status, storageGb, aiCredits, or maxInstances",
+  // Workspace-count entitlement — see EnterpriseLicense.maxWorkspaces and
+  // getUserWorkspaceLicense() in plan-enforcement.ts. null clears the
+  // entitlement (falls back to the account's normal plan limit); 999999 is
+  // the reserved "Unlimited" sentinel.
+  maxWorkspaces: z.number().int().positive().nullable().optional(),
+  // Contract value in IDR — sales record only. null clears it.
+  priceIdr: z.number().int().nonnegative().nullable().optional(),
+}).refine((data) =>
+  data.status !== undefined || data.storageGb !== undefined || data.aiCredits !== undefined ||
+  data.maxInstances !== undefined || data.maxWorkspaces !== undefined || data.priceIdr !== undefined, {
+  message: "Provide at least one of status, storageGb, aiCredits, maxInstances, maxWorkspaces, or priceIdr",
 })
 
 // PATCH /api/admin/license/[id] - revoke/reactivate a license, and/or adjust
@@ -36,16 +45,33 @@ export const PATCH = withAdminAuth(async (request, context, { session }) => {
 
   const body = await readJson(request, PatchSchema)
   if (!body.ok) return body.response
-  const { status, storageGb, aiCredits, maxInstances } = body.data
+  const { status, storageGb, aiCredits, maxInstances, maxWorkspaces, priceIdr } = body.data
 
-  const data: { status?: string; storageGb?: number | null; aiCredits?: number | null; maxInstances?: number } = {}
+  const data: {
+    status?: string
+    storageGb?: number | null
+    aiCredits?: number | null
+    maxInstances?: number
+    maxWorkspaces?: number | null
+    priceIdr?: number | null
+  } = {}
   if (status !== undefined && status !== license.status) data.status = status
   if (storageGb !== undefined && storageGb !== license.storageGb) data.storageGb = storageGb
   if (aiCredits !== undefined && aiCredits !== license.aiCredits) data.aiCredits = aiCredits
   if (maxInstances !== undefined && maxInstances !== license.maxInstances) data.maxInstances = maxInstances
+  if (maxWorkspaces !== undefined && maxWorkspaces !== license.maxWorkspaces) data.maxWorkspaces = maxWorkspaces
+  if (priceIdr !== undefined && priceIdr !== license.priceIdr) data.priceIdr = priceIdr
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ success: true, status: license.status, storageGb: license.storageGb, aiCredits: license.aiCredits, maxInstances: license.maxInstances })
+    return NextResponse.json({
+      success: true,
+      status: license.status,
+      storageGb: license.storageGb,
+      aiCredits: license.aiCredits,
+      maxInstances: license.maxInstances,
+      maxWorkspaces: license.maxWorkspaces,
+      priceIdr: license.priceIdr,
+    })
   }
 
   const updated = await db.enterpriseLicense.update({ where: { id }, data })
@@ -65,7 +91,15 @@ export const PATCH = withAdminAuth(async (request, context, { session }) => {
     data: { customerName: license.customerName, customerEmail: license.customerEmail, ...data },
   })
 
-  return NextResponse.json({ success: true, status: updated.status, storageGb: updated.storageGb, aiCredits: updated.aiCredits, maxInstances: updated.maxInstances })
+  return NextResponse.json({
+    success: true,
+    status: updated.status,
+    storageGb: updated.storageGb,
+    aiCredits: updated.aiCredits,
+    maxInstances: updated.maxInstances,
+    maxWorkspaces: updated.maxWorkspaces,
+    priceIdr: updated.priceIdr,
+  })
 })
 
 // GET /api/admin/license/[id] - reveal the full plaintext license key for

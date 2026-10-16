@@ -64,6 +64,32 @@ import {
 import { cn } from "@/lib/utils"
 import { generateLicenseContractPDF } from "@/lib/pdf-generator"
 
+// ─── Price calculator (per tahun, IDR) ─────────────────────────────────────
+// Dasar penghitungan harga otomatis di form Generate — hasilnya tetap bisa
+// ditimpa manual sebelum lisensi diterbitkan. "Unlimited" memakai sentinel
+// 999999 yang sama dengan yang dipakai getUserWorkspaceLicense() di
+// plan-enforcement.ts untuk "praktis tak terbatas".
+const WORKSPACE_TIERS: Record<string, { label: string; maxWorkspaces: number | null; priceIdr: number }> = {
+  none: { label: "Tidak ada (ikut limit paket biasa)", maxWorkspaces: null, priceIdr: 0 },
+  "100": { label: "100 Workspace", maxWorkspaces: 100, priceIdr: 200_000_000 },
+  "500": { label: "500 Workspace", maxWorkspaces: 500, priceIdr: 500_000_000 },
+  unlimited: { label: "Unlimited Workspace", maxWorkspaces: 999999, priceIdr: 1_000_000_000 },
+}
+const STORAGE_PRICES: Record<string, number> = { none: 0, "100": 2_200_000, "250": 4_500_000, "500": 8_000_000, "1024": 15_000_000 }
+const AI_CREDIT_PRICES: Record<string, number> = { none: 0, "300": 149_000, "1500": 449_000, "5000": 1_199_000, "15000": 2_299_000 }
+
+function formatRupiah(n: number) {
+  return `Rp ${n.toLocaleString("id-ID")}`
+}
+
+/** Harga/tahun untuk tiap komponen, diprorata sesuai masa berlaku (hari/365). */
+function calculateLicensePrice(workspaceTier: string, storageGb: string, aiCredits: string, expiresInDays: number, type: string) {
+  if (type === "trial") return 0 // evaluasi — tidak dikenakan biaya
+  if (type === "partner") return null // deal nego, diisi manual, tidak dihitung otomatis
+  const yearly = (WORKSPACE_TIERS[workspaceTier]?.priceIdr || 0) + (STORAGE_PRICES[storageGb] || 0) + (AI_CREDIT_PRICES[aiCredits] || 0)
+  return Math.round(yearly * (expiresInDays / 365))
+}
+
 interface License {
   id: string
   displayKey?: string
@@ -73,6 +99,8 @@ interface License {
   type: string
   storageGb: number | null
   aiCredits: number | null
+  maxWorkspaces: number | null
+  priceIdr: number | null
   maxInstances: number
   activationCount: number
   expiresAt: string
@@ -116,7 +144,15 @@ export default function EnterpriseLicensesPage() {
     // EnterpriseLicense.maxInstances. "1" (default) enforces one license,
     // one account; raise it only for a deliberate multi-account/reseller case.
     maxInstances: "1",
+    // Workspace-count entitlement tier — see WORKSPACE_TIERS above and
+    // EnterpriseLicense.maxWorkspaces / getUserWorkspaceLicense().
+    workspaceTier: "none",
+    // Final contract price (IDR/tahun total, sudah diprorata) — auto-terisi
+    // dari calculateLicensePrice() tapi tetap bisa ditimpa manual (lihat
+    // priceTouched) sebelum lisensi diterbitkan.
+    priceIdr: "",
   })
+  const [priceTouched, setPriceTouched] = useState(false)
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
   const [confirmGenerate, setConfirmGenerate] = useState(false)
@@ -128,7 +164,18 @@ export default function EnterpriseLicensesPage() {
   const [storageGbInput, setStorageGbInput] = useState("")
   const [aiCreditsInput, setAiCreditsInput] = useState("")
   const [maxInstancesInput, setMaxInstancesInput] = useState("1")
+  const [maxWorkspacesInput, setMaxWorkspacesInput] = useState("")
+  const [priceIdrInput, setPriceIdrInput] = useState("")
   const [savingQuota, setSavingQuota] = useState(false)
+
+  // Perkiraan harga otomatis — ikut berubah setiap komponen (workspace,
+  // storage, AI credits, durasi, tipe) berubah, kecuali admin sudah mengetik
+  // manual di field harga (priceTouched).
+  useEffect(() => {
+    if (priceTouched) return
+    const suggested = calculateLicensePrice(form.workspaceTier, form.storageGb, form.aiCredits, Number(form.expiresIn), form.type)
+    setForm((f) => ({ ...f, priceIdr: suggested === null ? f.priceIdr : String(suggested) }))
+  }, [form.workspaceTier, form.storageGb, form.aiCredits, form.expiresIn, form.type, priceTouched])
 
   const fetchLicenses = async () => {
     try {
@@ -219,6 +266,8 @@ export default function EnterpriseLicensesPage() {
           storageGb: form.storageGb === "none" ? undefined : Number(form.storageGb),
           aiCredits: form.aiCredits === "none" ? undefined : Number(form.aiCredits),
           maxInstances: Number(form.maxInstances),
+          maxWorkspaces: WORKSPACE_TIERS[form.workspaceTier]?.maxWorkspaces ?? undefined,
+          priceIdr: form.priceIdr.trim() === "" ? undefined : Number(form.priceIdr),
           expiresAt: expiresAt.toISOString(),
         }),
       })
@@ -237,7 +286,10 @@ export default function EnterpriseLicensesPage() {
           storageGb: "none",
           aiCredits: "none",
           maxInstances: "1",
+          workspaceTier: "none",
+          priceIdr: "",
         })
+        setPriceTouched(false)
         toast({
           title: "Lisensi Dibuat",
           description: `Lisensi aktif berhasil di-generate untuk ${form.customerName}`,
@@ -304,6 +356,8 @@ export default function EnterpriseLicensesPage() {
       type: lic.type,
       storageGb: lic.storageGb,
       aiCredits: lic.aiCredits,
+      maxWorkspaces: lic.maxWorkspaces,
+      priceIdr: lic.priceIdr,
       issuedAt: lic.createdAt,
       expiresAt: lic.expiresAt,
     })
@@ -314,6 +368,8 @@ export default function EnterpriseLicensesPage() {
     setStorageGbInput(lic.storageGb ? String(lic.storageGb) : "")
     setAiCreditsInput(lic.aiCredits ? String(lic.aiCredits) : "")
     setMaxInstancesInput(String(lic.maxInstances || 1))
+    setMaxWorkspacesInput(lic.maxWorkspaces ? String(lic.maxWorkspaces) : "")
+    setPriceIdrInput(lic.priceIdr != null ? String(lic.priceIdr) : "")
   }
 
   const handleSaveQuota = async () => {
@@ -321,6 +377,8 @@ export default function EnterpriseLicensesPage() {
     const gb = storageGbInput.trim() === "" ? null : Number(storageGbInput)
     const credits = aiCreditsInput.trim() === "" ? null : Number(aiCreditsInput)
     const maxInstances = maxInstancesInput.trim() === "" ? 1 : Number(maxInstancesInput)
+    const maxWorkspaces = maxWorkspacesInput.trim() === "" ? null : Number(maxWorkspacesInput)
+    const priceIdr = priceIdrInput.trim() === "" ? null : Number(priceIdrInput)
     if (gb !== null && (!Number.isInteger(gb) || gb <= 0)) {
       toast({ title: "Nilai tidak valid", description: "Masukkan jumlah GB berupa bilangan positif, atau kosongkan.", variant: "destructive" })
       return
@@ -333,12 +391,20 @@ export default function EnterpriseLicensesPage() {
       toast({ title: "Nilai tidak valid", description: "Maks. akun aktivasi harus bilangan positif (minimal 1).", variant: "destructive" })
       return
     }
+    if (maxWorkspaces !== null && (!Number.isInteger(maxWorkspaces) || maxWorkspaces <= 0)) {
+      toast({ title: "Nilai tidak valid", description: "Maks. workspace harus bilangan positif, atau kosongkan.", variant: "destructive" })
+      return
+    }
+    if (priceIdr !== null && (!Number.isInteger(priceIdr) || priceIdr < 0)) {
+      toast({ title: "Nilai tidak valid", description: "Nilai kontrak harus bilangan bulat ≥ 0, atau kosongkan.", variant: "destructive" })
+      return
+    }
     setSavingQuota(true)
     try {
       const res = await fetch(`/api/admin/license/${editingQuotaFor.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storageGb: gb, aiCredits: credits, maxInstances }),
+        body: JSON.stringify({ storageGb: gb, aiCredits: credits, maxInstances, maxWorkspaces, priceIdr }),
       })
       if (res.ok) {
         toast({
@@ -501,6 +567,24 @@ export default function EnterpriseLicensesPage() {
                       </Select>
                     </div>
                     <div className="space-y-1">
+                      <Label htmlFor="workspaceTier" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Jumlah Workspace</Label>
+                      <Select
+                        value={form.workspaceTier}
+                        onValueChange={(v) => setForm({ ...form, workspaceTier: v })}
+                      >
+                        <SelectTrigger id="workspaceTier" className="h-9 rounded-xl text-xs bg-muted/20 border-border/80">
+                          <SelectValue placeholder="Pilih paket" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="none" className="text-xs rounded-lg">Tidak ada (ikut limit paket biasa)</SelectItem>
+                          <SelectItem value="100" className="text-xs rounded-lg">100 Workspace — Rp200.000.000/thn</SelectItem>
+                          <SelectItem value="500" className="text-xs rounded-lg">500 Workspace — Rp500.000.000/thn</SelectItem>
+                          <SelectItem value="unlimited" className="text-xs rounded-lg">Unlimited — Rp1.000.000.000/thn</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Ditegakkan sistem — pembuatan workspace ke-(N+1) otomatis ditolak setelah kuota penuh.</p>
+                    </div>
+                    <div className="space-y-1">
                       <Label htmlFor="storageGb" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota Storage Gabungan</Label>
                       <Select
                         value={form.storageGb}
@@ -511,10 +595,10 @@ export default function EnterpriseLicensesPage() {
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
                           <SelectItem value="none" className="text-xs rounded-lg">Tidak ada (bukan lisensi akun)</SelectItem>
-                          <SelectItem value="100" className="text-xs rounded-lg">100 GB</SelectItem>
-                          <SelectItem value="250" className="text-xs rounded-lg">250 GB</SelectItem>
-                          <SelectItem value="500" className="text-xs rounded-lg">500 GB</SelectItem>
-                          <SelectItem value="1024" className="text-xs rounded-lg">1 TB</SelectItem>
+                          <SelectItem value="100" className="text-xs rounded-lg">100 GB — Rp2.200.000/thn</SelectItem>
+                          <SelectItem value="250" className="text-xs rounded-lg">250 GB — Rp4.500.000/thn</SelectItem>
+                          <SelectItem value="500" className="text-xs rounded-lg">500 GB — Rp8.000.000/thn</SelectItem>
+                          <SelectItem value="1024" className="text-xs rounded-lg">1 TB — Rp15.000.000/thn</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-[10px] text-muted-foreground">Dibagi rata ke semua workspace milik pelanggan ini.</p>
@@ -530,10 +614,10 @@ export default function EnterpriseLicensesPage() {
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
                           <SelectItem value="none" className="text-xs rounded-lg">Tidak ada</SelectItem>
-                          <SelectItem value="300" className="text-xs rounded-lg">300 Credits</SelectItem>
-                          <SelectItem value="1500" className="text-xs rounded-lg">1.500 Credits</SelectItem>
-                          <SelectItem value="5000" className="text-xs rounded-lg">5.000 Credits</SelectItem>
-                          <SelectItem value="15000" className="text-xs rounded-lg">15.000 Credits</SelectItem>
+                          <SelectItem value="300" className="text-xs rounded-lg">300 Credits — Rp149.000/thn</SelectItem>
+                          <SelectItem value="1500" className="text-xs rounded-lg">1.500 Credits — Rp449.000/thn</SelectItem>
+                          <SelectItem value="5000" className="text-xs rounded-lg">5.000 Credits — Rp1.199.000/thn</SelectItem>
+                          <SelectItem value="15000" className="text-xs rounded-lg">15.000 Credits — Rp2.299.000/thn</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = berlangganan lagi.</p>
@@ -576,6 +660,37 @@ export default function EnterpriseLicensesPage() {
                     </div>
                   </div>
 
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <Label htmlFor="priceIdr" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nilai Kontrak (Total, Sudah Diprorata Sesuai Masa Berlaku)</Label>
+                    {form.type === "partner" ? (
+                      <Input
+                        id="priceIdr"
+                        type="number"
+                        min={0}
+                        value={form.priceIdr}
+                        onChange={(e) => { setForm({ ...form, priceIdr: e.target.value }); setPriceTouched(true) }}
+                        placeholder="Isi manual — deal partner/reseller tidak dihitung otomatis"
+                        className="h-9 rounded-xl text-xs bg-card border-border/80 font-mono"
+                      />
+                    ) : (
+                      <>
+                        <Input
+                          id="priceIdr"
+                          type="number"
+                          min={0}
+                          value={form.priceIdr}
+                          onChange={(e) => { setForm({ ...form, priceIdr: e.target.value }); setPriceTouched(true) }}
+                          className="h-9 rounded-xl text-xs bg-card border-border/80 font-mono font-bold"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          {form.type === "trial"
+                            ? "Trial = evaluasi, otomatis Rp0. Bisa ditimpa manual bila perlu."
+                            : "Otomatis dihitung dari paket workspace + storage + AI credits di atas, diprorata sesuai masa berlaku. Bisa ditimpa manual sebelum diterbitkan — nilai inilah yang tercetak di dokumen kontrak."}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
                   <DialogFooter className="gap-2 sm:gap-0 pt-3 border-t border-border/60">
                     <Button type="button" variant="outline" onClick={() => setShowGenerate(false)} className="rounded-xl text-xs font-bold h-9">
                       Batal
@@ -598,6 +713,10 @@ export default function EnterpriseLicensesPage() {
                               {form.expiresIn === "30" ? "30 hari" :
                                form.expiresIn === "90" ? "3 bulan" :
                                form.expiresIn === "365" ? "1 tahun" : "2 tahun"}
+                            </strong>{" "}
+                            dengan nilai kontrak{" "}
+                            <strong className="text-foreground">
+                              {form.priceIdr.trim() === "" ? "Rp0" : formatRupiah(Number(form.priceIdr))}
                             </strong>.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -687,6 +806,7 @@ export default function EnterpriseLicensesPage() {
                     <TableHead className="font-bold text-xs uppercase pl-5">Pelanggan</TableHead>
                     <TableHead className="font-bold text-xs uppercase">Organisasi</TableHead>
                     <TableHead className="font-bold text-xs uppercase">Tipe</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Harga</TableHead>
                     <TableHead className="font-bold text-xs uppercase">Masa Berlaku</TableHead>
                     <TableHead className="font-bold text-xs uppercase">Status</TableHead>
                     <TableHead className="font-bold text-xs uppercase">Validasi</TableHead>
@@ -697,7 +817,7 @@ export default function EnterpriseLicensesPage() {
                   {loading ? (
                     Array.from({ length: 4 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 7 }).map((_, j) => (
+                        {Array.from({ length: 8 }).map((_, j) => (
                           <TableCell key={j} className="p-4">
                             <Skeleton className="h-4 w-full rounded-md" />
                           </TableCell>
@@ -706,7 +826,7 @@ export default function EnterpriseLicensesPage() {
                     ))
                   ) : licenses.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-20 text-center">
+                      <TableCell colSpan={8} className="py-20 text-center">
                         <div className="flex flex-col items-center justify-center gap-1.5 text-muted-foreground">
                           <Gem className="w-8 h-8 opacity-20 mb-1" />
                           {searchQuery || statusFilter !== "all" ? (
@@ -749,6 +869,11 @@ export default function EnterpriseLicensesPage() {
                               {lic.aiCredits.toLocaleString("id-ID")} AI credits
                             </div>
                           ) : null}
+                          {lic.maxWorkspaces ? (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                              {lic.maxWorkspaces >= 999999 ? "Unlimited" : `${lic.maxWorkspaces} workspace`}
+                            </div>
+                          ) : null}
                           <div
                             className={cn(
                               "text-[10px] mt-0.5 font-mono",
@@ -758,6 +883,9 @@ export default function EnterpriseLicensesPage() {
                           >
                             {lic.activationCount}/{lic.maxInstances} akun
                           </div>
+                        </TableCell>
+                        <TableCell className="text-xs font-mono text-foreground font-bold">
+                          {lic.priceIdr != null ? formatRupiah(lic.priceIdr) : "-"}
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           <div className="text-foreground">{new Date(lic.expiresAt).toLocaleDateString('id-ID')}</div>
@@ -975,6 +1103,32 @@ export default function EnterpriseLicensesPage() {
                   <p className="text-[10px] text-muted-foreground">
                     Saat ini dipakai oleh {editingQuotaFor?.activationCount ?? 0} akun. Akun baru ditolak setelah kuota ini penuh.
                   </p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="maxWorkspacesEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Workspace</Label>
+                  <Input
+                    id="maxWorkspacesEdit"
+                    type="number"
+                    min={1}
+                    value={maxWorkspacesInput}
+                    onChange={(e) => setMaxWorkspacesInput(e.target.value)}
+                    placeholder="contoh: 100, 500, atau 999999 untuk Unlimited"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Ditegakkan sistem — pembuatan workspace ke-(N+1) otomatis ditolak. Kosongkan = ikut limit paket biasa.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="priceIdrEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nilai Kontrak (Rp)</Label>
+                  <Input
+                    id="priceIdrEdit"
+                    type="number"
+                    min={0}
+                    value={priceIdrInput}
+                    onChange={(e) => setPriceIdrInput(e.target.value)}
+                    placeholder="contoh: 200000000"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Dicetak di dokumen kontrak (ikon docs di tabel). Ubah di sini kalau ada renegosiasi harga.</p>
                 </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">

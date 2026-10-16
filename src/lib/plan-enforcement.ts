@@ -129,6 +129,28 @@ export async function getUserAiCreditLicense(userId: string): Promise<{ licensed
   return { licensed: false, max: 0 }
 }
 
+/**
+ * Same bounded-grant pattern as getUserAiCreditLicense above, for workspace
+ * count — see EnterpriseLicense.maxWorkspaces. `max` of 999999 is the
+ * reserved "Unlimited" sentinel (matches the literal 999999 already used
+ * elsewhere in this file for "practically unbounded"); any other positive
+ * number is a hard cap enforced by enforceUserPlanLimit() below. `licensed:
+ * false` means this license grants no workspace entitlement at all (e.g. a
+ * storage/AI-credit-only license) — callers fall back to the account's
+ * normal plan limit in that case, same as an unlicensed account.
+ */
+export async function getUserWorkspaceLicense(userId: string): Promise<{ licensed: boolean; max: number }> {
+  try {
+    const result = await validateLicense(userId)
+    if (result.valid && result.type === "enterprise" && result.maxWorkspaces) {
+      return { licensed: true, max: result.maxWorkspaces }
+    }
+  } catch {
+    // Ignore and treat as unlicensed
+  }
+  return { licensed: false, max: 0 }
+}
+
 async function getStorageUsedBytes(tenantId: string): Promise<number> {
   const tenantDb = await getTenantDb(tenantId)
   try {
@@ -382,16 +404,43 @@ export async function enforceUserPlanLimit(
   userId: string,
   resource: UserResource
 ): Promise<EnforcementResult> {
-  // 0. Enterprise Mode Bypass (Check global and user license)
+  // 0. Enterprise Mode Bypass — a whole self-hosted instance (global tenant
+  // license) always stays fully unlimited regardless of resource.
   try {
     const { getGlobalWorkspaceId } = await import('@/lib/settings')
     const globalTenantId = await getGlobalWorkspaceId()
-    let isEnterprise = await isEnterpriseTenant(globalTenantId)
-    if (!isEnterprise) {
-      isEnterprise = await isEnterpriseTenant(userId)
+    if (await isEnterpriseTenant(globalTenantId)) {
+      return {
+        allowed: true,
+        current: 0,
+        max: 999999,
+        planSlug: "enterprise",
+        message: "Enterprise License — Unlimited",
+      }
     }
-    
-    if (isEnterprise) {
+
+    // An account-level license's workspace entitlement is bounded by its own
+    // maxWorkspaces grant (see getUserWorkspaceLicense) rather than an
+    // unconditional bypass — a license sold for "up to N workspaces" must
+    // actually stop at N, not quietly grant unlimited like before. `max`
+    // itself carries the 999999 "Unlimited" sentinel when that's what was
+    // purchased, so this check naturally covers both cases.
+    if (resource === "workspaces") {
+      const workspaceLicense = await getUserWorkspaceLicense(userId)
+      if (workspaceLicense.licensed) {
+        const currentUsage = await getUserUsage(userId, "workspaces")
+        const allowed = currentUsage < workspaceLicense.max
+        return {
+          allowed,
+          current: currentUsage,
+          max: workspaceLicense.max,
+          planSlug: "enterprise",
+          message: allowed
+            ? `OK — workspaces: ${currentUsage}/${workspaceLicense.max}`
+            : `Kuota workspace lisensi Enterprise Anda sudah penuh (${currentUsage}/${workspaceLicense.max}). Hubungi admin untuk menaikkan kuota.`,
+        }
+      }
+    } else if (await isEnterpriseTenant(userId)) {
       return {
         allowed: true,
         current: 0,

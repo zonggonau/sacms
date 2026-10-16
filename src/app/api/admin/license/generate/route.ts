@@ -12,7 +12,7 @@ import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 export const POST = withAdminAuth(
   async (request, _context, { session }) => {
     const body = await request.json()
-    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb, aiCredits, maxInstances } = body
+    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb, aiCredits, maxInstances, maxWorkspaces, priceIdr } = body
 
     if (!customerName || !expiresAt) {
       return apiError("validation", { message: "customerName and expiresAt are required" })
@@ -34,6 +34,21 @@ export const POST = withAdminAuth(
       maxInstances === undefined || maxInstances === null || maxInstances === ""
         ? undefined
         : Math.max(1, Math.floor(Number(maxInstances)))
+    // Workspace-count entitlement — see schema.prisma's
+    // EnterpriseLicense.maxWorkspaces and plan-enforcement.ts's
+    // getUserWorkspaceLicense(). undefined = this license doesn't touch
+    // workspace limits at all (e.g. a storage/AI-credit-only license).
+    const maxWorkspacesValue: number | undefined =
+      maxWorkspaces === undefined || maxWorkspaces === null || maxWorkspaces === ""
+        ? undefined
+        : Math.max(1, Math.floor(Number(maxWorkspaces)))
+    // Contract value in IDR — sales record only, never consulted by
+    // validateLicense()/enforcement. Admin-entered (auto-suggested by the
+    // UI's calculator, editable before submit).
+    const priceIdrValue: number | undefined =
+      priceIdr === undefined || priceIdr === null || priceIdr === ""
+        ? undefined
+        : Math.max(0, Math.floor(Number(priceIdr)))
 
     // Generate license key
     const licenseKey = generateLicenseKey({
@@ -45,6 +60,7 @@ export const POST = withAdminAuth(
       features: features || ["self-host", "unlimited-workspaces"],
       storageGb: storageGbValue,
       aiCredits: aiCreditsValue,
+      maxWorkspaces: maxWorkspacesValue,
       exp: Math.floor(expDate.getTime() / 1000),
     })
 
@@ -59,6 +75,8 @@ export const POST = withAdminAuth(
         features: features || ["self-host", "unlimited-workspaces"],
         storageGb: storageGbValue ?? null,
         aiCredits: aiCreditsValue ?? null,
+        maxWorkspaces: maxWorkspacesValue ?? null,
+        priceIdr: priceIdrValue ?? null,
         ...(maxInstancesValue !== undefined ? { maxInstances: maxInstancesValue } : {}),
         expiresAt: expDate,
         createdBy: session.user.email,
@@ -70,7 +88,7 @@ export const POST = withAdminAuth(
       action: AuditAction.SETTINGS_UPDATED,
       entity: "EnterpriseLicenseGenerated",
       entityId: license.id,
-      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, aiCredits: aiCreditsValue, maxInstances: license.maxInstances, expiresAt: expDate.toISOString() },
+      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, aiCredits: aiCreditsValue, maxWorkspaces: maxWorkspacesValue, priceIdr: priceIdrValue, maxInstances: license.maxInstances, expiresAt: expDate.toISOString() },
     })
 
     return NextResponse.json({
@@ -81,6 +99,8 @@ export const POST = withAdminAuth(
       type: license.type,
       storageGb: license.storageGb,
       aiCredits: license.aiCredits,
+      maxWorkspaces: license.maxWorkspaces,
+      priceIdr: license.priceIdr,
       maxInstances: license.maxInstances,
       expiresAt: license.expiresAt,
     })

@@ -61,6 +61,8 @@ export const GET = withAdminAuth(
       type: l.type,
       storageGb: l.storageGb,
       aiCredits: l.aiCredits,
+      maxWorkspaces: l.maxWorkspaces,
+      priceIdr: l.priceIdr,
       maxInstances: l.maxInstances,
       activationCount: l._count.activations,
       expiresAt: l.expiresAt,

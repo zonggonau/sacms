@@ -321,6 +321,8 @@ export interface LicenseContractData {
   type: string // "enterprise" | "partner" | "trial"
   storageGb?: number | null
   aiCredits?: number | null
+  maxWorkspaces?: number | null
+  priceIdr?: number | null
   issuedAt: string | Date
   expiresAt: string | Date
 }
@@ -338,6 +340,10 @@ function formatIdDate(d: string | Date) {
 
 function formatStorage(gb: number) {
   return gb >= 1024 ? `${(gb / 1024).toFixed(gb % 1024 === 0 ? 0 : 1)} TB` : `${gb} GB`
+}
+
+function formatRupiahPdf(n: number) {
+  return `Rp ${n.toLocaleString('id-ID')}`
 }
 
 /**
@@ -462,8 +468,10 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
       ['Tanggal Mulai', formatIdDate(data.issuedAt)],
       ['Tanggal Berakhir', formatIdDate(data.expiresAt)],
       ['Masa Berlaku', `${totalDays} hari`],
+      ['Kuota Workspace', data.maxWorkspaces ? (data.maxWorkspaces >= 999999 ? 'Unlimited' : `Maks. ${data.maxWorkspaces.toLocaleString('id-ID')} workspace`) : 'Tidak berlaku'],
       ['Kuota Storage Gabungan', data.storageGb ? `${formatStorage(data.storageGb)} (dibagi ke seluruh workspace Pelanggan)` : 'Tidak berlaku'],
       ['Kuota AI Credits', data.aiCredits ? `${data.aiCredits.toLocaleString('id-ID')} credits / masa berlaku` : 'Tidak berlaku'],
+      ['Nilai Kontrak', data.priceIdr != null ? formatRupiahPdf(data.priceIdr) : 'Belum ditentukan'],
       ['Referensi Lisensi', refCode],
     ],
     theme: 'plain',
@@ -517,7 +525,7 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
 
   drawArticle(
     'Pasal 1 — Objek Perjanjian',
-    'Penyedia memberikan hak penggunaan platform SaCMS kepada Pelanggan sesuai dengan ketentuan lisensi yang tercantum pada tabel di atas, termasuk kuota storage gabungan dan/atau AI credits apabila berlaku.'
+    'Penyedia memberikan hak penggunaan platform SaCMS kepada Pelanggan sesuai dengan ketentuan lisensi yang tercantum pada tabel di atas, termasuk kuota workspace, storage gabungan, dan/atau AI credits apabila berlaku. Kuota workspace ditegakkan langsung oleh sistem — pembuatan workspace di luar kuota akan ditolak otomatis sampai Pelanggan menambah kuota.'
   )
   drawArticle(
     'Pasal 2 — Jangka Waktu dan Pengakhiran',
@@ -529,7 +537,9 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   )
   drawArticle(
     'Pasal 4 — Nilai Kontrak dan Pembayaran',
-    'Nilai kontrak: Rp ___________________________ , dengan cara dan jadwal pembayaran yang disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.'
+    data.priceIdr != null
+      ? `Nilai kontrak sebesar ${formatRupiahPdf(data.priceIdr)} untuk masa berlaku ${totalDays} hari sebagaimana tercantum pada tabel di atas. Cara dan jadwal pembayaran disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.`
+      : 'Nilai kontrak: Rp ___________________________ , dengan cara dan jadwal pembayaran yang disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.'
   )
   drawArticle(
     'Pasal 5 — Lain-lain',

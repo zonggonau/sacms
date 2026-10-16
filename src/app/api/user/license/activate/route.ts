@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
   // back to whatever was actually signed into the key otherwise.
   const storageGb = dbRecord?.storageGb ?? payload.storageGb
   const aiCredits = dbRecord?.aiCredits ?? payload.aiCredits
+  const maxWorkspaces = dbRecord?.maxWorkspaces ?? payload.maxWorkspaces
 
   await upsertLicenseCache({
     valid: true,
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
     features: payload.features,
     storageGb,
     aiCredits,
+    maxWorkspaces,
     expiresAt: new Date(payload.exp * 1000),
     issuedAt: new Date(payload.iat * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
@@ -124,6 +126,7 @@ export async function POST(request: NextRequest) {
     type: payload.type,
     storageGb,
     aiCredits,
+    maxWorkspaces,
     expiresAt: new Date(payload.exp * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
   })

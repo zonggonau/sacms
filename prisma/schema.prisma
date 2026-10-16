@@ -730,6 +730,18 @@ model EnterpriseLicense {
   /// plan-enforcement.ts). Bounded, not unlimited: once used up, the holder
   /// renews/upgrades rather than getting free unlimited AI generation.
   aiCredits       Int?
+  /// Workspace-count entitlement for an ACCOUNT-level license (bounded, like
+  /// storageGb/aiCredits above) — see getUserWorkspaceLicense() in
+  /// plan-enforcement.ts. null = this license grants no workspace
+  /// entitlement at all (falls back to the account's normal plan limit); a
+  /// specific number = hard cap enforced at that count; 999999 is the
+  /// reserved "Unlimited" sentinel already used elsewhere in this codebase
+  /// for "practically unbounded".
+  maxWorkspaces   Int?
+  /// Contract value in IDR for this license (admin-entered at generation,
+  /// editable after) — purely a sales/record-keeping field, never consulted
+  /// by validateLicense()/enforcement. Printed on the generated contract PDF.
+  priceIdr        Int?
   /// How many distinct accounts may hold this license at once — enforced by
   /// POST /api/user/license/activate via the LicenseActivation rows below.
   /// Defaults to 1, i.e. "one license, one account": the first account to
@@ -781,6 +793,8 @@ model LicenseCache {
   storageGb       Int?
   /// Cached copy of EnterpriseLicense.aiCredits — see license.ts.
   aiCredits       Int?
+  /// Cached copy of EnterpriseLicense.maxWorkspaces — see license.ts.
+  maxWorkspaces   Int?
   issuedAt        DateTime
   expiresAt       DateTime
   lastValidatedAt DateTime
