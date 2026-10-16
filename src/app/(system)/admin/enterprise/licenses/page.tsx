@@ -59,8 +59,10 @@ import {
   ShieldOff,
   ShieldCheck,
   HardDrive,
+  FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { generateLicenseContractPDF } from "@/lib/pdf-generator"
 
 interface License {
   id: string
@@ -281,6 +283,21 @@ export default function EnterpriseLicensesPage() {
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  const handleDownloadContract = (lic: License) => {
+    generateLicenseContractPDF({
+      licenseId: lic.id,
+      displayKey: lic.displayKey,
+      customerName: lic.customerName,
+      customerEmail: lic.customerEmail,
+      organization: lic.organization,
+      type: lic.type,
+      storageGb: lic.storageGb,
+      aiCredits: lic.aiCredits,
+      issuedAt: lic.createdAt,
+      expiresAt: lic.expiresAt,
+    })
   }
 
   const openEditQuota = (lic: License) => {
@@ -740,6 +757,15 @@ export default function EnterpriseLicensesPage() {
                               title="Atur kuota storage & AI credits"
                             >
                               <HardDrive className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground"
+                              onClick={() => handleDownloadContract(lic)}
+                              title="Unduh dokumen kontrak lisensi"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"

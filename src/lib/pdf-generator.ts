@@ -307,3 +307,289 @@ export function generateInvoicePDF(data: InvoiceData) {
   ═══════════════════════════════════════════════════════════════════════ */
   doc.save(`Invoice_${data.orderId}.pdf`)
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// License / enterprise contract document
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface LicenseContractData {
+  licenseId: string
+  displayKey?: string
+  customerName: string
+  customerEmail?: string
+  organization?: string
+  type: string // "enterprise" | "partner" | "trial"
+  storageGb?: number | null
+  aiCredits?: number | null
+  issuedAt: string | Date
+  expiresAt: string | Date
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  enterprise: 'Enterprise (Dedicated)',
+  partner: 'Partner / Reseller',
+  trial: 'Trial (Evaluasi)',
+}
+
+function formatIdDate(d: string | Date) {
+  const date = typeof d === 'string' ? new Date(d) : d
+  return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function formatStorage(gb: number) {
+  return gb >= 1024 ? `${(gb / 1024).toFixed(gb % 1024 === 0 ? 0 : 1)} TB` : `${gb} GB`
+}
+
+/**
+ * Generates a base-form license agreement between SaCMS and the licensee,
+ * populated from the EnterpriseLicense record. This is a draft/template
+ * document (commercial value and bespoke clauses are left blank for the
+ * parties to fill in and negotiate) — it is explicitly labelled as such so
+ * it is never mistaken for a final, lawyer-reviewed contract.
+ */
+export function generateLicenseContractPDF(data: LicenseContractData) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const W = 210
+  const H = 297
+  const ML = 15
+  const MR = 195
+  const TR = 190
+
+  const typeLabel = TYPE_LABEL[data.type] || data.type
+  const refCode = data.displayKey || data.licenseId.slice(0, 10)
+  const totalDays = Math.max(
+    0,
+    Math.round(
+      (new Date(data.expiresAt).getTime() - new Date(data.issuedAt).getTime()) / 86400000
+    )
+  )
+
+  /* ═══ 1. HEADER BAND ═══ */
+  rgb(doc, C.navy, 'fill')
+  doc.rect(0, 0, W, 38, 'F')
+
+  rgb(doc, C.white, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(20)
+  doc.text('SaCMS', ML, 15)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(180, 190, 210)
+  doc.text('Enterprise Headless CMS  ·  legal@sacms.cloud  ·  sacms.cloud', ML, 22)
+
+  rgb(doc, C.white, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.text('SURAT PERJANJIAN', TR, 14, { align: 'right' })
+  doc.text('LISENSI ENTERPRISE', TR, 21, { align: 'right' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(180, 190, 210)
+  doc.text(`Ref: ${refCode}`, TR, 28, { align: 'right' })
+
+  /* ═══ 2. ACCENT LINE ═══ */
+  rgb(doc, C.blue, 'fill')
+  doc.rect(0, 38, W, 3, 'F')
+
+  /* ═══ 3. PARTY CARDS ═══ */
+  const cardY = 49
+  const cardH = 34
+  const gap = 6
+  const totalW = MR - ML
+  const cardW = (totalW - gap) / 2
+
+  rgb(doc, C.light, 'fill')
+  rgb(doc, C.border, 'draw')
+  doc.setLineWidth(0.3)
+  doc.roundedRect(ML, cardY, cardW, cardH, 2, 2, 'FD')
+  doc.roundedRect(ML + cardW + gap, cardY, cardW, cardH, 2, 2, 'FD')
+
+  // Card 1 — Pihak Pertama (Penyedia)
+  const c1x = ML + 6
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(120, 140, 165)
+  doc.text('PIHAK PERTAMA (PENYEDIA)', c1x, cardY + 8)
+
+  rgb(doc, C.dark, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text('SaCMS, Inc.', c1x, cardY + 17)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(110, 130, 155)
+  doc.text('Penyedia platform SaaS — legal@sacms.cloud', c1x, cardY + 24)
+
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(7.5)
+  doc.text('Selanjutnya disebut "Penyedia"', c1x, cardY + 30)
+
+  // Card 2 — Pihak Kedua (Pelanggan)
+  const c2x = ML + cardW + gap + 6
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(7.5)
+  doc.setTextColor(120, 140, 165)
+  doc.text('PIHAK KEDUA (PELANGGAN)', c2x, cardY + 8)
+
+  rgb(doc, C.dark, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text(data.organization || data.customerName, c2x, cardY + 17)
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(110, 130, 155)
+  const picLine = data.customerEmail
+    ? `${data.customerName} · ${data.customerEmail}`
+    : data.customerName
+  doc.text(picLine, c2x, cardY + 24, { maxWidth: cardW - 12 })
+
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(7.5)
+  doc.text('Selanjutnya disebut "Pelanggan"', c2x, cardY + 30)
+
+  /* ═══ 4. LICENSE TERMS TABLE ═══ */
+  const tableY = cardY + cardH + 8
+  autoTable(doc, {
+    startY: tableY,
+    head: [['Ketentuan Lisensi', 'Detail']],
+    body: [
+      ['Tipe Lisensi', typeLabel],
+      ['Tanggal Mulai', formatIdDate(data.issuedAt)],
+      ['Tanggal Berakhir', formatIdDate(data.expiresAt)],
+      ['Masa Berlaku', `${totalDays} hari`],
+      ['Kuota Storage Gabungan', data.storageGb ? `${formatStorage(data.storageGb)} (dibagi ke seluruh workspace Pelanggan)` : 'Tidak berlaku'],
+      ['Kuota AI Credits', data.aiCredits ? `${data.aiCredits.toLocaleString('id-ID')} credits / masa berlaku` : 'Tidak berlaku'],
+      ['Referensi Lisensi', refCode],
+    ],
+    theme: 'plain',
+    headStyles: {
+      fillColor: C.navy,
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 8.5,
+      cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
+    },
+    bodyStyles: {
+      fontSize: 8.5,
+      textColor: C.dark,
+      cellPadding: { top: 4.5, bottom: 4.5, left: 4, right: 4 },
+      lineColor: C.border,
+      lineWidth: 0.2,
+    },
+    columnStyles: {
+      0: { cellWidth: 60, fontStyle: 'bold' },
+      1: { cellWidth: totalW - 60 },
+    },
+    alternateRowStyles: { fillColor: C.light },
+    margin: { left: ML, right: W - MR },
+  })
+
+  /* ═══ 5. ARTICLES (PASAL) ═══ */
+  let y = ((doc as any).lastAutoTable?.finalY ?? tableY + 60) + 10
+  const bodyWidth = MR - ML
+
+  const ensureSpace = (needed: number) => {
+    if (y + needed > H - 30) {
+      doc.addPage()
+      y = 20
+    }
+  }
+
+  const drawArticle = (title: string, body: string) => {
+    const lines = doc.splitTextToSize(body, bodyWidth)
+    ensureSpace(10 + lines.length * 4.6)
+    rgb(doc, C.dark, 'text')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    doc.text(title, ML, y)
+    y += 6
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    rgb(doc, C.slate, 'text')
+    doc.text(lines, ML, y)
+    y += lines.length * 4.6 + 5
+  }
+
+  drawArticle(
+    'Pasal 1 — Objek Perjanjian',
+    'Penyedia memberikan hak penggunaan platform SaCMS kepada Pelanggan sesuai dengan ketentuan lisensi yang tercantum pada tabel di atas, termasuk kuota storage gabungan dan/atau AI credits apabila berlaku.'
+  )
+  drawArticle(
+    'Pasal 2 — Jangka Waktu dan Pengakhiran',
+    'Perjanjian ini berlaku mulai Tanggal Mulai hingga Tanggal Berakhir sebagaimana tercantum di atas. Apabila lisensi tidak diperpanjang sebelum Tanggal Berakhir, sistem akan terkunci otomatis (hard lockout) dan hanya dapat dibuka kembali melalui penerbitan lisensi baru oleh Penyedia — Pelanggan tidak dapat membuka kunci tersebut secara mandiri.'
+  )
+  drawArticle(
+    'Pasal 3 — Kerahasiaan dan Pembatasan Penggunaan',
+    'Pelanggan wajib menjaga kerahasiaan kunci lisensi (license key) yang diterbitkan untuknya, dan tidak melakukan rekayasa balik (reverse engineering), modifikasi, duplikasi, maupun pengalihan lisensi ini kepada pihak lain tanpa persetujuan tertulis dari Penyedia.'
+  )
+  drawArticle(
+    'Pasal 4 — Nilai Kontrak dan Pembayaran',
+    'Nilai kontrak: Rp ___________________________ , dengan cara dan jadwal pembayaran yang disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.'
+  )
+  drawArticle(
+    'Pasal 5 — Lain-lain',
+    'Hal-hal yang belum atau belum cukup diatur dalam perjanjian ini akan diatur lebih lanjut dalam addendum yang disepakati bersama secara tertulis oleh kedua pihak.'
+  )
+
+  /* ═══ 6. SIGNATURES ═══ */
+  ensureSpace(55)
+  y += 6
+  const sigColW = bodyWidth / 2
+  const sig1X = ML
+  const sig2X = ML + sigColW
+
+  rgb(doc, C.dark, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.text('Pihak Pertama,', sig1X, y)
+  doc.text('Pihak Kedua,', sig2X, y)
+
+  const lineY = y + 28
+  doc.setDrawColor(C.dark[0], C.dark[1], C.dark[2])
+  doc.setLineWidth(0.2)
+  doc.line(sig1X, lineY, sig1X + 60, lineY)
+  doc.line(sig2X, lineY, sig2X + 60, lineY)
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(8.5)
+  doc.text('SaCMS, Inc.', sig1X, lineY + 5)
+  doc.text(data.organization || data.customerName, sig2X, lineY + 5, { maxWidth: sigColW - 6 })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(7.5)
+  rgb(doc, C.slate, 'text')
+  doc.text('Nama & Jabatan, Tanggal', sig1X, lineY + 10)
+  doc.text('Nama & Jabatan, Tanggal', sig2X, lineY + 10)
+
+  /* ═══ 7. FOOTER BAR (every page) ═══ */
+  const pageCount = doc.getNumberOfPages()
+  for (let p = 1; p <= pageCount; p++) {
+    doc.setPage(p)
+    rgb(doc, C.navy, 'fill')
+    doc.rect(0, H - 20, W, 20, 'F')
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7)
+    doc.setTextColor(160, 175, 200)
+    doc.text(
+      'Dokumen ini adalah draf dasar yang dibuat otomatis oleh sistem SaCMS — tinjau bersama tim legal kedua pihak sebelum ditandatangani secara resmi.',
+      W / 2,
+      H - 12,
+      { align: 'center', maxWidth: W - 30 }
+    )
+    doc.setTextColor(120, 135, 165)
+    doc.text(`Dibuat ${formatIdDate(new Date())} · Ref: ${refCode}`, W / 2, H - 5, { align: 'center' })
+
+    doc.setTextColor(180, 190, 210)
+    doc.setFontSize(7)
+    doc.text(`Halaman ${p} / ${pageCount}`, TR, H - 5, { align: 'right' })
+  }
+
+  const safeName = (data.organization || data.customerName).replace(/[^a-z0-9]+/gi, '_')
+  doc.save(`Kontrak_Lisensi_${safeName}_${refCode}.pdf`)
+}
