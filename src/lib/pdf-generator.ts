@@ -346,122 +346,296 @@ function formatRupiahPdf(n: number) {
   return `Rp ${n.toLocaleString('id-ID')}`
 }
 
+const ROMAN_MONTH = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII']
+
+const DAY_NAME_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu']
+
 /**
- * Generates a base-form license agreement between SaCMS and the licensee,
- * populated from the EnterpriseLicense record. This is a draft/template
- * document (commercial value and bespoke clauses are left blank for the
- * parties to fill in and negotiate) — it is explicitly labelled as such so
- * it is never mistaken for a final, lawyer-reviewed contract.
+ * Generates a formal license/cooperation agreement between SaCMS and the
+ * licensee, following the standard Indonesian "Perjanjian Kerja Sama"
+ * structure (judul & nomor perjanjian, pembukaan/komparisi, premis/
+ * menimbang, pasal-pasal, penutup, tanda tangan, lampiran) rather than a
+ * short ad-hoc letter. Populated from the EnterpriseLicense record. SaCMS's
+ * own legal-entity particulars (alamat resmi, NPWP) aren't captured
+ * anywhere in this system, so those are left as explicit bracketed
+ * placeholders for the legal team to fill in rather than fabricated — this
+ * is a base document meant for legal review before signing, not a final
+ * lawyer-drafted contract, and is labelled as such throughout.
  */
 export function generateLicenseContractPDF(data: LicenseContractData) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
   const W = 210
   const H = 297
-  const ML = 15
-  const MR = 195
-  const TR = 190
+  // Generous 20mm side margins (wider than a typical invoice) — closer to
+  // the margin convention Indonesian formal/legal documents use.
+  const ML = 20
+  const MR = 190
+  const TR = 185
+  const bodyWidth = MR - ML
 
   const typeLabel = TYPE_LABEL[data.type] || data.type
   const refCode = data.displayKey || data.licenseId.slice(0, 10)
+  const issuedDate = new Date(data.issuedAt)
   const totalDays = Math.max(
     0,
-    Math.round(
-      (new Date(data.expiresAt).getTime() - new Date(data.issuedAt).getTime()) / 86400000
-    )
+    Math.round((new Date(data.expiresAt).getTime() - issuedDate.getTime()) / 86400000)
+  )
+  const agreementNo = `${refCode}/PKS-SACMS/${ROMAN_MONTH[issuedDate.getMonth()]}/${issuedDate.getFullYear()}`
+  const partyTwoName = data.organization || data.customerName
+
+  let y = 0
+  const ensureSpace = (needed: number) => {
+    if (y + needed > H - 26) {
+      doc.addPage()
+      y = 20
+    }
+  }
+
+  /* ═══ HEADER BAND (every page gets a short running head after page 1) ═══ */
+  const drawHeaderBand = (isFirstPage: boolean) => {
+    const bandH = isFirstPage ? 38 : 16
+    rgb(doc, C.navy, 'fill')
+    doc.rect(0, 0, W, bandH, 'F')
+    rgb(doc, C.blue, 'fill')
+    doc.rect(0, bandH, W, 2, 'F')
+
+    if (isFirstPage) {
+      rgb(doc, C.white, 'text')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(20)
+      doc.text('SaCMS', ML, 15)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(180, 190, 210)
+      doc.text('Enterprise Headless CMS  ·  legal@sacms.cloud  ·  sacms.cloud', ML, 22)
+
+      rgb(doc, C.white, 'text')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(12.5)
+      doc.text('PERJANJIAN KERJA SAMA', TR, 13, { align: 'right' })
+      doc.text('LISENSI PERANGKAT LUNAK SACMS', TR, 19.5, { align: 'right' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(180, 190, 210)
+      doc.text(`No: ${agreementNo}`, TR, 27, { align: 'right' })
+    } else {
+      rgb(doc, C.white, 'text')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.text('SaCMS — Perjanjian Kerja Sama Lisensi Perangkat Lunak', ML, 10)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(180, 190, 210)
+      doc.text(`No: ${agreementNo}`, TR, 10, { align: 'right' })
+    }
+    return bandH + 2
+  }
+
+  y = drawHeaderBand(true) + 10
+
+  /* ═══ TEXT HELPERS ═══ */
+  const drawParagraph = (text: string, opts: { size?: number; bold?: boolean; indent?: number; gap?: number } = {}) => {
+    const size = opts.size ?? 9
+    const indent = opts.indent ?? 0
+    const lines = doc.splitTextToSize(text, bodyWidth - indent)
+    ensureSpace(lines.length * (size * 0.55) + 2)
+    doc.setFont('helvetica', opts.bold ? 'bold' : 'normal')
+    doc.setFontSize(size)
+    rgb(doc, C.dark, 'text')
+    doc.text(lines, ML + indent, y)
+    y += lines.length * (size * 0.55) + (opts.gap ?? 4)
+  }
+
+  const drawSectionTitle = (text: string) => {
+    ensureSpace(12)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10.5)
+    rgb(doc, C.navy, 'text')
+    doc.text(text, W / 2, y, { align: 'center' })
+    y += 7
+  }
+
+  const drawArticle = (title: string, bodyLines: string[]) => {
+    ensureSpace(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    rgb(doc, C.navy, 'text')
+    doc.text(title, W / 2, y, { align: 'center' })
+    y += 6.5
+    bodyLines.forEach((b) => drawParagraph(b, { size: 8.8, indent: 4, gap: 3.5 }))
+    y += 2
+  }
+
+  /* ═══ 1. PEMBUKAAN / KOMPARISI ═══ */
+  const dayName = DAY_NAME_ID[issuedDate.getDay()]
+  drawParagraph(
+    `Pada hari ini, ${dayName}, tanggal ${formatIdDate(issuedDate)}, bertempat di Nabire, Papua Tengah, yang bertanda tangan di bawah ini masing-masing:`,
+    { size: 9, gap: 5 }
   )
 
-  /* ═══ 1. HEADER BAND ═══ */
-  rgb(doc, C.navy, 'fill')
-  doc.rect(0, 0, W, 38, 'F')
+  drawParagraph('1. PIHAK PERTAMA', { bold: true, size: 9, gap: 2 })
+  drawParagraph('Nama Badan Usaha  : SaCMS, Inc.', { indent: 4, gap: 2 })
+  drawParagraph('Alamat                     : [Diisi oleh Tim Legal SaCMS]', { indent: 4, gap: 2 })
+  drawParagraph('NPWP                        : [Diisi oleh Tim Legal SaCMS]', { indent: 4, gap: 2 })
+  drawParagraph('Email Resmi               : legal@sacms.cloud', { indent: 4, gap: 2 })
+  drawParagraph(
+    'Dalam hal ini bertindak untuk dan atas nama serta sah mewakili SaCMS, selanjutnya disebut sebagai "PIHAK PERTAMA".',
+    { indent: 4, gap: 5 }
+  )
 
-  rgb(doc, C.white, 'text')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
-  doc.text('SaCMS', ML, 15)
+  drawParagraph('2. PIHAK KEDUA', { bold: true, size: 9, gap: 2 })
+  drawParagraph(`Nama                           : ${data.customerName}`, { indent: 4, gap: 2 })
+  drawParagraph(`Instansi / Organisasi   : ${partyTwoName}`, { indent: 4, gap: 2 })
+  drawParagraph('Alamat                     : [Diisi oleh Pelanggan]', { indent: 4, gap: 2 })
+  drawParagraph('NPWP                        : [Diisi oleh Pelanggan]', { indent: 4, gap: 2 })
+  drawParagraph(`Email Kontak              : ${data.customerEmail || '[Diisi oleh Pelanggan]'}`, { indent: 4, gap: 2 })
+  drawParagraph(
+    `Dalam hal ini bertindak untuk dan atas nama serta sah mewakili ${partyTwoName}, selanjutnya disebut sebagai "PIHAK KEDUA".`,
+    { indent: 4, gap: 6 }
+  )
+
+  drawParagraph('PIHAK PERTAMA dan PIHAK KEDUA secara bersama-sama selanjutnya disebut "PARA PIHAK".', { gap: 6 })
+
+  /* ═══ 2. PREMIS / MENIMBANG ═══ */
+  drawParagraph(
+    'PARA PIHAK terlebih dahulu menerangkan hal-hal sebagai berikut:',
+    { gap: 3 }
+  )
+  drawParagraph(
+    'a. bahwa PIHAK PERTAMA adalah badan usaha yang bergerak dalam penyediaan platform Content Management System berbasis Software-as-a-Service bernama SaCMS;',
+    { indent: 4, size: 8.8, gap: 2.5 }
+  )
+  drawParagraph(
+    'b. bahwa PIHAK KEDUA bermaksud menggunakan Perangkat Lunak tersebut untuk kebutuhan internal instansi/organisasinya;',
+    { indent: 4, size: 8.8, gap: 2.5 }
+  )
+  drawParagraph(
+    'c. bahwa berdasarkan hal-hal tersebut di atas, PARA PIHAK sepakat untuk mengadakan Perjanjian Kerja Sama Lisensi Penggunaan Perangkat Lunak ("Perjanjian") dengan syarat dan ketentuan sebagai berikut:',
+    { indent: 4, size: 8.8, gap: 6 }
+  )
+
+  /* ═══ 3. PASAL-PASAL ═══ */
+  drawSectionTitle('ISI PERJANJIAN')
+
+  drawArticle('Pasal 1 — Definisi', [
+    '1. "Perangkat Lunak" adalah platform Content Management System berbasis Software-as-a-Service bernama SaCMS beserta seluruh fitur, modul, dan layanan pendukungnya yang disediakan oleh PIHAK PERTAMA.',
+    '2. "Lisensi" adalah hak penggunaan terbatas atas Perangkat Lunak yang diberikan PIHAK PERTAMA kepada PIHAK KEDUA berdasarkan Perjanjian ini, dibuktikan dengan kunci lisensi (license key) yang bersifat rahasia dan tidak dapat dialihkan.',
+    '3. "Kuota Layanan" adalah batasan jumlah ruang kerja (workspace), kapasitas penyimpanan (storage), dan kredit kecerdasan buatan (AI credits) yang diberikan kepada PIHAK KEDUA sebagaimana diatur dalam Lampiran A Perjanjian ini.',
+    '4. "Masa Berlaku" adalah jangka waktu keberlakuan Lisensi sebagaimana diatur dalam Pasal 5 Perjanjian ini.',
+  ])
+
+  drawArticle('Pasal 2 — Objek dan Ruang Lingkup Perjanjian', [
+    '1. PIHAK PERTAMA dengan ini memberikan Lisensi penggunaan Perangkat Lunak kepada PIHAK KEDUA sesuai dengan Kuota Layanan yang tercantum dalam Lampiran A Perjanjian ini.',
+    '2. Kuota Layanan ditegakkan secara otomatis oleh sistem; setiap pembuatan ruang kerja (workspace), penggunaan kapasitas penyimpanan, atau kredit kecerdasan buatan di luar Kuota Layanan akan ditolak oleh sistem sampai PIHAK KEDUA menambah Kuota Layanan melalui PIHAK PERTAMA.',
+    '3. Lisensi ini bersifat non-eksklusif dan hanya berlaku untuk 1 (satu) akun PIHAK KEDUA sebagaimana diatur lebih lanjut dalam Pasal 4 Perjanjian ini.',
+  ])
+
+  drawArticle('Pasal 3 — Hak dan Kewajiban PIHAK PERTAMA', [
+    '1. PIHAK PERTAMA berhak menerima pembayaran Nilai Kontrak sebagaimana diatur dalam Pasal 6 Perjanjian ini.',
+    '2. PIHAK PERTAMA berkewajiban menyediakan akses Perangkat Lunak sesuai Kuota Layanan selama Masa Berlaku.',
+    '3. PIHAK PERTAMA berhak mencabut atau menangguhkan Lisensi apabila PIHAK KEDUA terbukti melanggar ketentuan Pasal 7 Perjanjian ini.',
+  ])
+
+  drawArticle('Pasal 4 — Hak dan Kewajiban PIHAK KEDUA', [
+    '1. PIHAK KEDUA berhak menggunakan Perangkat Lunak sesuai Kuota Layanan selama Masa Berlaku.',
+    '2. PIHAK KEDUA berkewajiban menjaga kerahasiaan kunci lisensi (license key) yang diterbitkan untuknya dan hanya mengaktifkannya pada 1 (satu) akun miliknya sendiri.',
+    '3. PIHAK KEDUA tidak diperkenankan melakukan rekayasa balik (reverse engineering), modifikasi, duplikasi, maupun pengalihan Lisensi kepada pihak lain tanpa persetujuan tertulis dari PIHAK PERTAMA.',
+  ])
+
+  drawArticle('Pasal 5 — Jangka Waktu dan Pengakhiran', [
+    '1. Perjanjian ini berlaku sejak Tanggal Mulai hingga Tanggal Berakhir sebagaimana tercantum dalam Lampiran A Perjanjian ini.',
+    '2. Apabila Lisensi tidak diperpanjang sebelum Tanggal Berakhir, sistem akan mengunci akses secara otomatis (hard lockout) dan PIHAK KEDUA tidak dapat membuka kunci tersebut secara mandiri; akses hanya dapat dibuka kembali melalui penerbitan Lisensi baru oleh PIHAK PERTAMA.',
+    '3. Perjanjian ini dapat diperpanjang berdasarkan kesepakatan tertulis PARA PIHAK sebelum berakhirnya Masa Berlaku.',
+  ])
+
+  drawArticle('Pasal 6 — Nilai Kontrak dan Cara Pembayaran', [
+    data.priceIdr != null
+      ? `1. Nilai kontrak Perjanjian ini disepakati sebesar ${formatRupiahPdf(data.priceIdr)} untuk Masa Berlaku ${totalDays} hari sebagaimana tercantum dalam Lampiran A Perjanjian ini.`
+      : '1. Nilai kontrak Perjanjian ini disepakati sebesar Rp ___________________________ untuk Masa Berlaku sebagaimana tercantum dalam Lampiran A Perjanjian ini.',
+    '2. Cara, jadwal, dan mekanisme pembayaran diatur lebih lanjut dalam lampiran/addendum tersendiri yang disepakati secara tertulis oleh PARA PIHAK.',
+  ])
+
+  drawArticle('Pasal 7 — Kerahasiaan dan Perlindungan Data', [
+    '1. PARA PIHAK sepakat untuk menjaga kerahasiaan seluruh informasi, data, dan dokumen yang diperoleh sehubungan dengan Perjanjian ini.',
+    '2. PIHAK PERTAMA berkomitmen untuk memproses data yang dikelola melalui Perangkat Lunak sesuai dengan prinsip pelindungan data pribadi sebagaimana diatur dalam Undang-Undang Nomor 27 Tahun 2022 tentang Pelindungan Data Pribadi.',
+  ])
+
+  drawArticle('Pasal 8 — Keadaan Memaksa (Force Majeure)', [
+    'PARA PIHAK dibebaskan dari tanggung jawab atas keterlambatan atau kegagalan pelaksanaan Perjanjian ini apabila disebabkan oleh keadaan memaksa (force majeure), termasuk namun tidak terbatas pada bencana alam, kebijakan pemerintah, gangguan jaringan internet berskala nasional, atau peristiwa lain di luar kendali wajar PARA PIHAK.',
+  ])
+
+  drawArticle('Pasal 9 — Penyelesaian Perselisihan', [
+    'Setiap perselisihan yang timbul dari Perjanjian ini akan diselesaikan terlebih dahulu secara musyawarah untuk mencapai mufakat. Apabila musyawarah tidak mencapai kesepakatan dalam waktu 30 (tiga puluh) hari kalender, PARA PIHAK sepakat untuk menyelesaikannya melalui domisili hukum yang akan ditentukan dalam addendum Perjanjian ini.',
+  ])
+
+  drawArticle('Pasal 10 — Lain-lain', [
+    '1. Hal-hal yang belum atau belum cukup diatur dalam Perjanjian ini akan diatur lebih lanjut dalam addendum yang disepakati bersama secara tertulis oleh PARA PIHAK dan merupakan bagian yang tidak terpisahkan dari Perjanjian ini.',
+    '2. Apabila terdapat ketentuan dalam Perjanjian ini yang dinyatakan tidak sah atau tidak dapat dilaksanakan, ketentuan lainnya tetap berlaku dan mengikat PARA PIHAK.',
+  ])
+
+  /* ═══ 4. PENUTUP ═══ */
+  drawParagraph(
+    'Demikian Perjanjian ini dibuat dalam 2 (dua) rangkap asli bermaterai cukup, masing-masing mempunyai kekuatan hukum yang sama, dan ditandatangani oleh PARA PIHAK pada hari dan tanggal sebagaimana tersebut di atas tanpa ada tekanan dari pihak mana pun.',
+    { gap: 10 }
+  )
+
+  /* ═══ 5. TANDA TANGAN ═══ */
+  ensureSpace(60)
+  const sigColW = bodyWidth / 2
+  const sig1X = ML
+  const sig2X = ML + sigColW
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(180, 190, 210)
-  doc.text('Enterprise Headless CMS  ·  legal@sacms.cloud  ·  sacms.cloud', ML, 22)
+  doc.setFontSize(9)
+  rgb(doc, C.dark, 'text')
+  doc.text('PIHAK PERTAMA,', sig1X, y)
+  doc.text('PIHAK KEDUA,', sig2X, y)
 
-  rgb(doc, C.white, 'text')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  doc.text('SURAT PERJANJIAN', TR, 14, { align: 'right' })
-  doc.text('LISENSI ENTERPRISE', TR, 21, { align: 'right' })
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(180, 190, 210)
-  doc.text(`Ref: ${refCode}`, TR, 28, { align: 'right' })
-
-  /* ═══ 2. ACCENT LINE ═══ */
-  rgb(doc, C.blue, 'fill')
-  doc.rect(0, 38, W, 3, 'F')
-
-  /* ═══ 3. PARTY CARDS ═══ */
-  const cardY = 49
-  const cardH = 34
-  const gap = 6
-  const totalW = MR - ML
-  const cardW = (totalW - gap) / 2
-
-  rgb(doc, C.light, 'fill')
+  const materaiY = y + 7
   rgb(doc, C.border, 'draw')
-  doc.setLineWidth(0.3)
-  doc.roundedRect(ML, cardY, cardW, cardH, 2, 2, 'FD')
-  doc.roundedRect(ML + cardW + gap, cardY, cardW, cardH, 2, 2, 'FD')
+  doc.setLineWidth(0.2)
+  doc.setLineDashPattern([1, 1], 0)
+  doc.rect(sig1X, materaiY, 22, 14)
+  doc.rect(sig2X, materaiY, 22, 14)
+  doc.setLineDashPattern([], 0)
+  doc.setFont('helvetica', 'italic')
+  doc.setFontSize(6.5)
+  rgb(doc, C.slate, 'text')
+  doc.text('Materai', sig1X + 11, materaiY + 8, { align: 'center' })
+  doc.text('Materai', sig2X + 11, materaiY + 8, { align: 'center' })
 
-  // Card 1 — Pihak Pertama (Penyedia)
-  const c1x = ML + 6
+  const lineY = materaiY + 26
+  doc.setDrawColor(C.dark[0], C.dark[1], C.dark[2])
+  doc.setLineWidth(0.2)
+  doc.line(sig1X, lineY, sig1X + 60, lineY)
+  doc.line(sig2X, lineY, sig2X + 60, lineY)
+
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  doc.setTextColor(120, 140, 165)
-  doc.text('PIHAK PERTAMA (PENYEDIA)', c1x, cardY + 8)
-
+  doc.setFontSize(8.5)
   rgb(doc, C.dark, 'text')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text('SaCMS, Inc.', c1x, cardY + 17)
+  doc.text('SaCMS, Inc.', sig1X, lineY + 5)
+  doc.text(partyTwoName, sig2X, lineY + 5, { maxWidth: sigColW - 6 })
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(110, 130, 155)
-  doc.text('Penyedia platform SaaS — legal@sacms.cloud', c1x, cardY + 24)
-
-  doc.setFont('helvetica', 'italic')
   doc.setFontSize(7.5)
-  doc.text('Selanjutnya disebut "Penyedia"', c1x, cardY + 30)
+  rgb(doc, C.slate, 'text')
+  doc.text('Nama & Jabatan', sig1X, lineY + 10)
+  doc.text('Nama & Jabatan', sig2X, lineY + 10)
 
-  // Card 2 — Pihak Kedua (Pelanggan)
-  const c2x = ML + cardW + gap + 6
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(7.5)
-  doc.setTextColor(120, 140, 165)
-  doc.text('PIHAK KEDUA (PELANGGAN)', c2x, cardY + 8)
+  /* ═══ 6. LAMPIRAN A — on its own page ═══ */
+  doc.addPage()
+  y = drawHeaderBand(false) + 10
 
-  rgb(doc, C.dark, 'text')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.text(data.organization || data.customerName, c2x, cardY + 17)
+  drawSectionTitle('LAMPIRAN A')
+  drawParagraph('Spesifikasi Teknis dan Kuota Layanan', { bold: true, size: 9.5, gap: 2 })
+  drawParagraph(
+    'Lampiran ini merupakan bagian yang tidak terpisahkan dari Perjanjian Kerja Sama Lisensi Penggunaan Perangkat Lunak SaCMS.',
+    { size: 8.5, gap: 6 }
+  )
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8)
-  doc.setTextColor(110, 130, 155)
-  const picLine = data.customerEmail
-    ? `${data.customerName} · ${data.customerEmail}`
-    : data.customerName
-  doc.text(picLine, c2x, cardY + 24, { maxWidth: cardW - 12 })
-
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(7.5)
-  doc.text('Selanjutnya disebut "Pelanggan"', c2x, cardY + 30)
-
-  /* ═══ 4. LICENSE TERMS TABLE ═══ */
-  const tableY = cardY + cardH + 8
   autoTable(doc, {
-    startY: tableY,
+    startY: y,
     head: [['Ketentuan Lisensi', 'Detail']],
     body: [
       ['Tipe Lisensi', typeLabel],
@@ -491,90 +665,16 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
     },
     columnStyles: {
       0: { cellWidth: 60, fontStyle: 'bold' },
-      1: { cellWidth: totalW - 60 },
+      1: { cellWidth: bodyWidth - 60 },
     },
     alternateRowStyles: { fillColor: C.light },
     margin: { left: ML, right: W - MR },
   })
-
-  /* ═══ 5. ARTICLES (PASAL) ═══ */
-  let y = ((doc as any).lastAutoTable?.finalY ?? tableY + 60) + 10
-  const bodyWidth = MR - ML
-
-  const ensureSpace = (needed: number) => {
-    if (y + needed > H - 30) {
-      doc.addPage()
-      y = 20
-    }
-  }
-
-  const drawArticle = (title: string, body: string) => {
-    const lines = doc.splitTextToSize(body, bodyWidth)
-    ensureSpace(10 + lines.length * 4.6)
-    rgb(doc, C.dark, 'text')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.text(title, ML, y)
-    y += 6
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    rgb(doc, C.slate, 'text')
-    doc.text(lines, ML, y)
-    y += lines.length * 4.6 + 5
-  }
-
-  drawArticle(
-    'Pasal 1 — Objek Perjanjian',
-    'Penyedia memberikan hak penggunaan platform SaCMS kepada Pelanggan sesuai dengan ketentuan lisensi yang tercantum pada tabel di atas, termasuk kuota workspace, storage gabungan, dan/atau AI credits apabila berlaku. Kuota workspace ditegakkan langsung oleh sistem — pembuatan workspace di luar kuota akan ditolak otomatis sampai Pelanggan menambah kuota.'
+  y = ((doc as any).lastAutoTable?.finalY ?? y + 80) + 6
+  drawParagraph(
+    'Perubahan atas Kuota Layanan dan/atau Nilai Kontrak dapat dilakukan melalui addendum tertulis yang disepakati PARA PIHAK, tanpa perlu menerbitkan ulang Perjanjian ini secara keseluruhan.',
+    { size: 8, gap: 2 }
   )
-  drawArticle(
-    'Pasal 2 — Jangka Waktu dan Pengakhiran',
-    'Perjanjian ini berlaku mulai Tanggal Mulai hingga Tanggal Berakhir sebagaimana tercantum di atas. Apabila lisensi tidak diperpanjang sebelum Tanggal Berakhir, sistem akan terkunci otomatis (hard lockout) dan hanya dapat dibuka kembali melalui penerbitan lisensi baru oleh Penyedia — Pelanggan tidak dapat membuka kunci tersebut secara mandiri.'
-  )
-  drawArticle(
-    'Pasal 3 — Kerahasiaan dan Pembatasan Penggunaan',
-    'Pelanggan wajib menjaga kerahasiaan kunci lisensi (license key) yang diterbitkan untuknya, dan tidak melakukan rekayasa balik (reverse engineering), modifikasi, duplikasi, maupun pengalihan lisensi ini kepada pihak lain tanpa persetujuan tertulis dari Penyedia.'
-  )
-  drawArticle(
-    'Pasal 4 — Nilai Kontrak dan Pembayaran',
-    data.priceIdr != null
-      ? `Nilai kontrak sebesar ${formatRupiahPdf(data.priceIdr)} untuk masa berlaku ${totalDays} hari sebagaimana tercantum pada tabel di atas. Cara dan jadwal pembayaran disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.`
-      : 'Nilai kontrak: Rp ___________________________ , dengan cara dan jadwal pembayaran yang disepakati secara terpisah oleh kedua pihak dan dicantumkan pada lampiran/addendum perjanjian ini.'
-  )
-  drawArticle(
-    'Pasal 5 — Lain-lain',
-    'Hal-hal yang belum atau belum cukup diatur dalam perjanjian ini akan diatur lebih lanjut dalam addendum yang disepakati bersama secara tertulis oleh kedua pihak.'
-  )
-
-  /* ═══ 6. SIGNATURES ═══ */
-  ensureSpace(55)
-  y += 6
-  const sigColW = bodyWidth / 2
-  const sig1X = ML
-  const sig2X = ML + sigColW
-
-  rgb(doc, C.dark, 'text')
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.text('Pihak Pertama,', sig1X, y)
-  doc.text('Pihak Kedua,', sig2X, y)
-
-  const lineY = y + 28
-  doc.setDrawColor(C.dark[0], C.dark[1], C.dark[2])
-  doc.setLineWidth(0.2)
-  doc.line(sig1X, lineY, sig1X + 60, lineY)
-  doc.line(sig2X, lineY, sig2X + 60, lineY)
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
-  doc.text('SaCMS, Inc.', sig1X, lineY + 5)
-  doc.text(data.organization || data.customerName, sig2X, lineY + 5, { maxWidth: sigColW - 6 })
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
-  rgb(doc, C.slate, 'text')
-  doc.text('Nama & Jabatan, Tanggal', sig1X, lineY + 10)
-  doc.text('Nama & Jabatan, Tanggal', sig2X, lineY + 10)
 
   /* ═══ 7. FOOTER BAR (every page) ═══ */
   const pageCount = doc.getNumberOfPages()
@@ -593,13 +693,13 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
       { align: 'center', maxWidth: W - 30 }
     )
     doc.setTextColor(120, 135, 165)
-    doc.text(`Dibuat ${formatIdDate(new Date())} · Ref: ${refCode}`, W / 2, H - 5, { align: 'center' })
+    doc.text(`Dibuat ${formatIdDate(new Date())} · No: ${agreementNo}`, W / 2, H - 5, { align: 'center' })
 
     doc.setTextColor(180, 190, 210)
     doc.setFontSize(7)
     doc.text(`Halaman ${p} / ${pageCount}`, TR, H - 5, { align: 'right' })
   }
 
-  const safeName = (data.organization || data.customerName).replace(/[^a-z0-9]+/gi, '_')
+  const safeName = partyTwoName.replace(/[^a-z0-9]+/gi, '_')
   doc.save(`Kontrak_Lisensi_${safeName}_${refCode}.pdf`)
 }
