@@ -35,9 +35,13 @@ interface GlobalSidebarProps {
   isEnterpriseMode?: boolean
   session?: any
   brandName?: string
+  /** Shows "Database & Storage" only once there's actually something to
+   *  configure there — same gate the page/API route itself enforces
+   *  (isEnterpriseTenant, or the legacy plan === "enterprise" tier). */
+  hasEnterpriseLicense?: boolean
 }
 
-export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSidebarProps = {}) {
+export function GlobalSidebar({ isEnterpriseMode, session, brandName, hasEnterpriseLicense }: GlobalSidebarProps = {}) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -50,7 +54,7 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
 
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Database & Storage", href: "/dashboard/infrastructure", icon: Database },
+    ...(hasEnterpriseLicense ? [{ title: "Database & Storage", href: "/dashboard/infrastructure", icon: Database }] : []),
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
