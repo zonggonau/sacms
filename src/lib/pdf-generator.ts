@@ -384,6 +384,77 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   const agreementNo = `${refCode}/PKS-SACMS/${ROMAN_MONTH[issuedDate.getMonth()]}/${issuedDate.getFullYear()}`
   const partyTwoName = data.organization || data.customerName
 
+  /* ═══ 0. COVER PAGE ═══ */
+  rgb(doc, C.navy, 'fill')
+  doc.rect(0, 0, W, H, 'F')
+  rgb(doc, C.blue, 'fill')
+  doc.rect(0, 0, W, 4, 'F')
+  doc.rect(0, H - 4, W, 4, 'F')
+
+  rgb(doc, C.white, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(28)
+  doc.text('SaCMS', W / 2, 52, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(180, 190, 210)
+  doc.text('Enterprise Headless CMS', W / 2, 60, { align: 'center' })
+
+  doc.setDrawColor(255, 255, 255)
+  doc.setLineWidth(0.3)
+  doc.line(W / 2 - 28, 70, W / 2 + 28, 70)
+
+  rgb(doc, C.white, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(23)
+  doc.text('PERJANJIAN KERJA SAMA', W / 2, 112, { align: 'center' })
+  doc.setFontSize(15)
+  doc.text(doc.splitTextToSize('LISENSI PENGGUNAAN PERANGKAT LUNAK SACMS', W - 70), W / 2, 127, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(180, 190, 210)
+  doc.text(`Nomor: ${agreementNo}`, W / 2, 142, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(11)
+  rgb(doc, C.white, 'text')
+  doc.text('ANTARA', W / 2, 168, { align: 'center' })
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.text('SaCMS, Inc.', W / 2, 181, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(180, 190, 210)
+  doc.text('("PIHAK PERTAMA")', W / 2, 187, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(11)
+  rgb(doc, C.white, 'text')
+  doc.text('DAN', W / 2, 200, { align: 'center' })
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(14)
+  doc.text(partyTwoName, W / 2, 213, { align: 'center', maxWidth: W - 60 })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(180, 190, 210)
+  doc.text('("PIHAK KEDUA")', W / 2, 222, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(200, 210, 225)
+  doc.text(`Nabire, ${formatIdDate(issuedDate)}`, W / 2, H - 34, { align: 'center' })
+  doc.setFontSize(8)
+  doc.setTextColor(150, 165, 190)
+  doc.text(
+    'Dokumen ini adalah draf dasar — tinjau bersama tim legal kedua pihak sebelum ditandatangani secara resmi.',
+    W / 2, H - 20, { align: 'center', maxWidth: W - 60 }
+  )
+
+  doc.addPage()
+
   let y = 0
   const ensureSpace = (needed: number) => {
     if (y + needed > H - 26) {
@@ -392,47 +463,30 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
     }
   }
 
-  /* ═══ HEADER BAND (every page gets a short running head after page 1) ═══ */
-  const drawHeaderBand = (isFirstPage: boolean) => {
-    const bandH = isFirstPage ? 38 : 16
+  /* ═══ HEADER BAND — compact running head on every content page. The big
+     brand/title treatment lives on the cover page instead (drawn above),
+     so every content page after it only needs this short strip. ═══ */
+  const drawHeaderBand = () => {
+    const bandH = 16
     rgb(doc, C.navy, 'fill')
     doc.rect(0, 0, W, bandH, 'F')
     rgb(doc, C.blue, 'fill')
     doc.rect(0, bandH, W, 2, 'F')
 
-    if (isFirstPage) {
-      rgb(doc, C.white, 'text')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(20)
-      doc.text('SaCMS', ML, 15)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(180, 190, 210)
-      doc.text('Enterprise Headless CMS  ·  legal@sacms.cloud  ·  sacms.cloud', ML, 22)
-
-      rgb(doc, C.white, 'text')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12.5)
-      doc.text('PERJANJIAN KERJA SAMA', TR, 13, { align: 'right' })
-      doc.text('LISENSI PERANGKAT LUNAK SACMS', TR, 19.5, { align: 'right' })
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(180, 190, 210)
-      doc.text(`No: ${agreementNo}`, TR, 27, { align: 'right' })
-    } else {
-      rgb(doc, C.white, 'text')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.text('SaCMS — Perjanjian Kerja Sama Lisensi Perangkat Lunak', ML, 10)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(180, 190, 210)
-      doc.text(`No: ${agreementNo}`, TR, 10, { align: 'right' })
-    }
+    rgb(doc, C.white, 'text')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.text('SaCMS — Perjanjian Kerja Sama Lisensi Perangkat Lunak', ML, 10)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(180, 190, 210)
+    doc.text(`No: ${agreementNo}`, TR, 10, { align: 'right' })
     return bandH + 2
   }
 
-  y = drawHeaderBand(true) + 10
+  // Compact running header, not the big cover treatment — the cover page
+  // already carries the full title, so repeating it here would be redundant.
+  y = drawHeaderBand() + 10
 
   /* ═══ TEXT HELPERS ═══ */
   // 0.62 line-height multiplier (rather than a tighter ~0.55) so a clause
@@ -441,36 +495,62 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   // tolong di-enter agar rapih".
   const LINE_HEIGHT = 0.62
   const drawParagraph = (text: string, opts: { size?: number; bold?: boolean; indent?: number; gap?: number } = {}) => {
-    const size = opts.size ?? 9
+    const size = opts.size ?? 12
     const indent = opts.indent ?? 0
-    const lines = doc.splitTextToSize(text, bodyWidth - indent)
-    ensureSpace(lines.length * (size * LINE_HEIGHT) + 2)
+    // Font/size MUST be set before splitTextToSize — it measures using
+    // whatever font is currently active, not the one about to be drawn
+    // with. Measuring at the previous call's (often smaller) size let
+    // lines run wider than bodyWidth once actually rendered at this
+    // call's size, overflowing past the right margin.
     doc.setFont('helvetica', opts.bold ? 'bold' : 'normal')
     doc.setFontSize(size)
+    const lines = doc.splitTextToSize(text, bodyWidth - indent)
+    ensureSpace(lines.length * (size * LINE_HEIGHT) + 2)
     rgb(doc, C.dark, 'text')
     doc.text(lines, ML + indent, y)
     y += lines.length * (size * LINE_HEIGHT) + (opts.gap ?? 4)
   }
 
+  /** Borderless label/value table — keeps the colon column aligned across
+   *  rows (what manually padded strings like "Nama  : SaCMS, Inc." tried
+   *  and failed to do consistently) for party-identity blocks. */
+  const drawLabelValueTable = (rows: [string, string][], indent = 4) => {
+    ensureSpace(rows.length * 8 + 4)
+    autoTable(doc, {
+      startY: y,
+      body: rows.map(([label, value]) => [label, ':', value]),
+      theme: 'plain',
+      styles: { fontSize: 12, textColor: C.dark, cellPadding: { top: 1.2, bottom: 1.2, left: 0, right: 1.5 } },
+      columnStyles: {
+        0: { cellWidth: 52 },
+        1: { cellWidth: 5 },
+        2: { cellWidth: bodyWidth - indent - 57 },
+      },
+      margin: { left: ML + indent, right: W - MR },
+      tableWidth: bodyWidth - indent,
+    })
+    y = ((doc as any).lastAutoTable?.finalY ?? y + rows.length * 8) + 2
+  }
+
   const drawSectionTitle = (text: string) => {
-    ensureSpace(14)
+    ensureSpace(18)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10.5)
+    doc.setFontSize(15)
     rgb(doc, C.navy, 'text')
     doc.text(text, W / 2, y, { align: 'center' })
-    y += 9
+    y += 11
   }
 
   const drawArticle = (title: string, bodyLines: string[]) => {
-    ensureSpace(12)
+    ensureSpace(16)
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
+    doc.setFontSize(15)
     rgb(doc, C.navy, 'text')
     doc.text(title, W / 2, y, { align: 'center' })
-    y += 7
+    y += 10
     // gap: 5 between each numbered clause — clearly separated lines rather
     // than one dense block, since each is its own legal point.
-    bodyLines.forEach((b) => drawParagraph(b, { size: 8.8, indent: 4, gap: 5 }))
+    bodyLines.forEach((b) => drawParagraph(b, { indent: 4, gap: 5 }))
     y += 5
   }
 
@@ -478,25 +558,29 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   const dayName = DAY_NAME_ID[issuedDate.getDay()]
   drawParagraph(
     `Pada hari ini, ${dayName}, tanggal ${formatIdDate(issuedDate)}, bertempat di Nabire, Papua Tengah, yang bertanda tangan di bawah ini masing-masing:`,
-    { size: 9, gap: 5 }
+    { gap: 5 }
   )
 
-  drawParagraph('1. PIHAK PERTAMA', { bold: true, size: 9, gap: 2 })
-  drawParagraph('Nama Badan Usaha  : SaCMS, Inc.', { indent: 4, gap: 2 })
-  drawParagraph('Alamat                     : [Diisi oleh Tim Legal SaCMS]', { indent: 4, gap: 2 })
-  drawParagraph('NPWP                        : [Diisi oleh Tim Legal SaCMS]', { indent: 4, gap: 2 })
-  drawParagraph('Email Resmi               : legal@sacms.cloud', { indent: 4, gap: 2 })
+  drawParagraph('1. PIHAK PERTAMA', { bold: true, gap: 2 })
+  drawLabelValueTable([
+    ['Nama Badan Usaha', 'SaCMS, Inc.'],
+    ['Alamat', '[Diisi oleh Tim Legal SaCMS]'],
+    ['NPWP', '[Diisi oleh Tim Legal SaCMS]'],
+    ['Email Resmi', 'legal@sacms.cloud'],
+  ])
   drawParagraph(
     'Dalam hal ini bertindak untuk dan atas nama serta sah mewakili SaCMS, selanjutnya disebut sebagai "PIHAK PERTAMA".',
     { indent: 4, gap: 5 }
   )
 
-  drawParagraph('2. PIHAK KEDUA', { bold: true, size: 9, gap: 2 })
-  drawParagraph(`Nama                           : ${data.customerName}`, { indent: 4, gap: 2 })
-  drawParagraph(`Instansi / Organisasi   : ${partyTwoName}`, { indent: 4, gap: 2 })
-  drawParagraph('Alamat                     : [Diisi oleh Pelanggan]', { indent: 4, gap: 2 })
-  drawParagraph('NPWP                        : [Diisi oleh Pelanggan]', { indent: 4, gap: 2 })
-  drawParagraph(`Email Kontak              : ${data.customerEmail || '[Diisi oleh Pelanggan]'}`, { indent: 4, gap: 2 })
+  drawParagraph('2. PIHAK KEDUA', { bold: true, gap: 2 })
+  drawLabelValueTable([
+    ['Nama', data.customerName],
+    ['Instansi / Organisasi', partyTwoName],
+    ['Alamat', '[Diisi oleh Pelanggan]'],
+    ['NPWP', '[Diisi oleh Pelanggan]'],
+    ['Email Kontak', data.customerEmail || '[Diisi oleh Pelanggan]'],
+  ])
   drawParagraph(
     `Dalam hal ini bertindak untuk dan atas nama serta sah mewakili ${partyTwoName}, selanjutnya disebut sebagai "PIHAK KEDUA".`,
     { indent: 4, gap: 6 }
@@ -511,15 +595,15 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   )
   drawParagraph(
     'a. bahwa PIHAK PERTAMA adalah badan usaha yang bergerak dalam penyediaan platform Content Management System berbasis Software-as-a-Service bernama SaCMS;',
-    { indent: 4, size: 8.8, gap: 5 }
+    { indent: 4, gap: 5 }
   )
   drawParagraph(
     'b. bahwa PIHAK KEDUA bermaksud menggunakan Perangkat Lunak tersebut untuk kebutuhan internal instansi/organisasinya;',
-    { indent: 4, size: 8.8, gap: 5 }
+    { indent: 4, gap: 5 }
   )
   drawParagraph(
     'c. bahwa berdasarkan hal-hal tersebut di atas, PARA PIHAK sepakat untuk mengadakan Perjanjian Kerja Sama Lisensi Penggunaan Perangkat Lunak ("Perjanjian") dengan syarat dan ketentuan sebagai berikut:',
-    { indent: 4, size: 8.8, gap: 6 }
+    { indent: 4, gap: 6 }
   )
 
   /* ═══ 3. PASAL-PASAL ═══ */
@@ -593,13 +677,13 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   const sig1X = ML
   const sig2X = ML + sigColW
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
   rgb(doc, C.dark, 'text')
   doc.text('PIHAK PERTAMA,', sig1X, y)
   doc.text('PIHAK KEDUA,', sig2X, y)
 
-  const materaiY = y + 7
+  const materaiY = y + 9
   rgb(doc, C.border, 'draw')
   doc.setLineWidth(0.2)
   doc.setLineDashPattern([1, 1], 0)
@@ -619,26 +703,26 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   doc.line(sig2X, lineY, sig2X + 60, lineY)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(8.5)
+  doc.setFontSize(12)
   rgb(doc, C.dark, 'text')
-  doc.text('SaCMS, Inc.', sig1X, lineY + 5)
-  doc.text(partyTwoName, sig2X, lineY + 5, { maxWidth: sigColW - 6 })
+  doc.text('SaCMS, Inc.', sig1X, lineY + 6)
+  doc.text(partyTwoName, sig2X, lineY + 6, { maxWidth: sigColW - 6 })
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(7.5)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(12)
   rgb(doc, C.slate, 'text')
-  doc.text('Nama & Jabatan', sig1X, lineY + 10)
-  doc.text('Nama & Jabatan', sig2X, lineY + 10)
+  doc.text('Nama & Jabatan', sig1X, lineY + 13)
+  doc.text('Nama & Jabatan', sig2X, lineY + 13)
 
   /* ═══ 6. LAMPIRAN A — on its own page ═══ */
   doc.addPage()
-  y = drawHeaderBand(false) + 10
+  y = drawHeaderBand() + 10
 
   drawSectionTitle('LAMPIRAN A')
-  drawParagraph('Spesifikasi Teknis dan Kuota Layanan', { bold: true, size: 9.5, gap: 2 })
+  drawParagraph('Spesifikasi Teknis dan Kuota Layanan', { bold: true, gap: 2 })
   drawParagraph(
     'Lampiran ini merupakan bagian yang tidak terpisahkan dari Perjanjian Kerja Sama Lisensi Penggunaan Perangkat Lunak SaCMS.',
-    { size: 8.5, gap: 6 }
+    { gap: 6 }
   )
 
   autoTable(doc, {
@@ -660,19 +744,19 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
       fillColor: C.navy,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
-      fontSize: 8.5,
+      fontSize: 12,
       cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
     },
     bodyStyles: {
-      fontSize: 8.5,
+      fontSize: 12,
       textColor: C.dark,
       cellPadding: { top: 4.5, bottom: 4.5, left: 4, right: 4 },
       lineColor: C.border,
       lineWidth: 0.2,
     },
     columnStyles: {
-      0: { cellWidth: 60, fontStyle: 'bold' },
-      1: { cellWidth: bodyWidth - 60 },
+      0: { cellWidth: 70, fontStyle: 'bold' },
+      1: { cellWidth: bodyWidth - 70 },
     },
     alternateRowStyles: { fillColor: C.light },
     margin: { left: ML, right: W - MR },
@@ -680,12 +764,12 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   y = ((doc as any).lastAutoTable?.finalY ?? y + 80) + 6
   drawParagraph(
     'Perubahan atas Kuota Layanan dan/atau Nilai Kontrak dapat dilakukan melalui addendum tertulis yang disepakati PARA PIHAK, tanpa perlu menerbitkan ulang Perjanjian ini secara keseluruhan.',
-    { size: 8, gap: 2 }
+    { gap: 2 }
   )
 
-  /* ═══ 7. FOOTER BAR (every page) ═══ */
+  /* ═══ 7. FOOTER BAR (every page except the cover) ═══ */
   const pageCount = doc.getNumberOfPages()
-  for (let p = 1; p <= pageCount; p++) {
+  for (let p = 2; p <= pageCount; p++) {
     doc.setPage(p)
     rgb(doc, C.navy, 'fill')
     doc.rect(0, H - 20, W, 20, 'F')
@@ -704,7 +788,7 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
 
     doc.setTextColor(180, 190, 210)
     doc.setFontSize(7)
-    doc.text(`Halaman ${p} / ${pageCount}`, TR, H - 5, { align: 'right' })
+    doc.text(`Halaman ${p - 1} / ${pageCount - 1}`, TR, H - 5, { align: 'right' })
   }
 
   const safeName = partyTwoName.replace(/[^a-z0-9]+/gi, '_')
