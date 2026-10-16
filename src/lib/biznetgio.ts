@@ -7,13 +7,15 @@
  * the "dibantu Tim SaCMS" assisted-setup pathway on
  * /dashboard/infrastructure — never expose it to a customer-facing route.
  *
- * Response shapes for create/list/detail calls are NOT documented in Biznet
- * Gio's own OpenAPI spec (https://api.portal.biznetgio.com/v1/openapi.json
- * declares every 200 response as an empty object) — only the request
- * schema for creating a VM is fully specified. Callers should treat
- * responses as opaque JSON and surface them as-is rather than assuming
- * specific field names (e.g. for the new VM's IP address) until verified
- * against a real call.
+ * Response shapes are NOT documented in Biznet Gio's own OpenAPI spec
+ * (https://api.portal.biznetgio.com/v1/openapi.json declares every 200
+ * response as an empty object) — confirmed instead with live read-only
+ * calls (products/oss/keypairs/accounts/vm-details, 2026-10-16). Every
+ * endpoint wraps its payload as `{ success, code, data }`; `request()`
+ * below unwraps `data` so every method here returns the real payload
+ * directly, not the envelope. The create-VM response itself was NOT
+ * verified this way (it spends real money) — treat whatever it returns
+ * as opaque until confirmed against a real call.
  */
 
 const BASE_URL = "https://api.portal.biznetgio.com/v1"
@@ -53,6 +55,19 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
   if (!res.ok) {
     throw new BiznetGioError(`Biznet Gio API error (${res.status})`, res.status, parsed)
   }
+
+  // Every confirmed endpoint wraps its real payload as { success, code,
+  // data } — including business-logic failures returned with HTTP 200
+  // (success: false). Unwrap so callers get the actual payload, and treat
+  // success: false as a real error instead of a silently empty result.
+  if (parsed && typeof parsed === "object" && "success" in (parsed as Record<string, unknown>)) {
+    const envelope = parsed as { success: boolean; code?: number; data?: unknown; message?: string }
+    if (!envelope.success) {
+      throw new BiznetGioError(envelope.message || "Biznet Gio API returned success: false", envelope.code, parsed)
+    }
+    return envelope.data as T
+  }
+
   return parsed as T
 }
 

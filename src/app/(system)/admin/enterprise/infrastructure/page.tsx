@@ -168,7 +168,7 @@ export default function BiznetGioInfrastructurePage() {
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 flex items-start gap-2.5 text-xs text-amber-800 dark:text-amber-300">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <p>
-              Respons API Biznet Gio untuk detail VM (IP, status) tidak terdokumentasi lengkap di spec resmi mereka — hasil mentah (JSON) ditampilkan apa adanya di bawah. Verifikasi detail sebenarnya (IP, kredensial) langsung di portal Biznet Gio sebelum menyerahkannya ke pelanggan.
+              Respons untuk pembuatan VM baru belum pernah diverifikasi langsung (karena membebankan biaya nyata) — hasil mentah (JSON) ditampilkan apa adanya di bawah setelah dibuat. Verifikasi detail sebenarnya (IP, kredensial) langsung di portal Biznet Gio sebelum menyerahkannya ke pelanggan.
             </p>
           </div>
 
@@ -184,11 +184,15 @@ export default function BiznetGioInfrastructurePage() {
                   <Select value={form.product_id} onValueChange={(v) => setForm({ ...form, product_id: v, select_os: "" })}>
                     <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue placeholder="Pilih produk" /></SelectTrigger>
                     <SelectContent className="rounded-xl border-border bg-card">
-                      {products.map((p: any) => (
-                        <SelectItem key={p.id ?? p.product_id} value={String(p.id ?? p.product_id)} className="text-xs rounded-lg">
-                          {p.name ?? p.label ?? JSON.stringify(p)}
-                        </SelectItem>
-                      ))}
+                      {products.map((p: any) => {
+                        const monthly = p.billing?.find((b: any) => b.cycle === "m")?.price
+                        const specs = p.options ? `${p.options.cores} vCPU / ${Math.round(Number(p.options.memory) / 1024)}GB RAM` : ""
+                        return (
+                          <SelectItem key={p.product_id} value={String(p.product_id)} className="text-xs rounded-lg">
+                            {p.name} {specs && `— ${specs}`} {monthly && `— Rp${Number(monthly).toLocaleString("id-ID")}/bln`}
+                          </SelectItem>
+                        )
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
@@ -210,7 +214,7 @@ export default function BiznetGioInfrastructurePage() {
                     <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue placeholder="Pilih keypair" /></SelectTrigger>
                     <SelectContent className="rounded-xl border-border bg-card">
                       {keypairs.map((k: any) => (
-                        <SelectItem key={k.id} value={String(k.id)} className="text-xs rounded-lg">{k.name ?? k.label ?? k.id}</SelectItem>
+                        <SelectItem key={k.keypair_id} value={String(k.keypair_id)} className="text-xs rounded-lg">{k.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -285,13 +289,34 @@ export default function BiznetGioInfrastructurePage() {
                 <p className="text-xs text-muted-foreground">Belum ada VM.</p>
               ) : (
                 accounts.map((acc: any, i: number) => {
-                  const id = acc.id ?? acc.account_id ?? i
+                  const id = acc.account_id ?? i
+                  const name = acc.extra_details?.name || acc.domain || `VM ${id}`
+                  const ip = acc.extra_details?.address
                   return (
-                    <div key={id} className="flex items-start justify-between gap-3 p-3 rounded-xl bg-muted/30 border border-border/60">
-                      <pre className="font-mono text-[10px] overflow-x-auto flex-1">{JSON.stringify(acc, null, 2)}</pre>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDelete(id)} title="Hapus VM">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                    <div key={id} className="p-3 rounded-xl bg-muted/30 border border-border/60 space-y-2">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-bold text-foreground">{name}</p>
+                            <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full ${
+                              acc.status === "Active" ? "bg-emerald-500/10 text-emerald-600" :
+                              acc.status === "Terminated" ? "bg-muted text-muted-foreground" :
+                              "bg-amber-500/10 text-amber-600"
+                            }`}>{acc.status}</span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {acc.product_name} · {acc.extra_details?.region_label || acc.extra_details?.region || "-"}
+                            {ip && <> · IP: <span className="font-mono">{ip}</span></>}
+                          </p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDelete(id)} title="Hapus VM">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                      <details>
+                        <summary className="text-[10px] text-muted-foreground cursor-pointer">Lihat detail mentah (JSON)</summary>
+                        <pre className="font-mono text-[10px] overflow-x-auto mt-1.5">{JSON.stringify(acc, null, 2)}</pre>
+                      </details>
                     </div>
                   )
                 })
