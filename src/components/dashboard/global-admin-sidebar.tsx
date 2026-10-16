@@ -26,7 +26,6 @@ import {
   Gem,
   Webhook,
   Headphones,
-  Server,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -85,7 +84,6 @@ const adminNavSections: NavSection[] = [
     label: "ENTERPRISE",
     items: [
       { title: "Enterprise Licenses", href: "/admin/enterprise/licenses", icon: Gem },
-      { title: "Provisioning VPS (Biznet Gio)", href: "/admin/enterprise/infrastructure", icon: Server },
     ],
   },
 ]
