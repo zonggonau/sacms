@@ -13,8 +13,12 @@ const PatchSchema = z.object({
   // signed into the key. null clears it back to whatever the key itself grants.
   storageGb: z.number().int().positive().nullable().optional(),
   aiCredits: z.number().int().positive().nullable().optional(),
-}).refine((data) => data.status !== undefined || data.storageGb !== undefined || data.aiCredits !== undefined, {
-  message: "Provide at least one of status, storageGb, or aiCredits",
+  // How many distinct accounts may hold this license — see
+  // EnterpriseLicense.maxInstances. Not nullable (unlike storageGb/aiCredits):
+  // there's no "no limit" state, it just goes back to the default of 1.
+  maxInstances: z.number().int().positive().optional(),
+}).refine((data) => data.status !== undefined || data.storageGb !== undefined || data.aiCredits !== undefined || data.maxInstances !== undefined, {
+  message: "Provide at least one of status, storageGb, aiCredits, or maxInstances",
 })
 
 // PATCH /api/admin/license/[id] - revoke/reactivate a license, and/or adjust
@@ -32,15 +36,16 @@ export const PATCH = withAdminAuth(async (request, context, { session }) => {
 
   const body = await readJson(request, PatchSchema)
   if (!body.ok) return body.response
-  const { status, storageGb, aiCredits } = body.data
+  const { status, storageGb, aiCredits, maxInstances } = body.data
 
-  const data: { status?: string; storageGb?: number | null; aiCredits?: number | null } = {}
+  const data: { status?: string; storageGb?: number | null; aiCredits?: number | null; maxInstances?: number } = {}
   if (status !== undefined && status !== license.status) data.status = status
   if (storageGb !== undefined && storageGb !== license.storageGb) data.storageGb = storageGb
   if (aiCredits !== undefined && aiCredits !== license.aiCredits) data.aiCredits = aiCredits
+  if (maxInstances !== undefined && maxInstances !== license.maxInstances) data.maxInstances = maxInstances
 
   if (Object.keys(data).length === 0) {
-    return NextResponse.json({ success: true, status: license.status, storageGb: license.storageGb, aiCredits: license.aiCredits })
+    return NextResponse.json({ success: true, status: license.status, storageGb: license.storageGb, aiCredits: license.aiCredits, maxInstances: license.maxInstances })
   }
 
   const updated = await db.enterpriseLicense.update({ where: { id }, data })
@@ -60,7 +65,7 @@ export const PATCH = withAdminAuth(async (request, context, { session }) => {
     data: { customerName: license.customerName, customerEmail: license.customerEmail, ...data },
   })
 
-  return NextResponse.json({ success: true, status: updated.status, storageGb: updated.storageGb, aiCredits: updated.aiCredits })
+  return NextResponse.json({ success: true, status: updated.status, storageGb: updated.storageGb, aiCredits: updated.aiCredits, maxInstances: updated.maxInstances })
 })
 
 // GET /api/admin/license/[id] - reveal the full plaintext license key for

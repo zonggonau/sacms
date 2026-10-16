@@ -730,7 +730,13 @@ model EnterpriseLicense {
   /// plan-enforcement.ts). Bounded, not unlimited: once used up, the holder
   /// renews/upgrades rather than getting free unlimited AI generation.
   aiCredits       Int?
+  /// How many distinct accounts may hold this license at once — enforced by
+  /// POST /api/user/license/activate via the LicenseActivation rows below.
+  /// Defaults to 1, i.e. "one license, one account": the first account to
+  /// activate the key binds it, and every other account is rejected until
+  /// an admin raises this (or an activation row is removed).
   maxInstances    Int      @default(1)
+  activations     LicenseActivation[]
   issuedAt        DateTime @default(now())
   expiresAt       DateTime
   lastValidatedAt DateTime?
@@ -744,6 +750,23 @@ model EnterpriseLicense {
   @@index([licenseKey, status])
   @@index([expiresAt])
   @@map("enterprise_licenses")
+}
+
+/// One row per account that has ever activated a given license — see
+/// maxInstances above. Lets POST /api/user/license/activate tell "the same
+/// account re-activating" (fine) apart from "a different account trying to
+/// use an already-bound key" (rejected once the count hits maxInstances).
+model LicenseActivation {
+  id          String   @id @default(cuid())
+  licenseId   String
+  license     EnterpriseLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  userId      String
+  userEmail   String?
+  activatedAt DateTime @default(now())
+
+  @@unique([licenseId, userId])
+  @@index([licenseId])
+  @@map("license_activations")
 }
 
 model LicenseCache {

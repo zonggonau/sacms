@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { parseLicenseKey, isLicenseExpired, upsertLicenseCache, getLicenseFromDb } from "@/lib/license"
+import { db } from "@/lib/database"
 import { apiError, readJson } from "@/lib/api/route-helpers"
 import { z } from "zod"
 
@@ -45,6 +46,29 @@ export async function POST(request: NextRequest) {
   const dbRecord = await getLicenseFromDb(licenseKey).catch(() => null)
   if (dbRecord?.status === "revoked") {
     return apiError("validation", { message: "This license key has been revoked" })
+  }
+
+  // 2c. One license, one account (dbRecord.maxInstances, default 1) — only
+  // enforceable for licenses we issued ourselves (dbRecord present). A
+  // standalone self-hosted install's LICENSE_KEY env var never calls this
+  // route, so instance-wide licenses are unaffected. Re-activating the SAME
+  // account is always allowed (e.g. after a cache clear); a DIFFERENT
+  // account is rejected once every slot is taken.
+  if (dbRecord) {
+    const existingActivation = await db.licenseActivation.findUnique({
+      where: { licenseId_userId: { licenseId: dbRecord.id, userId: session.user.id } },
+    })
+    if (!existingActivation) {
+      const activationCount = await db.licenseActivation.count({ where: { licenseId: dbRecord.id } })
+      if (activationCount >= dbRecord.maxInstances) {
+        return apiError("validation", {
+          message: "This license key is already in use by another account. Contact SaCMS to raise its account limit.",
+        })
+      }
+      await db.licenseActivation.create({
+        data: { licenseId: dbRecord.id, userId: session.user.id, userEmail: session.user.email },
+      })
+    }
   }
 
   // 3. Try online validation (optional)

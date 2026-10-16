@@ -12,7 +12,7 @@ import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 export const POST = withAdminAuth(
   async (request, _context, { session }) => {
     const body = await request.json()
-    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb, aiCredits } = body
+    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features, storageGb, aiCredits, maxInstances } = body
 
     if (!customerName || !expiresAt) {
       return apiError("validation", { message: "customerName and expiresAt are required" })
@@ -27,6 +27,13 @@ export const POST = withAdminAuth(
       storageGb === undefined || storageGb === null || storageGb === "" ? undefined : Number(storageGb)
     const aiCreditsValue: number | undefined =
       aiCredits === undefined || aiCredits === null || aiCredits === "" ? undefined : Number(aiCredits)
+    // How many distinct accounts may activate this key — see
+    // EnterpriseLicense.maxInstances and POST /api/user/license/activate.
+    // Defaults to the schema's own default (1) when omitted.
+    const maxInstancesValue: number | undefined =
+      maxInstances === undefined || maxInstances === null || maxInstances === ""
+        ? undefined
+        : Math.max(1, Math.floor(Number(maxInstances)))
 
     // Generate license key
     const licenseKey = generateLicenseKey({
@@ -52,6 +59,7 @@ export const POST = withAdminAuth(
         features: features || ["self-host", "unlimited-workspaces"],
         storageGb: storageGbValue ?? null,
         aiCredits: aiCreditsValue ?? null,
+        ...(maxInstancesValue !== undefined ? { maxInstances: maxInstancesValue } : {}),
         expiresAt: expDate,
         createdBy: session.user.email,
       },
@@ -62,7 +70,7 @@ export const POST = withAdminAuth(
       action: AuditAction.SETTINGS_UPDATED,
       entity: "EnterpriseLicenseGenerated",
       entityId: license.id,
-      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, aiCredits: aiCreditsValue, expiresAt: expDate.toISOString() },
+      data: { customerName, customerEmail, organization, type, storageGb: storageGbValue, aiCredits: aiCreditsValue, maxInstances: license.maxInstances, expiresAt: expDate.toISOString() },
     })
 
     return NextResponse.json({
@@ -73,6 +81,7 @@ export const POST = withAdminAuth(
       type: license.type,
       storageGb: license.storageGb,
       aiCredits: license.aiCredits,
+      maxInstances: license.maxInstances,
       expiresAt: license.expiresAt,
     })
   },

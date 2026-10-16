@@ -73,6 +73,8 @@ interface License {
   type: string
   storageGb: number | null
   aiCredits: number | null
+  maxInstances: number
+  activationCount: number
   expiresAt: string
   isExpired: boolean
   daysRemaining: number
@@ -110,6 +112,10 @@ export default function EnterpriseLicensesPage() {
     // getUserAiCreditLicense() in plan-enforcement.ts. "none" = no AI
     // credits included (falls back to the account's normal plan quota).
     aiCredits: "none",
+    // How many distinct accounts may activate this key — see
+    // EnterpriseLicense.maxInstances. "1" (default) enforces one license,
+    // one account; raise it only for a deliberate multi-account/reseller case.
+    maxInstances: "1",
   })
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
@@ -121,6 +127,7 @@ export default function EnterpriseLicensesPage() {
   const [editingQuotaFor, setEditingQuotaFor] = useState<License | null>(null)
   const [storageGbInput, setStorageGbInput] = useState("")
   const [aiCreditsInput, setAiCreditsInput] = useState("")
+  const [maxInstancesInput, setMaxInstancesInput] = useState("1")
   const [savingQuota, setSavingQuota] = useState(false)
 
   const fetchLicenses = async () => {
@@ -211,6 +218,7 @@ export default function EnterpriseLicensesPage() {
           type: form.type,
           storageGb: form.storageGb === "none" ? undefined : Number(form.storageGb),
           aiCredits: form.aiCredits === "none" ? undefined : Number(form.aiCredits),
+          maxInstances: Number(form.maxInstances),
           expiresAt: expiresAt.toISOString(),
         }),
       })
@@ -228,6 +236,7 @@ export default function EnterpriseLicensesPage() {
           expiresIn: "365",
           storageGb: "none",
           aiCredits: "none",
+          maxInstances: "1",
         })
         toast({
           title: "Lisensi Dibuat",
@@ -304,12 +313,14 @@ export default function EnterpriseLicensesPage() {
     setEditingQuotaFor(lic)
     setStorageGbInput(lic.storageGb ? String(lic.storageGb) : "")
     setAiCreditsInput(lic.aiCredits ? String(lic.aiCredits) : "")
+    setMaxInstancesInput(String(lic.maxInstances || 1))
   }
 
   const handleSaveQuota = async () => {
     if (!editingQuotaFor) return
     const gb = storageGbInput.trim() === "" ? null : Number(storageGbInput)
     const credits = aiCreditsInput.trim() === "" ? null : Number(aiCreditsInput)
+    const maxInstances = maxInstancesInput.trim() === "" ? 1 : Number(maxInstancesInput)
     if (gb !== null && (!Number.isInteger(gb) || gb <= 0)) {
       toast({ title: "Nilai tidak valid", description: "Masukkan jumlah GB berupa bilangan positif, atau kosongkan.", variant: "destructive" })
       return
@@ -318,12 +329,16 @@ export default function EnterpriseLicensesPage() {
       toast({ title: "Nilai tidak valid", description: "Masukkan jumlah AI credits berupa bilangan positif, atau kosongkan.", variant: "destructive" })
       return
     }
+    if (!Number.isInteger(maxInstances) || maxInstances <= 0) {
+      toast({ title: "Nilai tidak valid", description: "Maks. akun aktivasi harus bilangan positif (minimal 1).", variant: "destructive" })
+      return
+    }
     setSavingQuota(true)
     try {
       const res = await fetch(`/api/admin/license/${editingQuotaFor.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storageGb: gb, aiCredits: credits }),
+        body: JSON.stringify({ storageGb: gb, aiCredits: credits, maxInstances }),
       })
       if (res.ok) {
         toast({
@@ -523,6 +538,25 @@ export default function EnterpriseLicensesPage() {
                       </Select>
                       <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = berlangganan lagi.</p>
                     </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="maxInstances" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Akun Aktivasi</Label>
+                      <Select
+                        value={form.maxInstances}
+                        onValueChange={(v) => setForm({ ...form, maxInstances: v })}
+                      >
+                        <SelectTrigger id="maxInstances" className="h-9 rounded-xl text-xs bg-muted/20 border-border/80">
+                          <SelectValue placeholder="Pilih jumlah akun" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="1" className="text-xs rounded-lg">1 akun (standar — satu lisensi, satu akun)</SelectItem>
+                          <SelectItem value="2" className="text-xs rounded-lg">2 akun</SelectItem>
+                          <SelectItem value="3" className="text-xs rounded-lg">3 akun</SelectItem>
+                          <SelectItem value="5" className="text-xs rounded-lg">5 akun</SelectItem>
+                          <SelectItem value="10" className="text-xs rounded-lg">10 akun (partner/reseller)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Akun lain otomatis ditolak saat mengaktifkan kunci ini setelah kuota penuh.</p>
+                    </div>
                     <div className="space-y-1 md:col-span-2">
                       <Label htmlFor="duration" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Masa Berlaku</Label>
                       <Select
@@ -715,6 +749,15 @@ export default function EnterpriseLicensesPage() {
                               {lic.aiCredits.toLocaleString("id-ID")} AI credits
                             </div>
                           ) : null}
+                          <div
+                            className={cn(
+                              "text-[10px] mt-0.5 font-mono",
+                              lic.activationCount >= lic.maxInstances ? "text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground"
+                            )}
+                            title="Jumlah akun yang sudah mengaktifkan kunci ini, dari maksimum yang diizinkan"
+                          >
+                            {lic.activationCount}/{lic.maxInstances} akun
+                          </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           <div className="text-foreground">{new Date(lic.expiresAt).toLocaleDateString('id-ID')}</div>
@@ -917,6 +960,21 @@ export default function EnterpriseLicensesPage() {
                     className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
                   />
                   <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = pelanggan berlangganan lagi.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="maxInstancesEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Akun Aktivasi</Label>
+                  <Input
+                    id="maxInstancesEdit"
+                    type="number"
+                    min={1}
+                    value={maxInstancesInput}
+                    onChange={(e) => setMaxInstancesInput(e.target.value)}
+                    placeholder="1"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Saat ini dipakai oleh {editingQuotaFor?.activationCount ?? 0} akun. Akun baru ditolak setelah kuota ini penuh.
+                  </p>
                 </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/60">

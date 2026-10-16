@@ -47,6 +47,7 @@ export const GET = withAdminAuth(
         orderBy: { createdAt: "desc" },
         skip,
         take: limit,
+        include: { _count: { select: { activations: true } } },
       }),
       db.enterpriseLicense.count({ where }),
     ])
@@ -60,6 +61,8 @@ export const GET = withAdminAuth(
       type: l.type,
       storageGb: l.storageGb,
       aiCredits: l.aiCredits,
+      maxInstances: l.maxInstances,
+      activationCount: l._count.activations,
       expiresAt: l.expiresAt,
       isExpired: l.expiresAt < now,
       daysRemaining: Math.max(0, Math.floor((l.expiresAt.getTime() - now.getTime()) / 86400000)),
