@@ -25,6 +25,13 @@ export const POST = withStaffAuth(async (req, context, { access }) => {
   })
   if (!project) return apiError("not_found", { message: "Project not found" })
 
+  // One chat per project — the chat IS the website being developed, not
+  // one of many threads about it.
+  const existingChats = await tenantDb.aiSiteChat.count({ where: { projectId } })
+  if (existingChats > 0) {
+    return apiError("conflict", { message: "Proyek ini sudah memiliki chat. Satu proyek hanya bisa memiliki satu chat." })
+  }
+
   const { text } = await req.json().catch(() => ({}))
   if (!text || typeof text !== "string" || !text.trim()) {
     return apiError("validation", { message: "Enter a message." })

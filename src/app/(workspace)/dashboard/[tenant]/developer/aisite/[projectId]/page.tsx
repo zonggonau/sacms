@@ -3,9 +3,11 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { listChats } from "@/lib/ai-site/chats"
-import { ProjectChatsClient } from "@/components/dashboard/ai-site/project-chats-client"
 
+/**
+ * A project has at most one chat (enforced in the API) — the chat IS the
+ * website being developed. This route just resolves it and redirects.
+ */
 export default async function AiSiteProjectPage({
   params,
 }: {
@@ -21,20 +23,12 @@ export default async function AiSiteProjectPage({
   const tenantDb = await getTenantDb(access.tenant.slug)
   const project = await tenantDb.aiSiteProject.findFirst({
     where: { id: projectId, tenantId: access.tenantId },
+    include: { chats: { select: { id: true }, take: 1 } },
   })
   if (!project) notFound()
 
-  const chats = await listChats(tenantDb, projectId)
-
-  return (
-    <div className="p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto">
-      <ProjectChatsClient
-        tenantSlug={access.tenant.slug}
-        tenantId={tenantSlug}
-        projectId={projectId}
-        projectName={project.name}
-        initialChats={chats}
-      />
-    </div>
-  )
+  if (project.chats[0]) {
+    redirect(`/dashboard/${tenantSlug}/developer/aisite/${projectId}/chats/${project.chats[0].id}`)
+  }
+  redirect(`/dashboard/${tenantSlug}/developer/aisite`)
 }

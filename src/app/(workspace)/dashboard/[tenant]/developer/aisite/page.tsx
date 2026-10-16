@@ -3,9 +3,15 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { AiSiteProjectsClient } from "@/components/dashboard/ai-site/projects-client"
+import { AiSiteLanding } from "@/components/dashboard/ai-site/ai-site-landing"
 
-export default async function AiSiteProjectsPage({ params }: { params: Promise<{ tenant: string }> }) {
+/**
+ * One AI Site project per workspace — it's the single website being
+ * developed, not one of many. If it (and its one chat) already exist,
+ * skip straight to the chat workspace; otherwise show the v0-style prompt
+ * landing to start building.
+ */
+export default async function AiSiteHomePage({ params }: { params: Promise<{ tenant: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
 
@@ -14,25 +20,20 @@ export default async function AiSiteProjectsPage({ params }: { params: Promise<{
   if (!access) redirect("/dashboard")
 
   const tenantDb = await getTenantDb(access.tenant.slug)
-  const projects = await tenantDb.aiSiteProject.findMany({
+  const project = await tenantDb.aiSiteProject.findFirst({
     where: { tenantId: access.tenantId },
-    orderBy: { updatedAt: "desc" },
-    include: { _count: { select: { chats: true } } },
+    include: { chats: { select: { id: true }, take: 1 } },
   })
 
+  if (project?.chats[0]) {
+    redirect(`/dashboard/${tenantSlug}/developer/aisite/${project.id}/chats/${project.chats[0].id}`)
+  }
+
   return (
-    <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto">
-      <AiSiteProjectsClient
-        tenantSlug={access.tenant.slug}
-        tenantId={tenantSlug}
-        initialProjects={projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          updatedAt: p.updatedAt.toISOString(),
-          chatCount: p._count.chats,
-        }))}
-      />
-    </div>
+    <AiSiteLanding
+      tenantSlug={access.tenant.slug}
+      tenantId={tenantSlug}
+      existingProjectId={project?.id ?? null}
+    />
   )
 }

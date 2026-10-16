@@ -2,9 +2,11 @@
 
 import type { UIMessage } from "ai"
 import { useCallback, useState } from "react"
-import Link from "next/link"
-import { Eye, Code2, ExternalLink, RefreshCw, ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { Eye, Code2, ExternalLink, RefreshCw, Trash2, Loader2, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ChatConversation } from "./chat-conversation"
 import { CodeView } from "./code-view"
 import { PreviewPane } from "./preview-pane"
@@ -25,20 +27,36 @@ export function ChatWorkspace({
   initialMessages: UIMessage[]
   projectId: string
 }) {
+  const router = useRouter()
   const [view, setView] = useState<View>("preview")
   // Bumped after every generation so the preview re-syncs and the code view reloads.
   const [revision, setRevision] = useState(0)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const handleGenerationFinished = useCallback(() => setRevision((value) => value + 1), [])
 
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  async function deleteProject() {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site/projects/${projectId}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error || "Gagal menghapus proyek")
+      }
+      router.push(`/dashboard/${tenantId}/developer/aisite`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
-        <Button asChild size="icon" variant="ghost" aria-label="Kembali ke daftar proyek">
-          <Link href={`/dashboard/${tenantId}/developer/aisite`}>
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
+        <Globe className="size-4 shrink-0 text-primary" />
         <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{chat.title}</h1>
         <div className="flex items-center rounded-lg border border-border p-0.5">
           {(["preview", "code"] as const).map((item) => (
@@ -71,7 +89,26 @@ export function ChatWorkspace({
             </a>
           </Button>
         ) : null}
+        <Button
+          aria-label="Hapus proyek"
+          onClick={() => setConfirmOpen(true)}
+          size="icon"
+          variant="ghost"
+          disabled={deleting}
+        >
+          {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+        </Button>
       </header>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Hapus proyek ini?"
+        description={`"${chat.title}" beserta semua file, chat, dan preview-nya akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.`}
+        confirmLabel="Hapus"
+        variant="destructive"
+        onConfirm={deleteProject}
+      />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex w-full min-w-0 shrink-0 flex-col border-r border-border md:w-96 md:max-w-[42%]">

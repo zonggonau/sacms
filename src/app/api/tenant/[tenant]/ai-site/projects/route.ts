@@ -30,6 +30,14 @@ export const POST = withStaffAuth(async (req, _context, { access }) => {
   }
 
   const tenantDb = await getTenantDb(access.tenant.slug)
+
+  // One AI Site project per workspace — the single project IS this
+  // workspace's website being developed, not one of many.
+  const existing = await tenantDb.aiSiteProject.count({ where: { tenantId: access.tenantId } })
+  if (existing > 0) {
+    return apiError("conflict", { message: "Workspace ini sudah memiliki proyek AI Site. Hapus proyek yang ada untuk membuat yang baru." })
+  }
+
   const project = await tenantDb.aiSiteProject.create({
     data: {
       tenantId: access.tenantId,

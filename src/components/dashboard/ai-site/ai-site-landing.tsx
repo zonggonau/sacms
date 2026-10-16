@@ -1,0 +1,120 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { ArrowUp, Loader2, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+
+const SUGGESTIONS = [
+  "Landing page untuk toko kopi dengan menu, lokasi, dan form kontak",
+  "Portofolio pribadi dengan galeri proyek dan halaman tentang saya",
+  "Halaman promosi produk dengan harga, testimoni, dan CTA pendaftaran",
+]
+
+/** v0-style prompt landing — shown only until this workspace's one AI Site project exists. */
+export function AiSiteLanding({
+  tenantSlug,
+  tenantId,
+  existingProjectId,
+}: {
+  tenantSlug: string
+  tenantId: string
+  existingProjectId: string | null
+}) {
+  const router = useRouter()
+  const [text, setText] = useState("")
+  const [submitting, setSubmitting] = useState(false)
+
+  const apiBase = `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site`
+
+  async function start() {
+    const brief = text.trim()
+    if (!brief || submitting) return
+    setSubmitting(true)
+    try {
+      let projectId = existingProjectId
+      if (!projectId) {
+        const projectRes = await fetch(`${apiBase}/projects`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: titleFrom(brief) }),
+        })
+        const projectBody = await projectRes.json().catch(() => ({}))
+        if (!projectRes.ok) throw new Error(projectBody?.error || "Gagal membuat proyek")
+        projectId = projectBody.project.id as string
+      }
+
+      const chatRes = await fetch(`${apiBase}/projects/${projectId}/chats`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: brief }),
+      })
+      const chatBody = await chatRes.json().catch(() => ({}))
+      if (!chatRes.ok) throw new Error(chatBody?.error || "Gagal membuat chat")
+      const chatId = chatBody.chat.id as string
+
+      router.push(`/dashboard/${tenantId}/developer/aisite/${projectId}/chats/${chatId}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="flex h-full min-h-[70vh] flex-col items-center justify-center px-4">
+      <div className="w-full max-w-2xl space-y-6 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
+            <Sparkles className="size-6 text-primary" />
+          </div>
+          <h1 className="text-2xl font-bold">Apa yang ingin kamu bangun?</h1>
+          <p className="text-sm text-muted-foreground">
+            Jelaskan websitenya, AI Site akan menulis dan menampilkan preview langsung.
+          </p>
+        </div>
+
+        <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2.5 shadow-sm">
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                start()
+              }
+            }}
+            placeholder="Contoh: Landing page untuk toko kopi, warna hijau tua, ada menu, lokasi, dan form kontak."
+            className="min-h-14 flex-1 resize-none border-0 text-sm shadow-none focus-visible:ring-0"
+            rows={3}
+            autoFocus
+            disabled={submitting}
+          />
+          <Button size="icon" onClick={start} disabled={submitting || !text.trim()} aria-label="Mulai membangun">
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+          </Button>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-2">
+          {SUGGESTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              disabled={submitting}
+              onClick={() => setText(s)}
+              className="rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:opacity-50"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function titleFrom(text: string) {
+  const line = text.trim().split("\n")[0]!.trim()
+  return line.length > 80 ? `${line.slice(0, 79)}…` : line || "Website Saya"
+}
