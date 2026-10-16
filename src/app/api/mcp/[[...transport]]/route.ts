@@ -32,6 +32,13 @@ import {
   type ContentActor,
 } from "@/lib/content/entry-service"
 import { revalidatePath } from "next/cache"
+import {
+  getFullSchemaForTenant,
+  listContentTypesForTenant,
+  getContentTypeForTenant,
+  queryContentForTenant,
+  listComponentsForTenant,
+} from "@/lib/cms-introspection"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -364,62 +371,11 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const [contentTypes, singleTypes, components] = await Promise.all([
-          tenantDb.contentType.findMany({
-            where: { tenantId: auth.tenantId, draftTemplateId: null },
-            include: { schemaFields: { orderBy: { order: "asc" } } }
-          }),
-          tenantDb.singleType.findMany({
-            where: { tenantId: auth.tenantId, draftTemplateId: null },
-            include: {
-              schemaFields: { orderBy: { order: "asc" } },
-              tenants: { where: { tenantId: auth.tenantId }, take: 1 }
-            }
-          }),
-          tenantDb.component.findMany({
-            where: { tenantId: auth.tenantId, draftTemplateId: null },
-            include: { schemaFields: { orderBy: { order: "asc" } } }
-          }),
-        ])
-
-        const mapFields = (fields: any[]) => fields.map((f) => ({
-          name: f.name,
-          slug: f.slug,
-          type: f.type,
-          required: f.required,
-          unique: f.unique,
-          localizable: f.localizable,
-          ...(f.relationSlug ? { relationSlug: f.relationSlug } : {}),
-          ...(f.options ? { options: f.options } : {}),
-        }))
-
-        const schema = {
-          workspace: { id: auth.tenantId, name: auth.tenantName, slug: auth.tenantSlug },
-          contentTypes: contentTypes.map((ct) => ({ 
-            id: ct.id, 
-            name: ct.name, 
-            slug: ct.slug, 
-            description: ct.description, 
-            fields: mapFields(ct.schemaFields) 
-          })),
-          singleTypes: singleTypes.map((st) => ({ 
-            id: st.id, 
-            name: st.name, 
-            slug: st.slug, 
-            description: st.description, 
-            hasData: !!st.tenants[0]?.data,
-            data: st.tenants[0]?.data || null,
-            fields: mapFields(st.schemaFields) 
-          })),
-          components: components.map((c) => ({ 
-            id: c.id, 
-            name: c.name, 
-            slug: c.slug, 
-            category: c.category, 
-            description: c.description, 
-            fields: mapFields(c.schemaFields) 
-          })),
-        }
+        const schema = await getFullSchemaForTenant(tenantDb, auth.tenantId, {
+          id: auth.tenantId,
+          name: auth.tenantName,
+          slug: auth.tenantSlug,
+        })
 
         return { content: [{ type: "text" as const, text: JSON.stringify(schema, null, 2) }] }
       }
@@ -539,31 +495,7 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const contentTypes = await tenantDb.contentType.findMany({
-          where: { tenantId: auth.tenantId, draftTemplateId: null },
-          include: {
-            schemaFields: { orderBy: { order: "asc" } },
-            _count: { select: { entries: true } }
-          },
-          orderBy: { name: "asc" },
-        })
-
-        const result = contentTypes.map((ct) => ({
-          id: ct.id,
-          name: ct.name,
-          slug: ct.slug,
-          description: ct.description,
-          entryCount: ct._count.entries,
-          fields: ct.schemaFields.map((f) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            unique: f.unique,
-            relationSlug: f.relationSlug,
-            options: f.options
-          })),
-        }))
+        const result = await listContentTypesForTenant(tenantDb, auth.tenantId)
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -585,41 +517,9 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const ct = await tenantDb.contentType.findFirst({
-          where: {
-            draftTemplateId: null,
-            OR: [
-              { slug, tenantId: auth.tenantId },
-              { id: slug, tenantId: auth.tenantId },
-            ]
-          },
-          include: {
-            schemaFields: { orderBy: { order: "asc" } },
-            _count: { select: { entries: true } }
-          }
-        })
+        const result = await getContentTypeForTenant(tenantDb, auth.tenantId, slug)
 
-        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
-
-        const result = {
-          id: ct.id,
-          name: ct.name,
-          slug: ct.slug,
-          description: ct.description,
-          showInCms: ct.showInCms,
-          entryCount: ct._count.entries,
-          fields: ct.schemaFields.map(f => ({
-            id: f.id,
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            unique: f.unique,
-            localizable: f.localizable,
-            relationSlug: f.relationSlug,
-            options: f.options
-          }))
-        }
+        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -870,58 +770,10 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const ct = await tenantDb.contentType.findFirst({
-          where: {
-            draftTemplateId: null,
-            OR: [
-              { slug: contentTypeSlug, tenantId: auth.tenantId },
-              { id: contentTypeSlug, tenantId: auth.tenantId },
-            ]
-          }
+        const result = await queryContentForTenant(tenantDb, auth.tenantId, {
+          contentTypeSlug, limit, page, status, search, locale, sortOrder,
         })
-        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }] }
-
-        const safeLimit = Math.min(limit ?? 10, 100)
-        const safePage = Math.max(page ?? 1, 1)
-
-        const whereClause: any = {
-          contentTypeId: ct.id,
-          tenantId: auth.tenantId,
-        }
-        if (status && status !== "ALL") {
-          whereClause.status = status
-        }
-        if (locale) {
-          whereClause.locale = locale
-        }
-
-        const [entries, total] = await Promise.all([
-          tenantDb.contentEntry.findMany({
-            where: whereClause,
-            skip: (safePage - 1) * safeLimit,
-            take: safeLimit,
-            orderBy: { createdAt: sortOrder ?? "desc" },
-          }),
-          tenantDb.contentEntry.count({ where: whereClause })
-        ])
-
-        const result = {
-          contentType: ct.slug,
-          pagination: {
-            page: safePage,
-            limit: safeLimit,
-            total,
-            totalPages: Math.ceil(total / safeLimit)
-          },
-          data: entries.map((e) => ({
-            _id: e.id,
-            _status: e.status,
-            _locale: e.locale,
-            _createdAt: e.createdAt,
-            _publishedAt: e.publishedAt,
-            ...(typeof e.data === "object" && e.data !== null ? e.data : {}),
-          })),
-        }
+        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }] }
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -1492,26 +1344,7 @@ const handler = createMcpHandler(
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const components = await tenantDb.component.findMany({
-          where: { tenantId: auth.tenantId, draftTemplateId: null },
-          include: { schemaFields: { orderBy: { order: "asc" } } },
-          orderBy: { name: "asc" },
-        })
-
-        const result = components.map((c) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          category: c.category,
-          description: c.description,
-          fields: c.schemaFields.map((f) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            options: f.options
-          })),
-        }))
+        const result = await listComponentsForTenant(tenantDb, auth.tenantId)
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }

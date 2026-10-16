@@ -18,7 +18,7 @@ export default async function SchemaTemplatePage({ params }: { params: Promise<{
   if (!access) redirect("/dashboard")
 
   if (!access.isGlobal) {
-    redirect(`/dashboard/${tenantSlug}/developer/aischema`)
+    redirect(`/dashboard/${tenantSlug}/developer/schema`)
   }
 
   return <SchemaTemplateClient tenantSlug={tenantSlug} />

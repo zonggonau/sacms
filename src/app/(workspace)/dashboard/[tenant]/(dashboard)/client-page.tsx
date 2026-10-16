@@ -154,9 +154,9 @@ export default function TenantDashboardClient({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-            <Link href={`/dashboard/${tenantId}/developer/aischema`}>
+            <Link href={`/dashboard/${tenantId}/developer/aisite`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              AI Schema Generator
+              AI Site
             </Link>
           </Button>
 
@@ -292,7 +292,7 @@ export default function TenantDashboardClient({
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-              <Link href={`/dashboard/${tenantId}/developer/aischema`}>
+              <Link href={`/dashboard/${tenantId}/developer/schema`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                 Buka AI Schema Generator
               </Link>

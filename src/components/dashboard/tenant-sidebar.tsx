@@ -260,7 +260,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             icon: Code,
             badge: "AI",
             children: [
-              { title: "AI Schema Builder", href: "/developer/aischema", icon: Bot, matchPrefix: true },
+              { title: "AI Schema Builder", href: "/developer/schema", icon: Bot, matchPrefix: true },
               { title: "Content Types", href: "/developer/content-types", icon: DatabaseIcon, matchPrefix: true },
               { title: "Server MCP", href: "/developer/mcp", icon: Plug, matchPrefix: true },
               { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },

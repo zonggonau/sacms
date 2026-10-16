@@ -540,7 +540,7 @@ export function HostingDeploymentsView({
                 asChild
                 className="rounded-xl h-9 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer"
               >
-                <Link href={`/dashboard/${tenantSlug}/developer/aischema`}>
+                <Link href={`/dashboard/${tenantSlug}/developer/schema`}>
                   <Bot className="h-3.5 w-3.5 mr-1.5" />
                   AI Schema Generator
                 </Link>
@@ -706,9 +706,9 @@ export function HostingDeploymentsView({
                         asChild
                         className="rounded-xl h-9 px-4 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
                       >
-                        <Link href={`/dashboard/${tenantSlug}/developer/aischema`}>
+                        <Link href={`/dashboard/${tenantSlug}/developer/aisite`}>
                           <Bot className="h-3.5 w-3.5 mr-1.5" />
-                          Deploy via AI Builder
+                          Buat Situs via AI Site
                         </Link>
                       </Button>
                     </div>

@@ -33,6 +33,8 @@ model User {
   ownedTenants        Tenant[]       @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
+  aiSiteProjects      AiSiteProject[] @relation("AiSiteProjectCreator")
+  aiSiteChats         AiSiteChat[]    @relation("AiSiteChatCreator")
 
   @@map("users")
 }
@@ -148,6 +150,7 @@ model Tenant {
   managedInfraService    ManagedInfraService?
   appMembers             Member[]
   memberRoles            MemberRole[]
+  aiSiteProjects         AiSiteProject[]
 
   @@map("tenants")
 }
@@ -410,6 +413,62 @@ model TenantComponentAssignment {
 
   @@unique([tenantId, componentId])
   @@map("tenant_component_assignments")
+}
+
+model AiSiteProject {
+  id              String   @id @default(cuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdBy       User?    @relation("AiSiteProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  name            String
+  description     String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  files           AiSiteFile[]
+  chats           AiSiteChat[]
+
+  @@index([tenantId, updatedAt])
+  @@map("ai_site_projects")
+}
+
+model AiSiteFile {
+  projectId String
+  project   AiSiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  path      String
+  content   String
+  updatedAt DateTime      @updatedAt
+
+  @@id([projectId, path])
+  @@map("ai_site_files")
+}
+
+model AiSiteChat {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         AiSiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdByUserId String?
+  createdBy       User?    @relation("AiSiteChatCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  title           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  messages        AiSiteChatMessage[]
+
+  @@index([projectId, updatedAt])
+  @@map("ai_site_chats")
+}
+
+model AiSiteChatMessage {
+  id        String   @id @default(cuid())
+  chatId    String
+  chat      AiSiteChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  role      String
+  parts     Json
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([chatId, createdAt])
+  @@map("ai_site_chat_messages")
 }
 
 model ApiKey {

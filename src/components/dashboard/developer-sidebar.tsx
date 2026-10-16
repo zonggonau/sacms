@@ -20,7 +20,8 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
   const pathname = usePathname()
 
   const builderNavItems = [
-    { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/aischema`, icon: Bot, badge: "AI" },
+    { title: "AI Site", href: `/dashboard/${tenantId}/developer/aisite`, icon: Globe, badge: "AI" },
+    { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/schema`, icon: Bot, badge: "AI" },
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/components`, icon: Puzzle },
@@ -41,7 +42,7 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
       <div className="overflow-y-auto">
         <NestedSidebarHeader 
           tenantId={tenantId} 
-          logoHref={`/dashboard/${tenantId}/developer/aischema`}
+          logoHref={`/dashboard/${tenantId}/developer/aisite`}
           portalBadge="Developer & AI" 
         />
         

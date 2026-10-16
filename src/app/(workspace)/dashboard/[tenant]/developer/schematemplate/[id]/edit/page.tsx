@@ -17,7 +17,7 @@ export default async function SchemaTemplateEditPage({
   const { tenant: tenantSlug, id } = await params
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect("/dashboard")
-  if (!access.isGlobal) redirect(`/dashboard/${tenantSlug}/developer/aischema`)
+  if (!access.isGlobal) redirect(`/dashboard/${tenantSlug}/developer/schema`)
 
   const template = await db.schemaTemplate.findUnique({ where: { id } })
   if (!template) notFound()

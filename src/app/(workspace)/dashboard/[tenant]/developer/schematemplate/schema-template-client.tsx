@@ -12,7 +12,7 @@ import {
 import { Plus, Trash2, ArrowLeft, LayoutTemplate, Loader2, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { SchemaStep } from "../aischema/schema-step"
+import { SchemaStep } from "../schema/schema-step"
 
 interface SchemaTemplateItem {
   id: string

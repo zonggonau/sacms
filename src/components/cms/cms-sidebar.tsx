@@ -215,7 +215,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
       {/* Direct Quick Jump to AI Schema Generator */}
       {canGoBack && (
         <div className="px-3 pt-2 pb-1 border-t border-border/80 bg-muted/20">
-          <Link href={`/dashboard/${tenantId}/developer/aischema`}>
+          <Link href={`/dashboard/${tenantId}/developer/schema`}>
             <div className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/30 group shadow-xs">
               <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
               <div className="min-w-0 flex-1">
