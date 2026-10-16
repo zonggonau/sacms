@@ -435,36 +435,43 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   y = drawHeaderBand(true) + 10
 
   /* ═══ TEXT HELPERS ═══ */
+  // 0.62 line-height multiplier (rather than a tighter ~0.55) so a clause
+  // that wraps across several lines still reads as separated lines, not a
+  // solid block — this is the main fix for "paragraf terlalu panjang,
+  // tolong di-enter agar rapih".
+  const LINE_HEIGHT = 0.62
   const drawParagraph = (text: string, opts: { size?: number; bold?: boolean; indent?: number; gap?: number } = {}) => {
     const size = opts.size ?? 9
     const indent = opts.indent ?? 0
     const lines = doc.splitTextToSize(text, bodyWidth - indent)
-    ensureSpace(lines.length * (size * 0.55) + 2)
+    ensureSpace(lines.length * (size * LINE_HEIGHT) + 2)
     doc.setFont('helvetica', opts.bold ? 'bold' : 'normal')
     doc.setFontSize(size)
     rgb(doc, C.dark, 'text')
     doc.text(lines, ML + indent, y)
-    y += lines.length * (size * 0.55) + (opts.gap ?? 4)
+    y += lines.length * (size * LINE_HEIGHT) + (opts.gap ?? 4)
   }
 
   const drawSectionTitle = (text: string) => {
-    ensureSpace(12)
+    ensureSpace(14)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(10.5)
     rgb(doc, C.navy, 'text')
     doc.text(text, W / 2, y, { align: 'center' })
-    y += 7
+    y += 9
   }
 
   const drawArticle = (title: string, bodyLines: string[]) => {
-    ensureSpace(10)
+    ensureSpace(12)
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9.5)
     rgb(doc, C.navy, 'text')
     doc.text(title, W / 2, y, { align: 'center' })
-    y += 6.5
-    bodyLines.forEach((b) => drawParagraph(b, { size: 8.8, indent: 4, gap: 3.5 }))
-    y += 2
+    y += 7
+    // gap: 5 between each numbered clause — clearly separated lines rather
+    // than one dense block, since each is its own legal point.
+    bodyLines.forEach((b) => drawParagraph(b, { size: 8.8, indent: 4, gap: 5 }))
+    y += 5
   }
 
   /* ═══ 1. PEMBUKAAN / KOMPARISI ═══ */
@@ -504,11 +511,11 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   )
   drawParagraph(
     'a. bahwa PIHAK PERTAMA adalah badan usaha yang bergerak dalam penyediaan platform Content Management System berbasis Software-as-a-Service bernama SaCMS;',
-    { indent: 4, size: 8.8, gap: 2.5 }
+    { indent: 4, size: 8.8, gap: 5 }
   )
   drawParagraph(
     'b. bahwa PIHAK KEDUA bermaksud menggunakan Perangkat Lunak tersebut untuk kebutuhan internal instansi/organisasinya;',
-    { indent: 4, size: 8.8, gap: 2.5 }
+    { indent: 4, size: 8.8, gap: 5 }
   )
   drawParagraph(
     'c. bahwa berdasarkan hal-hal tersebut di atas, PARA PIHAK sepakat untuk mengadakan Perjanjian Kerja Sama Lisensi Penggunaan Perangkat Lunak ("Perjanjian") dengan syarat dan ketentuan sebagai berikut:',
