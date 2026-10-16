@@ -28,7 +28,6 @@ export default function BillingClient({
   initialAiCreditUsage,
   initialTransactions,
   initialTransactionsTotalPages,
-  initialMasterInfra,
   isAccountEnterpriseLicensed
 }: {
   initialAccountPlans: any[]
@@ -37,26 +36,14 @@ export default function BillingClient({
   initialAiCreditUsage?: { used: number, total: number, remaining: number, isUnlimited: boolean }
   initialTransactions: any[]
   initialTransactionsTotalPages?: number
-  initialMasterInfra?: { databaseUrl: string, storageConfig: any }
-  /** Account-level license (isEnterpriseTenant(userId) — see license.ts),
-   *  distinct from isUserEnterprise below (that one is the paid "Akun
-   *  Bisnis & Agensi" plan tier, unrelated to a license key). When active,
-   *  the yearly account-plan grid is hidden — see section 2 below. */
+  /** Account-level license (isEnterpriseTenant(userId) — see license.ts).
+   *  When active, the yearly account-plan grid is hidden — see section 2
+   *  below. The "Database & Storage" infra override this account grants
+   *  now lives on its own page at /dashboard/infrastructure. */
   isAccountEnterpriseLicensed?: boolean
 }) {
   const { data: session, status, update } = useSafeSession()
   const router = useRouter()
-
-  // The "Infrastructure" tab lets a user set the DB/S3 override every new
-  // workspace of theirs inherits — it's gated on THIS user's own account
-  // plan, same as the API routes that back it (GET/PUT
-  // /api/auth/user/infrastructure both require plan === "enterprise").
-  // It used to be gated on the platform's global/instance license instead,
-  // which showed the tab to every user on an Enterprise-licensed instance
-  // (even ones on the free plan, who'd then get a 403 on Save) and, on a
-  // non-Enterprise-licensed instance, hid Plans/Transaction History for
-  // everyone regardless of their own plan.
-  const isUserEnterprise = session?.user?.plan === "enterprise"
 
   const [accountPlans, setAccountPlans] = useState<any[]>(initialAccountPlans)
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
@@ -168,36 +155,6 @@ export default function BillingClient({
     }
   }
 
-  const [infra, setInfra] = useState({
-    databaseUrl: initialMasterInfra?.databaseUrl || "",
-    s3Bucket: initialMasterInfra?.storageConfig?.bucket || "",
-    s3Region: initialMasterInfra?.storageConfig?.region || "",
-    s3AccessKey: initialMasterInfra?.storageConfig?.accessKeyId || "",
-    s3SecretKey: initialMasterInfra?.storageConfig?.secretAccessKey || "",
-  })
-  const [savingInfra, setSavingInfra] = useState(false)
-  const [infraShowMasks, setInfraShowMasks] = useState<Record<string, boolean>>({})
-
-  // infra.databaseUrl/s3AccessKey/s3SecretKey arrive masked ("••••••••") from
-  // the server component. Revealing one fetches the real value on demand
-  // (audited server-side) so plaintext secrets never sit in the page's
-  // initial payload.
-  const revealInfraSecret = async (maskField: string, infraKey: "databaseUrl" | "s3AccessKey" | "s3SecretKey", apiField: string) => {
-    if (infraShowMasks[maskField]) {
-      setInfraShowMasks(prev => ({ ...prev, [maskField]: false }))
-      return
-    }
-    try {
-      const res = await fetch(`/api/auth/user/infrastructure?reveal=${apiField}`)
-      if (!res.ok) throw new Error("reveal failed")
-      const data = await res.json()
-      setInfra(prev => ({ ...prev, [infraKey]: data.value ?? "" }))
-      setInfraShowMasks(prev => ({ ...prev, [maskField]: true }))
-    } catch {
-      toast({ variant: "destructive", title: "Gagal", description: "Gagal mengambil nilai rahasia" })
-    }
-  }
-
   const handleCheckStatus = async (orderId: string) => {
     setCheckingOrderId(orderId)
     try {
@@ -243,27 +200,6 @@ export default function BillingClient({
     }
   }
 
-  const handleSaveInfra = async () => {
-    setSavingInfra(true)
-    try {
-      const res = await fetch("/api/auth/user/infrastructure", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(infra)
-      })
-      if (res.ok) {
-        toast({ title: "Infrastruktur Disimpan", description: "Konfigurasi Database & Storage berhasil diperbarui." })
-      } else {
-        const error = await res.json()
-        toast({ variant: "destructive", title: "Gagal Menyimpan", description: error.error || "Gagal menyimpan pengaturan" })
-      }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan pengaturan infrastruktur." })
-    } finally {
-      setSavingInfra(false)
-    }
-  }
-
   if (status === "loading") {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -281,8 +217,7 @@ export default function BillingClient({
 
       <Tabs defaultValue="plans" className="w-full">
         <TabsList className={cn(
-          "grid w-full p-1 bg-muted/40 border border-border/80 rounded-2xl h-auto gap-1",
-          isUserEnterprise ? "grid-cols-3 max-w-[560px]" : "grid-cols-2 max-w-[400px]"
+          "grid w-full p-1 bg-muted/40 border border-border/80 rounded-2xl h-auto gap-1 grid-cols-2 max-w-[400px]"
         )}>
           <TabsTrigger value="plans" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
             Subscription Plans
@@ -290,11 +225,6 @@ export default function BillingClient({
           <TabsTrigger value="history" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
             Transaction History
           </TabsTrigger>
-          {isUserEnterprise && (
-            <TabsTrigger value="infrastructure" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
-              Infrastructure
-            </TabsTrigger>
-          )}
         </TabsList>
         
         <TabsContent value="plans" className="space-y-6 mt-6">
@@ -851,114 +781,6 @@ export default function BillingClient({
 
         </TabsContent>
 
-        {isUserEnterprise && (
-          <TabsContent value="infrastructure" className="mt-6">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-xl font-bold">Master Infrastructure Override</h3>
-                <p className="text-sm text-muted-foreground">
-                  Default database and S3 credentials for new workspaces.
-                </p>
-              </div>
-              <Button onClick={handleSaveInfra} disabled={savingInfra}>
-                {savingInfra ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Settings
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6">
-              <Card className="border-none shadow-sm">
-                <CardHeader className="pb-4 border-b bg-muted/20">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Database className="h-4 w-4 text-primary" />
-                    Master Database Override
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="masterDatabaseUrl">PostgreSQL Connection URL</Label>
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealInfraSecret('databaseUrl', 'databaseUrl', 'databaseUrl')}>
-                        {infraShowMasks.databaseUrl ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                        {infraShowMasks.databaseUrl ? "Sembunyikan" : "Tampilkan"}
-                      </Button>
-                    </div>
-                    <Input
-                      id="masterDatabaseUrl"
-                      value={infra.databaseUrl}
-                      onChange={(e) => setInfra({ ...infra, databaseUrl: e.target.value })}
-                      placeholder="postgresql://user:password@host:port/database"
-                      type={infraShowMasks.databaseUrl ? "text" : "password"}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-sm">
-                <CardHeader className="pb-4 border-b bg-muted/20">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Cloud className="h-4 w-4 text-primary" />
-                    Master S3 Storage Override
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="masterS3Bucket">Bucket Name</Label>
-                      <Input 
-                        id="masterS3Bucket" 
-                        value={infra.s3Bucket} 
-                        onChange={(e) => setInfra({ ...infra, s3Bucket: e.target.value })}
-                        placeholder="my-enterprise-bucket"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="masterS3Region">Region</Label>
-                      <Input 
-                        id="masterS3Region" 
-                        value={infra.s3Region} 
-                        onChange={(e) => setInfra({ ...infra, s3Region: e.target.value })}
-                        placeholder="ap-southeast-1 (or auto for R2)"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="masterS3AccessKey">Access Key ID</Label>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealInfraSecret('s3AccessKey', 's3AccessKey', 's3AccessKey')}>
-                          {infraShowMasks.s3AccessKey ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {infraShowMasks.s3AccessKey ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <Input
-                        id="masterS3AccessKey"
-                        value={infra.s3AccessKey}
-                        onChange={(e) => setInfra({ ...infra, s3AccessKey: e.target.value })}
-                        type={infraShowMasks.s3AccessKey ? "text" : "password"}
-                        placeholder="Enter access key"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Label htmlFor="masterS3SecretKey">Secret Access Key</Label>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealInfraSecret('s3SecretKey', 's3SecretKey', 's3SecretKey')}>
-                          {infraShowMasks.s3SecretKey ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {infraShowMasks.s3SecretKey ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <Input
-                        id="masterS3SecretKey"
-                        value={infra.s3SecretKey}
-                        onChange={(e) => setInfra({ ...infra, s3SecretKey: e.target.value })}
-                        type={infraShowMasks.s3SecretKey ? "text" : "password"}
-                        placeholder="Enter secret key"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-        )}
       </Tabs>
 
       {/* Interactive Invoice Detail Modal */}

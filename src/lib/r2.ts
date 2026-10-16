@@ -35,12 +35,22 @@ async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig
   try {
     const tenant = await db.tenant.findUnique({
       where: { slug: tenantSlug },
-      select: { storageConfig: true }
+      select: { id: true, storageConfig: true }
     })
     if (tenant?.storageConfig) {
       const config = tenant.storageConfig as unknown as StorageConfig
       if (config.endpoint && config.accessKey && config.secretKey && config.bucket) {
         return config
+      }
+    }
+    // Fall back to the owner's account-level master storage config (set
+    // once at /dashboard, applies to every workspace that doesn't have its
+    // own override) — see getOwnerMasterInfra() in database.ts.
+    if (tenant) {
+      const { getOwnerMasterInfra } = await import("./database")
+      const master = await getOwnerMasterInfra(tenant.id)
+      if (master.storageConfig) {
+        return master.storageConfig as unknown as StorageConfig
       }
     }
   } catch (error) {

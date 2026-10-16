@@ -1,55 +1,58 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, PrismaClient, invalidateOwnerMasterInfraCache } from "@/lib/database"
+import { isEnterpriseTenant } from "@/lib/license"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { rateLimit } from "@/lib/rate-limit"
-import { assertPublicHost, SsrfError } from "@/lib/safe-url"
+import { assertPublicHost, assertPublicUrl, SsrfError } from "@/lib/safe-url"
 
 const MASK = "••••••••"
 const DB_URL_SCHEMES = ["postgres:", "postgresql:"]
 
+async function hasAccountLicense(userId: string, plan: string | undefined): Promise<boolean> {
+  if (plan === "enterprise") return true
+  const globalId = await getGlobalWorkspaceId()
+  return isEnterpriseTenant(globalId, userId)
+}
+
 // GET /api/auth/user/infrastructure - masked view of the current user's
-// master DB/S3 override. Real secrets never leave the server here; use
-// ?reveal=databaseUrl|s3SecretKey|s3AccessKey to fetch one real value on
-// demand (rate-limited and audited under a dedicated action distinct from
-// an ordinary settings write, so "who viewed this secret" is searchable on
-// its own in the audit log).
+// master DB/storage override, applied to every workspace this user owns
+// that has no override of its own — see getOwnerMasterInfra() in
+// src/lib/database.ts. Real secrets never leave the server here; use
+// ?reveal=databaseUrl|accessKey|secretKey to fetch one real value on demand
+// (rate-limited and audited under a dedicated action).
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  // Gated the same as PUT: a user downgraded off Enterprise can no longer
-  // set these values, so they shouldn't be able to keep viewing/revealing
-  // whatever was set while they still were.
-  if (session.user.plan !== "enterprise") {
-    return NextResponse.json({ error: "Forbidden: Enterprise plan required" }, { status: 403 })
-  }
-
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { masterDatabaseUrl: true, masterStorageConfig: true },
+    select: { plan: true, masterDatabaseUrl: true, masterStorageConfig: true },
   })
+  const allowed = await hasAccountLicense(session.user.id, user?.plan)
 
   const storageConfig = (user?.masterStorageConfig as any) || {}
   const reveal = req.nextUrl.searchParams.get("reveal")
 
   if (reveal) {
+    if (!allowed) return NextResponse.json({ error: "Forbidden: requires an Enterprise License" }, { status: 403 })
     const rl = await rateLimit(`infra-reveal:${session.user.id}`, { limit: 10, windowSeconds: 60 })
     if (!rl.success) {
       return NextResponse.json({ error: "Too many reveal requests. Try again shortly." }, { status: 429 })
     }
 
-    const REVEALABLE = ["databaseUrl", "s3AccessKey", "s3SecretKey"] as const
+    const REVEALABLE = ["databaseUrl", "accessKey", "secretKey"] as const
     if (!REVEALABLE.includes(reveal as any)) {
       return NextResponse.json({ error: "Invalid field" }, { status: 400 })
     }
     const values: Record<string, string> = {
       databaseUrl: user?.masterDatabaseUrl || "",
-      s3AccessKey: storageConfig.accessKeyId || "",
-      s3SecretKey: storageConfig.secretAccessKey || "",
+      accessKey: storageConfig.accessKey || "",
+      secretKey: storageConfig.secretKey || "",
     }
     logAudit({
       userId: session.user.id,
@@ -61,44 +64,57 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
+    hasLicense: allowed,
     databaseUrl: user?.masterDatabaseUrl ? MASK : "",
-    s3Bucket: storageConfig.bucket || "",
-    s3Region: storageConfig.region || "",
-    s3AccessKey: storageConfig.accessKeyId ? MASK : "",
-    s3SecretKey: storageConfig.secretAccessKey ? MASK : "",
+    endpoint: storageConfig.endpoint || "",
+    bucket: storageConfig.bucket || "",
+    publicUrl: storageConfig.publicUrl || "",
+    accessKey: storageConfig.accessKey ? MASK : "",
+    secretKey: storageConfig.secretKey ? MASK : "",
   })
 }
 
 export async function PUT(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session || !session.user?.id) {
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Only Enterprise users can set master infrastructure
-    if (session.user.plan !== "enterprise") {
-      return NextResponse.json({ error: "Forbidden: Enterprise plan required" }, { status: 403 })
+    const existingUser = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { plan: true, masterDatabaseUrl: true, masterStorageConfig: true },
+    })
+    if (!(await hasAccountLicense(session.user.id, existingUser?.plan))) {
+      return NextResponse.json({ error: "Forbidden: requires an Enterprise License" }, { status: 403 })
     }
 
     const data = await req.json()
-    const { databaseUrl, s3Bucket, s3Region, s3AccessKey, s3SecretKey } = data
+    const { databaseUrl, endpoint, bucket, accessKey, secretKey, publicUrl } = data
+    const existingStorage = (existingUser?.masterStorageConfig as any) || {}
 
-    const existing = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { masterDatabaseUrl: true, masterStorageConfig: true },
-    })
-    const existingStorage = (existing?.masterStorageConfig as any) || {}
+    const nextDatabaseUrl = databaseUrl === MASK ? existingUser?.masterDatabaseUrl || "" : databaseUrl || ""
+    const nextEndpoint = endpoint || ""
+    const nextBucket = bucket || ""
+    const nextAccessKey = accessKey === MASK ? existingStorage.accessKey || "" : accessKey || ""
+    const nextSecretKey = secretKey === MASK ? existingStorage.secretKey || "" : secretKey || ""
+    const nextPublicUrl = publicUrl || ""
 
-    const nextDatabaseUrl = databaseUrl === MASK ? existing?.masterDatabaseUrl || "" : databaseUrl || ""
-    const nextAccessKey = s3AccessKey === MASK ? existingStorage.accessKeyId || "" : s3AccessKey || ""
-    const nextSecretKey = s3SecretKey === MASK ? existingStorage.secretAccessKey || "" : s3SecretKey || ""
+    const dbUrlChanged = nextDatabaseUrl !== (existingUser?.masterDatabaseUrl || "")
+    const hasStorage = Boolean(nextEndpoint && nextAccessKey && nextSecretKey && nextBucket)
+    const storageChanged =
+      nextEndpoint !== (existingStorage.endpoint || "") ||
+      nextBucket !== (existingStorage.bucket || "") ||
+      nextAccessKey !== (existingStorage.accessKey || "") ||
+      nextSecretKey !== (existingStorage.secretKey || "") ||
+      nextPublicUrl !== (existingStorage.publicUrl || "")
 
-    // This value is used to open a real server-side Postgres connection
-    // for every tenant this user creates (see src/lib/database.ts's
-    // acquireTenantClient via src/app/api/tenant/create/route.ts) — an
-    // unvalidated host here is a direct SSRF into the production network.
-    if (nextDatabaseUrl) {
+    // This value is used to open a real server-side Postgres connection for
+    // every workspace this user owns that has no override of its own (see
+    // getOwnerMasterInfra() in src/lib/database.ts) — an unvalidated host
+    // here is a direct SSRF into the production network, and a typo would
+    // silently break every one of this owner's workspaces at once.
+    if (dbUrlChanged && nextDatabaseUrl) {
       let parsedDbUrl: URL
       try {
         parsedDbUrl = new URL(nextDatabaseUrl)
@@ -116,31 +132,67 @@ export async function PUT(req: NextRequest) {
           { status: 400 },
         )
       }
+      const testClient = new PrismaClient({ datasources: { db: { url: nextDatabaseUrl } } })
+      try {
+        await testClient.$queryRaw`SELECT 1`
+      } catch {
+        return NextResponse.json(
+          { error: "Gagal terhubung ke database yang Anda masukkan. Periksa kembali connection string (host, port, username, password, nama database)." },
+          { status: 400 },
+        )
+      } finally {
+        await testClient.$disconnect().catch(() => {})
+      }
+    }
+
+    if (storageChanged && hasStorage) {
+      try {
+        await assertPublicUrl(nextEndpoint)
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof SsrfError ? `Storage endpoint rejected: ${e.message}` : "Invalid storage endpoint" },
+          { status: 400 },
+        )
+      }
+      try {
+        const { createS3Client } = await import("@/lib/s3-client")
+        const { HeadBucketCommand } = await import("@aws-sdk/client-s3")
+        const s3 = createS3Client(nextEndpoint, nextAccessKey, nextSecretKey)
+        await s3.send(new HeadBucketCommand({ Bucket: nextBucket }))
+      } catch {
+        return NextResponse.json(
+          { error: "Gagal terhubung ke storage (MinIO/S3) yang Anda masukkan. Periksa kembali endpoint, access key, secret key, dan nama bucket." },
+          { status: 400 },
+        )
+      }
+    } else if (storageChanged && (nextEndpoint || nextAccessKey || nextSecretKey || nextBucket)) {
+      return NextResponse.json(
+        { error: "Lengkapi semua field storage (endpoint, access key, secret key, bucket) sebelum menyimpan, atau kosongkan semuanya." },
+        { status: 400 },
+      )
     }
 
     await db.user.update({
       where: { id: session.user.id },
       data: {
         masterDatabaseUrl: nextDatabaseUrl,
-        masterStorageConfig: {
-          bucket: s3Bucket || "",
-          region: s3Region || "",
-          accessKeyId: nextAccessKey,
-          secretAccessKey: nextSecretKey,
-        },
+        masterStorageConfig: hasStorage
+          ? { endpoint: nextEndpoint, accessKey: nextAccessKey, secretKey: nextSecretKey, bucket: nextBucket, publicUrl: nextPublicUrl }
+          : {},
       },
     })
+
+    await invalidateOwnerMasterInfraCache(session.user.id)
 
     logAudit({
       userId: session.user.id,
       action: AuditAction.SETTINGS_UPDATED,
       entity: "UserMasterInfra",
       data: {
-        databaseHostChanged: (existing?.masterDatabaseUrl || "") !== nextDatabaseUrl,
-        bucket: s3Bucket || "",
-        region: s3Region || "",
-        accessKeyChanged: (existingStorage.accessKeyId || "") !== nextAccessKey,
-        secretKeyChanged: (existingStorage.secretAccessKey || "") !== nextSecretKey,
+        databaseHostChanged: dbUrlChanged,
+        storageChanged,
+        bucket: nextBucket,
+        endpoint: nextEndpoint,
       },
     })
 

@@ -190,6 +190,17 @@ export async function getStorageQuota(tenantId: string): Promise<StorageQuota> {
   if (!instanceLicensed && !tenant?.storageConfig) {
     const ownerId = await getTenantOwnerId(tenantId)
     if (ownerId) {
+      // Owner's own master BYOS (set once at /dashboard, see
+      // getOwnerMasterInfra() in database.ts) — unmetered, same as
+      // tenant.storageConfig being set directly, and checked ahead of the
+      // bounded license storage pool below since it's the owner's own
+      // infra, not a capped grant.
+      const { getOwnerMasterInfra } = await import('./database')
+      const master = await getOwnerMasterInfra(tenantId)
+      if (master.storageConfig) {
+        return { usedBytes, limitBytes: null, planBytes, addonBytes, planSlug: planConfig.plan_slug }
+      }
+
       const ownerLicense = await getOwnerStorageLicense(ownerId)
       if (ownerLicense.licensed) {
         const pooledUsedBytes = await getOwnerPooledStorageUsedBytes(ownerId)

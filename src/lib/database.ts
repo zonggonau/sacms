@@ -313,9 +313,80 @@ if (!globalForPrisma.cleanupInterval) {
   }, 5 * 60 * 1000) // Check every 5 minutes
 }
 
+interface OwnerMasterInfra {
+  databaseUrl: string | null
+  storageConfig: Record<string, string> | null
+}
+
+interface OwnerMasterInfraCacheEntry extends OwnerMasterInfra {
+  expiresAt: number
+}
+
+/**
+ * Account-level DB/storage override an Enterprise License holder sets once
+ * at /dashboard (see PUT /api/auth/user/infrastructure) — the fallback used
+ * by every workspace that owner owns which has no override of its own
+ * (`tenant.databaseUrl`/`storageConfig` null). Priority is always: tenant's
+ * own override > owner's master override > SaCMS shared default.
+ *
+ * Re-validates the license live (not just at write time) so a
+ * revoked/expired license stops being honored here too, even though the
+ * raw values remain stored on the User row. Cached briefly per tenant since
+ * this is consulted on the hot request path below for every tenant without
+ * its own dedicated DB — i.e. almost every tenant on the platform.
+ */
+const MASTER_INFRA_CACHE_MS = 60_000
+const ownerMasterInfraCache = new Map<string, OwnerMasterInfraCacheEntry>()
+
+export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMasterInfra> {
+  const cached = ownerMasterInfraCache.get(tenantId)
+  if (cached && cached.expiresAt > Date.now()) {
+    return { databaseUrl: cached.databaseUrl, storageConfig: cached.storageConfig }
+  }
+
+  let result: OwnerMasterInfra = { databaseUrl: null, storageConfig: null }
+  try {
+    const owner = await db.tenantMember.findFirst({ where: { tenantId, role: 'owner' }, select: { userId: true } })
+    if (owner) {
+      const user = await db.user.findUnique({
+        where: { id: owner.userId },
+        select: { plan: true, masterDatabaseUrl: true, masterStorageConfig: true },
+      })
+      if (user) {
+        const { isEnterpriseTenant } = await import('./license')
+        const { getGlobalWorkspaceId } = await import('./settings')
+        const globalId = await getGlobalWorkspaceId()
+        const allowed = user.plan === 'enterprise' || (await isEnterpriseTenant(globalId, owner.userId))
+        if (allowed) {
+          const sc = user.masterStorageConfig as any
+          const hasStorage = sc && sc.endpoint && sc.accessKey && sc.secretKey && sc.bucket
+          result = {
+            databaseUrl: user.masterDatabaseUrl || null,
+            storageConfig: hasStorage ? sc : null,
+          }
+        }
+      }
+    }
+  } catch {
+    // Never block a tenant request over this — treat as "no master override".
+  }
+
+  ownerMasterInfraCache.set(tenantId, { ...result, expiresAt: Date.now() + MASTER_INFRA_CACHE_MS })
+  return result
+}
+
+/** Called after PUT /api/auth/user/infrastructure saves — so every workspace
+ *  this owner owns reflects the change immediately instead of up to 60s later. */
+export async function invalidateOwnerMasterInfraCache(ownerId: string): Promise<void> {
+  const owned = await db.tenantMember.findMany({ where: { userId: ownerId, role: 'owner' }, select: { tenantId: true } })
+  for (const { tenantId } of owned) {
+    ownerMasterInfraCache.delete(tenantId)
+  }
+}
+
 export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): Promise<PrismaClient> {
   const tenant = await db.tenant.findFirst({
-    where: { 
+    where: {
       OR: [
         { id: tenantIdOrSlug },
         { slug: tenantIdOrSlug }
@@ -324,17 +395,26 @@ export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): P
     select: { id: true, databaseUrl: true, slug: true }
   })
 
-  if (!tenant || !tenant.databaseUrl) {
+  if (!tenant) {
     return db
   }
 
-  if (isHostKnownUnreachable(tenant.databaseUrl)) {
+  let dedicatedUrl = tenant.databaseUrl
+  if (!dedicatedUrl) {
+    const master = await getOwnerMasterInfra(tenant.id)
+    dedicatedUrl = master.databaseUrl
+  }
+  if (!dedicatedUrl) {
+    return db
+  }
+
+  if (isHostKnownUnreachable(dedicatedUrl)) {
     console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
     return db
   }
 
   try {
-    return acquireTenantClient(tenant.databaseUrl, tenant.slug, forceFresh)
+    return acquireTenantClient(dedicatedUrl, tenant.slug, forceFresh)
   } catch (error) {
     console.error(`[Database] Failed to initialize dedicated DB for tenant ${tenant.slug}:`, error)
     return db
@@ -351,17 +431,26 @@ export async function getTenantDbById(tenantId: string | null | undefined, force
     select: { databaseUrl: true, slug: true }
   })
 
-  if (!tenant || !tenant.databaseUrl) {
+  if (!tenant) {
     return db
   }
 
-  if (isHostKnownUnreachable(tenant.databaseUrl)) {
+  let dedicatedUrl = tenant.databaseUrl
+  if (!dedicatedUrl) {
+    const master = await getOwnerMasterInfra(tenantId)
+    dedicatedUrl = master.databaseUrl
+  }
+  if (!dedicatedUrl) {
+    return db
+  }
+
+  if (isHostKnownUnreachable(dedicatedUrl)) {
     console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
     return db
   }
 
   try {
-    return acquireTenantClient(tenant.databaseUrl, tenant.slug, forceFresh)
+    return acquireTenantClient(dedicatedUrl, tenant.slug, forceFresh)
   } catch (error) {
     console.error(`[Database] Failed to initialize dedicated DB by ID ${tenantId}:`, error)
     return db

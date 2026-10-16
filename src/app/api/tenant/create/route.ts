@@ -42,12 +42,13 @@ export async function POST(request: NextRequest) {
 
     const slug = customSlug ? await generateUniqueSlug(customSlug) : await generateUniqueSlug(name)
 
-    // Fetch user to get master settings
-    const user = await db.user.findUnique({
-      where: { id: session.user.id },
-      select: { masterDatabaseUrl: true, masterStorageConfig: true },
-    })
-
+    // Leaves databaseUrl/storageConfig null — this tenant automatically
+    // falls back to the owner's account-level master override (if any, see
+    // getOwnerMasterInfra() in src/lib/database.ts) at query time. Copying
+    // the owner's master config into this row at creation would freeze it:
+    // a tenant-level value always wins over the live owner fallback, so a
+    // later change to the owner's master config would never reach this
+    // tenant again.
     const tenant = await db.$transaction(async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
@@ -56,8 +57,6 @@ export async function POST(request: NextRequest) {
           description: body.description || null,
           plan: "starter",
           status: "active",
-          databaseUrl: user?.masterDatabaseUrl || null,
-          storageConfig: user?.masterStorageConfig ? JSON.parse(JSON.stringify(user.masterStorageConfig)) : null,
         },
       })
 

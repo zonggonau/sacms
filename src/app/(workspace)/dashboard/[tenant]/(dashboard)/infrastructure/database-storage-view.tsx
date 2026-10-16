@@ -31,13 +31,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [reverting, setReverting] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "console">("overview")
-  const [hasEnterpriseLicense, setHasEnterpriseLicense] = useState(false)
-  // Which of the two choices the self-service card currently shows — distinct
-  // from `hasDedicated` below (the actually-saved state) so picking "Server
-  // Sendiri" can reveal the form before anything is filled in or saved yet.
-  const [showStandaloneForm, setShowStandaloneForm] = useState(false)
 
   // BYODB & BYOS State
   const [databaseUrl, setDatabaseUrl] = useState("")
@@ -63,17 +57,13 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
         const s = settingsData.settings || {}
         const dbUrl = s.databaseUrl || ""
         setDatabaseUrl(dbUrl)
-        setHasEnterpriseLicense(Boolean(s.hasEnterpriseLicense))
-        let hasStorage = false
         if (s.storageConfig) {
           setStorageEndpoint(s.storageConfig.endpoint || "")
           setStorageAccessKey(s.storageConfig.accessKey || "")
           setStorageSecretKey(s.storageConfig.secretKey || "")
           setStorageBucket(s.storageConfig.bucket || "")
           setStoragePublicUrl(s.storageConfig.publicUrl || "")
-          hasStorage = Boolean(s.storageConfig.bucket || s.storageConfig.endpoint)
         }
-        setShowStandaloneForm(Boolean(dbUrl) || hasStorage)
       }
     } catch {
       toast.error("Gagal memuat konfigurasi infrastruktur")
@@ -120,39 +110,6 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
       toast.error("Terjadi kesalahan saat menyimpan")
     } finally {
       setSaving(false)
-    }
-  }
-
-  // Switches a standalone (BYODB/BYOS) tenant back to SaCMS's managed
-  // infrastructure — clears both fields and saves immediately. Always safe:
-  // clearing never runs the connection test in the PUT handler, only
-  // connecting to a new, non-empty value does.
-  const handleRevertToManaged = async () => {
-    setReverting(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/settings`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ databaseUrl: null, storageConfig: null }),
-      })
-      if (res.ok) {
-        toast.success("Kembali menggunakan infrastruktur SaCMS (Terkelola).")
-        setDatabaseUrl("")
-        setStorageEndpoint("")
-        setStorageAccessKey("")
-        setStorageSecretKey("")
-        setStorageBucket("")
-        setStoragePublicUrl("")
-        setShowStandaloneForm(false)
-        fetchInfrastructure()
-      } else {
-        const data = await res.json()
-        toast.error(data.error || "Gagal beralih ke infrastruktur SaCMS")
-      }
-    } catch {
-      toast.error("Terjadi kesalahan saat beralih")
-    } finally {
-      setReverting(false)
     }
   }
 
@@ -418,207 +375,57 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
             </CardContent>
           </Card>
 
-          {/* 3. BYODB/BYOS — self-service for Enterprise License holders,
-              or the paid managed-service CTA for everyone else */}
-          {hasEnterpriseLicense ? (
-            <Card className="rounded-2xl border border-primary/30 shadow-xs bg-card overflow-hidden">
-              <CardHeader className="p-5 pb-3 border-b border-border/60 bg-primary/5">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Database className="h-4 w-4 text-primary" />
-                  Database &amp; Storage Standalone — Termasuk Lisensi Enterprise Anda
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Lisensi Enterprise Anda mengizinkan setup mandiri ke VPS/server milik instansi sendiri — tanpa biaya tambahan, tanpa menunggu tim IT SaCMS.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-5 space-y-4">
-                <div className="flex items-center p-1 bg-muted/60 border border-border/80 rounded-xl w-fit">
-                  <button
-                    type="button"
-                    onClick={() => setShowStandaloneForm(false)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      !showStandaloneForm ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Pakai SaCMS (Terkelola)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowStandaloneForm(true)}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      showStandaloneForm ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Server Sendiri (Standalone)
-                  </button>
-                </div>
-
-                {!showStandaloneForm ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Konten dan media workspace ini disimpan di infrastruktur bersama SaCMS Cloud — tidak perlu setup apa pun.
-                    </p>
-                    {hasDedicated && (
-                      <Button
-                        onClick={handleRevertToManaged}
-                        disabled={reverting}
-                        size="sm"
-                        variant="outline"
-                        className="rounded-xl h-8 text-xs font-bold"
-                      >
-                        {reverting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
-                        Kembali ke SaCMS (Hapus Konfigurasi Standalone)
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="selfDatabaseUrl" className="text-xs font-semibold text-foreground">
-                        PostgreSQL Connection URL
-                      </Label>
-                      <Input
-                        id="selfDatabaseUrl"
-                        type="password"
-                        placeholder="postgresql://user:password@db.instansi.go.id:5432/tenant_db?sslmode=require"
-                        value={databaseUrl}
-                        onChange={(e) => setDatabaseUrl(e.target.value)}
-                        className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                      />
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="selfStorageEndpoint" className="text-xs font-semibold text-foreground">
-                          MinIO/S3 Endpoint URL
-                        </Label>
-                        <Input
-                          id="selfStorageEndpoint"
-                          placeholder="https://minio.instansi.go.id"
-                          value={storageEndpoint}
-                          onChange={(e) => setStorageEndpoint(e.target.value)}
-                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="selfStorageBucket" className="text-xs font-semibold text-foreground">
-                          Nama Bucket
-                        </Label>
-                        <Input
-                          id="selfStorageBucket"
-                          placeholder="nama-bucket-media"
-                          value={storageBucket}
-                          onChange={(e) => setStorageBucket(e.target.value)}
-                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="selfStorageAccessKey" className="text-xs font-semibold text-foreground">
-                          Access Key ID
-                        </Label>
-                        <Input
-                          id="selfStorageAccessKey"
-                          placeholder="AKIA..."
-                          value={storageAccessKey}
-                          onChange={(e) => setStorageAccessKey(e.target.value)}
-                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="selfStorageSecretKey" className="text-xs font-semibold text-foreground">
-                          Secret Access Key
-                        </Label>
-                        <Input
-                          id="selfStorageSecretKey"
-                          type="password"
-                          placeholder="••••••••••••"
-                          value={storageSecretKey}
-                          onChange={(e) => setStorageSecretKey(e.target.value)}
-                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="selfStoragePublicUrl" className="text-xs font-semibold text-foreground">
-                        Public CDN Base URL
-                      </Label>
-                      <Input
-                        id="selfStoragePublicUrl"
-                        placeholder="https://media.instansi.go.id"
-                        value={storagePublicUrl}
-                        onChange={(e) => setStoragePublicUrl(e.target.value)}
-                        className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                      />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Sistem akan menguji koneksi ke database &amp; storage ini sebelum menyimpan — isi salah satu saja jika hanya ingin memindahkan satu bagian.
-                    </p>
-                    <Button
-                      onClick={handleSaveConfig}
-                      disabled={saving}
-                      size="sm"
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs gap-1.5"
-                    >
-                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                      {saving ? "Menguji Koneksi & Menyimpan..." : "Uji Koneksi & Simpan"}
+          {/* 3. MANAGED INFRASTRUCTURE BYODB / BYOS CARD */}
+          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Database className="h-4 w-4 text-primary" />
+                Layanan Terkelola: Database &amp; Storage Sendiri (BYODB/BYOS)
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                Opsi migrasi khusus bagi instansi yang memiliki server on-premise atau infrastruktur cloud terpisah. Tim IT SaCMS membantu setup dan pemeliharaan bulanan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3">
+              <p className="text-xs text-foreground">
+                <span className="font-bold">Rp2.500.000</span> biaya setup satu kali + <span className="font-bold">Rp1.000.000/bulan</span> (bulan pertama dibayar saat memesan).
+              </p>
+              {managedInfra ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                  <p className="text-muted-foreground">
+                    Status:{" "}
+                    <span className="font-bold text-foreground">
+                      {({
+                        awaiting_setup: "Menunggu setup tim IT SaCMS",
+                        active: "Aktif",
+                        expired: "Kedaluwarsa",
+                        cancelled: "Dibatalkan",
+                      } as Record<string, string>)[managedInfra.status] ?? managedInfra.status}
+                    </span>
+                    {" · "}dibayar sampai{" "}
+                    {new Date(managedInfra.paidUntil).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
+                  {managedInfra.status !== "cancelled" && (
+                    <Button asChild size="sm" className="rounded-xl h-8 text-xs">
+                      <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_monthly`}>
+                        Perpanjang 1 Bulan
+                      </Link>
                     </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-              <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Database className="h-4 w-4 text-primary" />
-                  Layanan Terkelola: Database &amp; Storage Sendiri (BYODB/BYOS)
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Opsi migrasi khusus bagi instansi yang memiliki server on-premise atau infrastruktur cloud terpisah. Tim IT SaCMS membantu setup dan pemeliharaan bulanan.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-5 space-y-3">
-                <p className="text-xs text-foreground">
-                  <span className="font-bold">Rp2.500.000</span> biaya setup satu kali + <span className="font-bold">Rp1.000.000/bulan</span> (bulan pertama dibayar saat memesan).
-                </p>
-                {managedInfra ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <p className="text-muted-foreground">
-                      Status:{" "}
-                      <span className="font-bold text-foreground">
-                        {({
-                          awaiting_setup: "Menunggu setup tim IT SaCMS",
-                          active: "Aktif",
-                          expired: "Kedaluwarsa",
-                          cancelled: "Dibatalkan",
-                        } as Record<string, string>)[managedInfra.status] ?? managedInfra.status}
-                      </span>
-                      {" · "}dibayar sampai{" "}
-                      {new Date(managedInfra.paidUntil).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                    </p>
-                    {managedInfra.status !== "cancelled" && (
-                      <Button asChild size="sm" className="rounded-xl h-8 text-xs">
-                        <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_monthly`}>
-                          Perpanjang 1 Bulan
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
-                    <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_setup`}>
-                      Pesan Layanan Setup BYODB
-                    </Link>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  )}
+                </div>
+              ) : (
+                <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
+                  <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_setup`}>
+                    Pesan Layanan Setup BYODB
+                  </Link>
+                </Button>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 

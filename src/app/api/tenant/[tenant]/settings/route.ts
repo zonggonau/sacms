@@ -66,16 +66,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
 
     const { getGlobalWorkspaceId } = await import("@/lib/settings");
     const globalId = await getGlobalWorkspaceId();
-    // Precise license check — exactly what the PUT handler below gates
-    // databaseUrl/storageConfig writes on (super_admin OR an active
-    // Enterprise License, nothing looser). Kept separate from the broader
-    // `isEnterprise` flag below, which also lights up for an "enterprise"
-    // plan slug or an already-configured databaseUrl — neither of those
-    // implies an actual license, so they'd wrongly show the self-service
-    // BYODB/BYOS card to an account that would then get a 403 trying to save.
-    const hasEnterpriseLicense = await isEnterpriseTenant(globalId, session.user.id)
-
-    let isEnterprise = hasEnterpriseLicense
+    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
     }
@@ -103,7 +94,6 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         subscriptionStatus: sub?.status || null,
         daysRemaining,
         isEnterprise,
-        hasEnterpriseLicense,
         // Custom Infrastructure (owner-only)
         databaseUrl: canSeeSecrets ? tenant.databaseUrl || "" : mask(tenant.databaseUrl || ""),
         storageConfig: canSeeSecrets ? tenant.storageConfig || null : (tenant.storageConfig ? { configured: true } : null),
