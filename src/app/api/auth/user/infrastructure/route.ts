@@ -2,20 +2,13 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db, PrismaClient, invalidateOwnerMasterInfraCache } from "@/lib/database"
-import { isEnterpriseTenant } from "@/lib/license"
-import { getGlobalWorkspaceId } from "@/lib/settings"
+import { hasAccountLicense } from "@/lib/account-license"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { rateLimit } from "@/lib/rate-limit"
 import { assertPublicHost, assertPublicUrl, SsrfError } from "@/lib/safe-url"
 
 const MASK = "••••••••"
 const DB_URL_SCHEMES = ["postgres:", "postgresql:"]
-
-async function hasAccountLicense(userId: string, plan: string | undefined): Promise<boolean> {
-  if (plan === "enterprise") return true
-  const globalId = await getGlobalWorkspaceId()
-  return isEnterpriseTenant(globalId, userId)
-}
 
 // GET /api/auth/user/infrastructure - masked view of the current user's
 // master DB/storage override, applied to every workspace this user owns
@@ -81,6 +74,13 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    // Test-only mode: run every validation/connection check below against
+    // whatever is currently in the form, but never persist anything. The
+    // UI calls this first and only enables "Simpan" once it comes back
+    // clean for the exact values about to be saved — see
+    // account-infrastructure-view.tsx.
+    const dryRun = req.nextUrl.searchParams.get("dryRun") === "true"
+
     const existingUser = await db.user.findUnique({
       where: { id: session.user.id },
       select: { plan: true, masterDatabaseUrl: true, masterStorageConfig: true },
@@ -100,14 +100,18 @@ export async function PUT(req: NextRequest) {
     const nextSecretKey = secretKey === MASK ? existingStorage.secretKey || "" : secretKey || ""
     const nextPublicUrl = publicUrl || ""
 
-    const dbUrlChanged = nextDatabaseUrl !== (existingUser?.masterDatabaseUrl || "")
     const hasStorage = Boolean(nextEndpoint && nextAccessKey && nextSecretKey && nextBucket)
-    const storageChanged =
+    // On a dry run, test the current values unconditionally — a real save
+    // only re-tests what actually changed, to avoid re-validating unchanged
+    // credentials on every unrelated field edit.
+    const dbUrlChanged = dryRun ? Boolean(nextDatabaseUrl) : nextDatabaseUrl !== (existingUser?.masterDatabaseUrl || "")
+    const storageChanged = dryRun ? hasStorage : (
       nextEndpoint !== (existingStorage.endpoint || "") ||
       nextBucket !== (existingStorage.bucket || "") ||
       nextAccessKey !== (existingStorage.accessKey || "") ||
       nextSecretKey !== (existingStorage.secretKey || "") ||
       nextPublicUrl !== (existingStorage.publicUrl || "")
+    )
 
     // This value is used to open a real server-side Postgres connection for
     // every workspace this user owns that has no override of its own (see
@@ -170,6 +174,10 @@ export async function PUT(req: NextRequest) {
         { error: "Lengkapi semua field storage (endpoint, access key, secret key, bucket) sebelum menyimpan, atau kosongkan semuanya." },
         { status: 400 },
       )
+    }
+
+    if (dryRun) {
+      return NextResponse.json({ success: true, tested: true })
     }
 
     await db.user.update({
