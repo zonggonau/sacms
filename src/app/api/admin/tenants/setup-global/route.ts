@@ -7,16 +7,36 @@ import { withAdminAuth } from "@/lib/api/route-helpers"
 const execAsync = promisify(exec)
 
 export const POST = withAdminAuth(async () => {
-  const { getGlobalWorkspaceId } = await import("@/lib/settings")
-  const globalTenantId = await getGlobalWorkspaceId()
+  const { getGlobalWorkspaceId, syncPlatformSettingsCache } = await import("@/lib/settings")
+  const configuredId = await getGlobalWorkspaceId()
 
-  let globalTenant = await db.tenant.findUnique({ where: { id: globalTenantId } })
+  let globalTenant = await db.tenant.findUnique({ where: { id: configuredId } })
+
+  // Self-heal: a tenant named "SaCMS Global" may already exist under a
+  // DIFFERENT id than the currently configured one — e.g. the admin used
+  // "Acak Baru" to regenerate the configured id after setup already ran
+  // once, which otherwise orphans the real one and creates a second,
+  // empty duplicate every time this runs. Reuse the real one and point
+  // the setting back at it instead of creating another duplicate.
+  if (!globalTenant) {
+    const existing = await db.tenant.findFirst({ where: { name: "SaCMS Global" } })
+    if (existing) {
+      globalTenant = existing
+      await db.setting.upsert({
+        where: { key: "globalTenantId" },
+        update: { value: existing.id },
+        create: { key: "globalTenantId", value: existing.id, tenantId: null },
+      })
+      await syncPlatformSettingsCache({ globalTenantId: existing.id })
+    }
+  }
+
   if (!globalTenant) {
     globalTenant = await db.tenant.create({
       data: {
-        id: globalTenantId,
+        id: configuredId,
         name: "SaCMS Global",
-        slug: globalTenantId,
+        slug: configuredId,
         plan: "ENTERPRISE",
         status: "active",
       },

@@ -140,7 +140,22 @@ export default function AdminSettingsPage() {
     apiLogRetentionDays: "14",
   })
 
-  const generateTenantId = () => {
+  const generateTenantId = async () => {
+    // This has a real history of causing an orphaned duplicate "SaCMS
+    // Global" tenant: regenerating the id after a global tenant already
+    // exists leaves the real one behind under its old id and points the
+    // setting at an id nothing exists under yet, until "Setup Global
+    // Tenant" is clicked again. Confirm before overwriting it.
+    if (
+      !(await confirm({
+        title: "Buat ID workspace global baru?",
+        description:
+          "Hanya lakukan ini untuk setup pertama kali. Jika workspace global sudah ada, ini akan membuat ID baru yang kosong — klik 'Setup Global Tenant' lagi setelahnya akan otomatis mengarah balik ke workspace global yang asli, bukan membuat duplikat baru.",
+        confirmLabel: "Buat ID baru",
+        variant: "destructive",
+      }))
+    )
+      return
     const newId = "wks_" + uuidv4().replace(/-/g, '').substring(0, 24)
     setSettings((prev) => ({ ...prev, globalTenantId: newId }))
     toast({ title: "ID Workspace Baru Dibuat", description: "Klik 'Simpan Perubahan' untuk menerapkan pengaturan." })
