@@ -19,6 +19,31 @@ export async function getVercelToken(): Promise<string> {
   return (process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN || "").trim()
 }
 
+/** Same Settings-DB-first, env-fallback resolution as `getVercelToken` — set
+ *  from Admin > Settings > Mesin AI, or `VERCEL_TEAM_ID` in `.env`/the
+ *  container's environment either way, local or production. */
+export async function getVercelTeamId(): Promise<string> {
+  try {
+    const settings = await getPlatformSettings()
+    if (settings?.vercelTeamId?.trim()) {
+      return settings.vercelTeamId.trim()
+    }
+  } catch {}
+  return (process.env.VERCEL_TEAM_ID || "").trim()
+}
+
+/** Same resolution as `getVercelTeamId` — the Vercel project AI Site's
+ *  Sandbox previews run under. */
+export async function getVercelProjectId(): Promise<string> {
+  try {
+    const settings = await getPlatformSettings()
+    if (settings?.vercelProjectId?.trim()) {
+      return settings.vercelProjectId.trim()
+    }
+  } catch {}
+  return (process.env.VERCEL_PROJECT_ID || "").trim()
+}
+
 async function getVercelHeaders() {
   const token = await getVercelToken()
   if (!token) throw new Error("VERCEL_ACCESS_TOKEN is not configured in settings or environment")
@@ -28,8 +53,8 @@ async function getVercelHeaders() {
   }
 }
 
-function getTeamQuery() {
-  const teamId = process.env.VERCEL_TEAM_ID
+async function getTeamQuery() {
+  const teamId = await getVercelTeamId()
   return teamId ? `?teamId=${teamId}` : ""
 }
 
@@ -95,6 +120,7 @@ export async function deployToVercel(
   }
 
   const headers = await getVercelHeaders()
+  const teamQuery = await getTeamQuery()
 
   const deployFiles: VercelDeploymentFile[] = files.map(f => ({
     file: f.name,
@@ -115,7 +141,7 @@ export async function deployToVercel(
     body.env = envVars
   }
 
-  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments${teamQuery}`, {
     method: "POST",
     headers,
     body: JSON.stringify(body)
@@ -155,7 +181,7 @@ export async function getDeploymentStatus(deploymentId: string): Promise<{ state
     return { state: "READY", url: `https://sacms-site.vercel.app`, simulated: true }
   }
 
-  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}${await getTeamQuery()}`, {
     headers: await getVercelHeaders()
   })
 
@@ -179,7 +205,7 @@ export async function getVercelDeploymentProtectionStatus(
   const token = await getVercelToken()
   if (!token) return null
 
-  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
     headers: await getVercelHeaders(),
   })
   if (!res.ok) return null
@@ -203,7 +229,7 @@ export async function checkVercelProjectExists(projectId: string): Promise<boole
   if (!token) return null
 
   try {
-    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${getTeamQuery()}`, {
+    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
       headers: await getVercelHeaders(),
     })
     if (res.status === 404) return false
@@ -232,7 +258,7 @@ export async function disableVercelDeploymentProtection(
     return { ok: true }
   }
 
-  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
     method: "PATCH",
     headers: await getVercelHeaders(),
     // Clearing both known protection fields — Vercel's API has used
@@ -277,8 +303,9 @@ export async function upsertVercelProjectEnv(
     return { key, targets, type, created: true, updated: false, simulated: true }
   }
 
+  const teamQuery = await getTeamQuery()
   const res = await fetch(
-    `${VERCEL_API_BASE}/v10/projects/${projectId}/env${getTeamQuery() ? `${getTeamQuery()}&upsert=true` : "?upsert=true"}`,
+    `${VERCEL_API_BASE}/v10/projects/${projectId}/env${teamQuery ? `${teamQuery}&upsert=true` : "?upsert=true"}`,
     {
       method: "POST",
       headers: await getVercelHeaders(),
@@ -314,7 +341,7 @@ export async function addDomainToProject(
     }
   }
 
-  const res = await fetch(`${VERCEL_API_BASE}/v10/projects/${projectId}/domains${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v10/projects/${projectId}/domains${await getTeamQuery()}`, {
     method: "POST",
     headers: await getVercelHeaders(),
     body: JSON.stringify({ name: domain })
@@ -359,7 +386,7 @@ export async function getDomainConfig(domain: string): Promise<{
     return { cname: "cname.vercel-dns.com", aRecord: "76.76.21.21", configured: true, simulated: true }
   }
 
-  const res = await fetch(`${VERCEL_API_BASE}/v6/domains/${domain}/config${getTeamQuery()}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v6/domains/${domain}/config${await getTeamQuery()}`, {
     headers: await getVercelHeaders()
   })
 
@@ -386,7 +413,7 @@ export async function listVercelProjects(): Promise<{ id: string; name: string; 
   const token = await getVercelToken()
   if (!token) return []
 
-  const res = await fetch(`${VERCEL_API_BASE}/v10/projects?limit=20${getTeamQuery().replace("?", "&")}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v10/projects?limit=20${(await getTeamQuery()).replace("?", "&")}`, {
     headers: await getVercelHeaders()
   })
 
@@ -431,7 +458,7 @@ export async function listVercelProjectsDetailed(): Promise<VercelProjectSummary
 
   try {
     const headers = await getVercelHeaders()
-    const teamParam = getTeamQuery().replace("?", "&")
+    const teamParam = (await getTeamQuery()).replace("?", "&")
     const out: VercelProjectSummary[] = []
     let from: string | undefined
     let guard = 0

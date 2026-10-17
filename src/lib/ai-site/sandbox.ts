@@ -3,7 +3,7 @@ import "server-only"
 import { createHash } from "node:crypto"
 import { Sandbox } from "@vercel/sandbox"
 import type { PrismaClient } from "../../../prisma/generated-client"
-import { getVercelToken } from "@/lib/vercel-client"
+import { getVercelToken, getVercelTeamId, getVercelProjectId } from "@/lib/vercel-client"
 import { resolveFrontendEnv, renderDotEnv } from "@/lib/infrastructure/frontend-env"
 import { listProjectFiles } from "./files"
 
@@ -31,8 +31,8 @@ export function sandboxName(tenantId: string, projectId: string) {
 
 async function credentials() {
   const token = await getVercelToken()
-  const teamId = process.env.VERCEL_TEAM_ID
-  const projectId = process.env.VERCEL_PROJECT_ID
+  const teamId = await getVercelTeamId()
+  const projectId = await getVercelProjectId()
   if (token && teamId && projectId) {
     return { token, teamId, projectId }
   }

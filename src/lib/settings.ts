@@ -29,6 +29,12 @@ export interface PlatformSettings {
   aiGatewayApiKey: string
   aiGatewayBaseUrl: string
   vercelAccessToken: string
+  /** Vercel team/scope id — needed alongside the token for every team-scoped
+   *  API call (deploys, custom domains) and for AI Site's Vercel Sandbox. */
+  vercelTeamId: string
+  /** The Vercel project AI Site's Sandbox previews run under — a separate
+   *  concern from a tenant's own deploy project, which is created per-tenant. */
+  vercelProjectId: string
   aiSdkDefaultModel: string
   freePlanAiMonthlyWords: string
 
@@ -83,6 +89,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   // errors from the underlying provider.
   aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
   vercelAccessToken: "",
+  vercelTeamId: "",
+  vercelProjectId: "",
   // Gateway model id, "provider/model" form — this one key drives both
   // content generation and schema generation.
   aiSdkDefaultModel: "google/gemini-2.5-flash",
@@ -121,6 +129,8 @@ const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   aiGatewayApiKey: "AI_GATEWAY_API_KEY",
   aiGatewayBaseUrl: "AI_GATEWAY_BASE_URL",
   vercelAccessToken: "VERCEL_ACCESS_TOKEN",
+  vercelTeamId: "VERCEL_TEAM_ID",
+  vercelProjectId: "VERCEL_PROJECT_ID",
   resendApiKey: "RESEND_API_KEY",
   resendFrom: "RESEND_FROM",
   smtpHost: "SMTP_HOST",

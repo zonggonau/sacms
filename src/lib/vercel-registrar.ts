@@ -4,6 +4,8 @@
  * and automated domain purchasing with profit margin markup.
  */
 
+import { getVercelToken, getVercelTeamId } from "./vercel-client"
+
 export interface ContactInformation {
   firstName: string
   lastName: string
@@ -142,8 +144,8 @@ export function getDomainPriceBreakdown(priceUsd: number, options?: ConvertOptio
  * Check if a domain is available on Vercel Registrar
  */
 export async function checkDomainAvailability(domain: string): Promise<{ available: boolean }> {
-  const token = process.env.VERCEL_API_TOKEN
-  const teamId = process.env.VERCEL_TEAM_ID
+  const token = await getVercelToken()
+  const teamId = await getVercelTeamId()
 
   if (!token) {
     // Sandbox / Mock simulation for development
@@ -182,8 +184,8 @@ export async function checkDomainAvailability(domain: string): Promise<{ availab
  * Get domain pricing from Vercel Registrar API (returns price in USD)
  */
 export async function getDomainPrice(domain: string): Promise<{ priceUsd: number; periodYears: number }> {
-  const token = process.env.VERCEL_API_TOKEN
-  const teamId = process.env.VERCEL_TEAM_ID
+  const token = await getVercelToken()
+  const teamId = await getVercelTeamId()
 
   if (!token) {
     // Look up mock price from supported TLDs
@@ -230,8 +232,8 @@ export async function purchaseDomain(
   domain: string,
   params: PurchaseDomainParams
 ): Promise<{ success: boolean; data?: any; error?: string }> {
-  const token = process.env.VERCEL_API_TOKEN
-  const teamId = process.env.VERCEL_TEAM_ID
+  const token = await getVercelToken()
+  const teamId = await getVercelTeamId()
 
   if (!token) {
     console.log(`[Vercel Registrar (Sandbox)] Simulated purchase for ${domain} (expected $${params.expectedPrice})`)
