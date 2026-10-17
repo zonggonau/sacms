@@ -1,20 +1,39 @@
 import type { SaCMSConfig, FindManyParams, FindSingleParams, CollectionResponse, SingleResponse, GraphQLResponse, MutateParams } from "./types";
-import type { SaCMSRegistry } from "./generated-types";
-export declare class SaCMS {
+import type { EmptyRegistry, SaCMSRegistryShape } from "./generated-types";
+import { AuthClient } from "./auth";
+/**
+ * `SaCMS` is generic over your own, per-workspace schema registry — there is
+ * no tenant-specific schema baked into this package. Run `npx @sacms/sdk
+ * generate --url ... --tenant ... --token ... --out src/types/sacms.ts` to
+ * generate one from your real workspace, then:
+ *
+ *   import { SaCMS } from "@sacms/sdk"
+ *   import type { MyRegistry } from "./types/sacms"
+ *
+ *   const sacms = new SaCMS<MyRegistry>({ baseUrl, tenant, token })
+ *   // sacms.collection("articles") is now typed from MyRegistry, not a guess.
+ *
+ * Without a registry type argument, `collection()`/`single()` accept any
+ * slug and fall back to `Record<string, unknown>` (or an explicit generic
+ * you pass per call) — exactly as if the schema were untyped.
+ */
+export declare class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
     private baseUrl;
     private tenant;
     private token;
     private defaultLocale?;
+    /** Member (end-user) authentication — login, register, session, profile. */
+    readonly auth: AuthClient;
     constructor(config: SaCMSConfig);
     /**
      * Access a collection content type for querying or mutating entries.
      */
-    collection<K extends keyof SaCMSRegistry["collections"]>(slug: K): CollectionClient<SaCMSRegistry["collections"][K]>;
+    collection<K extends keyof Registry["collections"]>(slug: K): CollectionClient<Registry["collections"][K]>;
     collection<T = Record<string, unknown>>(slug: string): CollectionClient<T>;
     /**
      * Access a single type for querying its content.
      */
-    single<K extends keyof SaCMSRegistry["singles"]>(slug: K): SingleClient<SaCMSRegistry["singles"][K]>;
+    single<K extends keyof Registry["singles"]>(slug: K): SingleClient<Registry["singles"][K]>;
     single<T = Record<string, unknown>>(slug: string): SingleClient<T>;
     /**
      * Execute a raw GraphQL query or mutation.
@@ -30,7 +49,7 @@ export declare class SaCMS {
 declare class CollectionClient<T> {
     private cf;
     private slug;
-    constructor(cf: SaCMS, slug: string);
+    constructor(cf: SaCMS<any>, slug: string);
     /**
      * Start a fluent query builder chain.
      */
@@ -67,7 +86,7 @@ declare class CollectionClient<T> {
 declare class SingleClient<T> {
     private cf;
     private slug;
-    constructor(cf: SaCMS, slug: string);
+    constructor(cf: SaCMS<any>, slug: string);
     /**
      * Get the single type content.
      */

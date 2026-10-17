@@ -9,25 +9,46 @@ import type {
   Filters,
   FilterOperators,
 } from "./types"
-import type { SaCMSRegistry } from "./generated-types"
+import type { EmptyRegistry, SaCMSRegistryShape } from "./generated-types"
+import { AuthClient } from "./auth"
 
-export class SaCMS {
+/**
+ * `SaCMS` is generic over your own, per-workspace schema registry — there is
+ * no tenant-specific schema baked into this package. Run `npx @sacms/sdk
+ * generate --url ... --tenant ... --token ... --out src/types/sacms.ts` to
+ * generate one from your real workspace, then:
+ *
+ *   import { SaCMS } from "@sacms/sdk"
+ *   import type { MyRegistry } from "./types/sacms"
+ *
+ *   const sacms = new SaCMS<MyRegistry>({ baseUrl, tenant, token })
+ *   // sacms.collection("articles") is now typed from MyRegistry, not a guess.
+ *
+ * Without a registry type argument, `collection()`/`single()` accept any
+ * slug and fall back to `Record<string, unknown>` (or an explicit generic
+ * you pass per call) — exactly as if the schema were untyped.
+ */
+export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   private baseUrl: string
   private tenant: string
   private token: string
   private defaultLocale?: string
+
+  /** Member (end-user) authentication — login, register, session, profile. */
+  readonly auth: AuthClient
 
   constructor(config: SaCMSConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "")
     this.tenant = config.tenant
     this.token = config.token
     this.defaultLocale = config.locale ?? "id"
+    this.auth = new AuthClient(this)
   }
 
   /**
    * Access a collection content type for querying or mutating entries.
    */
-  collection<K extends keyof SaCMSRegistry["collections"]>(slug: K): CollectionClient<SaCMSRegistry["collections"][K]>
+  collection<K extends keyof Registry["collections"]>(slug: K): CollectionClient<Registry["collections"][K]>
   collection<T = Record<string, unknown>>(slug: string): CollectionClient<T>
   collection(slug: string) {
     return new CollectionClient(this, slug)
@@ -36,7 +57,7 @@ export class SaCMS {
   /**
    * Access a single type for querying its content.
    */
-  single<K extends keyof SaCMSRegistry["singles"]>(slug: K): SingleClient<SaCMSRegistry["singles"][K]>
+  single<K extends keyof Registry["singles"]>(slug: K): SingleClient<Registry["singles"][K]>
   single<T = Record<string, unknown>>(slug: string): SingleClient<T>
   single(slug: string) {
     return new SingleClient(this, slug)
@@ -68,8 +89,22 @@ export class SaCMS {
     }
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const res = await fetch(url, { ...init, headers })
-      
+      let res: Response
+      try {
+        res = await fetch(url, { ...init, headers })
+      } catch (err) {
+        // A pure network failure (connection reset, DNS, timeout) throws
+        // before there's any Response to inspect — retry it the same way
+        // as a 429, instead of letting it escape as a raw, un-typed
+        // exception that the README's `catch (SaCMSError)` pattern can't
+        // catch.
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)))
+          continue
+        }
+        throw new SaCMSError(err instanceof Error ? err.message : "Network request failed", 0)
+      }
+
       if (res.status === 429 && attempt < retries) {
         const retryAfter = res.headers.get("Retry-After")
         const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt)
@@ -106,7 +141,7 @@ export class SaCMS {
 
 class CollectionClient<T> {
   constructor(
-    private cf: SaCMS,
+    private cf: SaCMS<any>,
     private slug: string
   ) {}
 
@@ -188,7 +223,7 @@ class CollectionClient<T> {
 
 class SingleClient<T> {
   constructor(
-    private cf: SaCMS,
+    private cf: SaCMS<any>,
     private slug: string
   ) {}
 

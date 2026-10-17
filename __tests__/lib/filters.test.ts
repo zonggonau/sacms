@@ -49,6 +49,19 @@ describe("Filter Engine", () => {
       expect(orGroups[0][1]).toMatchObject({ field: "price", operator: "$gt", value: "500" })
     })
 
+    it("should parse $and groups into the flat conditions list", () => {
+      const params = new URLSearchParams()
+      params.append("filters[$and][0][status][$eq]", "featured")
+      params.append("filters[$and][1][price][$gt]", "500")
+
+      const { conditions, orGroups } = parseFilters(params, allowedFields)
+
+      expect(orGroups).toHaveLength(0)
+      expect(conditions).toHaveLength(2)
+      expect(conditions[0]).toMatchObject({ field: "status", operator: "$eq", value: "featured" })
+      expect(conditions[1]).toMatchObject({ field: "price", operator: "$gt", value: "500" })
+    })
+
     it("should enforce MAX_CONDITIONS limit", () => {
       const params = new URLSearchParams()
       for (let i = 0; i < 30; i++) {

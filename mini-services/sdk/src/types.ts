@@ -58,7 +58,8 @@ export interface CollectionResponse<T = Record<string, unknown>> {
 export interface SingleResponse<T = Record<string, unknown>> {
   data: T
   meta: {
-    singleType: { name: string; slug: string; fields: unknown[] }
+    singleType: { name: string; slug: string }
+    locale: string
   }
 }
 

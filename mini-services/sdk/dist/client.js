@@ -1,12 +1,30 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.QueryBuilder = exports.SaCMSError = exports.SaCMS = void 0;
+const auth_1 = require("./auth");
+/**
+ * `SaCMS` is generic over your own, per-workspace schema registry — there is
+ * no tenant-specific schema baked into this package. Run `npx @sacms/sdk
+ * generate --url ... --tenant ... --token ... --out src/types/sacms.ts` to
+ * generate one from your real workspace, then:
+ *
+ *   import { SaCMS } from "@sacms/sdk"
+ *   import type { MyRegistry } from "./types/sacms"
+ *
+ *   const sacms = new SaCMS<MyRegistry>({ baseUrl, tenant, token })
+ *   // sacms.collection("articles") is now typed from MyRegistry, not a guess.
+ *
+ * Without a registry type argument, `collection()`/`single()` accept any
+ * slug and fall back to `Record<string, unknown>` (or an explicit generic
+ * you pass per call) — exactly as if the schema were untyped.
+ */
 class SaCMS {
     constructor(config) {
         this.baseUrl = config.baseUrl.replace(/\/+$/, "");
         this.tenant = config.tenant;
         this.token = config.token;
         this.defaultLocale = config.locale ?? "id";
+        this.auth = new auth_1.AuthClient(this);
     }
     collection(slug) {
         return new CollectionClient(this, slug);
@@ -32,7 +50,22 @@ class SaCMS {
             ...init?.headers,
         };
         for (let attempt = 0; attempt <= retries; attempt++) {
-            const res = await fetch(url, { ...init, headers });
+            let res;
+            try {
+                res = await fetch(url, { ...init, headers });
+            }
+            catch (err) {
+                // A pure network failure (connection reset, DNS, timeout) throws
+                // before there's any Response to inspect — retry it the same way
+                // as a 429, instead of letting it escape as a raw, un-typed
+                // exception that the README's `catch (SaCMSError)` pattern can't
+                // catch.
+                if (attempt < retries) {
+                    await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
+                    continue;
+                }
+                throw new SaCMSError(err instanceof Error ? err.message : "Network request failed", 0);
+            }
             if (res.status === 429 && attempt < retries) {
                 const retryAfter = res.headers.get("Retry-After");
                 const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt);

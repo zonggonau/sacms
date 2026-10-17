@@ -7,6 +7,13 @@ import { Prisma } from "@prisma/client"
  * Supports:
  *   ?filters[field][$op]=value
  *   ?filters[$or][0][field][$op]=value
+ *   ?filters[$and][0][field][$op]=value
+ *
+ * $and conditions are folded into the same flat, implicitly-AND'ed
+ * `conditions` list as plain `filters[field][$op]` ones — AND-of-AND is
+ * still just AND, so this doesn't need its own branch in buildFilterSQL.
+ * This is one level of grouping, matching $or; it does not support nesting
+ * an $or group inside $and or vice versa.
  *
  * Operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith,
  *            $in, $notIn, $null, $notNull
@@ -72,6 +79,16 @@ export function parseFilters(
 
       while (orGroups.length <= idx) orGroups.push([])
       orGroups[idx].push({ field, operator: op, value })
+      conditionCount++
+    } else if (p1 === "$and" && p2 && p3 && p4) {
+      // filters[$and][0][field][$op] — folds into the flat `conditions`
+      // list; see this file's top-of-file comment for why.
+      const field = p3
+      const op = p4
+
+      if (!allowedFields.has(field) || !ALLOWED_OPERATORS.has(op)) continue
+
+      conditions.push({ field, operator: op, value })
       conditionCount++
     } else if (p1 && p2 && !p3) {
       // filters[field][$op]

@@ -57,8 +57,8 @@ export interface SingleResponse<T = Record<string, unknown>> {
         singleType: {
             name: string;
             slug: string;
-            fields: unknown[];
         };
+        locale: string;
     };
 }
 export interface GraphQLResponse<T = Record<string, unknown>> {
