@@ -461,6 +461,64 @@ function normalizeSchemaSlugs(schema: GeneratedSystemSchema): GeneratedSystemSch
   }
 }
 
+/**
+ * Safety net for the SYSTEM_PROMPT's step 1/2 (global site settings +
+ * homepage) — only the real-AI path is actually instructed to include
+ * these; the hardcoded heuristic blueprints below and the
+ * ai/domain-knowledge-types.ts blueprint library both predate that
+ * methodology and only ever modeled business data (step 3). Rather than
+ * hand-rewrite every blueprint category to add them, this adds a minimal
+ * 'site-settings' and/or 'homepage' Single Type whenever one isn't already
+ * present under that slug — leaves a real AI-generated (or already-correct
+ * blueprint) version completely untouched, only fills an actual gap.
+ */
+function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSchema {
+  const singleTypes = schema.singleTypes || []
+  const hasSlug = (slug: string) => singleTypes.some((st) => st.slug === slug)
+  const additions: typeof singleTypes = []
+
+  if (!hasSlug("site-settings")) {
+    additions.push({
+      name: "Site Settings",
+      slug: "site-settings",
+      description: "Pengaturan global situs — logo, warna brand, navigasi, footer, kontak, dan SEO default yang dipakai di setiap halaman.",
+      fields: [
+        { name: "Logo", slug: "logo", type: "media" },
+        { name: "Warna Utama", slug: "warna-utama", type: "color" },
+        { name: "Warna Sekunder", slug: "warna-sekunder", type: "color" },
+        { name: "Link Navigasi", slug: "link-navigasi", type: "tags" },
+        { name: "Teks Footer", slug: "teks-footer", type: "text" },
+        { name: "Link Sosial Media", slug: "link-sosial-media", type: "tags" },
+        { name: "Email Kontak", slug: "email-kontak", type: "text" },
+        { name: "Telepon Kontak", slug: "telepon-kontak", type: "text" },
+        { name: "SEO Default", slug: "seo-default", type: "seo" },
+      ],
+    })
+  }
+
+  if (!hasSlug("homepage")) {
+    additions.push({
+      name: "Homepage",
+      slug: "homepage",
+      description: "Konten halaman utama — hero dan bagian-bagian utama halaman depan.",
+      fields: [
+        { name: "Judul Hero", slug: "judul-hero", type: "text" },
+        { name: "Subjudul Hero", slug: "subjudul-hero", type: "richText" },
+        { name: "Gambar Hero", slug: "gambar-hero", type: "media" },
+        { name: "SEO", slug: "seo", type: "seo" },
+      ],
+    })
+  }
+
+  if (additions.length === 0) return schema
+  return { ...schema, singleTypes: [...singleTypes, ...additions] }
+}
+
+/** Applied once at every return point in generateSystemSchema — the one pipeline every generation path (real AI, blueprint match, heuristic) goes through before the client ever sees it. */
+function finalizeGeneratedSchema(schema: GeneratedSystemSchema): GeneratedSystemSchema {
+  return normalizeSchemaSlugs(ensureCoreSingleTypes(schema))
+}
+
 export interface GenerateSystemSchemaResult {
   schema: GeneratedSystemSchema
   /** True if the real LLM call failed/was unavailable and a canned blueprint or heuristic was used instead. */
@@ -474,7 +532,7 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
     const schema = await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
-    return { schema: normalizeSchemaSlugs(schema), usedFallback: false }
+    return { schema: finalizeGeneratedSchema(schema), usedFallback: false }
   } catch (error: any) {
     // enforceAiQuota (src/lib/ai.ts) throws this with .status === 429 when
     // the user/tenant is simply out of AI credits — not a Gateway/infra
@@ -500,7 +558,7 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
       if (matched) {
         console.log(`[AI Schema] Matched domain knowledge blueprint: ${matched.name}`)
         return {
-          schema: normalizeSchemaSlugs({
+          schema: finalizeGeneratedSchema({
             contentTypes: matched.schema.contentTypes as any,
             singleTypes: matched.schema.singleTypes as any,
             components: (matched.schema.components || []) as any,
@@ -515,6 +573,6 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
 
     // 3. Fallback Heuristic Generator Terstruktur
     console.log("[AI Schema] Using High-Accuracy Multi-Collection Domain Synthesizer...")
-    return { schema: normalizeSchemaSlugs(generateHeuristicSchema(prompt)), usedFallback: true, fallbackReason }
+    return { schema: finalizeGeneratedSchema(generateHeuristicSchema(prompt)), usedFallback: true, fallbackReason }
   }
 }
