@@ -423,6 +423,16 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
     const schema = await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
     return { schema, usedFallback: false }
   } catch (error: any) {
+    // enforceAiQuota (src/lib/ai.ts) throws this with .status === 429 when
+    // the user/tenant is simply out of AI credits — not a Gateway/infra
+    // problem. Silently handing back a free fallback schema here would
+    // misreport an actionable "top up your credits" state as "AI Gateway
+    // tidak merespons" (the fallback UI's message), and would let a
+    // depleted account keep generating unlimited free mock schemas.
+    // Re-throw so the route's handleRouteError surfaces the real 429 and
+    // message instead.
+    if (error?.status === 429) throw error
+
     console.warn("[AI Schema] AI generation failed or not configured:", error.message)
     const fallbackReason = error?.message || "AI generation gagal tanpa pesan error"
 

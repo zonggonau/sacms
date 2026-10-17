@@ -19,6 +19,7 @@ Current files:
 ${filePaths.map((path) => `- ${path}`).join("\n")}
 
 How to work:
+- Call tools directly, one at a time, with plain arguments exactly matching each tool's schema. Never write Python (or any code) to call a tool, and never reach for a code-interpreter/code-execution capability — none is available here, and attempting one fails the whole turn.
 - Read files before changing them. Write complete files with writeFiles; never leave placeholders such as "rest of code here".
 - Use the App Router (app/), Server Components by default, and "use client" only where interactivity needs it.
 - Next.js 16: \`params\` and \`searchParams\` are Promises in pages, layouts, and route handlers (\`const { slug } = await params\`).
