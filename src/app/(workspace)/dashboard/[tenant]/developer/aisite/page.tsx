@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isSchemaFinalized } from "@/lib/schema-lock"
+import { buildAiSitePromptFromSchema } from "@/lib/ai-site/schema-prompt"
 import { AiSiteLanding } from "@/components/dashboard/ai-site/ai-site-landing"
 import { SchemaNotFinalizedNotice } from "@/components/dashboard/ai-site/schema-not-finalized-notice"
 
@@ -38,11 +39,17 @@ export default async function AiSiteHomePage({ params }: { params: Promise<{ ten
     return <SchemaNotFinalizedNotice tenantId={tenantSlug} />
   }
 
+  // Schema's already finalized — the user just designed this structure, so
+  // don't make them re-describe it in prose. Pre-fill the prompt from it;
+  // they can still edit before generating.
+  const suggestedPrompt = await buildAiSitePromptFromSchema(tenantDb, access.tenantId)
+
   return (
     <AiSiteLanding
       tenantSlug={access.tenant.slug}
       tenantId={tenantSlug}
       existingProjectId={project?.id ?? null}
+      initialPrompt={suggestedPrompt}
     />
   )
 }

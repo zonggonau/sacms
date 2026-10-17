@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AI_SITE_MODEL_OPTIONS, DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
 import { AiCreditsBadge } from "./ai-credits-badge"
+import { cn } from "@/lib/utils"
 
 const SUGGESTIONS = [
   "Landing page untuk toko kopi dengan menu, lokasi, dan form kontak",
@@ -21,15 +22,19 @@ export function AiSiteLanding({
   tenantSlug,
   tenantId,
   existingProjectId,
+  initialPrompt,
 }: {
   tenantSlug: string
   tenantId: string
   existingProjectId: string | null
+  /** Auto-built from the tenant's already-finalized CMS schema (src/lib/ai-site/schema-prompt.ts) — pre-fills the brief so the user can just review and click generate instead of writing one from scratch. Still a plain editable draft. */
+  initialPrompt?: string
 }) {
   const router = useRouter()
-  const [text, setText] = useState("")
+  const [text, setText] = useState(initialPrompt ?? "")
   const [model, setModel] = useState<string>(DEFAULT_AI_SITE_MODEL)
   const [submitting, setSubmitting] = useState(false)
+  const fromSchema = Boolean(initialPrompt)
 
   const apiBase = `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site`
 
@@ -73,9 +78,11 @@ export function AiSiteLanding({
           <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10">
             <Sparkles className="size-6 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold">Apa yang ingin kamu bangun?</h1>
+          <h1 className="text-2xl font-bold">{fromSchema ? "Brief sudah disiapkan dari skemamu" : "Apa yang ingin kamu bangun?"}</h1>
           <p className="text-sm text-muted-foreground">
-            Jelaskan websitenya, AI Site akan menulis dan menampilkan preview langsung.
+            {fromSchema
+              ? "Dibuat otomatis dari Content Type, Single Type, dan Component yang sudah kamu finalkan — tinjau atau edit sebentar, lalu klik generate."
+              : "Jelaskan websitenya, AI Site akan menulis dan menampilkan preview langsung."}
           </p>
         </div>
 
@@ -91,8 +98,8 @@ export function AiSiteLanding({
                 }
               }}
               placeholder="Contoh: Landing page untuk toko kopi, warna hijau tua, ada menu, lokasi, dan form kontak."
-              className="min-h-14 flex-1 resize-none border-0 text-sm shadow-none focus-visible:ring-0"
-              rows={3}
+              className={cn("flex-1 resize-none border-0 text-sm shadow-none focus-visible:ring-0", fromSchema ? "max-h-64 min-h-32" : "min-h-14")}
+              rows={fromSchema ? 8 : 3}
               autoFocus
               disabled={submitting}
             />
@@ -124,7 +131,7 @@ export function AiSiteLanding({
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className={cn("flex flex-wrap justify-center gap-2", fromSchema && "hidden")}>
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
