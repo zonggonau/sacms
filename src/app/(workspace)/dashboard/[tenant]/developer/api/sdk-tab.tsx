@@ -238,8 +238,8 @@ export const cms = new SaCMS({
               </CardDescription>
             </CardHeader>
             <CardContent className="p-5 space-y-3">
-              <CodeBlock 
-                id="findMany" 
+              <CodeBlock
+                id="findMany"
                 title="app/blog/page.tsx"
                 code={`// Ambil daftar artikel dengan filter & relasi
 const articles = await cms.collection('articles')
@@ -252,7 +252,35 @@ const articles = await cms.collection('articles')
   .fetch()
 
 console.log(articles.data) // Array entri artikel
-console.log(articles.meta.pagination) // { page: 1, pageSize: 10, total: 25 }`} 
+console.log(articles.meta.pagination) // { page: 1, pageSize: 10, total: 25 }`}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-sm font-bold text-foreground">
+                4. Autentikasi Member (End-User)
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                Untuk aplikasi dengan akun pengunjung sendiri — terpisah dari API Token workspace di atas, yang mengautentikasi backend Anda, bukan satu pengguna tertentu.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-3">
+              <CodeBlock
+                id="auth"
+                title="Member auth"
+                code={`// Daftar atau masuk
+const session = await cms.auth.login(email, password)
+// session.user, session.accessToken, session.refreshToken, session.expiresIn
+
+// Panggilan terautentikasi pakai accessToken milik member itu, bukan token workspace
+const { user } = await cms.auth.me(session.accessToken)
+await cms.auth.updateMe(session.accessToken, { name: 'Nama Baru' })
+
+// Refresh saat accessToken kedaluwarsa, lalu logout
+const refreshed = await cms.auth.refresh(session.refreshToken)
+await cms.auth.logout(session.refreshToken)`}
               />
             </CardContent>
           </Card>

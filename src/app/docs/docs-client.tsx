@@ -1594,9 +1594,9 @@ export function DocsClient() {
 
             <div className="space-y-3 pt-2">
               <h3 className="text-sm font-bold text-foreground">2. Generate TypeScript Definitions CLI</h3>
-              <p className="text-xs text-muted-foreground">Download your workspace schema and generate strongly-typed interfaces automatically:</p>
+              <p className="text-xs text-muted-foreground">Introspects your workspace&apos;s real schema over the network and generates one interface per Content Type / Single Type — no local database access needed:</p>
               <CodeBlock
-                code={`npx @sacms/sdk generate --url ${origin} --tenant my-workspace --token YOUR_API_KEY --out src/types/sacms.d.ts`}
+                code={`npx @sacms/sdk generate --url ${origin} --tenant my-workspace --token YOUR_API_KEY --out src/types/sacms.ts`}
                 language="bash"
                 filename="Terminal CLI"
               />
@@ -1604,21 +1604,22 @@ export function DocsClient() {
 
             <div className="space-y-3 pt-2">
               <h3 className="text-sm font-bold text-foreground">3. Next.js 16 App Router Server Component Example</h3>
+              <p className="text-xs text-muted-foreground">Pass the generated registry as a type argument for full per-slug intellisense — or skip it and call <code className="text-[11px]">collection(slug)</code> untyped, returning <code className="text-[11px]">Record&lt;string, unknown&gt;</code>:</p>
               <CodeBlock
                 code={`import { SaCMS } from '@sacms/sdk'
+import type { SaCMSRegistry } from './types/sacms' // from step 2, optional
 
-// Initialize client (lib/cms.ts)
-export const sacms = new SaCMS({
-  baseUrl: process.env.NEXT_PUBLIC_CMS_URL || '${origin}',
-  tenant: process.env.CMS_TENANT || 'my-workspace',
-  token: process.env.CMS_API_KEY || 'YOUR_API_KEY'
+// Initialize client (lib/sacms.ts)
+export const sacms = new SaCMS<SaCMSRegistry>({
+  baseUrl: process.env.NEXT_PUBLIC_SACMS_API_URL || '${origin}',
+  tenant: process.env.NEXT_PUBLIC_SACMS_TENANT || 'my-workspace',
+  token: process.env.SACMS_API_KEY || 'YOUR_API_KEY'
 })
 
 // app/articles/page.tsx (Server Component)
 export default async function ArticlesPage() {
   const { data: articles } = await sacms.collection('articles').findMany({
-    page: 1,
-    pageSize: 10,
+    pagination: { page: 1, pageSize: 10 },
     sort: 'createdAt:desc',
   })
 
@@ -1626,7 +1627,7 @@ export default async function ArticlesPage() {
     <main className="max-w-4xl mx-auto py-12">
       <h1 className="text-3xl font-bold mb-6">Latest Articles</h1>
       <div className="grid gap-4">
-        {articles.map((article: any) => (
+        {articles.map((article) => (
           <article key={article.id} className="p-4 border rounded-xl">
             <h2 className="text-xl font-bold">{article.title}</h2>
             <p className="text-sm text-muted-foreground mt-1">{new Date(article.createdAt).toLocaleDateString()}</p>
@@ -1638,6 +1639,28 @@ export default async function ArticlesPage() {
 }`}
                 language="typescript"
                 filename="app/articles/page.tsx"
+              />
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-bold text-foreground">4. Member (End-User) Authentication</h3>
+              <p className="text-xs text-muted-foreground">
+                For apps where visitors sign in themselves — separate from the service <code className="text-[11px]">token</code> above, which authenticates your backend, not an individual user:
+              </p>
+              <CodeBlock
+                code={`// Sign up or sign in
+const session = await sacms.auth.login(email, password)
+// session.user, session.accessToken, session.refreshToken, session.expiresIn
+
+// Authenticated calls use that member's own accessToken, not your service token
+const { user } = await sacms.auth.me(session.accessToken)
+await sacms.auth.updateMe(session.accessToken, { name: 'New Name' })
+
+// Refresh when the access token expires, and sign out when done
+const refreshed = await sacms.auth.refresh(session.refreshToken)
+await sacms.auth.logout(session.refreshToken)`}
+                language="typescript"
+                filename="Member auth"
               />
             </div>
           </section>
