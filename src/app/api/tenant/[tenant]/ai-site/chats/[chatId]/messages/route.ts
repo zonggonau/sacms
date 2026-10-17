@@ -2,7 +2,8 @@ import { convertToModelMessages, createIdGenerator, stepCountIs, streamText, typ
 import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { resolveGatewayModel, toUsageTotals } from "@/lib/ai"
-import { reserveAiSiteTurn, refundAiSiteTurn, recordAiSiteTurnUsage, AI_SITE_MODEL, AI_SITE_FALLBACK_MODELS } from "@/lib/ai-site/quota"
+import { reserveAiSiteTurn, refundAiSiteTurn, recordAiSiteTurnUsage, AI_SITE_FALLBACK_MODELS } from "@/lib/ai-site/quota"
+import { DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
 import { aiSiteTools } from "@/lib/ai-site/tools"
 import { repairAiSiteToolCall } from "@/lib/ai-site/repair-tool-call"
 import { aiSiteSystemPrompt } from "@/lib/ai-site/prompt"
@@ -63,10 +64,13 @@ export const POST = withStaffAuth(async (request, context, { access }) => {
   let model: Awaited<ReturnType<typeof resolveGatewayModel>>["model"]
   let modelId: string
   try {
-    // Overrides the platform-wide default model — the 40-step tool-calling
-    // loop needs much more reliable function calling than a single-shot
-    // generation (see AI_SITE_MODEL's doc comment).
-    const resolved = await resolveGatewayModel(AI_SITE_MODEL)
+    // The model picked on AiSiteLanding when this chat was created (stored
+    // on the chat so every turn in it stays consistent); falls back to the
+    // curated default for chats created before this existed or with no
+    // explicit pick. Overrides the platform-wide default model either way —
+    // the 40-step tool-calling loop needs much more reliable function
+    // calling than a single-shot generation.
+    const resolved = await resolveGatewayModel(chat.model || DEFAULT_AI_SITE_MODEL)
     model = resolved.model
     modelId = resolved.modelId
   } catch (error) {

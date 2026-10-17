@@ -450,6 +450,10 @@ model AiSiteChat {
   createdByUserId String?
   createdBy       User?    @relation("AiSiteChatCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   title           String
+  /// AI Gateway model id picked when the chat was created (one of
+  /// AI_SITE_MODEL_OPTIONS in src/lib/ai-site/models.ts). Null falls back to
+  /// DEFAULT_AI_SITE_MODEL — lets older chats keep working unmodified.
+  model           String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   messages        AiSiteChatMessage[]

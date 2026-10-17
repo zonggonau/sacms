@@ -3,9 +3,11 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import { ArrowUp, Loader2, Sparkles } from "lucide-react"
+import { ArrowUp, Loader2, Sparkles, Cpu, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AI_SITE_MODEL_OPTIONS, DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
 
 const SUGGESTIONS = [
   "Landing page untuk toko kopi dengan menu, lokasi, dan form kontak",
@@ -25,6 +27,7 @@ export function AiSiteLanding({
 }) {
   const router = useRouter()
   const [text, setText] = useState("")
+  const [model, setModel] = useState<string>(DEFAULT_AI_SITE_MODEL)
   const [submitting, setSubmitting] = useState(false)
 
   const apiBase = `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site`
@@ -49,7 +52,7 @@ export function AiSiteLanding({
       const chatRes = await fetch(`${apiBase}/projects/${projectId}/chats`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: brief }),
+        body: JSON.stringify({ text: brief, model }),
       })
       const chatBody = await chatRes.json().catch(() => ({}))
       if (!chatRes.ok) throw new Error(chatBody?.error || "Gagal membuat chat")
@@ -75,25 +78,46 @@ export function AiSiteLanding({
           </p>
         </div>
 
-        <div className="flex items-end gap-2 rounded-2xl border border-border bg-background p-2.5 shadow-sm">
-          <Textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault()
-                start()
-              }
-            }}
-            placeholder="Contoh: Landing page untuk toko kopi, warna hijau tua, ada menu, lokasi, dan form kontak."
-            className="min-h-14 flex-1 resize-none border-0 text-sm shadow-none focus-visible:ring-0"
-            rows={3}
-            autoFocus
-            disabled={submitting}
-          />
-          <Button size="icon" onClick={start} disabled={submitting || !text.trim()} aria-label="Mulai membangun">
-            {submitting ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
-          </Button>
+        <div className="rounded-2xl border border-border bg-background shadow-sm">
+          <div className="flex items-end gap-2 p-2.5 pb-1">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  start()
+                }
+              }}
+              placeholder="Contoh: Landing page untuk toko kopi, warna hijau tua, ada menu, lokasi, dan form kontak."
+              className="min-h-14 flex-1 resize-none border-0 text-sm shadow-none focus-visible:ring-0"
+              rows={3}
+              autoFocus
+              disabled={submitting}
+            />
+            <Button size="icon" onClick={start} disabled={submitting || !text.trim()} aria-label="Mulai membangun">
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : <ArrowUp className="size-4" />}
+            </Button>
+          </div>
+          <div className="flex items-center gap-1.5 border-t border-border/50 px-3 pb-2.5 pt-1">
+            <Cpu className="size-3 shrink-0 text-muted-foreground" />
+            <Select value={model} onValueChange={setModel} disabled={submitting}>
+              <SelectTrigger className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-1.5 text-[11px] font-semibold shadow-none hover:bg-muted/50 focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border bg-card">
+                {AI_SITE_MODEL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="ml-1.5 text-muted-foreground">— {opt.hint}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="ml-auto flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+              <Zap className="size-2.5" /> Vercel AI Gateway
+            </div>
+          </div>
         </div>
 
         <div className="flex flex-wrap justify-center gap-2">

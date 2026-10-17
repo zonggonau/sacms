@@ -34,9 +34,10 @@ export async function createChat(
   projectId: string,
   userId: string | null,
   text: string,
+  model?: string | null,
 ) {
   const chat = await tenantDb.aiSiteChat.create({
-    data: { projectId, createdByUserId: userId, title: titleFrom(text) },
+    data: { projectId, createdByUserId: userId, title: titleFrom(text), model: model || null },
   })
 
   await saveMessages(tenantDb, chat.id, [userMessage(text)])
