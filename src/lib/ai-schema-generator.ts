@@ -63,7 +63,7 @@ Work through the whole page structure methodically, header to footer, before gen
 
 1. **Global site settings (always exactly one Single Type, e.g. 'site-settings')** — whatever the generated frontend needs on every page: site name/logo/favicon ('media'), primary/secondary/accent brand color ('color' — this covers "tipe warna website"), typography choice ('select' listing a few font pairings), header nav links, footer columns/links, footer copyright text, social media links, contact info (email/phone/address — 'location' if a real address matters), and ONE 'seo' field for the site-wide default meta title/description/OG image that other pages fall back to. This Single Type is what the header and footer actually render from — never leave header/footer content hardcoded in the frontend with nothing behind it.
 
-2. **Each distinct, one-off page (one Single Type per page)** — Homepage, About, Contact, or any other page that exists exactly once. Each gets its own hero heading/subheading/image, its own body sections, and its own 'seo' field (meta tags specific to that page override the site default). Think about what's actually ON that page section by section — a homepage hero, an about page's story + team intro, a contact page's form intro + map — model each distinct section as real fields or embedded components, not one giant 'richText' blob standing in for the whole page.
+2. **Each distinct, one-off page (one Single Type per page)** — the homepage (slug exactly 'homepage', not 'home-page' or 'landing-page'), About, Contact, or any other page that exists exactly once. Each gets its own hero heading/subheading/image, its own body sections, and its own 'seo' field (meta tags specific to that page override the site default). Think about what's actually ON that page section by section — a homepage hero, an about page's story + team intro, a contact page's form intro + map — model each distinct section as real fields or embedded components, not one giant 'richText' blob standing in for the whole page.
 
 3. **Repeatable business content (one Content Type per kind of thing that repeats)** — products, rooms, services, articles, team members, testimonials, FAQ entries, bookings, whatever the user's domain actually needs multiple of. This is the "2 to 4 rich Content Types" the user is really asking to manage day-to-day. Each public-facing one also gets its own 'seo' field. Wire real relations between them with 'relation' (e.g. an article 'relation'-s to its author in Team, a product 'relation'-s to its Category) instead of duplicating data.
 
@@ -472,12 +472,21 @@ function normalizeSchemaSlugs(schema: GeneratedSystemSchema): GeneratedSystemSch
  * present under that slug — leaves a real AI-generated (or already-correct
  * blueprint) version completely untouched, only fills an actual gap.
  */
+// Confirmed live (3 test prompts against the real model): even though the
+// prompt names 'homepage' as the suggested exact slug, the model sometimes
+// names it 'home-page' or 'landing-page' instead — an exact-match hasSlug()
+// check then missed it and injected a redundant second homepage-equivalent
+// Single Type alongside the model's own. Broader alias matching avoids
+// that false negative.
+const HOMEPAGE_SLUG_ALIASES = ["homepage", "home-page", "home", "landing-page", "landing"]
+const SITE_SETTINGS_SLUG_ALIASES = ["site-settings", "global-settings", "settings", "site-config"]
+
 function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSchema {
   const singleTypes = schema.singleTypes || []
-  const hasSlug = (slug: string) => singleTypes.some((st) => st.slug === slug)
+  const hasAnySlug = (aliases: string[]) => singleTypes.some((st) => aliases.includes(st.slug))
   const additions: typeof singleTypes = []
 
-  if (!hasSlug("site-settings")) {
+  if (!hasAnySlug(SITE_SETTINGS_SLUG_ALIASES)) {
     additions.push({
       name: "Site Settings",
       slug: "site-settings",
@@ -496,7 +505,7 @@ function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSc
     })
   }
 
-  if (!hasSlug("homepage")) {
+  if (!hasAnySlug(HOMEPAGE_SLUG_ALIASES)) {
     additions.push({
       name: "Homepage",
       slug: "homepage",
