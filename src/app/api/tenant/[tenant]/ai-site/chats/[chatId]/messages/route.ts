@@ -89,6 +89,8 @@ export const POST = withStaffAuth(async (request, context, { access }) => {
     tenantSlug: access.tenant.slug,
     tenantName: access.tenant.name,
     projectId: chat.projectId,
+    userId: access.userId,
+    role: access.role,
   })
 
   let streamStarted = false

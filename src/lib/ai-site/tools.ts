@@ -14,6 +14,7 @@ import {
   listComponentsForTenant,
 } from "@/lib/cms-introspection"
 import { cmsBuilderTools } from "./cms-tools"
+import { contentEntryTools } from "./content-entry-tools"
 
 const MAX_FILE_LENGTH = 200_000
 const READ_LIMIT = 60_000
@@ -36,10 +37,12 @@ interface ToolContext {
   tenantSlug: string
   tenantName: string
   projectId: string
+  userId: string
+  role: string
 }
 
 /** Tools that let the agent read and change a project's website, plus introspect this tenant's CMS schema/content. */
-export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projectId }: ToolContext) {
+export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projectId, userId, role }: ToolContext) {
   return {
     listFiles: tool({
       description: "List every file in the website project with its size in characters.",
@@ -183,5 +186,10 @@ export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projec
     // Types, Single Types, Components, Webhooks) — same server actions the
     // dashboard's own CRUD screens call.
     ...cmsBuilderTools({ tenantSlug, tenantId, tenantDb }),
+
+    // Real content-entry CRUD (actual data rows, not schema) — same
+    // entry-service.ts functions the dashboard's content editor and the
+    // MCP server's own content-entry tools call.
+    ...contentEntryTools({ tenantDb, tenantId, tenantSlug, userId, role }),
   }
 }
