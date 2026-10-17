@@ -78,11 +78,22 @@ export function contentEntryTools({ tenantDb, tenantId, tenantSlug, userId, role
         status: z.enum(["PUBLISHED", "DRAFT", "IN_REVIEW", "ARCHIVED", ""]).default("").describe("New status, or empty to leave unchanged."),
       }),
       execute: async ({ id, contentTypeSlug, data, status }) => {
+        // Content entries are locale-scoped rows grouped by documentId —
+        // entry-service.ts's updateContentEntry targets input.locale, not
+        // "whichever locale this id happens to be". Omitting it defaults
+        // to the tenant's fallback locale, which silently creates a brand
+        // new locale-variant row (different id, empty data merged into)
+        // instead of updating the one the agent actually meant. Confirmed
+        // live while building this. Always look up the real locale first.
+        const existing = await tenantDb.contentEntry.findFirst({ where: { id, tenantId }, select: { locale: true } })
+        if (!existing) return { error: `Content entry '${id}' not found.` }
+
         const result = await updateContentEntry(ctx, actor, {
           contentTypeSlug,
           entryId: id,
           data: Object.keys(data).length > 0 ? data : undefined,
           status: status || undefined,
+          locale: existing.locale,
         })
         return result.ok ? result.data : { error: result.message }
       },
