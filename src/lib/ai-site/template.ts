@@ -25,6 +25,7 @@ export const STARTER_FILES: Record<string, string> = {
         "tailwind-merge": "^3.0.2",
         "lucide-react": "^0.475.0",
         "@radix-ui/react-slot": "^1.1.2",
+        "@sacms/sdk": "^1.0.0",
       },
       devDependencies: {
         "@tailwindcss/postcss": "^4",
@@ -242,8 +243,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   )
 }
 `,
+  "lib/sacms.ts": `import { SaCMS } from '@sacms/sdk'
+
+/**
+ * This workspace's own SaCMS instance, already configured — the connection
+ * (API URL, tenant, key) is injected automatically into every preview and
+ * every real deploy, the same way for both. Use this for any Content Type,
+ * Single Type, or Component data the site needs; never call the SaCMS API
+ * with a hand-rolled fetch.
+ *
+ *   const { data: posts } = await sacms.collection('articles').findMany({ sort: 'createdAt:desc' })
+ *   const { data: home } = await sacms.single('homepage').find()
+ */
+export const sacms = new SaCMS({
+  baseUrl: process.env.NEXT_PUBLIC_SACMS_API_URL!,
+  tenant: process.env.NEXT_PUBLIC_SACMS_TENANT!,
+  token: process.env.SACMS_API_KEY!,
+})
+`,
   ".gitignore": `node_modules
 .next
 next-env.d.ts
+.env*.local
 `,
 }

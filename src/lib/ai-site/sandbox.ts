@@ -4,6 +4,7 @@ import { createHash } from "node:crypto"
 import { Sandbox } from "@vercel/sandbox"
 import type { PrismaClient } from "../../../prisma/generated-client"
 import { getVercelToken } from "@/lib/vercel-client"
+import { resolveFrontendEnv, renderDotEnv } from "@/lib/infrastructure/frontend-env"
 import { listProjectFiles } from "./files"
 
 /*
@@ -67,18 +68,19 @@ function withProjectLock<T>(projectId: string, task: () => Promise<T>): Promise<
 }
 
 /** Syncs the project's files and installs dependencies. Returns the ready sandbox. */
-export function prepareSandbox(tenantDb: PrismaClient, tenantId: string, projectId: string) {
+export function prepareSandbox(tenantDb: PrismaClient, tenantId: string, tenantSlug: string, projectId: string) {
   return withProjectLock(projectId, async () => {
     const sandbox = await getSandbox(tenantId, projectId)
     await syncFiles(sandbox, tenantDb, projectId)
+    await writeFrontendEnv(sandbox, tenantId, tenantSlug)
     await installDependencies(sandbox)
     return sandbox
   })
 }
 
 /** Makes sure the dev server is serving the latest files and returns its public URL. */
-export async function ensurePreview(tenantDb: PrismaClient, tenantId: string, projectId: string) {
-  const sandbox = await prepareSandbox(tenantDb, tenantId, projectId)
+export async function ensurePreview(tenantDb: PrismaClient, tenantId: string, tenantSlug: string, projectId: string) {
+  const sandbox = await prepareSandbox(tenantDb, tenantId, tenantSlug, projectId)
   const url = sandbox.domain(PORT)
 
   await withProjectLock(projectId, async () => {
@@ -95,11 +97,12 @@ export async function ensurePreview(tenantDb: PrismaClient, tenantId: string, pr
 export async function runSandboxCommand(
   tenantDb: PrismaClient,
   tenantId: string,
+  tenantSlug: string,
   projectId: string,
   command: string,
   args: string[],
 ) {
-  const sandbox = await prepareSandbox(tenantDb, tenantId, projectId)
+  const sandbox = await prepareSandbox(tenantDb, tenantId, tenantSlug, projectId)
   const result = await sandbox.runCommand(command, args, { timeoutMs: INSTALL_TIMEOUT_MS })
   return {
     exitCode: result.exitCode,
@@ -129,6 +132,24 @@ async function syncFiles(sandbox: Sandbox, tenantDb: PrismaClient, projectId: st
     ...files.map((file) => ({ path: file.path, content: file.content })),
     { path: manifestPath, content: JSON.stringify(current) },
   ])
+}
+
+/**
+ * Writes `.env.local` straight into the sandbox filesystem — never through
+ * `writeProjectFiles`/`AiSiteFile`, so the real API key is never stored as
+ * project source, never visible in the Code tab, and never writable by the
+ * model via `writeFiles` (`normalizeProjectPath` also blocks `.env*` for
+ * that same reason). Gives every generated site a real, working connection
+ * to this tenant's own CMS data via `@sacms/sdk` from the first preview —
+ * same NEXT_PUBLIC_SACMS_API_URL / NEXT_PUBLIC_SACMS_TENANT / SACMS_API_KEY
+ * convention `deploy_to_sacms` and the dashboard's own deploy path use
+ * (`src/lib/infrastructure/frontend-env.ts`), so a site built here behaves
+ * identically once actually deployed.
+ */
+async function writeFrontendEnv(sandbox: Sandbox, tenantId: string, tenantSlug: string) {
+  const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://developer.sacms.cloud"
+  const env = await resolveFrontendEnv(tenantId, tenantSlug, apiOrigin)
+  await sandbox.writeFiles([{ path: ".env.local", content: renderDotEnv(env) }])
 }
 
 async function installDependencies(sandbox: Sandbox) {

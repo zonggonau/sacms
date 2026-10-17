@@ -13,7 +13,7 @@ export const POST = withStaffAuth(async (_req, context, { access }) => {
   if (!project) return apiError("not_found", { message: "Project not found" })
 
   try {
-    const { url } = await ensurePreview(tenantDb, access.tenantId, projectId)
+    const { url } = await ensurePreview(tenantDb, access.tenantId, access.tenant.slug, projectId)
     return NextResponse.json({ url })
   } catch (error) {
     if (error instanceof SandboxConfigError) {

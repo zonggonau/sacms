@@ -114,7 +114,7 @@ export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projec
           return { error: "The preview server is managed automatically." }
         }
         try {
-          return await runSandboxCommand(tenantDb, tenantId, projectId, command, args)
+          return await runSandboxCommand(tenantDb, tenantId, tenantSlug, projectId, command, args)
         } catch (error) {
           return { error: error instanceof Error ? error.message : "The command failed." }
         }
