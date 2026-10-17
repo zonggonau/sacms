@@ -1,0 +1,51 @@
+# AI Site agent: setup, model, tools, quota
+
+## Gateway setup
+
+- `src/lib/ai.ts`'s `resolveGatewayModel(overrideModel?)` is the single chokepoint for every AI feature in SaCMS — it resolves the admin-configured Gateway API key + base URL (`getResolvedAiConfig()` in `src/lib/settings.ts`) and returns `{ model, modelId }` via `@ai-sdk/gateway`'s `createGateway()`. Call it instead of constructing a Gateway client yourself.
+- Credential resolution is DB-first: `src/lib/settings.ts`'s `applyEnvFallbacks()` only falls back to `.env` (`AI_GATEWAY_API_KEY`, `VERCEL_ACCESS_TOKEN`, etc.) when the Admin Settings DB field is *empty* — a non-empty but stale DB value always wins, even over a correct `.env` value. If a credential that looks right in `.env` still fails, check Admin → Settings → Mesin AI for a stale override before assuming the credential itself is bad. This bit twice in one session (the Vercel token, then the Gateway key).
+- `enforceAiQuota`/`refundAiQuota`/`recordAiUsage` (also `src/lib/ai.ts`) are the shared credit-ledger primitives every AI feature reserves/refunds/records through. `enforceAiQuota` already reserves credits internally for the `userId` path — never call `reserveUserAiCredits` again on top of it, that double-charges.
+- This Gateway account denies Claude models on its current tier ("Free tier users do not have access to this model" — confirmed live for both `anthropic/claude-sonnet-5.5` and `-4.5`). `openai/gpt-5-mini` and `google/gemini-2.5-flash` both work. Check access cheaply before switching any default: `generateText({ model: 'openai/gpt-5-mini', prompt: 'Reply with OK', maxOutputTokens: 16 })`.
+
+## The AI Site builder agent
+
+**One project per workspace, one chat per project** — it's the single website being developed, not one of many (enforced with 409s in `src/app/api/tenant/[tenant]/ai-site/projects/route.ts` and `.../projects/[projectId]/chats/route.ts`). The landing page (`src/app/(workspace)/dashboard/[tenant]/developer/aisite/page.tsx`) is a v0.dev-style single prompt box when no project exists yet — one input, one "build it" action, no project-name field, no settings to configure first; once a project exists, it redirects straight into the chat workspace.
+
+- `src/app/api/tenant/[tenant]/ai-site/chats/[chatId]/messages/route.ts` is the single generation endpoint, wrapped in `withStaffAuth`. It resolves `access` from the session itself — there is no separate `authorizeChatRequest`/bearer-token layer like a standalone multi-tenant app would need.
+- The client sends only its newest message (`prepareSendMessagesRequest` in `src/components/dashboard/ai-site/chat-conversation.tsx`). The route loads history from the tenant's own Prisma DB (`src/lib/ai-site/chats.ts`) and rebuilds the user message from its text, so a client can't inject tool results or assistant turns. Keep it that way.
+- Model: **overridden per-feature**, not the platform default — `AI_SITE_MODEL` (`src/lib/ai-site/quota.ts`, currently `openai/gpt-5-mini`) with `AI_SITE_FALLBACK_MODELS` passed through `providerOptions.gateway.models`. A 40-step tool-calling loop needs far more reliable function calling than a one-shot generation; don't let it quietly inherit whatever weaker model an admin picked as the platform-wide default for simpler features. If generation quality or tool reliability regresses, this is the first knob to check.
+- `streamText` runs with `system: aiSiteSystemPrompt(...)` (`src/lib/ai-site/prompt.ts`), `messages: await convertToModelMessages(history, { tools, ignoreIncompleteToolCalls: true })`, the tools below, `stopWhen: stepCountIs(40)`, and `repairToolCall` (see below).
+- Credits are a **fixed cost per turn** (`AI_SITE_TURN_COST = 50`), not metered by tokens — product decision, not a placeholder. `reserveAiSiteTurn` before `streamText`, `refundAiSiteTurn` only if setup fails before streaming starts (a turn that starts streaming and then errors is not refunded — real Gateway spend already happened). Verified by re-reading the route after every later change this session: one reserve call, two refund call sites, both strictly before `streamStarted = true`. Never add a third refund path without checking it's still pre-stream.
+- `result.toUIMessageStreamResponse({ originalMessages, generateMessageId, onFinish })` streams to `useChat` and saves the response message + records usage in `onFinish`.
+
+### Tool-call repair
+
+Some models occasionally hallucinate a garbled tool name (seen live: `WritefilesFiles` instead of `writeFiles`), which the AI SDK rejects outright (`NoSuchToolError`) and kills the whole turn. `src/lib/ai-site/repair-tool-call.ts`'s `repairAiSiteToolCall` fuzzy-matches (Levenshtein distance, relative threshold) the hallucinated name against the real tool list and rewrites the call in place; wired via `streamText`'s `repairToolCall` option. Keep this wired for any new tool set added to the agent — it's cheap insurance, not a substitute for picking a tool-reliable model.
+
+### Tools
+
+Defined with `tool({ description, inputSchema: z.object(...), execute })` (`zod` v4), split across two files merged in `aiSiteTools()` (`src/lib/ai-site/tools.ts`):
+
+| File | Tools | Does |
+| --- | --- | --- |
+| `src/lib/ai-site/tools.ts` | `listFiles`, `readFile` | Read the site from the tenant's `AiSiteFile` Prisma table |
+| | `writeFiles`, `deleteFiles` | Change files; paths go through `normalizeProjectPath` (`src/lib/ai-site/paths.ts`), which rejects traversal, `node_modules`, `.next`, `.git`, `.vercel`, and `.env*` |
+| | `runCommand` | Runs an allow-listed command (`npm`, `npx`, `node`, `ls`, `cat`, `grep`) in the Sandbox after syncing files; refuses `npm run dev/start` and any arg referencing `.env*` (see `references/security.md`) |
+| | `cms_get_full_schema`, `cms_list_content_types`, `cms_get_content_type`, `cms_query_content`, `cms_list_components` | **Read-only** CMS introspection the *agent* uses while building — thin wrappers around `src/lib/cms-introspection.ts`, the same functions the external MCP server (`src/app/api/mcp/[[...transport]]/route.ts`) uses for its own `get_full_schema`/`list_content_types`/etc. tools. One source of truth; don't duplicate this logic a third time. The *generated site* never calls these — see `references/sdk-and-templates.md`. |
+| `src/lib/ai-site/cms-tools.ts` (`cmsBuilderTools`) | `cms_list_field_types`, `cms_create_content_type`, `cms_update_content_type`, `cms_delete_content_type`, `cms_list_single_types`, `cms_get_single_type`, `cms_create_single_type`, `cms_update_single_type`, `cms_delete_single_type`, `cms_get_component`, `cms_create_component`, `cms_update_component`, `cms_delete_component`, `cms_list_webhooks`, `cms_create_webhook`, `cms_update_webhook`, `cms_delete_webhook` | **Write-capable** schema/webhook builder tools — call the exact same server actions the dashboard's own Content Types / Single Types / Components / Webhooks screens call (`src/actions/content-types.ts`, `single-types.ts`, `components.ts`, `webhooks.ts`). Zero duplicated validation/RBAC/plan-limit logic; those actions already call `getServerSession`/`getTenantAccess`/`checkPermission`/`enforcePlanLimit` themselves — see `references/security.md` for why that makes privilege escalation through the model structurally impossible. |
+
+Tools return `{ error }` objects (or the action's native `{ error }` shape, passed straight through) instead of throwing for expected failures, so the model can react. The tenant's dedicated Prisma DB (when it has one) is the source of truth; never treat the sandbox filesystem as authoritative for anything except the generated site's own code.
+
+**Zod schema gotcha (zod v4.4.3 + `ai`@7, this exact version combo):** a zod object schema passed as a tool's `inputSchema` with 4+ keys where any key uses `.optional()` breaks `tool()`'s overload resolution — TypeScript fails with `No overload matches this call` / `FlexibleSchema<never>`, with no runtime error to point at the cause. Use `.default(sentinelValue)` instead of `.optional()` everywhere in a tool's input schema (treat an empty string/empty array/`false` as "unset" in the handler) — confirmed fix, reproduced and isolated in `cms_query_content`'s schema while building this. Every schema in `tools.ts`/`cms-tools.ts` already follows this; keep it that way for any new tool.
+
+**"Update" tools are full replace, not partial patch** — e.g. `cms_update_content_type` takes `name`/`description`/`showInCms`/`fields` all as *required* inputs (no optional/nullable), and the system prompt tells the model to call the matching `cms_get_*`/`cms_list_*` first and pass back the complete desired state. This was a deliberate choice to dodge the optional-field schema bug above entirely rather than work around it with `.nullable()` (untested whether that also triggers it) — don't reintroduce `.optional()` to make an update tool "more RESTful."
+
+## In-process CMS tools vs. real MCP
+
+AI Site does **not** connect to SaCMS's own MCP server as a client (no `@ai-sdk/mcp` `createMCPClient`, no bearer-token hop). Every CMS tool calls shared library functions or server actions directly, in-process, reusing the session auth `withStaffAuth` already resolved. This was a deliberate simplification over a reference app that *did* connect to an external MCP server per-project — don't reintroduce an MCP client connection for AI Site; extract-and-share (like `cms-introspection.ts` and the `src/actions/*` reuse above) instead, so there's one source of truth and no second auth hop.
+
+## Chat UI
+
+- `useChat` from `@ai-sdk/react` with `new DefaultChatTransport({ api, prepareSendMessagesRequest })` from `ai`, in `src/components/dashboard/ai-site/chat-conversation.tsx`.
+- Render `message.parts`: `text` (markdown via `react-markdown` + `remark-gfm`), `reasoning`, and tool parts (`isToolUIPart`, `getToolName` from `ai`) — see `src/components/dashboard/ai-site/message-parts.tsx`.
+- A chat created from the landing prompt arrives with an unanswered first message; `chat-conversation.tsx` calls `regenerate()` once to answer it.

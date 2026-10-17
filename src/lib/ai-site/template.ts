@@ -26,6 +26,7 @@ export const STARTER_FILES: Record<string, string> = {
         "lucide-react": "^0.475.0",
         "@radix-ui/react-slot": "^1.1.2",
         "@sacms/sdk": "^1.0.0",
+        "server-only": "^0.0.1",
       },
       devDependencies: {
         "@tailwindcss/postcss": "^4",
@@ -243,7 +244,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   )
 }
 `,
-  "lib/sacms.ts": `import { SaCMS } from '@sacms/sdk'
+  "lib/sacms.ts": `import 'server-only'
+import { SaCMS } from '@sacms/sdk'
 
 /**
  * This workspace's own SaCMS instance, already configured — the connection

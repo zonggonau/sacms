@@ -113,6 +113,16 @@ export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projec
         if (command === "npm" && ["dev", "start"].includes(args.at(-1) ?? "")) {
           return { error: "The preview server is managed automatically." }
         }
+        // .env.local (written straight into the sandbox, holding the real
+        // SACMS_API_KEY) isn't reachable through writeFiles/readFile
+        // (normalizeProjectPath blocks it) — but unlike those, runCommand
+        // has no path allowlist at all, so `cat .env.local`, `grep KEY
+        // .env.local`, or even `node -e "require('fs').readFileSync(...)"`
+        // would hand the real secret back as a tool result. Block any
+        // argument that references it, for every command.
+        if (args.some((arg) => /\.env(\.|$)/i.test(arg))) {
+          return { error: "Reading .env files is not allowed." }
+        }
         try {
           return await runSandboxCommand(tenantDb, tenantId, tenantSlug, projectId, command, args)
         } catch (error) {
