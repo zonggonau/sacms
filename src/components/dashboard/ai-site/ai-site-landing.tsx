@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AI_SITE_MODEL_OPTIONS, DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
+import { AiCreditsBadge } from "./ai-credits-badge"
 
 const SUGGESTIONS = [
   "Landing page untuk toko kopi dengan menu, lokasi, dan form kontak",
@@ -114,8 +115,11 @@ export function AiSiteLanding({
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-              <Zap className="size-2.5" /> Vercel AI Gateway
+            <div className="ml-auto flex items-center gap-1.5">
+              <AiCreditsBadge />
+              <div className="flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <Zap className="size-2.5" /> Vercel AI Gateway
+              </div>
             </div>
           </div>
         </div>

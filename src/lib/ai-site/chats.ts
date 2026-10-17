@@ -104,6 +104,11 @@ export async function renameChat(tenantDb: PrismaClient, chatId: string, title: 
   await tenantDb.aiSiteChat.update({ where: { id: chatId }, data: { title: titleFrom(title) } })
 }
 
+/** Takes effect from the chat's next turn onward — the in-flight turn, if any, keeps whatever model it already started with. */
+export async function updateChatModel(tenantDb: PrismaClient, chatId: string, model: string) {
+  await tenantDb.aiSiteChat.update({ where: { id: chatId }, data: { model } })
+}
+
 export async function deleteChat(tenantDb: PrismaClient, chatId: string) {
   await tenantDb.aiSiteChat.delete({ where: { id: chatId } })
 }

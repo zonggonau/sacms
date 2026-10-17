@@ -10,6 +10,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { ChatConversation } from "./chat-conversation"
 import { CodeView } from "./code-view"
 import { PreviewPane } from "./preview-pane"
+import { DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
 import { cn } from "@/lib/utils"
 
 type View = "preview" | "code"
@@ -23,7 +24,7 @@ export function ChatWorkspace({
 }: {
   tenantSlug: string
   tenantId: string
-  chat: { id: string; title: string }
+  chat: { id: string; title: string; model: string | null }
   initialMessages: UIMessage[]
   projectId: string
 }) {
@@ -111,15 +112,16 @@ export function ChatWorkspace({
       />
 
       <div className="flex min-h-0 flex-1">
-        <div className="flex w-full min-w-0 shrink-0 flex-col border-r border-border md:w-96 md:max-w-[42%]">
+        <div className="flex min-h-0 w-full min-w-0 shrink-0 flex-col border-r border-border md:w-96 md:max-w-[42%]">
           <ChatConversation
             tenantSlug={tenantSlug}
             chatId={chat.id}
             initialMessages={initialMessages}
+            initialModel={chat.model || DEFAULT_AI_SITE_MODEL}
             onGenerationFinished={handleGenerationFinished}
           />
         </div>
-        <div className="hidden min-w-0 flex-1 md:block">
+        <div className="hidden min-h-0 min-w-0 flex-1 md:block">
           <div className={view === "preview" ? "h-full" : "hidden"}>
             <PreviewPane tenantSlug={tenantSlug} onUrlChange={setPreviewUrl} projectId={projectId} revision={revision} />
           </div>

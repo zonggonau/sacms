@@ -31,7 +31,7 @@ export default async function AiSiteChatPage({
       <ChatWorkspace
         tenantSlug={access.tenant.slug}
         tenantId={tenantSlug}
-        chat={{ id: chat.id, title: chat.title }}
+        chat={{ id: chat.id, title: chat.title, model: chat.model }}
         initialMessages={initialMessages}
         projectId={projectId}
       />

@@ -3,9 +3,13 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, type UIMessage } from "ai"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, ArrowUp, Square } from "lucide-react"
+import { toast } from "sonner"
+import { Loader2, ArrowUp, Square, Cpu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AI_SITE_MODEL_OPTIONS, DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
+import { AiCreditsBadge } from "./ai-credits-badge"
 import { MessageParts } from "./message-parts"
 import { cn } from "@/lib/utils"
 
@@ -13,30 +17,37 @@ export function ChatConversation({
   tenantSlug,
   chatId,
   initialMessages,
+  initialModel,
   onGenerationFinished,
 }: {
   tenantSlug: string
   chatId: string
   initialMessages: UIMessage[]
+  initialModel: string
   onGenerationFinished: () => void
 }) {
+  const apiBase = `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site/chats/${encodeURIComponent(chatId)}`
   const transport = useMemo(
     () =>
       new DefaultChatTransport<UIMessage>({
-        api: `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site/chats/${encodeURIComponent(chatId)}/messages`,
+        api: `${apiBase}/messages`,
         // The server keeps the history; send only the newest message.
         prepareSendMessagesRequest: ({ messages, trigger }) => ({
           body: { trigger, message: messages.at(-1) },
         }),
       }),
-    [tenantSlug, chatId],
+    [apiBase],
   )
 
+  const [creditsTick, setCreditsTick] = useState(0)
   const { messages, sendMessage, regenerate, status, stop, error, clearError } = useChat({
     id: chatId,
     messages: initialMessages,
     transport,
-    onFinish: onGenerationFinished,
+    onFinish: () => {
+      onGenerationFinished()
+      setCreditsTick((value) => value + 1) // each turn spends credits — refresh the balance shown
+    },
   })
   const isBusy = status === "submitted" || status === "streaming"
 
@@ -62,6 +73,32 @@ export function ChatConversation({
     clearError()
     setDraft("")
     void sendMessage({ text })
+  }
+
+  // The model picked at chat creation; changeable here too — applies from
+  // the chat's next turn onward (the backend reads it fresh on every POST).
+  const [model, setModel] = useState(initialModel || DEFAULT_AI_SITE_MODEL)
+  const [savingModel, setSavingModel] = useState(false)
+  async function changeModel(next: string) {
+    const previous = model
+    setModel(next)
+    setSavingModel(true)
+    try {
+      const res = await fetch(apiBase, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: next }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error || "Gagal mengganti model")
+      }
+    } catch (err) {
+      setModel(previous)
+      toast.error(err instanceof Error ? err.message : "Gagal mengganti model")
+    } finally {
+      setSavingModel(false)
+    }
   }
 
   return (
@@ -107,8 +144,8 @@ export function ChatConversation({
           <div ref={endRef} />
         </div>
       </div>
-      <div className="shrink-0 border-t border-border p-3">
-        <div className="flex items-end gap-2 rounded-xl border border-border bg-background p-2">
+      <div className="shrink-0 border-t border-border">
+        <div className="flex items-end gap-2 p-3 pb-1.5">
           <Textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -131,6 +168,25 @@ export function ChatConversation({
               <ArrowUp className="size-4" />
             </Button>
           )}
+        </div>
+        <div className="flex items-center gap-1.5 border-t border-border/50 px-3 pb-2 pt-1">
+          <Cpu className="size-3 shrink-0 text-muted-foreground" />
+          <Select value={model} onValueChange={changeModel} disabled={savingModel || isBusy}>
+            <SelectTrigger className="h-6 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-1.5 text-[11px] font-semibold shadow-none hover:bg-muted/50 focus:ring-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-border bg-card">
+              {AI_SITE_MODEL_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
+                  <span className="font-semibold">{opt.label}</span>
+                  <span className="ml-1.5 text-muted-foreground">— {opt.hint}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="ml-auto">
+            <AiCreditsBadge refreshKey={creditsTick} />
+          </div>
         </div>
       </div>
     </div>
