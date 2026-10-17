@@ -33,8 +33,6 @@ model User {
   ownedTenants        Tenant[]       @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
-  aiSiteProjects      AiSiteProject[] @relation("AiSiteProjectCreator")
-  aiSiteChats         AiSiteChat[]    @relation("AiSiteChatCreator")
 
   @@map("users")
 }
@@ -427,8 +425,12 @@ model AiSiteProject {
   id              String   @id @default(cuid())
   tenantId        String
   tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Audit-only, no FK to User on purpose — this model lives in a dedicated
+  /// tenant's own DB when it has one, and User rows are never mirrored
+  /// there (unlike Tenant, which self-mirrors one row into its own
+  /// dedicated DB), so a real relation 409s every creation for any BYODB
+  /// tenant. Same plain-String pattern as every other createdBy field here.
   createdByUserId String?
-  createdBy       User?    @relation("AiSiteProjectCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   name            String
   description     String?
   createdAt       DateTime @default(now())
@@ -455,8 +457,8 @@ model AiSiteChat {
   id              String   @id @default(cuid())
   projectId       String
   project         AiSiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// Audit-only, no FK to User — same reasoning as AiSiteProject.createdByUserId above.
   createdByUserId String?
-  createdBy       User?    @relation("AiSiteChatCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   title           String
   /// AI Gateway model id picked when the chat was created (one of
   /// AI_SITE_MODEL_OPTIONS in src/lib/ai-site/models.ts). Null falls back to
