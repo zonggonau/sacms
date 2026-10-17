@@ -2,8 +2,9 @@ import { convertToModelMessages, createIdGenerator, stepCountIs, streamText, typ
 import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { resolveGatewayModel, toUsageTotals } from "@/lib/ai"
-import { reserveAiSiteTurn, refundAiSiteTurn, recordAiSiteTurnUsage } from "@/lib/ai-site/quota"
+import { reserveAiSiteTurn, refundAiSiteTurn, recordAiSiteTurnUsage, AI_SITE_MODEL, AI_SITE_FALLBACK_MODELS } from "@/lib/ai-site/quota"
 import { aiSiteTools } from "@/lib/ai-site/tools"
+import { repairAiSiteToolCall } from "@/lib/ai-site/repair-tool-call"
 import { aiSiteSystemPrompt } from "@/lib/ai-site/prompt"
 import { listProjectFiles } from "@/lib/ai-site/files"
 import { loadMessages, saveMessages, deleteMessages, userMessage, MESSAGE_MAX_LENGTH } from "@/lib/ai-site/chats"
@@ -62,7 +63,10 @@ export const POST = withStaffAuth(async (request, context, { access }) => {
   let model: Awaited<ReturnType<typeof resolveGatewayModel>>["model"]
   let modelId: string
   try {
-    const resolved = await resolveGatewayModel()
+    // Overrides the platform-wide default model — the 40-step tool-calling
+    // loop needs much more reliable function calling than a single-shot
+    // generation (see AI_SITE_MODEL's doc comment).
+    const resolved = await resolveGatewayModel(AI_SITE_MODEL)
     model = resolved.model
     modelId = resolved.modelId
   } catch (error) {
@@ -92,8 +96,10 @@ export const POST = withStaffAuth(async (request, context, { access }) => {
       messages: await convertToModelMessages(history, { tools, ignoreIncompleteToolCalls: true }),
       tools,
       stopWhen: stepCountIs(MAX_STEPS),
+      repairToolCall: ({ toolCall, error }) => repairAiSiteToolCall({ toolCall, tools, error }),
       providerOptions: {
         gateway: {
+          models: AI_SITE_FALLBACK_MODELS,
           user: access.userId,
           tags: ["ai-site", `tenant:${access.tenantId}`, `project:${chat.projectId}`],
         },

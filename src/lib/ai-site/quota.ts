@@ -7,6 +7,17 @@ import { enforceAiQuota, refundAiQuota, recordAiUsage, toUsageTotals } from "@/l
  */
 export const AI_SITE_TURN_COST = 50
 
+/**
+ * AI Site's 40-step tool-calling loop needs far more reliable function
+ * calling than a single-shot generation, so it overrides the platform-wide
+ * default model (Admin > Settings > Mesin AI) instead of using it as-is.
+ * `openai/gpt-5-mini` is the free-tier-accessible model (Claude models are
+ * denied on a free-tier Gateway account); `google/gemini-2.5-flash` is kept
+ * as the Gateway-level fallback if the primary is ever unavailable.
+ */
+export const AI_SITE_MODEL = "openai/gpt-5-mini"
+export const AI_SITE_FALLBACK_MODELS = ["google/gemini-2.5-flash"]
+
 type UsageTotals = ReturnType<typeof toUsageTotals>
 
 const config = (tenantId: string, userId: string) => ({

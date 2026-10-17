@@ -13,6 +13,7 @@ import {
   queryContentForTenant,
   listComponentsForTenant,
 } from "@/lib/cms-introspection"
+import { cmsBuilderTools } from "./cms-tools"
 
 const MAX_FILE_LENGTH = 200_000
 const READ_LIMIT = 60_000
@@ -167,5 +168,10 @@ export function aiSiteTools({ tenantDb, tenantId, tenantSlug, tenantName, projec
         return listComponentsForTenant(tenantDb, tenantId)
       },
     }),
+
+    // Write-capable schema/webhook tools (create/update/delete Content
+    // Types, Single Types, Components, Webhooks) — same server actions the
+    // dashboard's own CRUD screens call.
+    ...cmsBuilderTools({ tenantSlug, tenantId, tenantDb }),
   }
 }

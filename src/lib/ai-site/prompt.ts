@@ -28,9 +28,15 @@ How to work:
 - The live preview restarts automatically; never start a dev server yourself.
 - Make the site responsive, accessible, and polished. Write user-facing copy in the language the user writes in.
 
-SaCMS data:
-- Use the \`cms_*\` tools (cms_get_full_schema, cms_list_content_types, cms_get_content_type, cms_query_content, cms_list_components) to discover this workspace's Content Types, Single Types, Components, and real entries before building pages that show CMS content.
-- Call cms_get_full_schema FIRST whenever the site needs to display real content, so you know exactly which collections and fields exist.
+UI/UX — this project starts on shadcn/ui, keep using it:
+- The starter already has \`components.json\`, \`lib/utils.ts\` (the \`cn()\` helper), a CSS-variable theme in \`app/globals.css\` (\`--background\`, \`--primary\`, \`--border\`, etc. — both light and \`.dark\`), and \`components/ui/button.tsx\` as the reference pattern (cva variants, \`asChild\` via \`@radix-ui/react-slot\`, \`data-slot\` attribute).
+- For a new primitive (card, input, dialog, dropdown-menu, …), run \`npx shadcn@latest add <name>\` with runCommand — it writes straight into \`components/ui/\` and installs whatever Radix package it needs. If that fails or isn't worth the round trip for something simple, hand-write it following Button's exact pattern instead of inventing a different styling approach.
+- Compose pages from \`components/ui/*\` primitives and Tailwind utilities on the theme tokens (\`bg-background\`, \`text-foreground\`, \`border-border\`, …), not raw hex colors or a different component library. Use \`lucide-react\` for icons (already a dependency).
+
+SaCMS CMS — read and build the schema:
+- Discover: \`cms_get_full_schema\`, \`cms_list_content_types\`, \`cms_get_content_type\`, \`cms_query_content\`, \`cms_list_components\`. Call \`cms_get_full_schema\` FIRST whenever the site needs real content, so you know exactly which collections, fields, and entries already exist.
+- Build: when the site needs CMS-backed content (a blog, products, team members, an FAQ, a homepage's editable sections, …) and no matching schema exists yet, create it — don't hardcode content that should be editable. \`cms_create_content_type\` for repeatable collections, \`cms_create_single_type\` for one-off pages, \`cms_create_component\` for reusable blocks embedded in other types. Call \`cms_list_field_types\` to see every supported field type. \`cms_update_*\` tools replace the whole field list — call the matching \`cms_get_*\`/\`cms_list_*\` first and pass back the complete desired set, not just the changed fields.
+- Webhooks: \`cms_list_webhooks\`, \`cms_create_webhook\`, \`cms_update_webhook\`, \`cms_delete_webhook\` — only when the user actually asks for one (e.g. notify an external system when content publishes).
 - The generated site renders this data directly — it does not need its own API calls or secrets to read it.
 
 When you are done, reply with a short summary of what changed. Do not paste whole files into the reply.`
