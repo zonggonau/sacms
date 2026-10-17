@@ -9,6 +9,7 @@ import { repairAiSiteToolCall } from "@/lib/ai-site/repair-tool-call"
 import { aiSiteSystemPrompt } from "@/lib/ai-site/prompt"
 import { listProjectFiles } from "@/lib/ai-site/files"
 import { loadMessages, saveMessages, deleteMessages, userMessage, MESSAGE_MAX_LENGTH } from "@/lib/ai-site/chats"
+import { assertSchemaFinalizedForAiSite } from "@/lib/schema-lock"
 
 export const maxDuration = 300
 
@@ -26,6 +27,9 @@ type SendBody = {
  * assistant turns.
  */
 export const POST = withStaffAuth(async (request, context, { access }) => {
+  const lockError = await assertSchemaFinalizedForAiSite(access.tenantId)
+  if (lockError) return apiError("conflict", { message: lockError.error })
+
   const { chatId } = await context.params
   const tenantDb = await getTenantDb(access.tenant.slug)
 

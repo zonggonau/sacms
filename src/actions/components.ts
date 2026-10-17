@@ -8,6 +8,7 @@ import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createComponentSchema, updateComponentSchema } from "@/lib/validations"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
+import { isSchemaFinalized, SCHEMA_LOCKED_MESSAGE } from "@/lib/schema-lock"
 
 export async function getComponentsAction(tenantSlug: string) {
   try {
@@ -154,6 +155,8 @@ export async function createComponentAction(tenantSlug: string, data: any) {
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_CREATE)
     if (!rbac.allowed) return { error: "Forbidden" }
 
+    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
+
     const result = createComponentSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, category, fields } = result.data
@@ -223,6 +226,8 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -308,6 +313,8 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_DELETE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
 
     const tenantDb = await getTenantDb(tenantSlug)
 

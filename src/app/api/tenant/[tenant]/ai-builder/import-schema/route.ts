@@ -4,6 +4,7 @@ import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { VALID_FIELD_TYPES } from "@/lib/field-types"
+import { assertSchemaEditable } from "@/lib/schema-lock"
 
 // Same slug shape enforced everywhere a human fills the form by hand
 // (see createContentTypeSchema in lib/validations/admin.ts) — the AI/plan
@@ -46,6 +47,9 @@ export const POST = withStaffAuth(
     if (totalModels === 0) {
       return apiError("validation", { message: "Tidak ada struktur untuk diimpor" })
     }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return apiError("conflict", { message: lockError.error })
 
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.slug)

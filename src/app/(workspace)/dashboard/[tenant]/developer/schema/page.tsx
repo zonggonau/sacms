@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isSchemaFinalized } from "@/lib/schema-lock"
 import { SchemaGeneratorClient } from "./schema-generator-client"
 
 export default async function SchemaGeneratorPage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -42,12 +43,15 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
     // Non-critical — the client just starts from the empty-state prompt.
   }
 
+  const schemaFinalized = await isSchemaFinalized(tenant.id)
+
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
       <SchemaGeneratorClient
         tenantSlug={tenantSlug}
         hasSchema={hasSchema}
         existingSchemaSummary={existingSchemaSummary}
+        schemaFinalized={schemaFinalized}
       />
     </div>
   )

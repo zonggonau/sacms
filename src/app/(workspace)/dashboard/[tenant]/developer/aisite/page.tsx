@@ -3,7 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isSchemaFinalized } from "@/lib/schema-lock"
 import { AiSiteLanding } from "@/components/dashboard/ai-site/ai-site-landing"
+import { SchemaNotFinalizedNotice } from "@/components/dashboard/ai-site/schema-not-finalized-notice"
 
 /**
  * One AI Site project per workspace — it's the single website being
@@ -27,6 +29,13 @@ export default async function AiSiteHomePage({ params }: { params: Promise<{ ten
 
   if (project?.chats[0]) {
     redirect(`/dashboard/${tenantSlug}/developer/aisite/${project.id}/chats/${project.chats[0].id}`)
+  }
+
+  // No project yet — AI Site must not let a tenant start building a
+  // frontend against a schema that's still subject to change underneath
+  // it. Finalize the schema at /developer/schema first.
+  if (!(await isSchemaFinalized(access.tenantId))) {
+    return <SchemaNotFinalizedNotice tenantId={tenantSlug} />
   }
 
   return (
