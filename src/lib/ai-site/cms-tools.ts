@@ -56,7 +56,12 @@ const fieldSchema = z.object({
   unique: z.boolean().default(false),
   localizable: z.boolean().default(true),
   relationSlug: z.string().default("").describe("For type 'relation': slug of the target Content Type. Empty for other types."),
-  options: z.record(z.string(), z.any()).default({}).describe("Extra field options, e.g. { currencyCode: 'IDR' } or { choices: [...] }"),
+  // z.record() here would emit a JSON Schema `propertyNames` keyword that
+  // OpenAI's structured-output schema dialect doesn't support (silently
+  // stripped with a console warning — harmless, since object keys are
+  // always strings anyway, but noisy). z.looseObject({}) is the same "any
+  // extra keys" shape without triggering it, for any model.
+  options: z.looseObject({}).default({}).describe("Extra field options, e.g. { currencyCode: 'IDR' } or { choices: [...] }"),
 })
 
 interface CmsToolContext {
