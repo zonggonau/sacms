@@ -57,9 +57,17 @@ const FIELD_TYPE_DOCS = FIELD_TYPES.map(
   (f) => `- ${f.type} (${f.category} - ${f.label}): ${f.description}`
 ).join("\n")
 
-const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS.
-Given a user's description of a website they want to build, generate a complete, comprehensive multi-collection database architecture.
-Do NOT just generate a single article table. Generate 2 to 4 rich Content Types (e.g. Products/Rooms/Services, Categories, Reviews, Team/Doctors, Bookings), 1 Single Type for global settings, and reusable components.
+const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS, designing the schema for a website's ENTIRE frontend — not just its main business data. A frontend built against your schema must never fall back to hardcoded placeholder text anywhere, from the header to the footer.
+
+Work through the whole page structure methodically, header to footer, before generating anything:
+
+1. **Global site settings (always exactly one Single Type, e.g. 'site-settings')** — whatever the generated frontend needs on every page: site name/logo/favicon ('media'), primary/secondary/accent brand color ('color' — this covers "tipe warna website"), typography choice ('select' listing a few font pairings), header nav links, footer columns/links, footer copyright text, social media links, contact info (email/phone/address — 'location' if a real address matters), and ONE 'seo' field for the site-wide default meta title/description/OG image that other pages fall back to. This Single Type is what the header and footer actually render from — never leave header/footer content hardcoded in the frontend with nothing behind it.
+
+2. **Each distinct, one-off page (one Single Type per page)** — Homepage, About, Contact, or any other page that exists exactly once. Each gets its own hero heading/subheading/image, its own body sections, and its own 'seo' field (meta tags specific to that page override the site default). Think about what's actually ON that page section by section — a homepage hero, an about page's story + team intro, a contact page's form intro + map — model each distinct section as real fields or embedded components, not one giant 'richText' blob standing in for the whole page.
+
+3. **Repeatable business content (one Content Type per kind of thing that repeats)** — products, rooms, services, articles, team members, testimonials, FAQ entries, bookings, whatever the user's domain actually needs multiple of. This is the "2 to 4 rich Content Types" the user is really asking to manage day-to-day. Each public-facing one also gets its own 'seo' field. Wire real relations between them with 'relation' (e.g. an article 'relation'-s to its author in Team, a product 'relation'-s to its Category) instead of duplicating data.
+
+4. **Reusable embedded groups (Components)** — anything whose *shape* repeats *inside* another type rather than needing its own list/URL: a CTA block (heading + button text + link), a feature/benefit card, a social-links group, a testimonial-quote block embedded directly in the Homepage Single Type instead of justifying its own Content Type. Use 'component' with 'componentSlug' for these. A Component is the right call when the content is always edited alongside its parent and never needs its own detail page; a Content Type is the right call when it needs its own list, its own URL, or there could be many unbounded over time.
 
 Use diverse field types strictly from this supported SaCMS list:
 ${FIELD_TYPE_DOCS}
@@ -73,9 +81,12 @@ Field Selection Rules:
 - Dropdown options MUST use 'select'.
 - Comprehensive descriptions & body text MUST use 'richText' (HTML) or 'markdown'.
 - Geolocation coordinates & address MUST use 'location'.
-- Search engine optimization MUST use 'seo'.
+- Brand/theme colors MUST use 'color', never free-text ('tipe warna website' always gets a real color field, not a text description of a color).
+- Search engine optimization MUST use 'seo' — every public-facing Single Type and Content Type gets one, not just the homepage.
 - Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
 - Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
+
+Do not skip step 1 or step 2 even if the user's prompt only describes the business content from step 3 — a real frontend always has a header, a footer, and at least a homepage, so the schema must cover them whether or not the user mentioned them explicitly.
 
 All slugs must be kebab-case lowercase (letters, digits, hyphens only — never underscores), e.g. 'cover-image', 'is-available'.`
 
@@ -104,7 +115,11 @@ async function generateWithAi(prompt: string, tenantId?: string, userId?: string
         schema: aiSystemSchema,
         system: SYSTEM_PROMPT,
         prompt,
-        maxOutputTokens: 16000,
+        // The prompt now asks for the whole site (global settings + every
+        // one-off page + repeatable content + components), not just a
+        // handful of content types — raised from 16000 to leave real
+        // headroom for that larger, more complete structure.
+        maxOutputTokens: 24000,
       })
     )
 
