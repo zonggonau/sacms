@@ -97,7 +97,8 @@ export function apiError(code: ApiErrorCode, opts: ApiErrorOptions = {}): NextRe
 
 /**
  * Log the real error and return a generic 500. Never leaks `error.message`,
- * Prisma constraint text, or a stack to the client.
+ * Prisma constraint text, or a stack to the client — except for the one
+ * known, deliberate exception below.
  */
 export function handleRouteError(error: unknown, context?: { route?: string; method?: string }): NextResponse {
   const tag = context?.route ? `[${context.method ?? "?"} ${context.route}]` : "[api]"
@@ -107,6 +108,18 @@ export function handleRouteError(error: unknown, context?: { route?: string; met
   import("@sentry/nextjs")
     .then((Sentry) => Sentry.captureException(error, { tags: { route: context?.route ?? "unknown" } }))
     .catch(() => {})
+
+  // `enforceAiQuota` (src/lib/ai.ts) throws a plain Error with `.status = 429`
+  // and an already user-safe, pre-written message ("AI credits depleted...",
+  // "AI Quota Exceeded...") when a user/tenant is out of AI quota — an
+  // expected, actionable 429, not a crash. It's called from deep inside
+  // shared AI helpers (ai-site's messages route, the AI Schema Generator),
+  // not from a route handler, so it can't call apiError() itself. Surface it
+  // here instead of masking "you're out of credits" as a generic 500.
+  if (error instanceof Error && (error as { status?: unknown }).status === 429) {
+    return apiError("rate_limited", { message: error.message })
+  }
+
   return apiError("internal")
 }
 
