@@ -16,6 +16,24 @@ const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || ""
 const PUBLIC_KEY_PATH = path.join(process.cwd(), "keys", "license-public.pem")
 const PRIVATE_KEY_PATH = path.join(process.cwd(), "keys", "license-private.pem")
 
+/**
+ * The private key signs every license generated from Admin > License — it
+ * must NEVER be committed or baked into the Docker image (only the public
+ * key is, see Dockerfile), so `keys/license-private.pem` only exists on a
+ * dev machine. Production instead supplies it via the `LICENSE_PRIVATE_KEY`
+ * env var (set once in the server's own `.env`, never in git), falling back
+ * to the local file for dev convenience. Accepts the PEM with literal
+ * newlines or with escaped "\n", since most .env tooling can't hold a real
+ * multi-line value.
+ */
+function readPrivateKey(): string {
+  const fromEnv = process.env.LICENSE_PRIVATE_KEY
+  if (fromEnv?.trim()) {
+    return fromEnv.includes("\\n") ? fromEnv.replace(/\\n/g, "\n") : fromEnv
+  }
+  return fs.readFileSync(PRIVATE_KEY_PATH, "utf-8")
+}
+
 export interface LicensePayload {
   sub: string       // customer ID
   name: string      // customer name
@@ -69,7 +87,7 @@ export function generateLicenseKey(payload: Omit<LicensePayload, "iat" | "jti">)
     jti: crypto.randomUUID(),
   }
 
-  const privateKey = fs.readFileSync(PRIVATE_KEY_PATH, "utf-8")
+  const privateKey = readPrivateKey()
   const payloadStr = JSON.stringify(fullPayload)
   const signature = crypto.sign("sha256", Buffer.from(payloadStr), privateKey)
 
