@@ -2,9 +2,9 @@
 
 This is the piece that makes a generated site professional rather than a demo: it talks to the workspace's real data the same way any production SaCMS integration would, with a typed client, retries, and proper error handling — not a hand-rolled `fetch()` the model improvises per page.
 
-## Publish status — check this before assuming behavior
+## Publish status
 
-`mini-services/sdk`'s `package.json` is at **`1.1.0`** locally (everything below describes this version), but publishing it hit npm's 2FA (`EOTP` — needs a one-time password from the account owner's authenticator, which an agent can't provide) and was not completed as of this writing. **`npm view @sacms/sdk version` may still report `1.0.0`** — the version with the bugs this file used to describe (baked-in internal SaCMS data shipped to every consumer, a CLI that silently produced the same output regardless of the real schema, no `$and` filter support, no member-auth). AI Site's starter template installs `@sacms/sdk@^1.0.0` fresh inside each Sandbox — until `1.1.0` is actually live on npm, every new AI Site project is running the **old, buggy** version, not the one described here. Check `npm view @sacms/sdk version` whenever this matters; don't assume 1.1.0 just because the source in this repo has it.
+`mini-services/sdk`'s `package.json` is at **`1.1.0`**, and it's confirmed **live on npm** (checked directly via `npm view @sacms/sdk versions` → includes `1.1.0`, published 2026-10-17; a redundant later `npm publish` attempt failing with "cannot publish over the previously published version" is what confirmed this, not a new problem). The 2FA (`EOTP`) blocker this section used to describe did get cleared by the account owner — don't assume it's still stuck. AI Site's starter template installs `@sacms/sdk@^1.0.0` fresh inside each Sandbox, which `^` resolves up to `1.1.0` — every new AI Site project now gets the real, fixed version described below. If this ever seems in doubt again, re-check with `npm view @sacms/sdk versions` rather than trusting this note indefinitely.
 
 ## What `@sacms/sdk` actually is
 
