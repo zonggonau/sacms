@@ -2,7 +2,7 @@
 
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { revalidatePath } from "next/cache"
 import { createWebhookSchema, updateWebhookSchema } from "@/lib/validations"
 import { z } from "zod/v4"
@@ -26,7 +26,8 @@ export async function getWebhooksAction(tenantSlug: string) {
       return { error: "Forbidden" }
     }
 
-    const webhooks = await db.webhook.findMany({
+    const tenantDb = await getTenantDb(tenant.slug)
+    const webhooks = await tenantDb.webhook.findMany({
       where: { tenantId: tenant.id },
       orderBy: { createdAt: "desc" },
       select: {
@@ -74,7 +75,8 @@ export async function createWebhookAction(tenantSlug: string, data: z.infer<type
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     const { name, url, secret, events, enabled } = parsed.data
 
-    const webhook = await db.webhook.create({
+    const tenantDb = await getTenantDb(tenant.slug)
+    const webhook = await tenantDb.webhook.create({
       data: {
         tenantId: tenant.id,
         name,
@@ -115,7 +117,8 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
       return { error: "Forbidden - Admin access required" }
     }
 
-    const webhook = await db.webhook.findFirst({
+    const tenantDb = await getTenantDb(tenant.slug)
+    const webhook = await tenantDb.webhook.findFirst({
       where: { id: webhookId, tenantId: tenant.id },
     })
     if (!webhook) return { error: "Webhook not found" }
@@ -140,7 +143,7 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
     if (enabled !== undefined) updateData.enabled = enabled
     if (headers !== undefined) updateData.headers = headers || null
 
-    const updated = await db.webhook.update({
+    const updated = await tenantDb.webhook.update({
       where: { id: webhookId },
       data: updateData,
     })
@@ -175,16 +178,17 @@ export async function deleteWebhookAction(tenantSlug: string, webhookId: string)
       return { error: "Forbidden - Admin access required" }
     }
 
-    const webhook = await db.webhook.findFirst({
+    const tenantDb = await getTenantDb(tenant.slug)
+    const webhook = await tenantDb.webhook.findFirst({
       where: { id: webhookId, tenantId: tenant.id },
     })
     if (!webhook) return { error: "Webhook not found" }
 
-    await db.webhookLog.deleteMany({
+    await tenantDb.webhookLog.deleteMany({
       where: { webhookId },
     })
 
-    await db.webhook.delete({
+    await tenantDb.webhook.delete({
       where: { id: webhookId },
     })
 
