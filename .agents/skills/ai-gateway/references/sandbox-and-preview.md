@@ -13,7 +13,7 @@ All three "do work" functions take the same four leading args (`tenantDb, tenant
 
 ## Concurrency
 
-`setupLocks` (an in-memory `Map<projectId, Promise>`) serializes `prepareSandbox`/`ensurePreview` calls **per project within this one server process** — so the preview pane's poll and an in-flight agent `runCommand` for the same project queue instead of racing `npm install`. This is explicitly **not** safe across multiple app instances behind a load balancer: two instances could still race the same project's sandbox. Inherited as-is from the reference implementation; fine for the current single-instance deployment, flag for explicit sign-off if horizontal scaling of the app server is ever introduced.
+`withProjectLock` serializes `prepareSandbox`/`ensurePreview` calls per project so the preview pane's poll and an in-flight agent `runCommand` don't race `npm install`. Redis-backed (Upstash, via `getRedis()`) when configured — a real cross-instance spinlock (`SET NX EX` + poll, 600s TTL as a crashed-holder safety net), so two app instances behind a load balancer can't race the same project's sandbox. Falls back to the original in-memory per-process `Map<projectId, Promise>` queue when Redis isn't configured — same single-instance-only guarantee as before. If Redis is ever removed as a hard dependency, re-check this still degrades sanely.
 
 ## Credentials and failure modes
 

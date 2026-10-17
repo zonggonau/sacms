@@ -1,10 +1,11 @@
 import "server-only"
 
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Sandbox } from "@vercel/sandbox"
 import type { PrismaClient } from "../../../prisma/generated-client"
 import { getVercelToken, getVercelTeamId, getVercelProjectId } from "@/lib/vercel-client"
 import { resolveFrontendEnv, renderDotEnv } from "@/lib/infrastructure/frontend-env"
+import { getRedis } from "@/lib/redis"
 import { listProjectFiles } from "./files"
 
 /*
@@ -54,17 +55,47 @@ async function getSandbox(tenantId: string, projectId: string) {
   })
 }
 
-// Serializes setup per project within this server instance so concurrent
-// requests (the preview pane and an agent command) don't race `npm install`.
-const setupLocks = new Map<string, Promise<unknown>>()
+// Serializes setup per project so concurrent requests (the preview pane and
+// an agent command) don't race `npm install`. Redis-backed when configured
+// (real cross-instance mutual exclusion — the actual correctness property
+// that matters if the app ever runs more than one instance behind a load
+// balancer), falling back to this in-memory per-process queue otherwise —
+// same single-instance guarantee this always had.
+const localLocks = new Map<string, Promise<unknown>>()
+const LOCK_TTL_SECONDS = 600 // generous for a slow npm install; bounds how long a crashed holder can wedge the lock
+const LOCK_POLL_MS = 500
 
-function withProjectLock<T>(projectId: string, task: () => Promise<T>): Promise<T> {
-  const previous = setupLocks.get(projectId) ?? Promise.resolve()
-  const next = previous.catch(() => undefined).then(task)
-  setupLocks.set(projectId, next)
-  return next.finally(() => {
-    if (setupLocks.get(projectId) === next) setupLocks.delete(projectId)
-  })
+async function withProjectLock<T>(projectId: string, task: () => Promise<T>): Promise<T> {
+  const redis = getRedis()
+  if (!redis) {
+    const previous = localLocks.get(projectId) ?? Promise.resolve()
+    const next = previous.catch(() => undefined).then(task)
+    localLocks.set(projectId, next)
+    return next.finally(() => {
+      if (localLocks.get(projectId) === next) localLocks.delete(projectId)
+    })
+  }
+
+  // Redis path: spinlock, not a strict FIFO queue like the in-memory one —
+  // mutual exclusion is what's actually required here, not call order.
+  const lockKey = `ai-site-sandbox-lock:${projectId}`
+  const token = randomUUID()
+  const deadline = Date.now() + SANDBOX_TIMEOUT_MS
+  while (!(await redis.set(lockKey, token, { nx: true, ex: LOCK_TTL_SECONDS }))) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out waiting for the sandbox setup lock on project ${projectId}.`)
+    }
+    await new Promise((resolve) => setTimeout(resolve, LOCK_POLL_MS))
+  }
+
+  try {
+    return await task()
+  } finally {
+    // Release only if we still hold it — the TTL above is the real safety
+    // net against a crashed holder, this is just tidy early release.
+    const current = await redis.get(lockKey).catch(() => null)
+    if (current === token) await redis.del(lockKey).catch(() => undefined)
+  }
 }
 
 /** Syncs the project's files and installs dependencies. Returns the ready sandbox. */
