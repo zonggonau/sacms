@@ -77,7 +77,7 @@ Field Selection Rules:
 - Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
 - Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
 
-All slugs must be snake_case or kebab-case lowercase.`
+All slugs must be kebab-case lowercase (letters, digits, hyphens only — never underscores), e.g. 'cover-image', 'is-available'.`
 
 async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
   const { resolveGatewayModel, enforceAiQuota, recordAiUsage, refundAiQuota, toUsageTotals, withAiRetry } = await import("./ai")
@@ -408,6 +408,44 @@ export function generateHeuristicSchema(prompt: string): GeneratedSystemSchema {
     }
 }
 
+/**
+ * The save endpoint (POST .../ai-builder/import-schema) enforces the exact
+ * same kebab-case-only slug rule a human hits creating a Content Type by
+ * hand (see createContentTypeSchema in lib/validations/admin.ts): letters,
+ * digits, hyphens — no underscores. The system prompt above tells the model
+ * "snake_case or kebab-case", and every hardcoded fallback/blueprint schema
+ * below and in ai/domain-knowledge-types.ts uses snake_case slugs — so a
+ * schema that previews fine routinely 400s on save. Normalizing every slug
+ * (model-level and field-level, including relationSlug/componentSlug
+ * references, with the same function so cross-references still match) right
+ * before it's returned closes this for all three paths — real AI, blueprint
+ * match, and heuristic fallback — without touching the platform-wide rule.
+ */
+function toKebabSlug(input: string): string {
+  const slug = input.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+  return slug || "field"
+}
+
+function normalizeSchemaSlugs(schema: GeneratedSystemSchema): GeneratedSystemSchema {
+  type Model = GeneratedSystemSchema["contentTypes"][number]
+  const normalizeModel = (model: Model): Model => ({
+    ...model,
+    slug: toKebabSlug(model.slug),
+    fields: (model.fields || []).map((field) => ({
+      ...field,
+      slug: toKebabSlug(field.slug),
+      ...(field.relationSlug ? { relationSlug: toKebabSlug(field.relationSlug) } : {}),
+      ...(field.componentSlug ? { componentSlug: toKebabSlug(field.componentSlug) } : {}),
+    })),
+  })
+
+  return {
+    contentTypes: (schema.contentTypes || []).map(normalizeModel),
+    singleTypes: (schema.singleTypes || []).map(normalizeModel),
+    components: (schema.components || []).map(normalizeModel),
+  }
+}
+
 export interface GenerateSystemSchemaResult {
   schema: GeneratedSystemSchema
   /** True if the real LLM call failed/was unavailable and a canned blueprint or heuristic was used instead. */
@@ -421,7 +459,7 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
     const schema = await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
-    return { schema, usedFallback: false }
+    return { schema: normalizeSchemaSlugs(schema), usedFallback: false }
   } catch (error: any) {
     // enforceAiQuota (src/lib/ai.ts) throws this with .status === 429 when
     // the user/tenant is simply out of AI credits — not a Gateway/infra
@@ -447,11 +485,11 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
       if (matched) {
         console.log(`[AI Schema] Matched domain knowledge blueprint: ${matched.name}`)
         return {
-          schema: {
+          schema: normalizeSchemaSlugs({
             contentTypes: matched.schema.contentTypes as any,
             singleTypes: matched.schema.singleTypes as any,
             components: (matched.schema.components || []) as any,
-          },
+          }),
           usedFallback: true,
           fallbackReason,
         }
@@ -462,6 +500,6 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
 
     // 3. Fallback Heuristic Generator Terstruktur
     console.log("[AI Schema] Using High-Accuracy Multi-Collection Domain Synthesizer...")
-    return { schema: generateHeuristicSchema(prompt), usedFallback: true, fallbackReason }
+    return { schema: normalizeSchemaSlugs(generateHeuristicSchema(prompt)), usedFallback: true, fallbackReason }
   }
 }
