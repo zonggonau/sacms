@@ -1,6 +1,5 @@
 import "server-only"
 
-import { randomBytes } from "crypto"
 import { db } from "@/lib/database"
 import { deployToVercel } from "@/lib/vercel-client"
 import { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } from "./frontend-env"
@@ -36,23 +35,6 @@ export async function deployTenantFrontend(
   origin: string,
   files: DeployFile[],
 ): Promise<DeployFrontendResult> {
-  let tokenRecord = await db.apiToken.findFirst({
-    where: { tenantId, name: `SaCMS Site (${tenantSlug})` },
-  })
-
-  if (!tokenRecord) {
-    const generatedToken = `sacms_live_${randomBytes(24).toString("hex")}`
-    tokenRecord = await db.apiToken.create({
-      data: {
-        tenantId,
-        name: `SaCMS Site (${tenantSlug})`,
-        token: generatedToken,
-        type: "service",
-        permissions: ["read", "write"],
-      },
-    })
-  }
-
   // `origin` reflects whoever is hitting this route's own browser session —
   // right for a real public domain, but a dead address to bake into a real
   // Vercel deployment when "Publish" is triggered from local dev's own
@@ -102,7 +84,7 @@ export async function deployTenantFrontend(
     url: deployResult.url,
     state: deployResult.state,
     vercelProjectId: deployResult.projectId,
-    apiKeyName: tokenRecord.name,
+    apiKeyName: `SaCMS Cloud Hosting (${tenantSlug})`,
     simulated: deployResult.simulated ?? false,
   }
 }

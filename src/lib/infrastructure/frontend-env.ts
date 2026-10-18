@@ -1,5 +1,5 @@
 import { db } from "@/lib/database"
-import { randomBytes } from "crypto"
+import { randomBytes, createHash } from "crypto"
 
 /**
  * The environment a deployed SaCMS frontend needs — nothing more than what
@@ -78,23 +78,57 @@ function parseEnvSetting(raw: string | null | undefined): Record<string, string>
   }
 }
 
-/** Get-or-create the dedicated service token a deployed frontend uses to
- *  authenticate against this workspace's SaCMS API. */
+const FRONTEND_DEPLOY_TOKEN_SETTING_KEY = (tenantId: string) => `${tenantId}_frontend_deploy_token_plain`
+
+/**
+ * Get-or-create the dedicated service token a deployed frontend uses to
+ * authenticate against this workspace's SaCMS API.
+ *
+ * Every public API route (e.g. `app/api/public/[tenant]/single/.../route.ts`)
+ * looks a token up by its SHA-256 hash — `ApiToken.token` is never the raw
+ * value, matching `api-token-registry.ts`'s canonical pattern. But unlike a
+ * user-facing "copy this once" API key, this one has to be re-embedded into
+ * every generated `.env.local`/Vercel deploy, so the plaintext has to stay
+ * recoverable, not shown-once-and-discarded. Storing it raw in `ApiToken.token`
+ * (the original bug here) silently broke every single AI Site preview and
+ * every frontend this ever deployed — the hash lookup could never match a
+ * plaintext value, so every CMS call from a generated site 401'd with
+ * "Invalid API token", confirmed live. Fixed by hashing it for `ApiToken`
+ * like everything else, and separately keeping the one plaintext copy we
+ * still need in a Setting row.
+ */
 export async function getFrontendDeployToken(tenantId: string, tenantSlug: string): Promise<string> {
   const name = `SaCMS Cloud Hosting (${tenantSlug})`
-  let rec = await db.apiToken.findFirst({ where: { tenantId, name } })
-  if (!rec) {
-    rec = await db.apiToken.create({
-      data: {
-        tenantId,
-        name,
-        token: `sacms_live_${randomBytes(24).toString("hex")}`,
-        type: "service",
-        permissions: ["read", "write"],
-      },
+  const [existing, storedPlain] = await Promise.all([
+    db.apiToken.findFirst({ where: { tenantId, name } }),
+    db.setting.findUnique({ where: { key: FRONTEND_DEPLOY_TOKEN_SETTING_KEY(tenantId) } }),
+  ])
+
+  if (existing && storedPlain?.value) {
+    const hash = createHash("sha256").update(storedPlain.value).digest("hex")
+    if (hash === existing.token) return storedPlain.value
+  }
+
+  // No valid (token, plaintext) pair on file — mint and store a fresh one.
+  // Covers first-ever creation AND migrating any pre-fix row that still has
+  // its plaintext sitting in `ApiToken.token` (that value never matched the
+  // hash lookup anyway, so rotating it here breaks nothing that worked).
+  const plainToken = `sacms_live_${randomBytes(24).toString("hex")}`
+  const hashedToken = createHash("sha256").update(plainToken).digest("hex")
+
+  if (existing) {
+    await db.apiToken.update({ where: { id: existing.id }, data: { token: hashedToken } })
+  } else {
+    await db.apiToken.create({
+      data: { tenantId, name, token: hashedToken, type: "service", permissions: ["read", "write"] },
     })
   }
-  return rec.token
+  await db.setting.upsert({
+    where: { key: FRONTEND_DEPLOY_TOKEN_SETTING_KEY(tenantId) },
+    update: { value: plainToken },
+    create: { key: FRONTEND_DEPLOY_TOKEN_SETTING_KEY(tenantId), tenantId, value: plainToken },
+  })
+  return plainToken
 }
 
 const PUBLIC_API_FALLBACK = "https://developer.sacms.cloud"

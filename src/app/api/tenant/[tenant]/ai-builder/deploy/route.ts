@@ -4,6 +4,7 @@ import { addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
+import { getFrontendDeployToken, resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
@@ -253,32 +254,17 @@ export const POST = withStaffAuth(
     }
 
     // ── ACTION 2: 1-CLICK DEPLOY TO VERCEL ──────────────────────────────────
-    // Need the token's own value (not just that it exists) to bake into the
-    // placeholder page below when no real files are supplied yet — look it
-    // up/create it here too; deployTenantFrontend does the same idempotent
-    // find-or-create internally, so this never creates a duplicate.
-    let tokenRecord = await db.apiToken.findFirst({
-      where: {
-        tenantId,
-        name: `SaCMS Site (${tenantSlug})`,
-      }
-    })
+    // Need the token's own plaintext value (not just that it exists) to bake
+    // into the placeholder page below when no real files are supplied yet.
+    // Same token `deployTenantFrontend` resolves internally via
+    // `resolveFrontendEnv` — reuse it here instead of minting a second,
+    // separately-named one; `getFrontendDeployToken` is idempotent.
+    const deployToken = await getFrontendDeployToken(tenantId, tenantSlug)
 
-    if (!tokenRecord) {
-      const { randomBytes } = await import("crypto")
-      const generatedToken = `sacms_live_${randomBytes(24).toString("hex")}`
-      tokenRecord = await db.apiToken.create({
-        data: {
-          tenantId,
-          name: `SaCMS Site (${tenantSlug})`,
-          token: generatedToken,
-          type: "service",
-          permissions: ["read", "write"],
-        }
-      })
-    }
-
-    const origin = req.nextUrl.origin || "http://localhost:3000"
+    // req.nextUrl.origin is wherever the admin's own browser hit this route
+    // from — right for a real public domain, but a dead address to bake
+    // into the placeholder's own fetch call when triggered from local dev.
+    const origin = resolveApiOrigin()
     const projectName = `sacms-${tenantSlug}`
 
     // Prepare Next.js starter files if not provided
@@ -332,7 +318,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 async function getSiteData() {
   try {
     const res = await fetch("${origin}/api/public/${tenantSlug}/content/articles?pagination[pageSize]=6", {
-      headers: { "Authorization": "Bearer ${tokenRecord.token}" },
+      headers: { "Authorization": "Bearer ${deployToken}" },
       next: { revalidate: 60 }
     })
     return await res.json()
