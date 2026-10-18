@@ -3,10 +3,12 @@
 import type { UIMessage } from "ai"
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { toast } from "sonner"
-import { Eye, Code2, ExternalLink, RefreshCw, Trash2, Loader2, Globe } from "lucide-react"
+import { Eye, Code2, ExternalLink, RefreshCw, Trash2, Loader2, Globe, Rocket, PartyPopper } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { ChatConversation } from "./chat-conversation"
 import { CodeView } from "./code-view"
 import { PreviewPane } from "./preview-pane"
@@ -37,6 +39,28 @@ export function ChatWorkspace({
 
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const [confirmPublishOpen, setConfirmPublishOpen] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [publishedUrl, setPublishedUrl] = useState<string | null>(null)
+
+  async function publishProject() {
+    setPublishing(true)
+    try {
+      const res = await fetch(
+        `/api/tenant/${encodeURIComponent(tenantSlug)}/ai-site/projects/${projectId}/publish`,
+        { method: "POST" },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body?.error || "Gagal publish")
+      setPublishedUrl(body.url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   async function deleteProject() {
     setDeleting(true)
     try {
@@ -91,6 +115,15 @@ export function ChatWorkspace({
           </Button>
         ) : null}
         <Button
+          size="sm"
+          onClick={() => setConfirmPublishOpen(true)}
+          disabled={publishing}
+          className="h-8 gap-1.5 text-xs font-bold"
+        >
+          {publishing ? <Loader2 className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
+          Publish
+        </Button>
+        <Button
           aria-label="Hapus proyek"
           onClick={() => setConfirmOpen(true)}
           size="icon"
@@ -110,6 +143,46 @@ export function ChatWorkspace({
         variant="destructive"
         onConfirm={deleteProject}
       />
+
+      <ConfirmDialog
+        open={confirmPublishOpen}
+        onOpenChange={setConfirmPublishOpen}
+        title="Publish website ini ke hosting produksi?"
+        description="File yang sedang di preview akan dideploy ke hosting Vercel asli milik workspace ini — bukan sekadar preview sementara lagi. Setelah live, kamu bisa pasang domain sendiri dari halaman Infrastruktur."
+        confirmLabel="Publish"
+        onConfirm={publishProject}
+      />
+
+      <Dialog open={!!publishedUrl} onOpenChange={(open) => !open && setPublishedUrl(null)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <PartyPopper className="size-5 text-primary" /> Website kamu sudah live!
+          </DialogTitle>
+          <div className="space-y-4 pt-1">
+            <div className="rounded-xl border border-border bg-muted/30 p-3">
+              <a
+                href={publishedUrl ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                className="break-all text-sm font-medium text-primary hover:underline"
+              >
+                {publishedUrl}
+              </a>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Sudah bisa diakses publik. Mau pakai domain sendiri? Atur lewat halaman Infrastruktur workspace ini.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setPublishedUrl(null)}>
+                Tutup
+              </Button>
+              <Button asChild size="sm">
+                <Link href={`/dashboard/${tenantId}/infrastructure`}>Atur Domain</Link>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 w-full min-w-0 shrink-0 flex-col border-r border-border md:w-96 md:max-w-[42%]">

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { deployToVercel, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
-import { randomBytes } from "crypto"
+import { addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
+import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
@@ -253,7 +253,10 @@ export const POST = withStaffAuth(
     }
 
     // ── ACTION 2: 1-CLICK DEPLOY TO VERCEL ──────────────────────────────────
-    // 1. Get or create a dedicated API key for this website deployment
+    // Need the token's own value (not just that it exists) to bake into the
+    // placeholder page below when no real files are supplied yet — look it
+    // up/create it here too; deployTenantFrontend does the same idempotent
+    // find-or-create internally, so this never creates a duplicate.
     let tokenRecord = await db.apiToken.findFirst({
       where: {
         tenantId,
@@ -262,6 +265,7 @@ export const POST = withStaffAuth(
     })
 
     if (!tokenRecord) {
+      const { randomBytes } = await import("crypto")
       const generatedToken = `sacms_live_${randomBytes(24).toString("hex")}`
       tokenRecord = await db.apiToken.create({
         data: {
@@ -277,7 +281,7 @@ export const POST = withStaffAuth(
     const origin = req.nextUrl.origin || "http://localhost:3000"
     const projectName = `sacms-${tenantSlug}`
 
-    // 2. Prepare Next.js starter files if not provided
+    // Prepare Next.js starter files if not provided
     const deployFiles = files.length > 0 ? files : [
       {
         name: "package.json",
@@ -370,58 +374,13 @@ export default async function HomePage() {
       }
     ]
 
-    // 3. Execute Vercel Deployment — the frontend's full env (custom vars
-    //    from the Environment tab + fixed SACMS_* connection vars) is
-    //    assembled once.
-    const { resolveFrontendEnv, pushEnvToVercelProject } = await import("@/lib/infrastructure/frontend-env")
-    const envVars = await resolveFrontendEnv(tenantId, tenantSlug, origin)
-
-    const deployResult = await deployToVercel(projectName, deployFiles, envVars)
-
-    // Persist every var onto the Vercel project itself so redeploys from
-    // Vercel's own dashboard keep them, not just this one deployment.
-    if (deployResult.projectId && !deployResult.simulated) {
-      pushEnvToVercelProject(deployResult.projectId, envVars)
-        .then((r) => {
-          if (r.failed.length) console.warn("[deploy] Vercel env push partial:", r.failed)
-        })
-        .catch((e) => console.warn("[deploy] Vercel env push failed:", e))
-    }
-
-    // 4. Save deployment info in database settings and tenant model
-    await Promise.all([
-      db.tenant.update({
-        where: { id: tenantId },
-        data: {
-          vercelDeploymentUrl: deployResult.url,
-          vercelProjectId: deployResult.projectId || undefined,
-        }
-      }).catch((err) => console.warn("Failed to update tenant vercel fields:", err)),
-      db.setting.upsert({
-        where: { key: `${tenantId}_v0Status` },
-        update: { value: "project" },
-        create: { tenantId, key: `${tenantId}_v0Status`, value: "project" }
-      }),
-      db.setting.upsert({
-        where: { key: `${tenantId}_vercelDeploymentUrl` },
-        update: { value: deployResult.url },
-        create: { tenantId, key: `${tenantId}_vercelDeploymentUrl`, value: deployResult.url }
-      }),
-      db.setting.upsert({
-        where: { key: `${tenantId}_vercelProjectId` },
-        update: { value: deployResult.projectId || "" },
-        create: { tenantId, key: `${tenantId}_vercelProjectId`, value: deployResult.projectId || "" }
-      })
-    ])
+    // Execute the deploy + persist deployment info — shared with AI Site's
+    // "Publish" action so both end up on the exact same Vercel project.
+    const deployResult = await deployTenantFrontend(tenantId, tenantSlug, origin, deployFiles)
 
     return NextResponse.json({
       success: true,
-      deploymentId: deployResult.id,
-      url: deployResult.url,
-      state: deployResult.state,
-      vercelProjectId: deployResult.projectId,
-      apiKeyName: tokenRecord.name,
-      simulated: deployResult.simulated ?? false,
+      ...deployResult,
       hostType: deployResult.simulated ? "simulation" : "vercel",
     })
   },
