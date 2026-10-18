@@ -25,7 +25,7 @@ export const STARTER_FILES: Record<string, string> = {
         "tailwind-merge": "^3.0.2",
         "lucide-react": "^0.475.0",
         "@radix-ui/react-slot": "^1.1.2",
-        "@sacms/sdk": "^1.0.0",
+        "@sacms/sdk": "^1.1.0",
         "server-only": "^0.0.1",
       },
       devDependencies: {
