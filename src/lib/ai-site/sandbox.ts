@@ -20,9 +20,16 @@ import { listProjectFiles } from "./files"
 const PORT = 3000
 const SANDBOX_TIMEOUT_MS = 30 * 60 * 1000
 const INSTALL_TIMEOUT_MS = 5 * 60 * 1000
-const DEV_READY_TIMEOUT_MS = 90 * 1000
+// Confirmed live: even once the dev server is genuinely up ("Ready in
+// 265ms"), Turbopack doesn't seem to reuse its compile cache between
+// requests in this sandbox environment — every single request, not just
+// the first, took ~9s. That's a deeper issue this timeout bump doesn't
+// fix, just works around: 90s only fit ~7-8 of those before giving up,
+// sometimes just short of whatever made isServing finally pass.
+const DEV_READY_TIMEOUT_MS = 180 * 1000
 const STATE_DIR = ".sacms"
 const OUTPUT_LIMIT = 8_000
+const DEV_LOG_PATH = `${STATE_DIR}/dev.log`
 
 export class SandboxConfigError extends Error {}
 
@@ -50,7 +57,14 @@ async function getSandbox(tenantId: string, projectId: string) {
     image: "vercel/sandbox/node:24",
     ports: [PORT],
     timeout: SANDBOX_TIMEOUT_MS,
-    resources: { vcpus: 2 },
+    // Memory scales with vcpus (2048MB per vcpu) — 2 vcpus' 4GB genuinely
+    // wasn't enough for Next.js 16's Turbopack dev server: confirmed live,
+    // a real preview OOM'd ("JavaScript heap out of memory") after a
+    // handful of requests, each taking ~9-10s (symptomatic of Turbopack
+    // thrashing its compile cache under memory pressure rather than
+    // reusing it) on a project with nothing unusual in its own code. 4
+    // vcpus -> 8GB gives real headroom.
+    resources: { vcpus: 4 },
     ...(await credentials()),
   })
 }
@@ -116,8 +130,18 @@ export async function ensurePreview(tenantDb: PrismaClient, tenantId: string, te
 
   await withProjectLock(projectId, async () => {
     if (await isServing(url)) return
-    await sandbox.runCommand({ cmd: "npm", args: ["run", "dev"], detached: true })
-    await waitUntilServing(url)
+    // Detached, so its own stdout/stderr is never captured anywhere — a
+    // crash (compile error, missing dependency, whatever) otherwise only
+    // ever surfaces as an opaque "did not start in time" with zero clue
+    // why. Redirect to a log file (via a shell, since runCommand's
+    // cmd/args form execs the binary directly, no redirection support) so
+    // a timeout can read back what actually happened.
+    await sandbox.runCommand({
+      cmd: "sh",
+      args: ["-c", `npm run dev > ${DEV_LOG_PATH} 2>&1`],
+      detached: true,
+    })
+    await waitUntilServing(sandbox, url)
   })
   await sandbox.extendTimeout(SANDBOX_TIMEOUT_MS).catch(() => undefined)
 
@@ -209,13 +233,19 @@ async function isServing(url: string) {
   return response !== null && ![502, 503, 504].includes(response.status)
 }
 
-async function waitUntilServing(url: string) {
+async function waitUntilServing(sandbox: Sandbox, url: string) {
   const deadline = Date.now() + DEV_READY_TIMEOUT_MS
   while (Date.now() < deadline) {
     if (await isServing(url)) return
     await new Promise((resolve) => setTimeout(resolve, 1500))
   }
-  throw new Error("The preview server did not start in time.")
+  // Best-effort diagnostics — the sandbox itself may already be gone by
+  // now (e.g. its own timeout elapsed, or it was deleted/recreated
+  // concurrently), in which case reading the log throws its own unrelated
+  // error. Never let that replace the real "did not start in time" —
+  // that's the one thing we know for certain actually happened.
+  const log = await readText(sandbox, DEV_LOG_PATH).catch(() => null)
+  throw new Error(`The preview server did not start in time.\n\n${truncateOutput(log || "(no output captured)")}`)
 }
 
 function truncateOutput(output: string) {
