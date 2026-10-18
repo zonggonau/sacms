@@ -104,14 +104,6 @@ model Tenant {
   vercelDeploymentUrl    String?
   aiTokensUsed           Int                           @default(0)
   aiCreditsExtra         Int                           @default(0)
-  /// Set when the tenant finalizes its CMS schema (Content Types/Single
-  /// Types/Components) from the Schema Builder — null means "draft", any
-  /// value means "final". While final, every schema-mutating action (manual
-  /// CRUD, AI Schema Generator import, AI Site's cms_* builder tools) is
-  /// rejected; the tenant must return to draft first (clearing this field)
-  /// to make any change. Lets AI Site require a settled schema before it
-  /// starts building a frontend against it. See src/lib/schema-lock.ts.
-  schemaFinalizedAt      DateTime?
   /// No longer read: storage add-ons live in StorageAddon and expire monthly.
   storageExtraBytes      BigInt                        @default(0)
   apiCallsExtra          Int                           @default(0)

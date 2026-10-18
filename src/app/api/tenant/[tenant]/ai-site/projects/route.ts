@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
-import { assertSchemaFinalizedForAiSite } from "@/lib/schema-lock"
 
 export const GET = withStaffAuth(async (_req, _context, { access }) => {
   const tenantDb = await getTenantDb(access.tenant.slug)
@@ -25,9 +24,6 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
 }, { minRole: "editor" })
 
 export const POST = withStaffAuth(async (req, _context, { access }) => {
-  const lockError = await assertSchemaFinalizedForAiSite(access.tenantId)
-  if (lockError) return apiError("conflict", { message: lockError.error })
-
   const { name, description } = await req.json().catch(() => ({}))
   if (!name || typeof name !== "string" || !name.trim()) {
     return apiError("validation", { message: "Project name is required" })

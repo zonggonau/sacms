@@ -9,7 +9,6 @@ import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createContentTypeSchema, updateContentTypeSchema } from "@/lib/validations/admin"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
-import { isSchemaFinalized, SCHEMA_LOCKED_MESSAGE } from "@/lib/schema-lock"
 
 export async function getContentTypesAction(tenantSlug: string) {
   try {
@@ -177,8 +176,6 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_CREATE)
     if (!rbac.allowed) return { error: "Forbidden" }
 
-    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
-
     const result = createContentTypeSchema.safeParse(data)
     if (!result.success) {
       console.error("Zod validation error in createContentTypeAction:", result.error)
@@ -257,8 +254,6 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }
-
-    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
 
     const result = updateContentTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
@@ -340,8 +335,6 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_DELETE)
     if (!rbac.allowed) return { error: "Forbidden" }
-
-    if (await isSchemaFinalized(access.tenantId)) return { error: SCHEMA_LOCKED_MESSAGE }
 
     const tenantDb = await getTenantDb(tenantSlug)
 

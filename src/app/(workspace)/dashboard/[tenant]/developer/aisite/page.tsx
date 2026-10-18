@@ -3,10 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { isSchemaFinalized } from "@/lib/schema-lock"
-import { buildAiSitePromptFromSchema } from "@/lib/ai-site/schema-prompt"
 import { AiSiteLanding } from "@/components/dashboard/ai-site/ai-site-landing"
-import { SchemaNotFinalizedNotice } from "@/components/dashboard/ai-site/schema-not-finalized-notice"
 
 /**
  * One AI Site project per workspace — it's the single website being
@@ -32,24 +29,11 @@ export default async function AiSiteHomePage({ params }: { params: Promise<{ ten
     redirect(`/dashboard/${tenantSlug}/developer/aisite/${project.id}/chats/${project.chats[0].id}`)
   }
 
-  // No project yet — AI Site must not let a tenant start building a
-  // frontend against a schema that's still subject to change underneath
-  // it. Finalize the schema at /developer/schema first.
-  if (!(await isSchemaFinalized(access.tenantId))) {
-    return <SchemaNotFinalizedNotice tenantId={tenantSlug} />
-  }
-
-  // Schema's already finalized — the user just designed this structure, so
-  // don't make them re-describe it in prose. Pre-fill the prompt from it;
-  // they can still edit before generating.
-  const suggestedPrompt = await buildAiSitePromptFromSchema(tenantDb, access.tenantId)
-
   return (
     <AiSiteLanding
       tenantSlug={access.tenant.slug}
       tenantId={tenantSlug}
       existingProjectId={project?.id ?? null}
-      initialPrompt={suggestedPrompt}
     />
   )
 }

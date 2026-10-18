@@ -2,12 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key, Zap, Lock, LockOpen, Loader2 } from "lucide-react"
+import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key, Zap } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
 
@@ -18,36 +16,13 @@ interface SchemaGeneratorClientProps {
     contentTypes: Array<{ name: string; slug: string; fieldCount: number }>
     singleTypes: Array<{ name: string; slug: string; fieldCount: number }>
   }
-  schemaFinalized: boolean
 }
 
-export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSummary, schemaFinalized }: SchemaGeneratorClientProps) {
+export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSummary }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const [diagramRefreshKey, setDiagramRefreshKey] = useState(0)
   const [showIdeHint, setShowIdeHint] = useState(true)
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
-  const [finalized, setFinalized] = useState(schemaFinalized)
-  const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false)
-  const [updatingStatus, setUpdatingStatus] = useState(false)
-
-  async function setSchemaFinalized(next: boolean) {
-    setUpdatingStatus(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/schema-status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ finalized: next }),
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body?.error || "Gagal mengubah status skema")
-      setFinalized(next)
-      toast.success(next ? "Skema difinalkan — siap dipakai AI Site." : "Skema dikembalikan ke draft — bisa diedit lagi.")
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Terjadi kesalahan")
-    } finally {
-      setUpdatingStatus(false)
-    }
-  }
 
   return (
     <div className="flex flex-col gap-4 w-full">
@@ -67,49 +42,15 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
               <Zap className="h-3 w-3" /> Vercel AI Gateway
             </Badge>
-            {finalized ? (
-              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Final
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-muted text-muted-foreground border-border text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <LockOpen className="h-3 w-3" /> Draft
-              </Badge>
-            )}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             Jelaskan struktur bisnis atau aplikasi Anda. AI merancang Content Type &amp; relasi schema CMS secara otomatis via <strong>Vercel AI Gateway</strong>. Terhubung langsung ke Server MCP dan REST API untuk frontend Anda.
           </p>
           <p className="text-[11px] text-muted-foreground mt-1">
-            {finalized
-              ? "Skema terkunci — AI Site sudah bisa membangun frontend terhadap struktur ini. Buat draft untuk mengubahnya lagi."
-              : "Skema masih draft — bisa diubah bebas, tapi AI Site tidak bisa mulai membangun frontend sampai skema ini difinalkan."}
+            Skema selalu bisa diubah kapan saja — AI Site tidak mensyaratkan status final apa pun untuk mulai membangun frontend.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {finalized ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={updatingStatus}
-              onClick={() => setSchemaFinalized(false)}
-              className="h-8 gap-1.5 font-bold text-xs rounded-xl"
-            >
-              {updatingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LockOpen className="h-3.5 w-3.5" />}
-              Buat Draft untuk Edit
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              disabled={updatingStatus || !hasSchema}
-              title={!hasSchema ? "Buat minimal satu Content Type/Single Type dulu" : undefined}
-              onClick={() => setConfirmFinalizeOpen(true)}
-              className="h-8 gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs"
-            >
-              {updatingStatus ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Lock className="h-3.5 w-3.5" />}
-              Finalkan Skema
-            </Button>
-          )}
           <Button
             size="sm"
             onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
@@ -120,15 +61,6 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
           </Button>
         </div>
       </div>
-
-      <ConfirmDialog
-        open={confirmFinalizeOpen}
-        onOpenChange={setConfirmFinalizeOpen}
-        title="Finalkan skema ini?"
-        description="Setelah final, Content Type, Single Type, dan Component tidak bisa ditambah/diubah/dihapus sampai kamu membuat draft lagi. AI Site baru bisa mulai membangun frontend setelah skema final."
-        confirmLabel="Finalkan"
-        onConfirm={() => setSchemaFinalized(true)}
-      />
 
       {/* ── "Build in your own IDE" hint banner ── */}
       {showIdeHint && (

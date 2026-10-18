@@ -3,7 +3,6 @@ import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { listChats, createChat, MESSAGE_MAX_LENGTH } from "@/lib/ai-site/chats"
 import { isAllowedAiSiteModel } from "@/lib/ai-site/models"
-import { assertSchemaFinalizedForAiSite } from "@/lib/schema-lock"
 
 export const GET = withStaffAuth(async (_req, context, { access }) => {
   const { projectId } = await context.params
@@ -19,9 +18,6 @@ export const GET = withStaffAuth(async (_req, context, { access }) => {
 }, { minRole: "editor" })
 
 export const POST = withStaffAuth(async (req, context, { access }) => {
-  const lockError = await assertSchemaFinalizedForAiSite(access.tenantId)
-  if (lockError) return apiError("conflict", { message: lockError.error })
-
   const { projectId } = await context.params
   const tenantDb = await getTenantDb(access.tenant.slug)
   const project = await tenantDb.aiSiteProject.findFirst({
