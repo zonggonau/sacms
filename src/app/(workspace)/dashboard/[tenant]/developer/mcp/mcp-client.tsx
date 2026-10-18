@@ -82,6 +82,23 @@ function generateConfig(platform: string, mcpUrl: string, token: string = "YOUR_
         }
       }, null, 2)
 
+    case "emergent":
+      // Emergent's "New MCP Server" dialog takes Name + a pasted JSON block
+      // (confirmed via Appwrite's own MCP setup guide for Emergent) in the
+      // same { type: "http", url, headers } shape VS Code uses — not a
+      // local file, but the same JSON generator applies.
+      return JSON.stringify({
+        mcpServers: {
+          sacms: {
+            type: "http",
+            url: mcpUrl,
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      }, null, 2)
+
     case "codex":
       // Codex reads MCP servers from config.toml, not JSON — fields per
       // OpenAI's official config reference (developers.openai.com/codex/
@@ -233,6 +250,24 @@ const PLATFORMS: PlatformInfo[] = [
       "Buka GitHub Copilot Chat dan beralih ke mode Agent.",
       "Tool MCP SaCMS akan otomatis terdaftar dan siap dipanggil."
     ]
+  },
+  {
+    id: "emergent",
+    name: "Emergent (Web + Android App Builder)",
+    icon: "🧬",
+    badge: "Native MCP (JSON)",
+    badgeColor: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+    configType: "json",
+    steps: [
+      "Di project Emergent Anda, buka Advanced Controls > Select MCP Tools > New MCP Server.",
+      "Isi Name dengan 'sacms', lalu tempelkan konfigurasi JSON di bawah (token Anda sudah tersemat otomatis) ke kolom JSON configuration.",
+      "Simpan — agent Emergent sekarang bisa memanggil tool SaCMS saat membangun website ATAU app Android, membaca/menulis data dari Content Type/Single Type workspace ini secara langsung.",
+      "Contoh prompt ke Emergent: 'Gunakan MCP sacms untuk ambil get_full_schema, lalu bangun aplikasi Android yang menampilkan koleksi \"artikel\" dari CMS ini.'",
+    ],
+    notes: [
+      "Emergent bisa membangun web app dan app Android (native/cross-platform) dari satu project — menyambungkannya ke MCP sacms berarti kedua platform itu membaca data CMS yang sama, bukan dua sumber data yang terpisah.",
+      "Ini koneksi MCP standar (client Emergent menghubungi server MCP SaCMS) — bukan integrasi berpemilik dan tidak memerlukan kredensial akun Emergent Anda di SaCMS sama sekali.",
+    ],
   },
   {
     id: "gemini",
