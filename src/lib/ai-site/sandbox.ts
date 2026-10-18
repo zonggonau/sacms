@@ -4,7 +4,7 @@ import { createHash, randomUUID } from "node:crypto"
 import { Sandbox } from "@vercel/sandbox"
 import type { PrismaClient } from "../../../prisma/generated-client"
 import { getVercelToken, getVercelTeamId, getVercelProjectId } from "@/lib/vercel-client"
-import { resolveFrontendEnv, renderDotEnv } from "@/lib/infrastructure/frontend-env"
+import { resolveFrontendEnv, renderDotEnv, resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
 import { getRedis } from "@/lib/redis"
 import { listProjectFiles } from "./files"
 
@@ -210,8 +210,7 @@ async function syncFiles(sandbox: Sandbox, tenantDb: PrismaClient, projectId: st
  * identically once actually deployed.
  */
 async function writeFrontendEnv(sandbox: Sandbox, tenantId: string, tenantSlug: string) {
-  const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://developer.sacms.cloud"
-  const env = await resolveFrontendEnv(tenantId, tenantSlug, apiOrigin)
+  const env = await resolveFrontendEnv(tenantId, tenantSlug, resolveApiOrigin())
   await sandbox.writeFiles([{ path: ".env.local", content: renderDotEnv(env) }])
 }
 

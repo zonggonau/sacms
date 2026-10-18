@@ -2100,9 +2100,10 @@ export default async function NewsPage() {
           // Assemble the workspace's full frontend env (saved Environment
           // vars + fixed SACMS_* connection vars), then let the caller's
           // envVars override any non-reserved key.
-          const { resolveFrontendEnv, pushEnvToVercelProject } = await import("@/lib/infrastructure/frontend-env")
-          const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://developer.sacms.cloud"
-          const resolvedEnv = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, apiOrigin)
+          const { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } = await import(
+            "@/lib/infrastructure/frontend-env"
+          )
+          const resolvedEnv = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, resolveApiOrigin())
           const mergedEnv: Record<string, string> = { ...(envVars as Record<string, string> | undefined), ...resolvedEnv }
 
           const result = await deployToVercel(projectName, files, mergedEnv)

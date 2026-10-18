@@ -3,7 +3,7 @@ import "server-only"
 import { randomBytes } from "crypto"
 import { db } from "@/lib/database"
 import { deployToVercel } from "@/lib/vercel-client"
-import { resolveFrontendEnv, pushEnvToVercelProject } from "./frontend-env"
+import { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } from "./frontend-env"
 
 export interface DeployFile {
   name: string
@@ -53,8 +53,15 @@ export async function deployTenantFrontend(
     })
   }
 
+  // `origin` reflects whoever is hitting this route's own browser session —
+  // right for a real public domain, but a dead address to bake into a real
+  // Vercel deployment when "Publish" is triggered from local dev's own
+  // browser at http://localhost:3000 (nothing outside this machine can
+  // reach that). Fall through to the same public-host guard used for
+  // Sandbox previews instead of trusting it blindly.
+  const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i.test(origin)
   const projectName = `sacms-${tenantSlug}`
-  const envVars = await resolveFrontendEnv(tenantId, tenantSlug, origin)
+  const envVars = await resolveFrontendEnv(tenantId, tenantSlug, isLocalOrigin ? resolveApiOrigin() : origin)
   const deployResult = await deployToVercel(projectName, files, envVars)
 
   if (deployResult.projectId && !deployResult.simulated) {

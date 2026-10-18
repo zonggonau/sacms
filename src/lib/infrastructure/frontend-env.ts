@@ -97,6 +97,26 @@ export async function getFrontendDeployToken(tenantId: string, tenantSlug: strin
   return rec.token
 }
 
+const PUBLIC_API_FALLBACK = "https://developer.sacms.cloud"
+
+/**
+ * The origin an external process (a remote Vercel Sandbox, a deployed
+ * frontend) uses to reach this app's API. `NEXT_PUBLIC_APP_URL` is correct
+ * for this app's own browser-facing links, but during local dev it's set to
+ * `http://localhost:3000` — reachable from the developer's own browser, but
+ * meaningless to a remote Sandbox (it resolves to the Sandbox's own
+ * loopback, not this machine) or a real Vercel deployment. Confirmed live:
+ * this caused every CMS fetch in an AI Site preview to hit the wrong host
+ * and hang for ~9s per request on every single request, which looked like a
+ * Turbopack caching bug but wasn't. Fall through to the public app host
+ * instead of baking in an address nothing outside this machine can reach.
+ */
+export function resolveApiOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  const unreachable = !configured || /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i.test(configured)
+  return unreachable ? PUBLIC_API_FALLBACK : configured.replace(/\/$/, "")
+}
+
 /**
  * The complete env set for a deployed frontend: the workspace's custom vars
  * plus the three fixed SACMS_* connection vars (which always win).
