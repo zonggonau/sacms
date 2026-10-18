@@ -131,7 +131,11 @@ export async function getFrontendDeployToken(tenantId: string, tenantSlug: strin
   return plainToken
 }
 
-const PUBLIC_API_FALLBACK = "https://developer.sacms.cloud"
+// "https://developer.sacms.cloud" was the old value here — confirmed live
+// that it no longer resolves at all (DNS failure, not just unreachable).
+// The current live app is https://sacms.cloud (CLAUDE.md's own "Live URL"),
+// which does resolve and serves the public API.
+const PUBLIC_API_FALLBACK = "https://sacms.cloud"
 
 /**
  * The origin an external process (a remote Vercel Sandbox, a deployed
