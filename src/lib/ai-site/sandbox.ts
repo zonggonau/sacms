@@ -136,9 +136,17 @@ export async function ensurePreview(tenantDb: PrismaClient, tenantId: string, te
     // why. Redirect to a log file (via a shell, since runCommand's
     // cmd/args form execs the binary directly, no redirection support) so
     // a timeout can read back what actually happened.
+    //
+    // NODE_OPTIONS=--max-old-space-size is required here, confirmed live: a
+    // real preview OOM'd with the heap capped at ~4.17GB — V8's own 64-bit
+    // default old-space ceiling — even though vcpus:4 gives this sandbox
+    // 8GB total. Raising vcpus alone doesn't raise V8's heap limit; nothing
+    // tells it to use more than its hardcoded default unless this flag is
+    // set. 6144MB (3/4 of the sandbox's 8192MB) leaves headroom for the OS
+    // and any sibling node processes next dev spawns.
     await sandbox.runCommand({
       cmd: "sh",
-      args: ["-c", `npm run dev > ${DEV_LOG_PATH} 2>&1`],
+      args: ["-c", `NODE_OPTIONS=--max-old-space-size=6144 npm run dev > ${DEV_LOG_PATH} 2>&1`],
       detached: true,
     })
     await waitUntilServing(sandbox, url)
