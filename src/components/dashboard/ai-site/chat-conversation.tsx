@@ -7,8 +7,9 @@ import { toast } from "sonner"
 import { Loader2, ArrowUp, Square, Cpu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAiSiteModels } from "@/hooks/use-ai-site-models"
+import { DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
 import { AiCreditsBadge } from "./ai-credits-badge"
 import { MessageParts } from "./message-parts"
 import { cn } from "@/lib/utils"
@@ -77,8 +78,8 @@ export function ChatConversation({
 
   // The model picked at chat creation; changeable here too — applies from
   // the chat's next turn onward (the backend reads it fresh on every POST).
-  const { options: modelOptions } = useAiSiteModels(tenantSlug)
-  const [model, setModel] = useState(initialModel || modelOptions[0].value)
+  const { recommended, others } = useAiSiteModels(tenantSlug)
+  const [model, setModel] = useState(initialModel || DEFAULT_AI_SITE_MODEL)
   const [savingModel, setSavingModel] = useState(false)
   async function changeModel(next: string) {
     const previous = model
@@ -177,12 +178,24 @@ export function ChatConversation({
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="max-h-72 rounded-xl border-border bg-card">
-              {modelOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
-                  <span className="font-semibold">{opt.label}</span>
-                  <span className="ml-1.5 text-muted-foreground">— {opt.provider}</span>
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                <SelectLabel className="text-[10px]">Rekomendasi untuk Coding</SelectLabel>
+                {recommended.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="ml-1.5 text-muted-foreground">— {opt.note || opt.provider}</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              <SelectGroup>
+                <SelectLabel className="text-[10px]">Semua Model</SelectLabel>
+                {others.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="ml-1.5 text-muted-foreground">— {opt.provider}</span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <div className="ml-auto">

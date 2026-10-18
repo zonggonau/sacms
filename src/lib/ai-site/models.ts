@@ -18,16 +18,48 @@ export interface AiSiteModelOption {
   value: string
   label: string
   provider: string
+  /** Short caveat shown next to the option — e.g. a tier restriction confirmed live against this Gateway account. */
+  note?: string
 }
 
 /** Shown before the live catalog has loaded, and as a fallback if fetching it fails. */
 export const FALLBACK_AI_SITE_MODEL_OPTIONS: AiSiteModelOption[] = [
-  { value: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "openai" },
+  { value: "openai/gpt-5-codex", label: "GPT-5-Codex", provider: "openai" },
   { value: "openai/gpt-4o", label: "GPT-4o", provider: "openai" },
   { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
 ]
 
 export const DEFAULT_AI_SITE_MODEL = FALLBACK_AI_SITE_MODEL_OPTIONS[0].value
+
+/**
+ * Pinned to the top of the picker, ahead of the live catalog — user's
+ * explicit ask for models strong at both coding and schema design, across
+ * Claude/Gemini/ChatGPT/GLM. Every entry here was checked live against this
+ * Gateway account on 2026-10-18 with a cheap `generateText` smoke call
+ * before being listed (see `references/architecture.md` in the `ai-gateway`
+ * skill for the check snippet) — re-verify the same way before editing this
+ * list, a recommended option that 403s the moment it's picked is worse than
+ * not recommending it.
+ *
+ * The `anthropic/*` entries are **confirmed denied on this account's
+ * current Gateway tier** ("Free tier users do not have access to this
+ * model") — kept here anyway (with `note`) because the user explicitly
+ * asked for Claude to be offered, and because the moment this account is
+ * upgraded, they're already in the right place instead of needing this
+ * list edited again. Don't remove them just because they currently fail;
+ * do remove them if a future re-check shows the model id itself changed.
+ */
+export const RECOMMENDED_CODING_MODELS: AiSiteModelOption[] = [
+  { value: "anthropic/claude-opus-5.5", label: "Claude Opus 5.5", provider: "anthropic", note: "perlu upgrade tier Gateway" },
+  { value: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5", provider: "anthropic", note: "perlu upgrade tier Gateway" },
+  { value: "openai/gpt-5-codex", label: "GPT-5-Codex", provider: "openai" },
+  { value: "openai/gpt-5.1-codex-mini", label: "GPT 5.1 Codex Mini", provider: "openai" },
+  { value: "openai/gpt-5", label: "GPT-5", provider: "openai" },
+  { value: "openai/gpt-4o", label: "GPT-4o", provider: "openai" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
+  { value: "zai/glm-4.6", label: "GLM 4.6", provider: "zai" },
+  { value: "zai/glm-4.5-air", label: "GLM 4.5 Air", provider: "zai" },
+]
 
 /**
  * Loose shape guard for a value stored on `AiSiteChat.model` — "provider/

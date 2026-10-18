@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { FALLBACK_AI_SITE_MODEL_OPTIONS, type AiSiteModelOption } from "@/lib/ai-site/models"
+import { FALLBACK_AI_SITE_MODEL_OPTIONS, RECOMMENDED_CODING_MODELS, type AiSiteModelOption } from "@/lib/ai-site/models"
 
 export type { AiSiteModelOption }
 
@@ -10,9 +10,14 @@ export type { AiSiteModelOption }
  * hardcoded list — fetched once per mount from `GET .../ai-site/models`.
  * Starts with the same small fallback the server itself falls back to, so
  * the dropdown never renders empty while the real list loads.
+ *
+ * Returns `recommended` (the fixed, live-verified strong-coding shortlist —
+ * always shown first, independent of the catalog fetch) and `others` (the
+ * rest of the live catalog, with anything already in `recommended` filtered
+ * out so it isn't listed twice).
  */
 export function useAiSiteModels(tenantSlug: string) {
-  const [options, setOptions] = useState<AiSiteModelOption[]>(FALLBACK_AI_SITE_MODEL_OPTIONS)
+  const [others, setOthers] = useState<AiSiteModelOption[]>(FALLBACK_AI_SITE_MODEL_OPTIONS)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,7 +26,8 @@ export function useAiSiteModels(tenantSlug: string) {
       .then((res) => res.json())
       .then((body: { models?: AiSiteModelOption[] }) => {
         if (cancelled || !Array.isArray(body.models) || body.models.length === 0) return
-        setOptions(body.models)
+        const recommendedValues = new Set(RECOMMENDED_CODING_MODELS.map((m) => m.value))
+        setOthers(body.models.filter((m) => !recommendedValues.has(m.value)))
       })
       .catch(() => {
         // Keep the fallback list — better than an empty dropdown.
@@ -34,5 +40,5 @@ export function useAiSiteModels(tenantSlug: string) {
     }
   }, [tenantSlug])
 
-  return { options, loading }
+  return { recommended: RECOMMENDED_CODING_MODELS, others, loading }
 }
