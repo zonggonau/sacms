@@ -23,12 +23,12 @@ interface UsageTotals {
 }
 
 /**
- * Resolve the single configured AI backend: Vercel AI Gateway. One Gateway
- * API key (Admin Settings → Mesin AI) covers every provider/model, so unlike
- * the old per-provider-key resolver there is no priority order to pick
- * between — just one credential and a model id in "provider/model" form.
+ * Builds the Gateway client from the configured credentials — shared by
+ * `resolveGatewayModel` (to make a model) and `fetchGatewayLanguageModels`
+ * (to list the whole catalog), so the apiKey/baseURL resolution can't drift
+ * between the two.
  */
-export async function resolveGatewayModel(overrideModel?: string): Promise<{ model: LanguageModel; modelId: string }> {
+async function buildGatewayFromConfig() {
   const { getResolvedAiConfig } = await import("./settings")
   const config = await getResolvedAiConfig()
 
@@ -51,8 +51,52 @@ export async function resolveGatewayModel(overrideModel?: string): Promise<{ mod
     apiKey: config.aiGatewayApiKey,
     ...(baseURL ? { baseURL } : {}),
   })
+  return { gateway, config }
+}
+
+/**
+ * Resolve the single configured AI backend: Vercel AI Gateway. One Gateway
+ * API key (Admin Settings → Mesin AI) covers every provider/model, so unlike
+ * the old per-provider-key resolver there is no priority order to pick
+ * between — just one credential and a model id in "provider/model" form.
+ */
+export async function resolveGatewayModel(overrideModel?: string): Promise<{ model: LanguageModel; modelId: string }> {
+  const { gateway, config } = await buildGatewayFromConfig()
   const modelId = overrideModel || config.defaultModel
   return { model: gateway(modelId), modelId }
+}
+
+export interface GatewayModelOption {
+  value: string
+  label: string
+  provider: string
+}
+
+let languageModelCatalogCache: { at: number; models: GatewayModelOption[] } | null = null
+const MODEL_CATALOG_CACHE_TTL_MS = 10 * 60 * 1000
+
+/**
+ * The live model catalog from the configured Gateway, language models only
+ * (the same catalog also lists image/video/embedding/speech/etc. models,
+ * which can't serve a chat/tool-calling feature — picking one would just
+ * fail at generation time with a confusing error). Cached in-memory briefly
+ * since this is a stable catalog that rarely changes and every model-picker
+ * render would otherwise re-fetch it from Vercel.
+ */
+export async function fetchGatewayLanguageModels(): Promise<GatewayModelOption[]> {
+  if (languageModelCatalogCache && Date.now() - languageModelCatalogCache.at < MODEL_CATALOG_CACHE_TTL_MS) {
+    return languageModelCatalogCache.models
+  }
+
+  const { gateway } = await buildGatewayFromConfig()
+  const { models } = await gateway.getAvailableModels()
+  const languageModels = models
+    .filter((m) => !m.modelType || m.modelType === "language")
+    .map((m) => ({ value: m.id, label: m.name, provider: m.specification?.provider || m.id.split("/")[0] || "" }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+
+  languageModelCatalogCache = { at: Date.now(), models: languageModels }
+  return languageModels
 }
 
 /**

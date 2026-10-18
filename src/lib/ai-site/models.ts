@@ -1,40 +1,45 @@
 /**
- * Curated shortlist from the Vercel AI Gateway catalog for AI Site's model
- * picker — deliberately narrow (3 options, user's explicit ask) and specific
- * to *coding*: fast, reliable tool-calling, good at producing modern,
- * polished frontend code, not a broad "every provider" spread. Kept as its
- * own list rather than sharing `src/lib/ai/schema-models.ts`'s because AI
- * Site's 40-step tool-calling loop has a different reliability bar than a
- * single `generateObject` call.
+ * AI Site's model picker now offers the Gateway's full live catalog (every
+ * provider/model Vercel AI Gateway exposes to this account), not a curated
+ * shortlist — explicit user request: "gunakan seluruh model yang ada, user
+ * bebas memilih model AI." `fetchGatewayLanguageModels()` (`@/lib/ai`,
+ * served through `GET .../ai-site/models`) is the real source of truth;
+ * this file only holds client-safe constants — no server-only import here,
+ * since `chat-workspace.tsx` (a client component) needs `DEFAULT_AI_SITE_MODEL`.
  *
- * Every option here was confirmed live against this Gateway account's
- * actual tier with a cheap `generateText` smoke call before being listed —
- * `google/gemini-3-flash` and both `anthropic/claude-*` models looked like
- * reasonable coding picks on paper but are denied on this tier ("Free tier
- * users do not have access to this model"). Don't re-add a model here
- * without re-checking access the same way first (see `references/
- * architecture.md` in the `ai-gateway` skill for the check snippet) — a
- * dropdown option that 429s/403s the moment it's picked is worse than not
- * offering it.
- *
- * Shared between the client (ai-site-landing.tsx + chat-conversation.tsx,
- * for the dropdown) and the server (the chats route, to reject any other
- * model id) so the two can't drift — the dropdown is the *only* way a user
- * is meant to pick a model.
+ * Trade-off accepted knowingly: a model picked from the live catalog might
+ * still 403/429 at generation time if this Gateway account's tier doesn't
+ * have access to it, or might perform worse than the curated default on
+ * AI Site's 40-step tool-calling loop (not every model is equally reliable
+ * at function calling). That's now the user's call, not something this
+ * file pre-filters away.
  */
-export const AI_SITE_MODEL_OPTIONS = [
-  { value: "openai/gpt-5-mini", label: "GPT-5 Mini", hint: "Cepat, hemat, tool-calling andal — default" },
-  { value: "openai/gpt-4o", label: "GPT-4o", hint: "Flagship — kualitas kode & UI terbaik" },
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Tercepat & termurah" },
-] as const
-
-export type AiSiteModelValue = (typeof AI_SITE_MODEL_OPTIONS)[number]["value"]
-
-const VALID_AI_SITE_MODEL_VALUES = new Set<string>(AI_SITE_MODEL_OPTIONS.map((m) => m.value))
-
-/** Is `model` one of the curated options shown in the dropdown? */
-export function isAllowedAiSiteModel(model: string | undefined | null): model is AiSiteModelValue {
-  return !!model && VALID_AI_SITE_MODEL_VALUES.has(model)
+export interface AiSiteModelOption {
+  value: string
+  label: string
+  provider: string
 }
 
-export const DEFAULT_AI_SITE_MODEL: AiSiteModelValue = AI_SITE_MODEL_OPTIONS[0].value
+/** Shown before the live catalog has loaded, and as a fallback if fetching it fails. */
+export const FALLBACK_AI_SITE_MODEL_OPTIONS: AiSiteModelOption[] = [
+  { value: "openai/gpt-5-mini", label: "GPT-5 Mini", provider: "openai" },
+  { value: "openai/gpt-4o", label: "GPT-4o", provider: "openai" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "google" },
+]
+
+export const DEFAULT_AI_SITE_MODEL = FALLBACK_AI_SITE_MODEL_OPTIONS[0].value
+
+/**
+ * Loose shape guard for a value stored on `AiSiteChat.model` — "provider/
+ * model-id". Not a semantic allowlist: with the picker now open to the
+ * Gateway's whole catalog, the dropdown itself is what keeps a normal user
+ * on a real model id. This only blocks garbage/malformed input reaching
+ * `resolveGatewayModel`; an invalid-but-well-formed id still fails there
+ * with a clear Gateway error, which is an acceptable outcome for a value
+ * nothing but a direct API call (not the dropdown) could have produced.
+ */
+const MODEL_ID_SHAPE = /^[a-z0-9_-]+\/[a-zA-Z0-9._:-]+$/
+
+export function isAllowedAiSiteModel(model: unknown): model is string {
+  return typeof model === "string" && MODEL_ID_SHAPE.test(model)
+}

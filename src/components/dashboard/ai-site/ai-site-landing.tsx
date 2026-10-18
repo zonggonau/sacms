@@ -7,7 +7,7 @@ import { ArrowUp, Loader2, Sparkles, Cpu, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AI_SITE_MODEL_OPTIONS, DEFAULT_AI_SITE_MODEL } from "@/lib/ai-site/models"
+import { useAiSiteModels } from "@/hooks/use-ai-site-models"
 import { AiCreditsBadge } from "./ai-credits-badge"
 import { cn } from "@/lib/utils"
 
@@ -32,7 +32,8 @@ export function AiSiteLanding({
 }) {
   const router = useRouter()
   const [text, setText] = useState(initialPrompt ?? "")
-  const [model, setModel] = useState<string>(DEFAULT_AI_SITE_MODEL)
+  const { options: modelOptions } = useAiSiteModels(tenantSlug)
+  const [model, setModel] = useState<string>(modelOptions[0].value)
   const [submitting, setSubmitting] = useState(false)
   const fromSchema = Boolean(initialPrompt)
 
@@ -113,11 +114,11 @@ export function AiSiteLanding({
               <SelectTrigger className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-1.5 text-[11px] font-semibold shadow-none hover:bg-muted/50 focus:ring-0">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-border bg-card">
-                {AI_SITE_MODEL_OPTIONS.map((opt) => (
+              <SelectContent className="max-h-72 rounded-xl border-border bg-card">
+                {modelOptions.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value} className="rounded-lg text-xs">
                     <span className="font-semibold">{opt.label}</span>
-                    <span className="ml-1.5 text-muted-foreground">— {opt.hint}</span>
+                    <span className="ml-1.5 text-muted-foreground">— {opt.provider}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
