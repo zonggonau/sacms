@@ -44,6 +44,9 @@ const nextConfig: NextConfig = {
     "wherever-attendance-mae-scenic.trycloudflare.com",
     "*.trycloudflare.com",
     ...getTunnelOrigins(),
+    ...(process.env.BASE44_PREVIEW_MODE === "1" && process.env.BASE44_PUBLIC_HOST_SUFFIX
+      ? [`3000-${process.env.BASE44_PUBLIC_HOST_SUFFIX}`]
+      : []),
   ],
   images: {
     remotePatterns: [
