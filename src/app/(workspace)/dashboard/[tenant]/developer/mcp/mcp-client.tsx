@@ -375,7 +375,7 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   // sini kecuali tool-nya memang didaftarkan ulang di server.
 
   // Hosting & Cloud Deployment MCP Tools
-  { name: "deploy_to_sacms", category: "hosting", description: "Deploy file source code website/frontend langsung ke SaCMS Cloud Hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },
+  { name: "deploy_to_sacms", category: "hosting", description: "Deploy file source code website/frontend langsung ke SaCMS Cloud Hosting. Selalu ke satu project hosting milik workspace ini (sama seperti tombol deploy dashboard) — panggilan berulang memperbarui project yang sama, tidak membuat yang baru. Mengembalikan URL deployment produksi.", inputs: ["files", "envVars"] },
   { name: "get_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment.", inputs: ["deploymentId"] },
   { name: "configure_deployment_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project deployment, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
   { name: "add_deployment_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project deployment workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
@@ -1014,7 +1014,7 @@ export function MCPDashboardClient({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleCopy("Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms dengan project name 'my-sacms-app'.", "Prompt SaCMS Deploy")}
+                      onClick={() => handleCopy("Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms.", "Prompt SaCMS Deploy")}
                       className="h-7 px-2 text-xs font-bold text-primary"
                     >
                       <Copy className="h-3 w-3 mr-1" /> Salin Prompt
@@ -1024,7 +1024,7 @@ export function MCPDashboardClient({
                     Menerbitkan website dan mengembalikan live URL produksi.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
-                    Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms dengan project name 'my-sacms-app'.
+                    Deploy seluruh source code project frontend ini ke SaCMS Cloud Hosting menggunakan MCP tool deploy_to_sacms.
                   </pre>
                 </Card>
 

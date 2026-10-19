@@ -2059,9 +2059,9 @@ export default async function NewsPage() {
       "deploy_to_sacms",
       {
         title: "Deploy Website / App to SaCMS Cloud Hosting",
-        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the live production deployment URL.",
+        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the live production deployment URL. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one.",
         inputSchema: {
-          projectName: z.string().describe("Name of the deployment project (e.g. 'my-awesome-site')"),
+          projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
           files: z.array(z.object({
             name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
             content: z.string().describe("Raw source code content of the file")
@@ -2069,7 +2069,7 @@ export default async function NewsPage() {
           envVars: z.record(z.string(), z.string()).optional().describe("Extra env vars for this deploy, merged on top of the workspace's saved Environment vars (the SaCMS API URL/tenant/key are always injected automatically)")
         },
       },
-      async ({ projectName, files, envVars }) => {
+      async ({ files, envVars }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2106,7 +2106,15 @@ export default async function NewsPage() {
           const resolvedEnv = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, resolveApiOrigin())
           const mergedEnv: Record<string, string> = { ...(envVars as Record<string, string> | undefined), ...resolvedEnv }
 
-          const result = await deployToVercel(projectName, files, mergedEnv)
+          // Same fixed naming convention as deployTenantFrontend()
+          // (dashboard deploy button, AI Site Publish) — one hosting
+          // project per tenant, always. A caller-chosen name here would
+          // create a second, parallel project on a later call and orphan
+          // the first one from configure_deployment_domain/
+          // add_deployment_env/make_deployment_public, which only ever
+          // resolve the workspace's *current* vercelProjectId.
+          const lockedProjectName = `sacms-${auth.tenantSlug}`
+          const result = await deployToVercel(lockedProjectName, files, mergedEnv)
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>
@@ -2143,7 +2151,7 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: `🚀 Deploy ke SaCMS Cloud Hosting Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || projectName}\n- Env terkirim: ${Object.keys(mergedEnv).join(", ")}`
+              text: `🚀 Deploy ke SaCMS Cloud Hosting Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || lockedProjectName}\n- Env terkirim: ${Object.keys(mergedEnv).join(", ")}`
             }]
           }
         } catch (err: any) {
@@ -2322,6 +2330,21 @@ export default async function NewsPage() {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        // Same PAID gate as deploy_to_sacms/configure_deployment_domain/
+        // make_deployment_public — this tool was missing it, which let a
+        // workspace whose subscription had lapsed since its last real
+        // deploy still rewrite production env vars (including secrets) on
+        // the project that deploy created.
+        if (!auth.isPaid) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Payment Required: Mengatur environment variable deployment memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+            }],
+            isError: true,
+          }
+        }
 
         const { RESERVED_ENV_KEYS } = await import("@/lib/infrastructure/frontend-env")
         if (RESERVED_ENV_KEYS.includes(key)) {
