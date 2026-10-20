@@ -71,8 +71,8 @@ describe("Tenant Creation Action with Addons", () => {
       addons: ["ai_writer", "adv_audit"]
     })
 
-    expect(result.success).toBe(true)
-    expect(result.tenantId).toBe("tenant-new-123")
+    expect((result as { success: boolean }).success).toBe(true)
+    expect((result as { tenantId: string }).tenantId).toBe("tenant-new-123")
 
     // Check base subscription
     expect(db.subscription.create).toHaveBeenCalledWith(expect.objectContaining({

@@ -18,6 +18,7 @@ import {
   Shield,
   BookOpen,
   Database,
+  Bot,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -56,6 +57,7 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName, hasEnterpr
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
     ...(hasEnterpriseLicense ? [{ title: "Database & Storage", href: "/dashboard/infrastructure", icon: Database }] : []),
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
+    { title: "MCP Server (Owner)", href: "/dashboard/mcp", icon: Bot },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
 

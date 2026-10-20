@@ -267,12 +267,12 @@ export function WorkspaceCreationDialog({
         addons: newWorkspace.selectedAddons
       })
 
-      if (res.success) {
+      if ("success" in res && res.success) {
         toast({ title: "Workspace Berhasil Dibuat!", description: "Mengalihkan ke dashboard workspace baru Anda..." })
         onOpenChange(false)
         router.push(`/dashboard/${res.tenantId}`)
       } else {
-        toast({ variant: "destructive", title: "Pembuatan Gagal", description: res.error || "Gagal membuat workspace" })
+        toast({ variant: "destructive", title: "Pembuatan Gagal", description: ("error" in res && res.error) || "Gagal membuat workspace" })
       }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: err.message || "Terjadi kesalahan jaringan." })

@@ -33,8 +33,35 @@ model User {
   ownedTenants        Tenant[]       @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
+  ownerApiTokens      OwnerApiToken[]
 
   @@map("users")
+}
+
+/// A higher-privilege, account-level credential — NOT the same as the
+/// per-workspace `ApiToken` (type "mcp"), which is bound to exactly one
+/// `tenantId`. This one authenticates the owner-level MCP server
+/// (src/app/api/mcp/owner/route.ts) and can act on EVERY workspace this
+/// user owns or administers — list them, create new ones, and (via an
+/// explicit workspaceId argument on each tool) read/write a specific
+/// workspace's content and deploy its frontend. A separate model rather
+/// than making `ApiToken.tenantId` nullable, since that field is required
+/// and depended on across the whole REST/GraphQL/MCP auth surface — this
+/// keeps that surface untouched and keeps the blast radius of this new,
+/// more powerful credential type contained to its own table.
+model OwnerApiToken {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  /// SHA-256 hash, never the plaintext — same convention as ApiToken.token.
+  token       String    @unique
+  lastUsedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("owner_api_tokens")
 }
 
 model Account {

@@ -29,101 +29,113 @@ async function generateUniqueSlug(): Promise<string> {
   return slug
 }
 
+/**
+ * Core tenant-creation logic, independent of a NextAuth session — so it
+ * can be called both from the session-based Server Action below AND from
+ * the owner-level MCP server (src/app/api/mcp/owner/route.ts), which
+ * authenticates via a bearer token (OwnerApiToken), not a browser session,
+ * and therefore has no `getServerSession()` cookie to resolve a user from.
+ */
+export async function createTenantForUser(
+  userId: string,
+  data: z.infer<typeof createTenantSchema>,
+): Promise<{ error: string } | { success: true; tenantId: string }> {
+  const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
+
+  const workspaceEnforcement = await enforceUserPlanLimit(userId, "workspaces")
+  if (!workspaceEnforcement.allowed) {
+    return { error: workspaceEnforcement.message }
+  }
+
+  const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = data
+
+  const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
+  if (!planBinding.allowed) {
+    return { error: planBinding.message }
+  }
+
+  const slug = await generateUniqueSlug()
+
+  const tenant = await db.$transaction(async (tx) => {
+    const newTenant = await tx.tenant.create({
+      data: {
+        name,
+        slug,
+        description,
+        plan,
+        status: "provisioning",
+      }
+    })
+
+    await tx.tenantMember.create({
+      data: {
+        tenantId: newTenant.id,
+        userId,
+        role: "owner",
+      }
+    })
+
+    const trialEndDate = new Date()
+    trialEndDate.setDate(trialEndDate.getDate() + 7)
+
+    await tx.subscription.create({
+      data: {
+        userId,
+        tenantId: newTenant.id,
+        plan,
+        status: plan === "free" ? "active" : "trialing",
+        currentPeriodStart: new Date(),
+        currentPeriodEnd: plan === "free" ? null : trialEndDate,
+      }
+    })
+
+    if (addons && addons.length > 0) {
+      for (const addonId of addons) {
+        await tx.subscription.create({
+          data: {
+            userId,
+            tenantId: newTenant.id,
+            plan: addonId,
+            status: "active",
+            currentPeriodStart: new Date(),
+            currentPeriodEnd: null,
+          }
+        })
+      }
+    }
+
+    return newTenant
+  })
+
+  // Run provisioning in background
+  provisionTenant(tenant.id, aiPrompt, websiteType).catch(err => {
+    console.error(`[Tenant Provisioning Error] ${tenant.id}:`, err)
+  })
+
+  await logAudit({
+    tenantId: tenant.id,
+    userId,
+    action: AuditAction.TENANT_CREATED,
+    entity: "Tenant",
+    entityId: tenant.id,
+    data: { name, slug },
+  })
+
+  revalidatePath("/dashboard")
+  return { success: true, tenantId: tenant.id }
+}
+
 export async function createTenantAction(data: any) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
-
-    const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
-    const { getUserPlanConfig } = await import("@/lib/tenant-plan")
-    
-    const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
-    if (!workspaceEnforcement.allowed) {
-      return { error: workspaceEnforcement.message }
-    }
 
     const validation = createTenantSchema.safeParse(data)
     if (!validation.success) {
       return { error: "Invalid data provided." }
     }
 
-    const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = validation.data
-
-    const userPlan = await getUserPlanConfig(session.user.id)
-    const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
-    if (!planBinding.allowed) {
-      return { error: planBinding.message }
-    }
-
-    const slug = await generateUniqueSlug()
-
-    const tenant = await db.$transaction(async (tx) => {
-      const newTenant = await tx.tenant.create({
-        data: {
-          name,
-          slug,
-          description,
-          plan,
-          status: "provisioning",
-        }
-      })
-
-      await tx.tenantMember.create({
-        data: {
-          tenantId: newTenant.id,
-          userId: session.user.id,
-          role: "owner",
-        }
-      })
-
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 7)
-
-      await tx.subscription.create({
-        data: {
-          userId: session.user.id,
-          tenantId: newTenant.id,
-          plan,
-          status: plan === "free" ? "active" : "trialing",
-          currentPeriodStart: new Date(),
-          currentPeriodEnd: plan === "free" ? null : trialEndDate,
-        }
-      })
-
-      if (addons && addons.length > 0) {
-        for (const addonId of addons) {
-          await tx.subscription.create({
-            data: {
-              userId: session.user.id,
-              tenantId: newTenant.id,
-              plan: addonId,
-              status: "active",
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: null,
-            }
-          })
-        }
-      }
-
-      return newTenant
-    })
-
-    // Run provisioning in background
-    provisionTenant(tenant.id, aiPrompt, websiteType).catch(err => {
-      console.error(`[Server Action Provisioning Error] ${tenant.id}:`, err)
-    })
-
-    await logAudit({
-      tenantId: tenant.id,
-      userId: session.user.id,
-      action: AuditAction.TENANT_CREATED,
-      entity: "Tenant",
-      entityId: tenant.id,
-      data: { name, slug },
-    })
-
-    revalidatePath("/dashboard")
-    return { success: true, tenantId: tenant.id }
+    return await createTenantForUser(session.user.id, validation.data)
   } catch (error) {
     console.error("Error creating tenant:", error)
     return { error: "Internal server error" }
