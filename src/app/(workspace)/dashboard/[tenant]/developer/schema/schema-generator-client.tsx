@@ -237,16 +237,18 @@ export function SchemaGeneratorClient({
               </TabsTrigger>
             </TabsList>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConfirmDeleteAllOpen(true)}
-              disabled={finalized}
-              title={finalized ? "Kembalikan schema ke Draft dulu untuk menghapus" : undefined}
-              className="h-8 gap-1.5 rounded-xl text-xs font-bold text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Hapus Semua Schema
-            </Button>
+            {!isGlobal && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setConfirmDeleteAllOpen(true)}
+                disabled={finalized}
+                title={finalized ? "Kembalikan schema ke Draft dulu untuk menghapus" : undefined}
+                className="h-8 gap-1.5 rounded-xl text-xs font-bold text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Hapus Semua Schema
+              </Button>
+            )}
           </div>
 
           <TabsContent value="diagram" className="flex min-h-0 flex-col gap-2 data-[state=inactive]:hidden">

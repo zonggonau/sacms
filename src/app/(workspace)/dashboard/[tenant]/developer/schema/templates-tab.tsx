@@ -1,15 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Sparkles, Plus, Trash2, Pencil, ArrowLeft } from "lucide-react"
+import { Loader2, LayoutTemplate, Sparkles, Plus, Trash2, Pencil, ArrowLeft, Filter } from "lucide-react"
 import type { SchemaExport } from "@/components/ai-builder/schema-diagram"
 import { SchemaStep } from "./schema-step"
 
@@ -33,6 +34,33 @@ interface TemplatesTabProps {
   onUseTemplate: (template: { name: string; schema: SchemaExport }) => void
 }
 
+const ALL_CATEGORIES = "__all__"
+
+function CategoryFilter({
+  categories,
+  value,
+  onChange,
+}: {
+  categories: string[]
+  value: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="h-8 w-[180px] text-xs rounded-xl">
+        <Filter className="h-3 w-3 text-muted-foreground" />
+        <SelectValue placeholder="Semua Kategori" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={ALL_CATEGORIES} className="text-xs">Semua Kategori</SelectItem>
+        {categories.map((c) => (
+          <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
 export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesTabProps) {
   const { toast } = useToast()
   const { confirm, dialog: confirmDialog } = useConfirm()
@@ -40,6 +68,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
   const [templates, setTemplates] = useState<SchemaTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES)
 
   const fetchTemplates = () => {
     setIsLoading(true)
@@ -104,6 +133,11 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
     }
   }
 
+  const categories = useMemo(
+    () => Array.from(new Set(templates.map((t) => t.category))).sort((a, b) => a.localeCompare(b)),
+    [templates],
+  )
+
   if (view === "author") {
     return (
       <div className="space-y-3">
@@ -140,6 +174,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
   if (isGlobal) {
     const formatDate = (iso?: string) =>
       iso ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"
+    const filtered = categoryFilter === ALL_CATEGORIES ? templates : templates.filter((t) => t.category === categoryFilter)
 
     return (
       <div className="space-y-3">
@@ -154,17 +189,22 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
         </div>
 
         <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
-          <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20">
-            <CardTitle className="text-sm font-bold text-foreground">Daftar Template ({templates.length})</CardTitle>
+          <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20 flex-row items-center justify-between gap-3 flex-wrap space-y-0">
+            <CardTitle className="text-sm font-bold text-foreground">Daftar Template ({filtered.length})</CardTitle>
+            {categories.length > 0 && <CategoryFilter categories={categories} value={categoryFilter} onChange={setCategoryFilter} />}
           </CardHeader>
           <CardContent className="p-0">
-            {templates.length === 0 ? (
+            {filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                <p className="font-bold text-xs text-foreground">Belum ada template</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Klik <strong>Buat Template Baru</strong> untuk mulai.
+                <p className="font-bold text-xs text-foreground">
+                  {templates.length === 0 ? "Belum ada template" : "Tidak ada template di kategori ini"}
                 </p>
+                {templates.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Klik <strong>Buat Template Baru</strong> untuk mulai.
+                  </p>
+                )}
               </div>
             ) : (
               <Table>
@@ -178,7 +218,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {templates.map((t) => (
+                  {filtered.map((t) => (
                     <TableRow key={t.id} className="hover:bg-muted/40 border-b border-border/60 transition-colors">
                       <TableCell className="pl-6 py-3">
                         <div className="flex items-center gap-2">
@@ -240,10 +280,12 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
     )
   }
 
-  // ── Regular tenant: browse & use grid (published templates only) ──
-  const visibleTemplates = templates.filter((t) => t.published)
+  // ── Regular tenant: browse & use table (published templates only) ──
+  const published = templates.filter((t) => t.published)
+  const publishedCategories = Array.from(new Set(published.map((t) => t.category))).sort((a, b) => a.localeCompare(b))
+  const visibleTemplates = categoryFilter === ALL_CATEGORIES ? published : published.filter((t) => t.category === categoryFilter)
 
-  if (visibleTemplates.length === 0) {
+  if (published.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 py-20 text-center text-muted-foreground">
         <LayoutTemplate className="h-6 w-6 opacity-50" />
@@ -254,41 +296,70 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
 
   return (
     <div className="space-y-3">
-      <p className="text-[11px] text-muted-foreground">
-        Dibuat tim SaCMS — klik <strong>Pakai Template</strong> untuk memuatnya sebagai preview di tab Diagram Schema, lalu konfirmasi kalau sudah sesuai.
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {visibleTemplates.map((t) => {
-          const totalModels =
-            (t.schema.contentTypes?.length || 0) + (t.schema.singleTypes?.length || 0) + (t.schema.components?.length || 0)
-          return (
-            <Card key={t.id} className="border-border/70 flex flex-col">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl shrink-0">{t.icon}</span>
-                  <div className="min-w-0">
-                    <CardTitle className="text-sm font-bold truncate">{t.name}</CardTitle>
-                    <Badge variant="outline" className="text-[9px] font-bold mt-0.5 border-primary/20 text-primary">{t.category}</Badge>
-                  </div>
-                </div>
-                {t.description && <CardDescription className="text-xs line-clamp-2">{t.description}</CardDescription>}
-              </CardHeader>
-              <CardContent className="pt-0 flex-1">
-                <p className="text-[11px] text-muted-foreground">{totalModels} struktur data (Content Type, Single Type, Component)</p>
-              </CardContent>
-              <CardFooter className="pt-0">
-                <Button
-                  size="sm"
-                  onClick={() => onUseTemplate({ name: t.name, schema: t.schema })}
-                  className="h-8 w-full rounded-xl text-xs font-bold gap-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5" /> Pakai Template
-                </Button>
-              </CardFooter>
-            </Card>
-          )
-        })}
-      </div>
+      <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
+        <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20 flex-row items-center justify-between gap-3 flex-wrap space-y-0">
+          <div className="min-w-0">
+            <CardTitle className="text-sm font-bold text-foreground">Galeri Template ({visibleTemplates.length})</CardTitle>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Dibuat tim SaCMS — klik <strong>Pakai Template</strong> untuk preview di tab Diagram Schema, lalu konfirmasi kalau sudah sesuai.
+            </p>
+          </div>
+          {publishedCategories.length > 0 && (
+            <CategoryFilter categories={publishedCategories} value={categoryFilter} onChange={setCategoryFilter} />
+          )}
+        </CardHeader>
+        <CardContent className="p-0">
+          {visibleTemplates.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+              <p className="font-bold text-xs text-foreground">Tidak ada template di kategori ini</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader className="bg-muted/30 border-b border-border/60">
+                <TableRow>
+                  <TableHead className="font-bold text-xs pl-6">Template</TableHead>
+                  <TableHead className="font-bold text-xs">Kategori</TableHead>
+                  <TableHead className="font-bold text-xs">Struktur Data</TableHead>
+                  <TableHead className="text-right pr-6 font-bold text-xs">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visibleTemplates.map((t) => {
+                  const totalModels =
+                    (t.schema.contentTypes?.length || 0) + (t.schema.singleTypes?.length || 0) + (t.schema.components?.length || 0)
+                  return (
+                    <TableRow key={t.id} className="hover:bg-muted/40 border-b border-border/60 transition-colors">
+                      <TableCell className="pl-6 py-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base shrink-0">{t.icon}</span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-foreground">{t.name}</p>
+                            {t.description && <p className="text-[10px] text-muted-foreground line-clamp-1 max-w-sm">{t.description}</p>}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="py-3">
+                        <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary">{t.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-3">{totalModels} struktur</TableCell>
+                      <TableCell className="text-right pr-6 py-3">
+                        <Button
+                          size="sm"
+                          onClick={() => onUseTemplate({ name: t.name, schema: t.schema })}
+                          className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+                        >
+                          <Sparkles className="h-3 w-3" /> Pakai Template
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -10,9 +10,19 @@ import { assertSchemaEditable } from "@/lib/schema-lock"
  * the schema's own onDelete: Cascade relations. Same draft-required lock as
  * every other schema-mutating dashboard action; MCP is unaffected (see
  * schema-lock.ts) since it never calls this route.
+ *
+ * Blocked entirely for the SaCMS Global workspace — its own Content
+ * Types/Single Types/Components can double as the global/platform schema
+ * other tenants see (tenantId: null rows aside, Global's OWN tenantId-scoped
+ * rows are still too high-blast-radius for a one-click nuke). The dashboard
+ * UI already hides the button for Global; this is the server-side backstop.
  */
 export const POST = withStaffAuth(
   async (_req, _context, { access }) => {
+    if (access.isGlobal) {
+      return apiError("forbidden", { message: "Hapus semua schema tidak tersedia untuk workspace SaCMS Global." })
+    }
+
     const lockError = await assertSchemaEditable(access.tenantId)
     if (lockError) return apiError("forbidden", { message: lockError.error })
 
