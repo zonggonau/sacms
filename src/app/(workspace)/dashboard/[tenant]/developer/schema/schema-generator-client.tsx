@@ -102,7 +102,7 @@ export function SchemaGeneratorClient({
       if (!res.ok) throw new Error(data?.error || "Gagal mengubah status schema")
       setFinalized(data.finalized)
       toast({
-        title: data.finalized ? "Schema Dipublish" : "Schema Dikembalikan ke Draft",
+        title: data.finalized ? (isGlobal ? "Template Dipublish" : "Schema Dipublish") : "Dikembalikan ke Draft",
         description: data.finalized
           ? "Schema sekarang final — tidak bisa diubah manual dari dashboard sampai dikembalikan ke draft. Server MCP tetap bisa mengelola schema seperti biasa."
           : "Schema bisa diedit manual lagi dari dashboard.",
@@ -189,7 +189,7 @@ export function SchemaGeneratorClient({
           className="h-8 gap-1.5 text-xs font-bold"
         >
           {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : finalized ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
-          {finalized ? "Kembalikan ke Draft" : "Publish Schema"}
+          {finalized ? "Kembalikan ke Draft" : isGlobal ? "Publish Template" : "Publish Schema"}
         </Button>
         <Button
           size="sm"
