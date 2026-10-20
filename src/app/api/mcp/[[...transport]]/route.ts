@@ -1927,16 +1927,24 @@ const handler = createMcpHandler(
       "get_api_info",
       {
         title: "Get API Information",
-        description: "Get the full REST API documentation, endpoints, filtering syntax, and sample integration code for this workspace.",
+        description: "Get the full REST API documentation, endpoints, filtering syntax, and sample integration code for this workspace. The base URL is resolved automatically — only pass baseUrl to override it (e.g. a custom domain this isn't aware of).",
         inputSchema: {
-          baseUrl: z.string().optional().describe("Public base URL of SaCMS (e.g. https://yourdomain.com)"),
+          baseUrl: z.string().optional().describe("Override the public base URL of SaCMS (e.g. https://yourdomain.com). Leave unset — it's resolved automatically to the real platform URL, never a placeholder."),
         },
       },
       async ({ baseUrl }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const origin = baseUrl?.replace(/\/$/, "") || "https://your-sacms.com"
+        // Was previously a hardcoded "https://your-sacms.com" placeholder
+        // whenever a caller didn't supply baseUrl — confirmed live via a
+        // real external agent's transcript: it asked a human for the real
+        // URL, was told to just proceed, and ended up handing back broken
+        // sample code pointing at a domain that's never resolvable. SaCMS
+        // already knows its own real public host (same resolver AI Site's
+        // Sandbox preview env uses) — resolve it instead of guessing.
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const origin = baseUrl?.replace(/\/$/, "") || resolveApiOrigin()
         const apiBase = `${origin}/api/public/${auth.tenantSlug}`
 
         const docs = `# SaCMS API & MCP Integration Guide — Workspace: ${auth.tenantName}
