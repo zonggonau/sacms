@@ -1,10 +1,7 @@
 /**
- * Shared CMS schema/content introspection logic.
- *
- * Extracted from the MCP route (src/app/api/mcp/[[...transport]]/route.ts)
- * so the same query logic can be reused by the owner-level MCP server
- * (src/app/api/mcp/owner/[[...transport]]/route.ts) without an HTTP
- * loopback or a second auth hop. Every caller resolves its own
+ * Shared CMS schema/content introspection logic, extracted from the MCP
+ * route (src/app/api/mcp/[[...transport]]/route.ts) to keep the route file's
+ * individual tool handlers thin. Every caller resolves its own
  * `tenantDb`/`tenantId` first.
  */
 

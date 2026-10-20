@@ -30,11 +30,9 @@ async function generateUniqueSlug(): Promise<string> {
 }
 
 /**
- * Core tenant-creation logic, independent of a NextAuth session — so it
- * can be called both from the session-based Server Action below AND from
- * the owner-level MCP server (src/app/api/mcp/owner/route.ts), which
- * authenticates via a bearer token (OwnerApiToken), not a browser session,
- * and therefore has no `getServerSession()` cookie to resolve a user from.
+ * Core tenant-creation logic, independent of a NextAuth session — kept
+ * separate from the Server Action below so the session resolution and the
+ * actual creation logic aren't tangled together.
  */
 export async function createTenantForUser(
   userId: string,

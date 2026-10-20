@@ -1996,6 +1996,57 @@ export default async function NewsPage() {
       }
     )
 
+    // ── get_agent_playbook ───────────────────────────────────────────────────
+    // The ordered, step-by-step workflow for an AI agent/IDE that just
+    // connected to this server — distinct from get_api_info (which is REST
+    // reference docs, not a sequence). Also surfaced automatically via this
+    // server's `instructions` field (see createMcpHandler options below) for
+    // clients that load MCP server instructions into the model's context on
+    // connect; this tool exists so the same guidance is reachable by name on
+    // every client, including ones that ignore `instructions`.
+    server.registerTool(
+      "get_agent_playbook",
+      {
+        title: "Get Agent Playbook (Start Here)",
+        description: "Read this FIRST when you connect to this MCP server. Returns the recommended, ordered workflow for building or updating a frontend against this SaCMS workspace — which tools to call, in what order, and how schema, content, and deployment fit together. Call with no arguments.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const playbook = `# SaCMS Agent Playbook — Workspace: ${auth.tenantName}
+
+You are connected to a live, real headless CMS workspace via MCP. Follow these phases IN ORDER — do not invent Content Types, fields, or data; everything must come from these tools.
+
+## Phase 1 — Discover the real schema
+1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
+2. Call \`list_field_types\` if you need to know what a given field \`type\` (e.g. \`relation\`, \`component\`, \`seo\`, \`media\`) actually means and how it's shaped in API responses.
+3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable.
+
+## Phase 2 — Explore real content before writing any UI
+4. Call \`query_content\` (or \`get_single_type\`) for each relevant type to see ACTUAL records — real field values, not assumptions. This tells you what's actually populated vs. empty.
+5. Never hardcode placeholder text/images in the frontend for anything that has a schema field — render from the real data instead, even if a given record is currently empty.
+
+## Phase 3 — Scaffold the frontend
+6. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
+7. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
+8. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
+
+## Phase 4 — Ship it
+9. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
+10. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\` for extra env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+
+## Rules that apply throughout
+- Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
+- Content Entry mutations (\`create_content_entry\`/\`update_content_entry\`/\`delete_content_entry\`) go through the same validation/RBAC as the dashboard — they will reject invalid data, that's expected.
+- Webhooks (\`list_webhooks\`/\`create_webhook\`/\`test_webhook\`) exist if the user wants this workspace to notify an external system on content changes — unrelated to frontend scaffolding.
+- This playbook applies to every connection — re-read it any time you're unsure what to do next, instead of guessing the shape of this workspace's data.`
+
+        return { content: [{ type: "text" as const, text: playbook }] }
+      }
+    )
+
     // ── get_openapi_spec ─────────────────────────────────────────────────────
     server.registerTool(
       "get_openapi_spec",
@@ -2524,7 +2575,18 @@ export default async function NewsPage() {
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.3.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.4.0" },
+    // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
+    // Copilot) load a server's `instructions` into the model's context
+    // automatically on connect — no manual invocation needed. This is the
+    // mechanism behind "connect this MCP server and the agent already knows
+    // the workflow" (as opposed to a slash-command/@-mention, which is a
+    // per-client UI convention this protocol field doesn't control). Kept
+    // short since it's injected into every conversation; the full ordered
+    // workflow lives in the get_agent_playbook tool for clients that ignore
+    // this field or that an agent wants to re-read on demand.
+    instructions:
+      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (discover schema → explore real content → scaffold → deploy). Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
   }
 )
 

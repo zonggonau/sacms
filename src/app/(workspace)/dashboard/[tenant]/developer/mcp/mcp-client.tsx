@@ -330,6 +330,7 @@ interface McpToolDoc {
 // never existed on the server — anyone following those names or the "IDE
 // Recipes" examples referencing them got a hard MCP error.
 const MCP_TOOLS_CATALOG: McpToolDoc[] = [
+  { name: "get_agent_playbook", category: "schema", description: "Baca ini PERTAMA saat baru konek ke server ini. Mengembalikan alur kerja terurut untuk AI agent/IDE: urutan tool apa yang harus dipanggil, dari baca schema, eksplorasi konten nyata, scaffolding frontend, sampai deploy. Panduan yang sama juga otomatis termuat ke konteks model lewat field `instructions` MCP server ini di banyak client (Claude Desktop/Code, Cursor, Windsurf, VS Code Copilot) — tool ini ada supaya tetap bisa dipanggil manual di client yang tidak membaca `instructions`.", inputs: [] },
   { name: "get_full_schema", category: "schema", description: "Mengambil seluruh skema database workspace — semua Content Types, Single Types, dan Components beserta field-nya. Panggil ini PERTAMA saat membangun/scaffolding aplikasi frontend.", inputs: [] },
   { name: "list_field_types", category: "schema", description: "Mendaftar seluruh 33 tipe field resmi SaCMS (text, richText, currency, relation, repeater, mediaMultiple, dll.) beserta aturan validasi dan opsi konfigurasi.", inputs: ["category?"] },
   { name: "list_content_types", category: "schema", description: "Mendaftar seluruh Content Type (koleksi seperti artikel, produk, kategori) beserta skema field dan jumlah entri.", inputs: [] },
