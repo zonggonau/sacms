@@ -345,6 +345,288 @@ export function buildOpenApiSpec(options: {
     }
   }
 
+  // ─── Member (end-user) auth — Strapi-parity headless auth, separate from
+  // the ApiToken/ApiKey system every other path above uses. These are what
+  // a fullstack app built against this workspace should call directly from
+  // its own client code (register/login a visitor, refresh their session)
+  // — real endpoints, read straight from each route file rather than
+  // guessed, since an agent scaffolding auth UI from a wrong shape is worse
+  // than no spec entry at all.
+  schemas.MemberUser = {
+    type: "object",
+    properties: {
+      id: { type: "string" },
+      email: { type: "string", format: "email" },
+      name: { type: "string", nullable: true },
+      avatar: { type: "string", nullable: true },
+      role: { type: "string", example: "authenticated" },
+      status: { type: "string", enum: ["pending_verification", "active", "suspended"] },
+      metadata: { type: "object" },
+      createdAt: { type: "string", format: "date-time" },
+      lastLoginAt: { type: "string", format: "date-time", nullable: true },
+    },
+  }
+  schemas.MemberSessionResponse = {
+    type: "object",
+    properties: {
+      message: { type: "string" },
+      user: { $ref: "#/components/schemas/MemberUser" },
+      accessToken: { type: "string", description: "Short-lived JWT — send as `Authorization: Bearer <accessToken>`." },
+      refreshToken: { type: "string", description: "Opaque, long-lived — exchange at /auth/refresh for a new accessToken when it expires. Single-use: rotated on every refresh." },
+      expiresIn: { type: "number", description: "accessToken lifetime in seconds" },
+      tokenType: { type: "string", example: "Bearer" },
+    },
+  }
+  // The password-recovery/confirmation endpoints below predate the
+  // register/login response shape and return a flatter { jwt, refreshToken,
+  // user } instead of { accessToken, expiresIn, tokenType } — kept as-is
+  // here rather than normalized, since this must match what the real route
+  // returns, not what would be more consistent.
+  schemas.MemberRecoveryResponse = {
+    type: "object",
+    properties: {
+      jwt: { type: "string", description: "Short-lived JWT — send as `Authorization: Bearer <jwt>`." },
+      refreshToken: { type: "string" },
+      user: { type: "object", properties: { id: { type: "string" }, email: { type: "string" }, role: { type: "string" } } },
+    },
+  }
+
+  paths["/auth/register"] = {
+    post: {
+      summary: "Register a new member (end-user)",
+      description: "Creates a session immediately unless the workspace requires email verification first (then returns 202 with no tokens).",
+      operationId: "registerMember",
+      tags: ["Authentication"],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                email: { type: "string", format: "email" },
+                password: { type: "string", minLength: 6 },
+                name: { type: "string" },
+                avatar: { type: "string", format: "uri" },
+                metadata: { type: "object" },
+              },
+              required: ["email", "password"],
+            },
+          },
+        },
+      },
+      responses: {
+        "201": { description: "Registered and signed in.", content: { "application/json": { schema: { $ref: "#/components/schemas/MemberSessionResponse" } } } },
+        "202": { description: "Account created, email verification required before sign-in." },
+        "403": { description: "Public registration is disabled for this workspace." },
+        "409": { description: "Email already registered." },
+      },
+    },
+  }
+
+  paths["/auth/login"] = {
+    post: {
+      summary: "Log in a member (end-user)",
+      operationId: "loginMember",
+      tags: ["Authentication"],
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { type: "object", properties: { email: { type: "string", format: "email" }, password: { type: "string" } }, required: ["email", "password"] } } },
+      },
+      responses: {
+        "200": { description: "Signed in.", content: { "application/json": { schema: { $ref: "#/components/schemas/MemberSessionResponse" } } } },
+        "401": { description: "Invalid email or password." },
+        "403": { description: "Account is not active (pending verification / suspended)." },
+      },
+    },
+  }
+
+  paths["/auth/refresh"] = {
+    post: {
+      summary: "Exchange a refresh token for a new access token",
+      description: "The refresh token is single-use and rotated on every call — the response's refreshToken replaces the one sent in, which stops working.",
+      operationId: "refreshMemberSession",
+      tags: ["Authentication"],
+      requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { refreshToken: { type: "string" } }, required: ["refreshToken"] } } } },
+      responses: {
+        "200": {
+          description: "New tokens issued.",
+          content: { "application/json": { schema: { type: "object", properties: { message: { type: "string" }, accessToken: { type: "string" }, refreshToken: { type: "string" }, expiresIn: { type: "number" }, tokenType: { type: "string", example: "Bearer" } } } } },
+        },
+        "401": { description: "Invalid, expired, or already-used (compromised) refresh token — the 401 body explains which." },
+      },
+    },
+  }
+
+  paths["/auth/logout"] = {
+    post: {
+      summary: "Revoke a member's session",
+      description: "Revokes the session matching the given refreshToken, if any. Always returns 200 even if the token was already invalid — logout is idempotent from the client's point of view.",
+      operationId: "logoutMember",
+      tags: ["Authentication"],
+      requestBody: { content: { "application/json": { schema: { type: "object", properties: { refreshToken: { type: "string" } } } } } },
+      responses: { "200": { description: "Session revoked (or nothing to revoke)." } },
+    },
+  }
+
+  paths["/auth/me"] = {
+    get: {
+      summary: "Get the signed-in member's own profile",
+      operationId: "getMemberProfile",
+      tags: ["Authentication"],
+      security: [{ BearerAuth: [] }],
+      responses: {
+        "200": { description: "Profile.", content: { "application/json": { schema: { type: "object", properties: { user: { $ref: "#/components/schemas/MemberUser" } } } } } },
+        "401": { description: "Missing or invalid access token." },
+        "404": { description: "Member not found or inactive." },
+      },
+    },
+    patch: {
+      summary: "Update the signed-in member's own profile, optionally changing their password",
+      description: "Changing the password requires currentPassword and revokes every other active session for this member.",
+      operationId: "updateMemberProfile",
+      tags: ["Authentication"],
+      security: [{ BearerAuth: [] }],
+      requestBody: {
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                avatar: { type: "string", format: "uri" },
+                metadata: { type: "object" },
+                currentPassword: { type: "string" },
+                newPassword: { type: "string", minLength: 8 },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Profile updated.", content: { "application/json": { schema: { type: "object", properties: { message: { type: "string" }, user: { $ref: "#/components/schemas/MemberUser" } } } } } },
+        "400": { description: "currentPassword missing/incorrect when changing password." },
+      },
+    },
+  }
+
+  paths["/auth/forgot-password"] = {
+    post: {
+      summary: "Request a password-reset email",
+      description: "Always responds 200 `{ ok: true }` whether or not the email is registered — never reveals which emails exist on this workspace.",
+      operationId: "forgotMemberPassword",
+      tags: ["Authentication"],
+      requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { email: { type: "string", format: "email" } }, required: ["email"] } } } },
+      responses: { "200": { description: "Email sent if the address is registered (response doesn't say which)." } },
+    },
+  }
+
+  paths["/auth/reset-password"] = {
+    post: {
+      summary: "Set a new password using the code from a forgot-password email",
+      operationId: "resetMemberPassword",
+      tags: ["Authentication"],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: { code: { type: "string" }, password: { type: "string", minLength: 8 }, passwordConfirmation: { type: "string", minLength: 8 } },
+              required: ["code", "password", "passwordConfirmation"],
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Password changed, signed in.", content: { "application/json": { schema: { $ref: "#/components/schemas/MemberRecoveryResponse" } } } },
+        "400": { description: "Invalid/expired code, or passwords don't match." },
+      },
+    },
+  }
+
+  paths["/auth/change-password"] = {
+    post: {
+      summary: "Change the signed-in member's password",
+      operationId: "changeMemberPassword",
+      tags: ["Authentication"],
+      security: [{ BearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              properties: { currentPassword: { type: "string" }, password: { type: "string", minLength: 8 }, passwordConfirmation: { type: "string", minLength: 8 } },
+              required: ["currentPassword", "password", "passwordConfirmation"],
+            },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Password changed.", content: { "application/json": { schema: { $ref: "#/components/schemas/MemberRecoveryResponse" } } } },
+        "400": { description: "currentPassword incorrect, or passwords don't match." },
+      },
+    },
+  }
+
+  paths["/auth/email-confirmation"] = {
+    post: {
+      summary: "Confirm a member's email using the code from their verification email",
+      operationId: "confirmMemberEmail",
+      tags: ["Authentication"],
+      requestBody: { required: true, content: { "application/json": { schema: { type: "object", properties: { code: { type: "string" } }, required: ["code"] } } } },
+      responses: {
+        "200": { description: "Email confirmed, signed in.", content: { "application/json": { schema: { $ref: "#/components/schemas/MemberRecoveryResponse" } } } },
+        "400": { description: "Invalid or expired confirmation code." },
+      },
+    },
+  }
+
+  paths["/auth/local"] = {
+    post: {
+      summary: "Strapi-compatible login (identifier/password)",
+      description: "Same login, Strapi's REST Auth shape — use this instead of /auth/login when porting a Strapi frontend/plugin that expects `identifier` and a `{ jwt, user }` response.",
+      operationId: "localLoginMember",
+      tags: ["Authentication"],
+      requestBody: {
+        required: true,
+        content: { "application/json": { schema: { type: "object", properties: { identifier: { type: "string", description: "The member's email" }, password: { type: "string" } }, required: ["identifier", "password"] } } },
+      },
+      responses: {
+        "200": {
+          description: "Signed in (Strapi-shaped user object).",
+          content: { "application/json": { schema: { type: "object", properties: { jwt: { type: "string" }, refreshToken: { type: "string" }, user: { type: "object" } } } } },
+        },
+        "400": { description: "Invalid identifier or password." },
+        "403": { description: "Account is not active." },
+      },
+    },
+  }
+
+  paths["/auth/local/register"] = {
+    post: {
+      summary: "Strapi-compatible registration (username/email/password)",
+      description: "Same registration, Strapi's REST Auth shape. Returns 202 with no tokens if the workspace requires email verification first.",
+      operationId: "localRegisterMember",
+      tags: ["Authentication"],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: { type: "object", properties: { username: { type: "string" }, email: { type: "string", format: "email" }, password: { type: "string", minLength: 8 } }, required: ["email", "password"] },
+          },
+        },
+      },
+      responses: {
+        "200": { description: "Registered and signed in (Strapi-shaped user object)." },
+        "202": { description: "Account created, email verification required before sign-in." },
+        "400": { description: "Email already taken." },
+        "403": { description: "Public registration is disabled for this workspace." },
+      },
+    },
+  }
+
   paths["/graphql"] = {
     post: {
       summary: "Dynamic GraphQL endpoint — fields mirror the REST schemas above",
@@ -387,7 +669,7 @@ export function buildOpenApiSpec(options: {
     openapi: "3.1.0",
     info: {
       title: `${tenantName} — Headless CMS API`,
-      description: `Dynamic REST API and Action Specification for **${tenantName}** powered by SaCMS.\n\nUse this specification to connect ChatGPT Custom GPTs, Google AI Studio, Manus, Emergent, v0.app, and other AI agents to manage CMS content.\n\n### Authentication\nProvide your API token or API key using standard HTTP Bearer authorization:\n\`Authorization: Bearer <YOUR_API_TOKEN>\`\nor header \`x-api-key: <YOUR_API_KEY>\`.`,
+      description: `Dynamic REST API and Action Specification for **${tenantName}** powered by SaCMS.\n\nUse this specification to connect ChatGPT Custom GPTs, Google AI Studio, Manus, Emergent, v0.app, and other AI agents to manage CMS content.\n\n### Authentication — two different kinds of Bearer token, don't mix them up\n1. **Workspace API token** — for every \`/content\`, \`/single\`, and \`/graphql\` call. Provide it as \`Authorization: Bearer <YOUR_API_TOKEN>\` or header \`x-api-key: <YOUR_API_KEY>\`. This is the one credential for your backend/integration to talk to this workspace.\n2. **Member access token** — for the \`/auth/*\` endpoints under the \`Authentication\` tag below (\`/auth/me\`, \`/auth/change-password\`). This is a short-lived JWT a real end-user gets back from \`/auth/login\`/\`/auth/register\`, sent the same way (\`Authorization: Bearer <accessToken>\`), but it identifies one signed-in visitor of the app you're building, not your workspace integration — a fullstack app with its own users (not just a backend reading CMS content) needs both kinds, used in different places.`,
       version: "1.0.0",
     },
     servers: [{ url: apiBase, description: `Primary Public API Gateway for ${tenantName}` }],
