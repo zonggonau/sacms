@@ -41,6 +41,24 @@ export const PATCH = withStaffAuth(
         tenantDb.component.findFirst({ where: draftWhere, select: { id: true } }),
       ])
       if (!hasCt && !hasSt && !hasComp) {
+        // The Content Type/Single Type/Component tabs are a SINGLE staging
+        // area, shared by whichever one template is currently being built —
+        // materializing this template on top of unrelated LIVE schema
+        // (draftTemplateId: null, e.g. from "Publish ke Template" never
+        // finished, or straight AI Schema Generator use) would mix two
+        // templates' structures together with no way to tell them apart.
+        const liveWhere = { tenantId: access.tenant.id, draftTemplateId: null }
+        const [liveCt, liveSt, liveComp] = await Promise.all([
+          tenantDb.contentType.findFirst({ where: liveWhere, select: { id: true } }),
+          tenantDb.singleType.findFirst({ where: liveWhere, select: { id: true } }),
+          tenantDb.component.findFirst({ where: liveWhere, select: { id: true } }),
+        ])
+        if (liveCt || liveSt || liveComp) {
+          return apiError("validation", {
+            message: "Ada Content Type/Single Type/Component yang belum di-publish ke template. Publish dulu schema yang ada sekarang (tombol \"Publish ke Template\") sebelum mengubah template ini ke Draft.",
+          })
+        }
+
         await materializeSchemaIntoTenant(tenantDb, access.tenant.id, existing.schema as any, { draftTemplateId: id })
       }
     }
