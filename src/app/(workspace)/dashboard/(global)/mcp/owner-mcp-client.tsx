@@ -118,6 +118,7 @@ export function OwnerMcpClient({ activeToken }: { activeToken: OwnerToken | null
     null,
     2,
   )
+  const urlWithToken = plainToken ? `${mcpUrl}?token=${plainToken}` : null
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -217,6 +218,23 @@ export function OwnerMcpClient({ activeToken }: { activeToken: OwnerToken | null
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {urlWithToken && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold flex items-center gap-1.5">
+                  Server URL + Token (siap pakai, sekali salin)
+                  <Badge variant="outline" className="text-[9px] font-bold bg-primary/10 text-primary border-primary/20">Rekomendasi</Badge>
+                </Label>
+                <div className="flex gap-2">
+                  <Input value={urlWithToken} readOnly className="font-mono text-xs bg-muted/30 h-9 rounded-xl" />
+                  <Button size="sm" variant="secondary" onClick={() => copy(urlWithToken, "Server URL + Token")} className="h-9 rounded-xl shrink-0">
+                    <Copy className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Token sudah tertanam di URL ini — tempel langsung ke client yang hanya minta satu Server URL, tanpa isi field Authorization terpisah.
+                </p>
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">Server URL</Label>
               <div className="flex gap-2">
