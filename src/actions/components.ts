@@ -109,13 +109,14 @@ export async function getComponentBySlugAction(tenantSlug: string, slug: string)
     const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
     if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
+    // No draftTemplateId:null filter — single-item lookup by slug is also
+    // how the edit page reaches a template's materialized draft rows.
     const component = await tenantDb.component.findFirst({
       where: {
         slug,
-        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
-          { 
+          {
             tenantId: null,
             tenants: { some: { tenantId: access.tenantId, enabled: true } }
           },
@@ -237,8 +238,10 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, category, fields } = result.data
 
+    // No draftTemplateId:null filter — this is how a template's materialized
+    // draft rows get edited via the normal builder UI during authoring.
     const existingComponent = await tenantDb.component.findFirst({
-      where: { id, draftTemplateId: null },
+      where: { id },
     })
 
     if (!existingComponent) return { error: "Component not found" }
@@ -321,8 +324,10 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
 
     const tenantDb = await getTenantDb(tenantSlug)
 
+    // No draftTemplateId:null filter — this is how a template's materialized
+    // draft rows get edited via the normal builder UI during authoring.
     const existingComponent = await tenantDb.component.findFirst({
-      where: { id, draftTemplateId: null },
+      where: { id },
     })
 
     if (!existingComponent) return { error: "Component not found" }

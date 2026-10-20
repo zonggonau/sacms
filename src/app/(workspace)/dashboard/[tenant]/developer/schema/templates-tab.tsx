@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, LayoutTemplate, Sparkles, Plus, Trash2, Pencil, ArrowLeft, Filter } from "lucide-react"
 import type { SchemaExport } from "@/components/ai-builder/schema-diagram"
@@ -30,7 +31,7 @@ interface TemplatesTabProps {
   tenantSlug: string
   /** SaCMS Global workspace gets the full author/publish/delete management view instead of the plain browse-and-use grid — publishing is restricted to super admin / SaCMS staff, enforced server-side by the same access.isGlobal gate the schema-templates API already uses. */
   isGlobal: boolean
-  /** Loads the template's schema into the preview (Diagram tab) — does NOT touch the real workspace schema until the user explicitly confirms. */
+  /** Parent asks for confirmation, then imports the template's schema as real Content Types/Single Types/Components right away. */
   onUseTemplate: (template: { name: string; schema: SchemaExport }) => void
 }
 
@@ -63,12 +64,14 @@ function CategoryFilter({
 
 export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesTabProps) {
   const { toast } = useToast()
-  const { confirm, dialog: confirmDialog } = useConfirm()
   const [view, setView] = useState<"list" | "author">("list")
   const [templates, setTemplates] = useState<SchemaTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES)
+  const [deleteDialog, setDeleteDialog] = useState<SchemaTemplateItem | null>(null)
+  const [deleteConfirmName, setDeleteConfirmName] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchTemplates = () => {
     setIsLoading(true)
@@ -95,12 +98,13 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
         body: JSON.stringify({ published: !template.published }),
       })
       if (!res.ok) throw new Error((await res.json())?.error || "Gagal mengubah status publish")
-      setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, published: !t.published } : t)))
+      const data = await res.json()
+      setTemplates((prev) => prev.map((t) => (t.id === template.id ? { ...t, published: data.template.published } : t)))
       toast({
-        title: !template.published ? "Template Dipublish" : "Template Ditarik",
+        title: !template.published ? "Template Dipublish" : "Dikembalikan ke Draft",
         description: !template.published
-          ? `"${template.name}" sekarang terlihat di tab Template semua workspace.`
-          : `"${template.name}" disembunyikan dari tab Template.`,
+          ? `"${template.name}" sekarang terlihat di tab Template semua workspace. Draft Content Type/Single Type/Component untuk template ini sudah dibersihkan.`
+          : `"${template.name}" sekarang draft — Content Type/Single Type/Component-nya sudah dibuat sebagai draft, edit lewat tab Content Type/Single Type/Component di halaman ini.`,
       })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal", description: err.message })
@@ -109,27 +113,20 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
     }
   }
 
-  const handleDelete = async (template: SchemaTemplateItem) => {
-    if (
-      !(await confirm({
-        title: "Hapus template ini?",
-        description: `"${template.name}" akan dihapus permanen. Workspace yang sudah pernah import tidak terpengaruh.`,
-        confirmLabel: "Hapus Template",
-        variant: "destructive",
-      }))
-    )
-      return
-
-    setPendingId(template.id)
+  const handleDelete = async () => {
+    if (!deleteDialog) return
+    setIsDeleting(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/schema-templates/${template.id}`, { method: "DELETE" })
+      const res = await fetch(`/api/tenant/${tenantSlug}/schema-templates/${deleteDialog.id}`, { method: "DELETE" })
       if (!res.ok) throw new Error((await res.json())?.error || "Gagal menghapus template")
-      setTemplates((prev) => prev.filter((t) => t.id !== template.id))
-      toast({ title: "Template Dihapus", description: `"${template.name}" telah dihapus.` })
+      setTemplates((prev) => prev.filter((t) => t.id !== deleteDialog.id))
+      toast({ title: "Template Dihapus", description: `"${deleteDialog.name}" telah dihapus.` })
+      setDeleteDialog(null)
+      setDeleteConfirmName("")
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal", description: err.message })
     } finally {
-      setPendingId(null)
+      setIsDeleting(false)
     }
   }
 
@@ -178,10 +175,9 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
 
     return (
       <div className="space-y-3">
-        {confirmDialog}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <p className="text-[11px] text-muted-foreground max-w-lg">
-            Template yang di-<strong>Publish</strong> langsung terlihat di tab Template semua workspace dan bisa dipakai lewat AI Schema Generator mereka. Publish hanya bisa dilakukan dari sini (SaCMS Global) oleh super admin / tim SaCMS.
+            Ubah ke <strong>Draft</strong> untuk mengedit — Content Type/Single Type/Component template ini otomatis dibuat sebagai draft yang bisa diedit manual di tab Content Type/Single Type/Component atau halaman masing-masing. <strong>Publish</strong> menyimpan hasil editnya ke template dan membersihkan draft-nya. Publish hanya bisa dilakukan dari sini (SaCMS Global) oleh super admin / tim SaCMS.
           </p>
           <Button onClick={() => setView("author")} className="h-8 gap-1.5 font-bold text-xs rounded-xl shrink-0">
             <Plus className="h-3.5 w-3.5" /> Buat Template Baru
@@ -260,7 +256,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(t)}
+                            onClick={() => setDeleteDialog(t)}
                             disabled={pendingId === t.id}
                             className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
                             title="Hapus Template"
@@ -276,6 +272,68 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
             )}
           </CardContent>
         </Card>
+
+        <Dialog
+          open={!!deleteDialog}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteDialog(null)
+              setDeleteConfirmName("")
+            }
+          }}
+        >
+          <DialogContent className="rounded-2xl border border-border bg-card">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-destructive flex items-center gap-2">
+                <Trash2 className="h-4 w-4" /> Hapus Template?
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Tindakan ini akan menghapus template <strong className="text-foreground font-bold">"{deleteDialog?.name}"</strong> secara permanen. Workspace yang sudah pernah pakai template ini tidak terpengaruh.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-3 py-2">
+              <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs">
+                <p className="font-semibold text-destructive">Ketik nama template persis untuk konfirmasi:</p>
+                <p className="font-mono font-bold mt-1 text-foreground">{deleteDialog?.name}</p>
+              </div>
+              <Input
+                value={deleteConfirmName}
+                onChange={(e) => setDeleteConfirmName(e.target.value)}
+                placeholder="Ketik nama template"
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="ghost"
+                className="rounded-xl text-xs"
+                onClick={() => {
+                  setDeleteDialog(null)
+                  setDeleteConfirmName("")
+                }}
+                disabled={isDeleting}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-xl text-xs font-bold"
+                onClick={handleDelete}
+                disabled={deleteConfirmName !== deleteDialog?.name || isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Menghapus...
+                  </>
+                ) : (
+                  "Hapus Permanen"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

@@ -1,8 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Database } from "lucide-react"
+import { Database, Pencil } from "lucide-react"
 import { FIELD_TYPES } from "@/lib/field-types"
 import type { SchemaModel, SchemaField } from "./schema-diagram"
 
@@ -18,15 +20,17 @@ function FieldBadge({ field }: { field: SchemaField }) {
   )
 }
 
-/** Shared read-only card grid for a schema's Content Types / Single Types / Components — used by the schema page's list tabs. */
+/** Shared card grid for a schema's Content Types / Single Types / Components — used by the schema page's list tabs. Read-only unless `editHrefFor` is given, which adds a per-card Edit link to the real builder page (also how a SaCMS Global template's materialized draft rows get edited). */
 export function SchemaModelGrid({
   models,
   typeLabel,
   emptyMessage,
+  editHrefFor,
 }: {
   models: SchemaModel[]
   typeLabel: string
   emptyMessage: string
+  editHrefFor?: (model: SchemaModel) => string
 }) {
   if (models.length === 0) {
     return (
@@ -44,7 +48,16 @@ export function SchemaModelGrid({
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between gap-2">
               <CardTitle className="text-sm font-bold">{model.name}</CardTitle>
-              <Badge variant="outline" className="text-[10px] font-bold shrink-0">{typeLabel}</Badge>
+              <div className="flex items-center gap-1 shrink-0">
+                <Badge variant="outline" className="text-[10px] font-bold">{typeLabel}</Badge>
+                {editHrefFor && (
+                  <Button asChild variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+                    <Link href={editHrefFor(model)} title={`Edit ${model.name}`}>
+                      <Pencil className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
             {model.description && <CardDescription className="text-xs">{model.description}</CardDescription>}
           </CardHeader>

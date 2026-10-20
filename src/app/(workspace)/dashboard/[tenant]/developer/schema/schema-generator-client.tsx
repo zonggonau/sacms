@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Layers, FileText, Box, Database, Loader2, X,
-  LayoutTemplate, Lock, LockOpen, Trash2, CheckCircle2, XCircle,
+  LayoutTemplate, Lock, LockOpen, Trash2,
 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
@@ -54,10 +54,11 @@ export function SchemaGeneratorClient({
   const [finalized, setFinalized] = useState(initialFinalized)
   const [isTogglingLock, setIsTogglingLock] = useState(false)
 
-  // Template preview — "Pakai Template" loads a template's schema here
-  // WITHOUT touching the real workspace schema; only confirming imports it.
-  const [previewTemplate, setPreviewTemplate] = useState<{ name: string; schema: SchemaExport } | null>(null)
-  const [isConfirmingPreview, setIsConfirmingPreview] = useState(false)
+  // "Pakai Template" asks for confirmation, then imports immediately as
+  // real Content Types/Single Types/Components — no separate preview step,
+  // so the result is reviewable/editable right away via the other tabs.
+  const [confirmUseTemplate, setConfirmUseTemplate] = useState<{ name: string; schema: SchemaExport } | null>(null)
+  const [isApplyingTemplate, setIsApplyingTemplate] = useState(false)
 
   const [confirmDeleteAllOpen, setConfirmDeleteAllOpen] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
@@ -114,29 +115,28 @@ export function SchemaGeneratorClient({
   }
 
   const handleUseTemplate = (template: { name: string; schema: SchemaExport }) => {
-    setPreviewTemplate(template)
-    setActiveTab("diagram")
-    toast({ title: "Preview Template Dimuat", description: `"${template.name}" ditampilkan di Diagram Schema — klik Gunakan Schema Ini kalau sudah sesuai.` })
+    setConfirmUseTemplate(template)
   }
 
-  const handleConfirmPreview = async () => {
-    if (!previewTemplate) return
-    setIsConfirmingPreview(true)
+  const handleApplyTemplate = async () => {
+    if (!confirmUseTemplate) return
+    setIsApplyingTemplate(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/import-schema`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schema: previewTemplate.schema }),
+        body: JSON.stringify({ schema: confirmUseTemplate.schema }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal menyimpan schema")
-      toast({ title: "Schema Tersimpan", description: `${data.imported} struktur dari "${previewTemplate.name}" berhasil dibuat.` })
-      setPreviewTemplate(null)
+      toast({ title: "Template Diterapkan", description: `${data.imported} struktur dari "${confirmUseTemplate.name}" berhasil dibuat — cek Diagram Schema atau edit masing-masing di tab Content Type/Single Type/Component.` })
+      setActiveTab("diagram")
       setRefreshKey((k) => k + 1)
+      setConfirmUseTemplate(null)
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal Menyimpan Schema", description: err.message })
     } finally {
-      setIsConfirmingPreview(false)
+      setIsApplyingTemplate(false)
     }
   }
 
@@ -158,8 +158,6 @@ export function SchemaGeneratorClient({
       setConfirmDeleteAllOpen(false)
     }
   }
-
-  const diagramData = previewTemplate ? previewTemplate.schema : schema
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -252,46 +250,18 @@ export function SchemaGeneratorClient({
           </div>
 
           <TabsContent value="diagram" className="flex min-h-0 flex-col gap-2 data-[state=inactive]:hidden">
-            {previewTemplate ? (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 shrink-0 flex-wrap">
-                <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                  Preview Template: <strong>{previewTemplate.name}</strong> — belum disimpan ke workspace ini.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setPreviewTemplate(null)}
-                    className="h-7 gap-1.5 rounded-lg text-[11px] font-bold"
-                  >
-                    <XCircle className="h-3.5 w-3.5" /> Batal
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={handleConfirmPreview}
-                    disabled={isConfirmingPreview || finalized}
-                    title={finalized ? "Kembalikan schema ke Draft dulu untuk menyimpan" : undefined}
-                    className="h-7 gap-1.5 rounded-lg text-[11px] font-bold"
-                  >
-                    {isConfirmingPreview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                    Gunakan Schema Ini
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-end shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowFullscreenDiagram(true)}
-                  className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-                >
-                  <Maximize2 className="h-3 w-3" /> Full Screen
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center justify-end shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFullscreenDiagram(true)}
+                className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+              >
+                <Maximize2 className="h-3 w-3" /> Full Screen
+              </Button>
+            </div>
             <div className="flex-1 min-h-[480px] rounded-2xl border border-border/80 bg-muted/10 overflow-hidden">
-              <SchemaDiagram data={diagramData} height="100%" />
+              <SchemaDiagram data={schema} height="100%" />
             </div>
           </TabsContent>
 
@@ -303,6 +273,7 @@ export function SchemaGeneratorClient({
                 models={schema.contentTypes}
                 typeLabel="Content Type"
                 emptyMessage="Belum ada Content Type — buat lewat AI Schema Generator atau manual."
+                editHrefFor={(m) => `/dashboard/${tenantSlug}/developer/content-types/edit/${m.slug}`}
               />
             )}
           </TabsContent>
@@ -315,6 +286,7 @@ export function SchemaGeneratorClient({
                 models={schema.singleTypes}
                 typeLabel="Single Type"
                 emptyMessage="Belum ada Single Type — buat lewat AI Schema Generator atau manual."
+                editHrefFor={(m) => `/dashboard/${tenantSlug}/developer/single-types/${m.slug}/edit`}
               />
             )}
           </TabsContent>
@@ -327,6 +299,7 @@ export function SchemaGeneratorClient({
                 models={schema.components}
                 typeLabel="Komponen"
                 emptyMessage="Belum ada Komponen reusable."
+                editHrefFor={(m) => `/dashboard/${tenantSlug}/developer/components/${m.slug}/edit`}
               />
             )}
           </TabsContent>
@@ -345,6 +318,19 @@ export function SchemaGeneratorClient({
         confirmLabel={isDeletingAll ? "Menghapus..." : "Hapus Semua"}
         variant="destructive"
         onConfirm={handleDeleteAll}
+      />
+
+      <ConfirmDialog
+        open={!!confirmUseTemplate}
+        onOpenChange={(open) => !open && setConfirmUseTemplate(null)}
+        title={`Pakai template "${confirmUseTemplate?.name}"?`}
+        description={
+          confirmUseTemplate
+            ? `${confirmUseTemplate.schema.contentTypes?.length || 0} Content Type, ${confirmUseTemplate.schema.singleTypes?.length || 0} Single Type, dan ${confirmUseTemplate.schema.components?.length || 0} Component akan dibuat langsung di workspace ini. Setelah itu Anda bisa mengeceknya di Diagram Schema dan mengedit masing-masing lewat tab Content Type/Single Type/Component sebelum Publish Schema.`
+            : undefined
+        }
+        confirmLabel={isApplyingTemplate ? "Menerapkan..." : "Pakai Template"}
+        onConfirm={handleApplyTemplate}
       />
 
       {/* ── AI Schema Generator — half-screen side panel, not a full overlay, so the Diagram Schema tab stays visible on the other half ── */}
@@ -390,7 +376,7 @@ export function SchemaGeneratorClient({
             <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
           </div>
           <div className="flex-1 min-h-0 p-4">
-            <SchemaDiagram data={diagramData} height="100%" />
+            <SchemaDiagram data={schema} height="100%" />
           </div>
         </DialogContent>
       </Dialog>

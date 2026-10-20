@@ -102,10 +102,11 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
+    // No draftTemplateId:null filter — single-item lookup by slug is also
+    // how the edit page reaches a template's materialized draft rows.
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         slug,
-        draftTemplateId: null,
         OR: [
           { tenantId: tenantId },
           {
@@ -242,8 +243,10 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, showInCms, fields } = result.data
 
+    // No draftTemplateId:null filter — this is how a template's materialized
+    // draft rows get edited via the normal builder UI during authoring.
     const existingSingleType = await tenantDb.singleType.findFirst({
-      where: { id, draftTemplateId: null },
+      where: { id },
     })
 
     if (!existingSingleType) return { error: "Single type not found" }
@@ -327,7 +330,7 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
     const tenantDb = await getTenantDb(tenantSlug)
 
     const existingSingleType = await tenantDb.singleType.findFirst({
-      where: { id, draftTemplateId: null },
+      where: { id },
       include: { tenants: true }
     })
 

@@ -96,10 +96,14 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
 
     const tenantDb = await getTenantDb(tenantSlug)
 
+    // No draftTemplateId:null filter here (unlike the list action above) —
+    // a single-item lookup by id is also how the edit pages reach a
+    // template's materialized draft rows while the SaCMS team edits them
+    // (see schema-templates/[id]/route.ts's PATCH), and slug uniqueness
+    // already means a draft row can't collide with a real one.
     const contentType = await tenantDb.contentType.findFirst({
       where: {
         id,
-        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -138,10 +142,11 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
 
     const tenantDb = await getTenantDb(tenantSlug)
 
+    // Same reasoning as getContentTypeAction above — no draftTemplateId:null
+    // filter, so this also resolves a template's materialized draft rows.
     const contentType = await tenantDb.contentType.findFirst({
       where: {
         slug,
-        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
