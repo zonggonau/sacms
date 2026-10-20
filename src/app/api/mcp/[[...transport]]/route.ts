@@ -1996,6 +1996,53 @@ export default async function NewsPage() {
       }
     )
 
+    // ── get_openapi_spec ─────────────────────────────────────────────────────
+    server.registerTool(
+      "get_openapi_spec",
+      {
+        title: "Get OpenAPI Specification",
+        description:
+          "Get a real OpenAPI 3.0 document generated live from this workspace's actual CMS schema — every Content Type and Single Type as a JSON Schema model, with its list/get/create/update/delete paths. Hand this straight to any OpenAPI-aware tool or codegen step instead of re-deriving the API shape from get_full_schema by hand. The exact same document (same generator) is also served at GET /api/public/{tenant}/openapi.json for non-MCP tools (e.g. v0.app), and powers the dashboard's own Swagger tab.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const { buildOpenApiSpec } = await import("@/lib/openapi-generator")
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const { EXCLUDE_PLATFORM_CONTENT_TYPES } = await import("@/lib/platform-content-types")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        // Same visibility rule the real public content API applies: this
+        // tenant's own types plus global ones, minus SaCMS's internal
+        // platform types — so the spec matches exactly what an external
+        // tool calling the real endpoints would actually see, not just
+        // this tenant's own schema in the abstract (unlike get_full_schema).
+        const [contentTypesRaw, singleTypesRaw] = await Promise.all([
+          tenantDb.contentType.findMany({
+            where: { OR: [{ tenantId: auth.tenantId }, { tenantId: null, ...EXCLUDE_PLATFORM_CONTENT_TYPES }] },
+            include: { schemaFields: true },
+          }),
+          tenantDb.singleType.findMany({
+            where: { tenantId: auth.tenantId },
+            include: { schemaFields: true },
+          }),
+        ])
+
+        const spec = buildOpenApiSpec({
+          tenantName: auth.tenantName,
+          tenantSlug: auth.tenantSlug,
+          apiOrigin: resolveApiOrigin(),
+          contentTypes: contentTypesRaw.map((ct) => ({ slug: ct.slug, name: ct.name, fields: ct.schemaFields })),
+          singleTypes: singleTypesRaw.map((st) => ({ slug: st.slug, name: st.name, fields: st.schemaFields })),
+        })
+
+        return { content: [{ type: "text" as const, text: JSON.stringify(spec, null, 2) }] }
+      }
+    )
+
     // ── get_or_create_api_key ────────────────────────────────────────────────
     server.registerTool(
       "get_or_create_api_key",
