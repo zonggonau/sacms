@@ -5,13 +5,16 @@ import { useRouter } from "next/navigation"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Layers, FileText, Box, Database, Loader2, X,
-  LayoutTemplate, Lock, LockOpen, Trash2,
+  LayoutTemplate, Lock, LockOpen, Trash2, PackageCheck,
 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
@@ -63,6 +66,16 @@ export function SchemaGeneratorClient({
   const [confirmDeleteAllOpen, setConfirmDeleteAllOpen] = useState(false)
   const [isDeletingAll, setIsDeletingAll] = useState(false)
 
+  // SaCMS Global only: Content Type/Single Type/Component here are just
+  // staging space for whichever template is being built (via AI Schema
+  // Generator or manual editing). "Publish ke Template" bundles the
+  // current live schema into a brand-new, immediately-published
+  // SchemaTemplate, then wipes the live rows so these tabs go back to
+  // empty for the next one.
+  const [showPublishToTemplate, setShowPublishToTemplate] = useState(false)
+  const [publishForm, setPublishForm] = useState({ name: "", category: "", icon: "📦", description: "" })
+  const [isPublishingToTemplate, setIsPublishingToTemplate] = useState(false)
+
   useEffect(() => {
     const tab = new URLSearchParams(window.location.search).get("tab")
     if (tab) setActiveTab(tab)
@@ -102,7 +115,7 @@ export function SchemaGeneratorClient({
       if (!res.ok) throw new Error(data?.error || "Gagal mengubah status schema")
       setFinalized(data.finalized)
       toast({
-        title: data.finalized ? (isGlobal ? "Template Dipublish" : "Schema Dipublish") : "Dikembalikan ke Draft",
+        title: data.finalized ? "Schema Dipublish" : "Dikembalikan ke Draft",
         description: data.finalized
           ? "Schema sekarang final — tidak bisa diubah manual dari dashboard sampai dikembalikan ke draft. Server MCP tetap bisa mengelola schema seperti biasa."
           : "Schema bisa diedit manual lagi dari dashboard.",
@@ -140,6 +153,31 @@ export function SchemaGeneratorClient({
     }
   }
 
+  const handlePublishToTemplate = async () => {
+    setIsPublishingToTemplate(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/schema-templates/publish-live`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(publishForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal publish ke template")
+      toast({
+        title: "Template Dipublish",
+        description: `"${data.template.name}" sudah masuk ke tab Templates. Content Type/Single Type/Component dikosongkan lagi untuk template baru.`,
+      })
+      setShowPublishToTemplate(false)
+      setPublishForm({ name: "", category: "", icon: "📦", description: "" })
+      setActiveTab("templates")
+      setRefreshKey((k) => k + 1)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message })
+    } finally {
+      setIsPublishingToTemplate(false)
+    }
+  }
+
   const handleDeleteAll = async () => {
     setIsDeletingAll(true)
     try {
@@ -170,27 +208,42 @@ export function SchemaGeneratorClient({
             Beta
           </Badge>
         </h1>
-        <Badge
-          variant="outline"
-          className={
-            finalized
-              ? "gap-1 text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-              : "gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-          }
-        >
-          {finalized ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
-          {finalized ? "Final" : "Draft"}
-        </Badge>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={handleToggleLock}
-          disabled={isTogglingLock}
-          className="h-8 gap-1.5 text-xs font-bold"
-        >
-          {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : finalized ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
-          {finalized ? "Kembalikan ke Draft" : isGlobal ? "Publish Template" : "Publish Schema"}
-        </Button>
+        {isGlobal ? (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowPublishToTemplate(true)}
+            disabled={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
+            title="Bundel Content Type/Single Type/Component saat ini jadi 1 template baru"
+            className="h-8 gap-1.5 text-xs font-bold disabled:opacity-50"
+          >
+            <PackageCheck className="size-3.5" /> Publish ke Template
+          </Button>
+        ) : (
+          <>
+            <Badge
+              variant="outline"
+              className={
+                finalized
+                  ? "gap-1 text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                  : "gap-1 text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+              }
+            >
+              {finalized ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
+              {finalized ? "Final" : "Draft"}
+            </Badge>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleToggleLock}
+              disabled={isTogglingLock}
+              className="h-8 gap-1.5 text-xs font-bold"
+            >
+              {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : finalized ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
+              {finalized ? "Kembalikan ke Draft" : "Publish Schema"}
+            </Button>
+          </>
+        )}
         <Button
           size="sm"
           variant="outline"
@@ -319,6 +372,73 @@ export function SchemaGeneratorClient({
         variant="destructive"
         onConfirm={handleDeleteAll}
       />
+
+      <Dialog open={showPublishToTemplate} onOpenChange={setShowPublishToTemplate}>
+        <DialogContent className="rounded-2xl border border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <PackageCheck className="h-4 w-4 text-primary" /> Publish ke Template
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {schema.contentTypes.length} Content Type, {schema.singleTypes.length} Single Type, dan {schema.components.length} Component saat ini akan dibundel jadi satu template baru dan langsung terlihat di tab Templates. Setelah itu, tab Content Type/Single Type/Component akan dikosongkan lagi untuk template berikutnya.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2.5">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Template</Label>
+                <Input
+                  value={publishForm.name}
+                  onChange={(e) => setPublishForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="mis. Website Desa"
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kategori</Label>
+                <Input
+                  value={publishForm.category}
+                  onChange={(e) => setPublishForm((f) => ({ ...f, category: e.target.value }))}
+                  placeholder="mis. Pemerintahan"
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ikon</Label>
+                <Input
+                  value={publishForm.icon}
+                  onChange={(e) => setPublishForm((f) => ({ ...f, icon: e.target.value }))}
+                  className="h-9 w-16 text-center text-sm rounded-xl"
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Deskripsi (opsional)</Label>
+              <Textarea
+                value={publishForm.description}
+                onChange={(e) => setPublishForm((f) => ({ ...f, description: e.target.value }))}
+                placeholder="Ringkasan singkat untuk tenant yang menjelajahi tab Templates"
+                className="resize-none min-h-[60px] text-xs rounded-xl"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" className="rounded-xl text-xs" onClick={() => setShowPublishToTemplate(false)} disabled={isPublishingToTemplate}>
+              Batal
+            </Button>
+            <Button
+              className="rounded-xl text-xs font-bold"
+              onClick={handlePublishToTemplate}
+              disabled={isPublishingToTemplate || !publishForm.name.trim() || !publishForm.category.trim()}
+            >
+              {isPublishingToTemplate ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <PackageCheck className="mr-1.5 h-3.5 w-3.5" />}
+              {isPublishingToTemplate ? "Mempublish..." : "Publish ke Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={!!confirmUseTemplate}
