@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key, Zap } from "lucide-react"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Sparkles, Maximize2, Plug, Layers, FileText, Box, Database, Loader2, X } from "lucide-react"
 import { SchemaStep } from "./schema-step"
-import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
+import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
+import { SchemaModelGrid } from "@/components/ai-builder/schema-model-grid"
 
 interface SchemaGeneratorClientProps {
   tenantSlug: string
@@ -18,114 +21,177 @@ interface SchemaGeneratorClientProps {
   }
 }
 
+const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
+
 export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSummary }: SchemaGeneratorClientProps) {
   const router = useRouter()
-  const [diagramRefreshKey, setDiagramRefreshKey] = useState(0)
-  const [showIdeHint, setShowIdeHint] = useState(true)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [showGenerator, setShowGenerator] = useState(false)
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
+  const [schema, setSchema] = useState<SchemaExport>(EMPTY_SCHEMA)
+  const [isLoadingSchema, setIsLoadingSchema] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    setIsLoadingSchema(true)
+    fetch(`/api/tenant/${tenantSlug}/ai-builder/export-schema`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Gagal memuat skema"))))
+      .then((data: SchemaExport) => {
+        if (!cancelled) setSchema(data)
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoadingSchema(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [tenantSlug, refreshKey])
+
+  const onSchemaReady = () => {
+    setRefreshKey((k) => k + 1)
+    setShowGenerator(false)
+  }
 
   return (
-    <div className="flex flex-col gap-4 w-full">
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 pb-1">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <h1 className="text-2xl font-black tracking-tight text-foreground">
-              SaCMS AI Schema Generator
-            </h1>
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
-              Beta
-            </Badge>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-              <Zap className="h-3 w-3" /> Vercel AI Gateway
-            </Badge>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* ── App-shell header ── */}
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+        <Database className="size-4 shrink-0 text-primary" />
+        <h1 className="min-w-0 flex-1 truncate text-sm font-medium">
+          SaCMS AI Schema Generator
+          <Badge variant="outline" className="ml-2 bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full align-middle">
+            Beta
+          </Badge>
+        </h1>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
+          className="h-8 gap-1.5 text-xs font-bold"
+        >
+          <Plug className="size-3.5" /> Sambungkan ke MCP
+        </Button>
+        <Button
+          size="sm"
+          onClick={() => setShowGenerator(true)}
+          className="h-8 gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs"
+        >
+          <Sparkles className="size-3.5" /> AI Schema Generator
+        </Button>
+      </header>
+
+      {/* ── Full-width tabbed workspace ── */}
+      <div className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
+        <Tabs defaultValue="diagram" className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <TabsList>
+              <TabsTrigger value="diagram" className="gap-1.5">
+                <Database className="h-3.5 w-3.5" /> Diagram Schema
+              </TabsTrigger>
+              <TabsTrigger value="content-types" className="gap-1.5">
+                <Layers className="h-3.5 w-3.5" /> Content Type
+                <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5">{schema.contentTypes.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="single-types" className="gap-1.5">
+                <FileText className="h-3.5 w-3.5" /> Single Type
+                <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5">{schema.singleTypes.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="components" className="gap-1.5">
+                <Box className="h-3.5 w-3.5" /> Component
+                <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5">{schema.components.length}</Badge>
+              </TabsTrigger>
+            </TabsList>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            Jelaskan struktur bisnis atau aplikasi Anda. AI merancang Content Type &amp; relasi schema CMS secara otomatis via <strong>Vercel AI Gateway</strong>. Terhubung langsung ke Server MCP dan REST API untuk frontend Anda.
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            Skema selalu bisa diubah kapan saja — AI Site tidak mensyaratkan status final apa pun untuk mulai membangun frontend.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
-            className="h-8 gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs"
-          >
-            <Plug className="h-3.5 w-3.5" /> Sambungkan ke AI Agent & IDE (MCP)
-            <ArrowRight className="h-3 w-3" />
-          </Button>
-        </div>
+
+          <TabsContent value="diagram" className="flex min-h-0 flex-col gap-2 data-[state=inactive]:hidden">
+            <div className="flex items-center justify-end shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFullscreenDiagram(true)}
+                className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+              >
+                <Maximize2 className="h-3 w-3" /> Full Screen
+              </Button>
+            </div>
+            <div className="flex-1 min-h-[480px] rounded-2xl border border-border/80 bg-muted/10 overflow-hidden">
+              <SchemaDiagram data={schema} height="100%" />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="content-types" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            {isLoadingSchema ? (
+              <LoadingState />
+            ) : (
+              <SchemaModelGrid
+                models={schema.contentTypes}
+                typeLabel="Content Type"
+                emptyMessage="Belum ada Content Type — buat lewat AI Schema Generator atau manual."
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="single-types" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            {isLoadingSchema ? (
+              <LoadingState />
+            ) : (
+              <SchemaModelGrid
+                models={schema.singleTypes}
+                typeLabel="Single Type"
+                emptyMessage="Belum ada Single Type — buat lewat AI Schema Generator atau manual."
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="components" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            {isLoadingSchema ? (
+              <LoadingState />
+            ) : (
+              <SchemaModelGrid
+                models={schema.components}
+                typeLabel="Komponen"
+                emptyMessage="Belum ada Komponen reusable."
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
 
-      {/* ── "Build in your own IDE" hint banner ── */}
-      {showIdeHint && (
-        <div className="relative rounded-2xl border border-border/70 bg-muted/30 p-4 text-left shrink-0">
-          <button
-            type="button"
-            onClick={() => setShowIdeHint(false)}
-            className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
-            aria-label="Tutup"
+      {/* ── AI Schema Generator — half-screen side panel, not a full overlay, so the Diagram Schema tab stays visible on the other half ── */}
+      <DialogPrimitive.Root open={showGenerator} onOpenChange={setShowGenerator}>
+        <DialogPrimitive.Portal>
+          <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-transparent" />
+          <DialogPrimitive.Content
+            className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col border-l border-border bg-card shadow-2xl duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:w-1/2"
           >
-            <X className="h-3.5 w-3.5" />
-          </button>
-          <div className="flex items-start gap-3 pr-6">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <Terminal className="h-4 w-4" />
-            </div>
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-foreground">Setelah schema siap, integrasikan dengan IDE favorit atau AI Agent pilihan Anda</p>
-              <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Schema CMS tenant ini bisa langsung diakses oleh AI Agent (ChatGPT, Google AI Studio, Claude Desktop, Antigravity) dan IDE (VS Code, Cursor, Windsurf) lewat <strong>Server MCP native</strong> atau <strong>Public REST API</strong>.
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
-                  className="text-[11px] font-bold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
-                >
-                  <Plug className="h-3 w-3" /> Buka Konfigurasi Server MCP <ArrowRight className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/dashboard/${tenantSlug}/developer/api-keys`)}
-                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline cursor-pointer inline-flex items-center gap-1"
-                >
-                  <Key className="h-3 w-3" /> Kunci API & REST
-                </button>
+            <DialogPrimitive.Title className="sr-only">AI Schema Generator</DialogPrimitive.Title>
+            <div className="flex items-center gap-2.5 border-b border-border/70 bg-gradient-to-r from-violet-500/10 via-primary/5 to-transparent px-5 py-4 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-white shrink-0">
+                <Sparkles className="h-4.5 w-4.5" />
               </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-foreground leading-tight">AI Schema Generator</p>
+                <p className="text-[11px] text-muted-foreground truncate">Jelaskan bisnis Anda atau upload dokumen referensi — AI merancang struktur CMS lengkap</p>
+              </div>
+              <DialogPrimitive.Close
+                aria-label="Tutup"
+                className="shrink-0 rounded-lg p-1.5 text-muted-foreground opacity-70 transition-all hover:opacity-100 hover:bg-muted focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-hidden cursor-pointer"
+              >
+                <X className="size-4" />
+              </DialogPrimitive.Close>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Schema Wizard ── */}
-      <SchemaStep
-        tenantSlug={tenantSlug}
-        hasSchema={hasSchema}
-        existingSchemaSummary={existingSchemaSummary}
-        onSchemaReady={() => setDiagramRefreshKey((k) => k + 1)}
-      />
-
-      {/* ── ER Diagram ── */}
-      <div className="shrink-0 space-y-2 pb-2">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFullscreenDiagram(true)}
-            className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-          >
-            <Maximize2 className="h-3 w-3" /> Preview Full Screen
-          </Button>
-        </div>
-        <SchemaDiagram tenantSlug={tenantSlug} refreshKey={diagramRefreshKey} />
-      </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SchemaStep
+                tenantSlug={tenantSlug}
+                hasSchema={hasSchema}
+                existingSchemaSummary={existingSchemaSummary}
+                onSchemaReady={onSchemaReady}
+              />
+            </div>
+          </DialogPrimitive.Content>
+        </DialogPrimitive.Portal>
+      </DialogPrimitive.Root>
 
       {/* ── Fullscreen Diagram Preview Modal ── */}
       <Dialog open={showFullscreenDiagram} onOpenChange={setShowFullscreenDiagram}>
@@ -135,10 +201,18 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
             <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
           </div>
           <div className="flex-1 min-h-0 p-4">
-            <SchemaDiagram tenantSlug={tenantSlug} refreshKey={diagramRefreshKey} height="100%" />
+            <SchemaDiagram data={schema} height="100%" />
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-20 text-xs text-muted-foreground">
+      <Loader2 className="h-4 w-4 animate-spin" /> Memuat skema...
     </div>
   )
 }

@@ -43,7 +43,7 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+    <div className="h-full">
       <SchemaGeneratorClient
         tenantSlug={tenantSlug}
         hasSchema={hasSchema}
