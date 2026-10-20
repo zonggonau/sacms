@@ -113,7 +113,9 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
             {contentTypes.length === 0 ? (
               <p className="px-3 text-xs text-muted-foreground/60 italic">Belum ada skema</p>
             ) : (
-              contentTypes.map(ct => {
+              <ScrollArea className="max-h-64 -mr-3 pr-2">
+              <div className="space-y-1">
+              {contentTypes.map(ct => {
                 const active = pathname.startsWith(href(`/content/${ct.slug}`))
                 return (
                   <div key={ct.id} className="relative group">
@@ -148,7 +150,9 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                     )}
                   </div>
                 )
-              })
+              })}
+              </div>
+              </ScrollArea>
             )}
           </div>
 
@@ -179,7 +183,10 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               </div>
             </Link>
 
-            {singleTypes.length > 0 && singleTypes.map(st => {
+            {singleTypes.length > 0 && (
+              <ScrollArea className="max-h-64 -mr-3 pr-2">
+              <div className="space-y-1">
+              {singleTypes.map(st => {
               const active = pathname.startsWith(href(`/single-types/${st.slug}`))
               return (
                 <div key={st.id} className="relative group ml-3">
@@ -206,7 +213,10 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                   )}
                 </div>
               )
-            })}
+              })}
+              </div>
+              </ScrollArea>
+            )}
           </div>
 
         </div>
