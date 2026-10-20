@@ -62,7 +62,7 @@ export default async function DeveloperLayout({
   return (
     <div className="flex h-screen w-full overflow-hidden">
       <div className="h-screen shrink-0">
-        <DeveloperSidebar tenantId={tenant} isGlobal={access.isGlobal} />
+        <DeveloperSidebar tenantId={tenant} />
       </div>
       <div className="min-w-0 flex-1 overflow-y-auto">
         <SubscriptionGate isExpired={isExpired} tenantId={tenantId}>

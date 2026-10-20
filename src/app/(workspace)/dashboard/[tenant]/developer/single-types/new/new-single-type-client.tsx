@@ -176,7 +176,7 @@ export default function NewSingleTypeClient({
         })),
       })
 
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Single type berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/developer/single-types`)
       } else {

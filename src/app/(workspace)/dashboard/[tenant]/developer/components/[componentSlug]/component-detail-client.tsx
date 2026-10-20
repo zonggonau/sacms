@@ -91,7 +91,7 @@ export default function ComponentDetailClient({
     try {
       const response = await deleteComponentAction(tenantSlug, component.id)
       
-      if (!response.error) {
+      if (!("error" in response)) {
         toast({ title: "Berhasil Dihapus", description: "Komponen berhasil dihapus" })
         router.push(`/dashboard/${tenantSlug}/developer/components`)
       } else {

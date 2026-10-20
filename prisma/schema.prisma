@@ -120,6 +120,10 @@ model Tenant {
   /// Where the member password-reset link should point. `?code=<token>` is
   /// appended. Empty = SaCMS-hosted fallback reset page.
   memberPasswordResetRedirect     String?
+  /// Draft/final toggle for the tenant's CMS schema (null = draft/editable,
+  /// set = finalized/locked). Only enforced on dashboard-facing schema
+  /// mutations — see src/lib/schema-lock.ts for why MCP bypasses this.
+  schemaFinalizedAt      DateTime?
   apiKeys                ApiKey[]
   apiRequests            ApiRequest[]
   apiTokens              ApiToken[]

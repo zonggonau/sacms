@@ -118,7 +118,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
 
     startTransition(async () => {
       const res = await deleteSingleTypeAction(tenantSlug, deleteDialog.singleType!.id)
-      if (res.error) {
+      if ("error" in res) {
         toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({ title: "Berhasil Dihapus", description: `${deleteDialog.singleType!.name} telah berhasil dihapus.` })

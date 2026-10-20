@@ -9,6 +9,7 @@ import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createContentTypeSchema, updateContentTypeSchema } from "@/lib/validations/admin"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
+import { assertSchemaEditable } from "@/lib/schema-lock"
 
 export async function getContentTypesAction(tenantSlug: string) {
   try {
@@ -176,6 +177,9 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_CREATE)
     if (!rbac.allowed) return { error: "Forbidden" }
 
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
+
     const result = createContentTypeSchema.safeParse(data)
     if (!result.success) {
       console.error("Zod validation error in createContentTypeAction:", result.error)
@@ -254,6 +258,9 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const result = updateContentTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
@@ -335,6 +342,9 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_DELETE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const tenantDb = await getTenantDb(tenantSlug)
 

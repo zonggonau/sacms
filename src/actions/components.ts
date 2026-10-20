@@ -8,6 +8,7 @@ import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createComponentSchema, updateComponentSchema } from "@/lib/validations"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
+import { assertSchemaEditable } from "@/lib/schema-lock"
 
 export async function getComponentsAction(tenantSlug: string) {
   try {
@@ -154,6 +155,9 @@ export async function createComponentAction(tenantSlug: string, data: any) {
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_CREATE)
     if (!rbac.allowed) return { error: "Forbidden" }
 
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
+
     const result = createComponentSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, category, fields } = result.data
@@ -223,6 +227,9 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -308,6 +315,9 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_DELETE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const tenantDb = await getTenantDb(tenantSlug)
 

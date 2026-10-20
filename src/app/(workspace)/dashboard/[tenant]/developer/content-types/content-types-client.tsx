@@ -96,7 +96,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
 
     startTransition(async () => {
       const res = await deleteContentTypeAction(tenantSlug, deleteDialog.contentType!.id)
-      if (res.error) {
+      if ("error" in res) {
         toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({ title: "Berhasil", description: "Content type berhasil dihapus" })

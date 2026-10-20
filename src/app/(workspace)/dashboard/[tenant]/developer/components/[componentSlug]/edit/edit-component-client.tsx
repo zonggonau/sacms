@@ -315,7 +315,7 @@ export default function EditComponentClient({
         }))
       })
 
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Komponen berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/developer/components`)
       } else {

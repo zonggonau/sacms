@@ -388,7 +388,7 @@ export default function EditContentTypeClient({
         }))
       })
 
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Skema berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/developer/content-types`)
       } else {

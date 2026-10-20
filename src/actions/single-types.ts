@@ -12,6 +12,7 @@ import { processAutoSlugs } from "@/lib/slug"
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
 import { validateContentEntry } from "@/lib/content-validations"
+import { assertSchemaEditable } from "@/lib/schema-lock"
 
 export async function getSingleTypesAction(tenantSlug: string) {
   try {
@@ -161,6 +162,9 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_CREATE)
     if (!rbac.allowed) return { error: "Forbidden" }
 
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
+
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -228,6 +232,9 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -313,6 +320,9 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_DELETE)
     if (!rbac.allowed) return { error: "Forbidden" }
+
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return lockError
 
     const tenantDb = await getTenantDb(tenantSlug)
 

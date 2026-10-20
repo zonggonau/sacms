@@ -312,7 +312,7 @@ export default function EditSingleTypeClient({
         }))
       })
 
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Single type berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/developer/single-types`)
       } else {

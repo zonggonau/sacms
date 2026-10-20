@@ -91,7 +91,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
     setIsDeleting(true)
     try {
       const response = await deleteComponentAction(tenantSlug, componentToDelete.id)
-      if (response.error) throw new Error(response.error)
+      if ("error" in response) throw new Error(response.error)
       toast({ title: "Komponen Dihapus", description: `${componentToDelete.name} telah berhasil dihapus.` })
       router.refresh()
     } catch (error: any) {

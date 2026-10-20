@@ -251,7 +251,7 @@ export default function NewContentTypeClient({
         })),
       })
 
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Content type berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/developer/content-types`)
       } else {

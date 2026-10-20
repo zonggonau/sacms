@@ -176,7 +176,7 @@ export default function NewComponentClient({
           order: index,
         })),
       })
-      if (!res.error) {
+      if (!("error" in res)) {
         toast({ title: "Berhasil", description: "Komponen berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/developer/components`)
       } else {

@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
-  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, LayoutTemplate, Zap,
+  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, Zap,
   Paperclip, X, FileUp,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -271,21 +271,6 @@ interface SchemaPlan {
   fallbackReason?: string
 }
 
-interface SchemaTemplateItem {
-  id: string
-  name: string
-  slug: string
-  category: string
-  icon: string
-  description: string | null
-  published: boolean
-  schema: {
-    contentTypes: SchemaModel[]
-    singleTypes: SchemaModel[]
-    components: SchemaModel[]
-  }
-}
-
 interface SchemaStepProps {
   tenantSlug: string
   hasSchema: boolean
@@ -381,31 +366,6 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
   const [templateCategory, setTemplateCategory] = useState("")
   const [templateIcon, setTemplateIcon] = useState("📦")
   const [templateDescription, setTemplateDescription] = useState("")
-
-  // Template gallery — only relevant for regular tenants picking a
-  // published template to import, not for Global's own authoring mode.
-  const [templates, setTemplates] = useState<SchemaTemplateItem[]>([])
-  useEffect(() => {
-    if (isTemplateMode) return
-    fetch(`/api/tenant/${tenantSlug}/schema-templates`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.templates) setTemplates(data.templates.filter((t: SchemaTemplateItem) => t.published))
-      })
-      .catch(() => {})
-  }, [tenantSlug, isTemplateMode])
-
-  const handlePickTemplate = (template: SchemaTemplateItem) => {
-    setPlan({
-      domain: template.category,
-      title: template.name,
-      summary: template.description || `Template "${template.name}" — tinjau sebelum disimpan.`,
-      contentTypes: template.schema.contentTypes || [],
-      singleTypes: template.schema.singleTypes || [],
-      components: template.schema.components || [],
-    })
-    setStep("review")
-  }
 
   const handlePlanSchema = async () => {
     if (!prompt.trim()) return
@@ -751,31 +711,6 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
           </div>
         </div>
 
-        {!isTemplateMode && templates.length > 0 && (
-          <div className="space-y-1.5 pt-1">
-            <span className="text-[11px] font-bold text-muted-foreground flex items-center justify-center gap-1">
-              <LayoutTemplate className="h-3 w-3 text-primary" /> Galeri Template
-            </span>
-            <p className="text-[10px] text-muted-foreground text-center">
-              Dibuat tim SaCMS — pakai langsung, lalu sesuaikan sendiri.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => handlePickTemplate(t)}
-                  title={t.description || t.name}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium bg-primary/5 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-primary/20 transition-all text-foreground cursor-pointer"
-                >
-                  <span>{t.icon}</span>
-                  <span>{t.name}</span>
-                  <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5 border-primary/20 text-primary">{t.category}</Badge>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {!isTemplateMode && (
           <div className="text-center pt-1">

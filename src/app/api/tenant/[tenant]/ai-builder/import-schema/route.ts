@@ -4,6 +4,7 @@ import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { VALID_FIELD_TYPES } from "@/lib/field-types"
+import { assertSchemaEditable } from "@/lib/schema-lock"
 
 // Same slug shape enforced everywhere a human fills the form by hand
 // (see createContentTypeSchema in lib/validations/admin.ts) — the AI/plan
@@ -38,6 +39,9 @@ const importSchemaBodySchema = z.object({
 
 export const POST = withStaffAuth(
   async (req, _context, { access }) => {
+    const lockError = await assertSchemaEditable(access.tenantId)
+    if (lockError) return apiError("forbidden", { message: lockError.error })
+
     const parsed = await readJson(req, importSchemaBodySchema)
     if (!parsed.ok) return parsed.response
     const { schema } = parsed.data

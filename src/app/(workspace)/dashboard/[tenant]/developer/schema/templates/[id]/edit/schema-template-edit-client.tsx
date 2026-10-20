@@ -118,7 +118,7 @@ export function SchemaTemplateEditClient({
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
       <Link
-        href={`/dashboard/${tenantSlug}/developer/schematemplate`}
+        href={`/dashboard/${tenantSlug}/developer/schema?tab=templates`}
         className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors shrink-0"
       >
         <ArrowLeft className="h-3 w-3" /> Kembali ke Daftar Template
