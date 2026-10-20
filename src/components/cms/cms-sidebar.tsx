@@ -67,7 +67,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
       {/* CMS Header */}
       <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} showBackBtn={canGoBack} portalBadge="Studio" />
 
-      <ScrollArea className="flex-1 py-4">
+      <div className="flex-1 min-h-0 overflow-hidden py-4">
         <div className="px-3 space-y-6">
           {/* General */}
           <div className="space-y-1">
@@ -220,7 +220,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
           </div>
 
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Direct Quick Jump to AI Schema Generator */}
       {canGoBack && (
