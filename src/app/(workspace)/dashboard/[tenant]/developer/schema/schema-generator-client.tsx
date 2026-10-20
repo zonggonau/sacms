@@ -358,7 +358,13 @@ export function SchemaGeneratorClient({
           </TabsContent>
 
           <TabsContent value="templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <TemplatesTab tenantSlug={tenantSlug} isGlobal={isGlobal} onUseTemplate={handleUseTemplate} />
+            <TemplatesTab
+              tenantSlug={tenantSlug}
+              isGlobal={isGlobal}
+              onUseTemplate={handleUseTemplate}
+              refreshKey={refreshKey}
+              onLiveSchemaChanged={() => setRefreshKey((k) => k + 1)}
+            />
           </TabsContent>
         </Tabs>
       </div>

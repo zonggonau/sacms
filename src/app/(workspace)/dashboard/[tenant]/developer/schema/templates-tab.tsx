@@ -33,6 +33,10 @@ interface TemplatesTabProps {
   isGlobal: boolean
   /** Parent asks for confirmation, then imports the template's schema as real Content Types/Single Types/Components right away. */
   onUseTemplate: (template: { name: string; schema: SchemaExport }) => void
+  /** Bumped by the parent after anything that changes the template list from OUTSIDE this component (e.g. "Publish ke Template") — triggers a refetch so switching to this tab shows the fresh list without a manual browser refresh. */
+  refreshKey?: number
+  /** Call after any action here that also changes the LIVE Content Type/Single Type/Component rows (materializing/dematerializing a template's draft via the Publish/Draft Switch, or deleting a template that was mid-draft) — tells the parent to refetch `schema` so those other tabs show the change without a manual browser refresh. */
+  onLiveSchemaChanged?: () => void
 }
 
 const ALL_CATEGORIES = "__all__"
@@ -62,7 +66,7 @@ function CategoryFilter({
   )
 }
 
-export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesTabProps) {
+export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, onLiveSchemaChanged }: TemplatesTabProps) {
   const { toast } = useToast()
   const [view, setView] = useState<"list" | "author">("list")
   const [templates, setTemplates] = useState<SchemaTemplateItem[]>([])
@@ -87,7 +91,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
   useEffect(() => {
     fetchTemplates()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantSlug])
+  }, [tenantSlug, refreshKey])
 
   const handleTogglePublish = async (template: SchemaTemplateItem) => {
     setPendingId(template.id)
@@ -106,6 +110,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
           ? `"${template.name}" sekarang terlihat di tab Template semua workspace. Draft Content Type/Single Type/Component untuk template ini sudah dibersihkan.`
           : `"${template.name}" sekarang draft — Content Type/Single Type/Component-nya sudah dibuat sebagai draft, edit lewat tab Content Type/Single Type/Component di halaman ini.`,
       })
+      onLiveSchemaChanged?.()
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal", description: err.message })
     } finally {
@@ -123,6 +128,10 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate }: TemplatesT
       toast({ title: "Template Dihapus", description: `"${deleteDialog.name}" telah dihapus.` })
       setDeleteDialog(null)
       setDeleteConfirmName("")
+      // Deleting a template that was mid-draft also cascades its
+      // materialized rows (see DELETE .../schema-templates/[id]) — refresh
+      // the live schema tabs too, not just this list.
+      onLiveSchemaChanged?.()
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal", description: err.message })
     } finally {
