@@ -388,7 +388,7 @@ const handler = createMcpHandler(
       "get_workspace_openapi_spec",
       {
         title: "Get a Workspace's OpenAPI Specification",
-        description: "Get a real OpenAPI 3.1 document generated live from one workspace's actual CMS schema — hand this to any OpenAPI-aware tool or codegen step while building that workspace's frontend. Same generator the per-workspace MCP server's get_openapi_spec tool and the dashboard's Swagger tab use.",
+        description: "Get a real OpenAPI 3.0 document generated live from one workspace's actual CMS schema — hand this to any OpenAPI-aware tool or codegen step while building that workspace's frontend. Same generator the per-workspace MCP server's get_openapi_spec tool and the dashboard's Swagger tab use.",
         inputSchema: { workspaceId: z.string().describe("Workspace id or slug, from list_workspaces") },
       },
       async ({ workspaceId }) => {

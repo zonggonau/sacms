@@ -42,7 +42,6 @@ import {
   ShieldCheck,
   Rocket,
   Bot,
-  Globe,
   Plug,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -260,7 +259,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             icon: Code,
             badge: "AI",
             children: [
-              { title: "AI Website Builder", href: "/developer/aisite", icon: Globe, matchPrefix: true },
               { title: "AI Schema Builder", href: "/developer/schema", icon: Bot, matchPrefix: true },
               { title: "Content Types", href: "/developer/content-types", icon: DatabaseIcon, matchPrefix: true },
               { title: "Server MCP", href: "/developer/mcp", icon: Plug, matchPrefix: true },

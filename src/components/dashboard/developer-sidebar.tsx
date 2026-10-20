@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   Key, Webhook, Play, BookOpen, Plug,
-  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe, LayoutTemplate,
+  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, LayoutTemplate,
   Terminal
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
@@ -20,7 +20,6 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
   const pathname = usePathname()
 
   const builderNavItems = [
-    { title: "AI Site", href: `/dashboard/${tenantId}/developer/aisite`, icon: Globe, badge: "AI" },
     { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/schema`, icon: Bot, badge: "AI" },
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
@@ -42,7 +41,7 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
       <div className="overflow-y-auto">
         <NestedSidebarHeader 
           tenantId={tenantId} 
-          logoHref={`/dashboard/${tenantId}/developer/aisite`}
+          logoHref={`/dashboard/${tenantId}/developer/schema`}
           portalBadge="Developer & AI" 
         />
         

@@ -706,9 +706,9 @@ export function HostingDeploymentsView({
                         asChild
                         className="rounded-xl h-9 px-4 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
                       >
-                        <Link href={`/dashboard/${tenantSlug}/developer/aisite`}>
+                        <Link href={`/dashboard/${tenantSlug}/developer/mcp`}>
                           <Bot className="h-3.5 w-3.5 mr-1.5" />
-                          Buat Situs via AI Site
+                          Buka Server MCP
                         </Link>
                       </Button>
                     </div>

@@ -113,9 +113,9 @@ export function handleRouteError(error: unknown, context?: { route?: string; met
   // and an already user-safe, pre-written message ("AI credits depleted...",
   // "AI Quota Exceeded...") when a user/tenant is out of AI quota — an
   // expected, actionable 429, not a crash. It's called from deep inside
-  // shared AI helpers (ai-site's messages route, the AI Schema Generator),
-  // not from a route handler, so it can't call apiError() itself. Surface it
-  // here instead of masking "you're out of credits" as a generic 500.
+  // shared AI helpers (the AI Schema Generator), not from a route handler,
+  // so it can't call apiError() itself. Surface it here instead of masking
+  // "you're out of credits" as a generic 500.
   if (error instanceof Error && (error as { status?: unknown }).status === 429) {
     return apiError("rate_limited", { message: error.message })
   }

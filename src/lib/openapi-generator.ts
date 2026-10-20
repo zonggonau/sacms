@@ -1,5 +1,5 @@
 /**
- * Builds a real OpenAPI 3.1 document from a tenant's already-fetched CMS
+ * Builds a real OpenAPI 3.0 document from a tenant's already-fetched CMS
  * schema — one source of truth for three callers: the dashboard's Swagger
  * tab (`developer/openapi`), the public `GET /api/public/[tenant]/
  * openapi.json` endpoint, and the MCP server's `get_openapi_spec` tool.
@@ -666,7 +666,13 @@ export function buildOpenApiSpec(options: {
   }
 
   return {
-    openapi: "3.1.0",
+    // Deliberately 3.0.3, not 3.1 — confirmed live that swagger-ui-react's
+    // bundled apidom parser throws ("OpenApi3_1Element.refract is not a
+    // function") on a document declaring 3.1, and the schemas this
+    // generator actually produces use 3.0-style `nullable: true` anyway
+    // (3.1 replaces that with a `type: [X, "null"]` array) — the version
+    // string was simply wrong before, not a meaningful upgrade to revert.
+    openapi: "3.0.3",
     info: {
       title: `${tenantName} — Headless CMS API`,
       description: `Dynamic REST API and Action Specification for **${tenantName}** powered by SaCMS.\n\nUse this specification to connect ChatGPT Custom GPTs, Google AI Studio, Manus, Emergent, v0.app, and other AI agents to manage CMS content.\n\n### Authentication — two different kinds of Bearer token, don't mix them up\n1. **Workspace API token** — for every \`/content\`, \`/single\`, and \`/graphql\` call. Provide it as \`Authorization: Bearer <YOUR_API_TOKEN>\` or header \`x-api-key: <YOUR_API_KEY>\`. This is the one credential for your backend/integration to talk to this workspace.\n2. **Member access token** — for the \`/auth/*\` endpoints under the \`Authentication\` tag below (\`/auth/me\`, \`/auth/change-password\`). This is a short-lived JWT a real end-user gets back from \`/auth/login\`/\`/auth/register\`, sent the same way (\`Authorization: Bearer <accessToken>\`), but it identifies one signed-in visitor of the app you're building, not your workspace integration — a fullstack app with its own users (not just a backend reading CMS content) needs both kinds, used in different places.`,

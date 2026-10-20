@@ -2,9 +2,10 @@
  * Shared CMS schema/content introspection logic.
  *
  * Extracted from the MCP route (src/app/api/mcp/[[...transport]]/route.ts)
- * so the same query logic can be reused in-process by AI Site's tool-calling
- * agent (src/lib/ai-site/tools.ts) without an HTTP loopback or a second auth
- * hop. Both callers resolve their own `tenantDb`/`tenantId` first.
+ * so the same query logic can be reused by the owner-level MCP server
+ * (src/app/api/mcp/owner/[[...transport]]/route.ts) without an HTTP
+ * loopback or a second auth hop. Every caller resolves its own
+ * `tenantDb`/`tenantId` first.
  */
 
 import type { PrismaClient } from "../../prisma/generated-client"

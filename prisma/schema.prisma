@@ -175,7 +175,6 @@ model Tenant {
   managedInfraService    ManagedInfraService?
   appMembers             Member[]
   memberRoles            MemberRole[]
-  aiSiteProjects         AiSiteProject[]
 
   @@map("tenants")
 }
@@ -438,70 +437,6 @@ model TenantComponentAssignment {
 
   @@unique([tenantId, componentId])
   @@map("tenant_component_assignments")
-}
-
-model AiSiteProject {
-  id              String   @id @default(cuid())
-  tenantId        String
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  /// Audit-only, no FK to User on purpose — this model lives in a dedicated
-  /// tenant's own DB when it has one, and User rows are never mirrored
-  /// there (unlike Tenant, which self-mirrors one row into its own
-  /// dedicated DB), so a real relation 409s every creation for any BYODB
-  /// tenant. Same plain-String pattern as every other createdBy field here.
-  createdByUserId String?
-  name            String
-  description     String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  files           AiSiteFile[]
-  chats           AiSiteChat[]
-
-  @@index([tenantId, updatedAt])
-  @@map("ai_site_projects")
-}
-
-model AiSiteFile {
-  projectId String
-  project   AiSiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  path      String
-  content   String
-  updatedAt DateTime      @updatedAt
-
-  @@id([projectId, path])
-  @@map("ai_site_files")
-}
-
-model AiSiteChat {
-  id              String   @id @default(cuid())
-  projectId       String
-  project         AiSiteProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  /// Audit-only, no FK to User — same reasoning as AiSiteProject.createdByUserId above.
-  createdByUserId String?
-  title           String
-  /// AI Gateway model id picked when the chat was created (one of
-  /// AI_SITE_MODEL_OPTIONS in src/lib/ai-site/models.ts). Null falls back to
-  /// DEFAULT_AI_SITE_MODEL — lets older chats keep working unmodified.
-  model           String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  messages        AiSiteChatMessage[]
-
-  @@index([projectId, updatedAt])
-  @@map("ai_site_chats")
-}
-
-model AiSiteChatMessage {
-  id        String   @id @default(cuid())
-  chatId    String
-  chat      AiSiteChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
-  role      String
-  parts     Json
-  metadata  Json?
-  createdAt DateTime @default(now())
-
-  @@index([chatId, createdAt])
-  @@map("ai_site_chat_messages")
 }
 
 model ApiKey {
