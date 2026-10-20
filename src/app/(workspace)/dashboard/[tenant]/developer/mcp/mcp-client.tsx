@@ -366,7 +366,7 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
 
   { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa izin API key aktif (read, write, delete, schema, webhooks) untuk menentukan apakah membangun komponen read-only atau interaktif.", inputs: [] },
   { name: "get_api_info", category: "webhook", description: "Mengambil dokumentasi REST API lengkap, daftar endpoint, sintaks filtering, dan contoh kode integrasi untuk workspace ini.", inputs: ["baseUrl?"] },
-  { name: "get_openapi_spec", category: "schema", description: "Mengambil dokumen OpenAPI 3.0 asli yang digenerate langsung dari schema CMS workspace ini — setiap Content Type/Single Type jadi model JSON Schema lengkap dengan path list/get/create/update/delete-nya. Dokumen yang sama juga tersedia di GET /api/public/{tenant}/openapi.json untuk tool non-MCP (mis. v0.app).", inputs: [] },
+  { name: "get_openapi_spec", category: "schema", description: "Mengambil dokumen OpenAPI 3.1 asli yang digenerate langsung dari schema CMS workspace ini — setiap Content Type/Single Type jadi model JSON Schema lengkap dengan path list/get/create/update/delete-nya. Dokumen yang sama juga tersedia di GET /api/public/{tenant}/openapi.json untuk tool non-MCP (mis. v0.app).", inputs: [] },
   { name: "get_or_create_api_key", category: "webhook", description: "Mengambil API key utama REST/GraphQL workspace ini, membuatnya sekali jika belum ada. Aman dipanggil berulang — key yang sudah ada selalu dipakai ulang, tidak pernah digandakan. Secret plaintext hanya ditampilkan sekali saat pertama dibuat.", inputs: [] },
   // update_api_key_permissions, regenerate_api_key, dan seluruh tool Member
   // (list/get/create/update/delete_member) sudah DIHAPUS dari server MCP

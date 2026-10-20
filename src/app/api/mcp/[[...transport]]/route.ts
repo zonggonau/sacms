@@ -2002,7 +2002,7 @@ export default async function NewsPage() {
       {
         title: "Get OpenAPI Specification",
         description:
-          "Get a real OpenAPI 3.0 document generated live from this workspace's actual CMS schema — every Content Type and Single Type as a JSON Schema model, with its list/get/create/update/delete paths. Hand this straight to any OpenAPI-aware tool or codegen step instead of re-deriving the API shape from get_full_schema by hand. The exact same document (same generator) is also served at GET /api/public/{tenant}/openapi.json for non-MCP tools (e.g. v0.app), and powers the dashboard's own Swagger tab.",
+          "Get a real OpenAPI 3.1 document generated live from this workspace's actual CMS schema — every Content Type and Single Type as a JSON Schema model, with its list/get/create/update/delete paths. Hand this straight to any OpenAPI-aware tool or codegen step instead of re-deriving the API shape from get_full_schema by hand. The exact same document (same generator) is also served at GET /api/public/{tenant}/openapi.json for non-MCP tools (e.g. v0.app), and powers the dashboard's own Swagger tab.",
         inputSchema: {},
       },
       async () => {

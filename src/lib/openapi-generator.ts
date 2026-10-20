@@ -1,15 +1,25 @@
 /**
- * Builds a real OpenAPI 3.0 document from a tenant's already-fetched CMS
- * schema — the exact field-mapping and path-building logic that used to
- * live only in `developer/openapi/route.ts` (the dashboard's Swagger tab),
- * extracted so it has one source of truth across three callers: that
- * dashboard route, the public `GET /api/public/[tenant]/openapi.json`
- * endpoint, and the MCP server's `get_openapi_spec` tool. Deliberately a
- * pure function — no Prisma access here — since each caller's own query
- * for "which content/single types" differs slightly (the dashboard route
- * includes global platform-adjacent types with EXCLUDE_PLATFORM_CONTENT_TYPES
- * applied; a public caller should match whatever `/api/public/.../content`
- * itself actually serves), so fetching stays each call site's own job.
+ * Builds a real OpenAPI 3.1 document from a tenant's already-fetched CMS
+ * schema — one source of truth for three callers: the dashboard's Swagger
+ * tab (`developer/openapi`), the public `GET /api/public/[tenant]/
+ * openapi.json` endpoint, and the MCP server's `get_openapi_spec` tool.
+ *
+ * History worth knowing before touching this again: this reconciles THREE
+ * independently-written generators that existed in this codebase at once —
+ * the dashboard route's (correct entry shape, incomplete status enum,
+ * missing CORS/dual-auth/brand endpoint, tenant-only Content Types) and the
+ * public route's (correct status enum, CORS, dual auth scheme, a /brand
+ * endpoint, but ALSO tenant-only Content Types and weaker field-type
+ * mapping). Confirmed live against production (`curl .../openapi.json`)
+ * that the public route's version was the one actually shipped and in use
+ * — don't trust a route's presence in a fresh git checkout without
+ * `git log --all -- <path>` first; a file that looks new to a local
+ * session may already have real history and callers.
+ *
+ * Deliberately a pure function — no Prisma access — since each caller's
+ * own query for "which content/single types" differs slightly (tenant-only
+ * vs tenant+global minus SaCMS's internal platform types), so fetching
+ * stays each call site's own job.
  */
 
 export interface OpenApiSchemaField {
@@ -26,39 +36,78 @@ export interface OpenApiModel {
 }
 
 function toPascalCase(slug: string): string {
-  return slug.charAt(0).toUpperCase() + slug.slice(1)
+  const cleaned = slug.replace(/[^a-zA-Z0-9]/g, " ")
+  return cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("")
 }
 
-// Matches the field-shaping the actual public API routes apply — kept
-// intentionally simple (string/number/boolean/object) since the real
-// response types for richer field types (media, relation, component, …)
-// vary by what's populated; this is a close JSON-Schema approximation, not
-// a byte-exact contract.
+// Close JSON-Schema approximation of SaCMS's 33 field types
+// (src/lib/field-types.ts) — not a byte-exact contract (e.g. populated
+// relations/media vary in shape), but close enough for codegen/discovery.
+// Anything not listed falls back to a plain string rather than throwing.
 function fieldSchema(field: OpenApiSchemaField): Record<string, unknown> {
-  let type: string = "string"
-  if (field.type === "number" || field.type === "currency" || field.type === "percent" || field.type === "rating") type = "number"
-  if (field.type === "boolean") type = "boolean"
-  if (field.type === "json" || field.type === "component" || field.type === "media" || field.type === "location" || field.type === "seo" || field.type === "button" || field.type === "file" || field.type === "dateRange") type = "object"
-  if (field.type === "mediaMultiple" || field.type === "multiselect" || field.type === "tags" || field.type === "repeater") type = "array"
-
-  return {
-    type,
-    description: field.name,
-    ...(field.required ? { nullable: false } : { nullable: true }),
+  let schema: Record<string, unknown>
+  switch (field.type) {
+    case "number":
+    case "currency":
+    case "percent":
+    case "rating":
+      schema = { type: "number" }
+      break
+    case "boolean":
+      schema = { type: "boolean" }
+      break
+    case "date":
+      schema = { type: "string", format: "date" }
+      break
+    case "datetime":
+      schema = { type: "string", format: "date-time" }
+      break
+    case "email":
+      schema = { type: "string", format: "email" }
+      break
+    case "url":
+      schema = { type: "string", format: "uri" }
+      break
+    case "json":
+    case "component":
+    case "media":
+    case "file":
+    case "location":
+    case "seo":
+    case "button":
+    case "dateRange":
+      schema = { type: "object" }
+      break
+    case "mediaMultiple":
+    case "multiselect":
+    case "tags":
+    case "repeater":
+      schema = { type: "array", items: { type: "object" } }
+      break
+    case "relation":
+      schema = { type: "object", description: "Related entry reference" }
+      break
+    default:
+      schema = { type: "string" }
   }
+  return { ...schema, description: field.name }
 }
 
-const COLLECTION_QUERY_PARAMS = [
-  { name: "page", in: "query", schema: { type: "integer", default: 1 }, description: "Page number (also accepted as pagination[page])." },
-  { name: "pageSize", in: "query", schema: { type: "integer", default: 25, maximum: 100 }, description: "Entries per page, max 100 (also accepted as pagination[pageSize])." },
-  { name: "sort", in: "query", schema: { type: "string", default: "createdAt:desc" }, description: "Field and direction, e.g. publishedAt:desc." },
-  { name: "fields", in: "query", schema: { type: "string" }, description: "Comma-separated field slugs to return, e.g. title,slug." },
-  { name: "populate", in: "query", schema: { type: "string" }, description: "Comma-separated relation field slugs to expand, or * for all." },
-  { name: "locale", in: "query", schema: { type: "string" }, description: "Locale code to fetch, e.g. id or en." },
-  { name: "status", in: "query", schema: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] }, description: "Filter by status — only honoured for full-access tokens; other callers always get PUBLISHED only." },
-  { name: "search", in: "query", schema: { type: "string" }, description: "Full-text search across text fields." },
-  { name: "filters", in: "query", schema: { type: "string" }, description: "Bracket-syntax field filters, e.g. filters[title][$eq]=Tutorial — see the REST Explorer's Parameter & Filter Cheat Sheet for the full operator list ($eq, $ne, $gt, $gte, $lt, $lte, $in, $notIn, $contains)." },
-]
+// Real workflow states (prisma/schema.prisma's ContentStatus enum) — the
+// dashboard route's own generator used to only list DRAFT/PUBLISHED/
+// ARCHIVED, which under-documented what the API can actually return.
+const CONTENT_STATUS_ENUM = ["DRAFT", "IN_REVIEW", "APPROVED", "SCHEDULED", "PUBLISHED", "ARCHIVED", "REJECTED"]
+
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key, X-API-Key",
+  "Access-Control-Max-Age": "86400",
+} as const
 
 export function buildOpenApiSpec(options: {
   tenantName: string
@@ -70,82 +119,112 @@ export function buildOpenApiSpec(options: {
   const { tenantName, tenantSlug, apiOrigin, contentTypes, singleTypes } = options
   const apiBase = `${apiOrigin.replace(/\/$/, "")}/api/public/${tenantSlug}`
 
-  const schemas: Record<string, unknown> = {}
+  const schemas: Record<string, unknown> = {
+    ErrorResponse: {
+      type: "object",
+      properties: { error: { type: "string", description: "Error message details" } },
+    },
+    PaginationMetadata: {
+      type: "object",
+      properties: {
+        page: { type: "integer", example: 1 },
+        pageSize: { type: "integer", example: 25 },
+        pageCount: { type: "integer", example: 4 },
+        total: { type: "integer", example: 85 },
+      },
+    },
+  }
   const paths: Record<string, unknown> = {}
 
   for (const ct of contentTypes) {
-    const schemaName = toPascalCase(ct.slug)
-    const customFieldProps: Record<string, unknown> = {}
-    for (const f of ct.fields) customFieldProps[f.slug] = fieldSchema(f)
+    const base = toPascalCase(ct.slug)
+    const entrySchema = `${base}Entry`
+    const inputSchema = `${base}Input`
+
+    const fieldProps: Record<string, unknown> = {}
+    const required: string[] = []
+    for (const f of ct.fields) {
+      fieldProps[f.slug] = fieldSchema(f)
+      if (f.required) required.push(f.slug)
+    }
+
+    schemas[inputSchema] = {
+      type: "object",
+      description: `Input payload for creating or updating a ${ct.name} entry`,
+      properties: fieldProps,
+      ...(required.length > 0 ? { required } : {}),
+    }
 
     // Entry shape: custom fields spread flat alongside the base fields —
     // the real response never nests them under a sub-object. See the
     // entry-shaping code in content/[contentType]/route.ts (list) and its
     // [id]/route.ts (single entry).
-    schemas[schemaName] = {
+    schemas[entrySchema] = {
       type: "object",
+      description: `${ct.name} content entry with metadata`,
       properties: {
-        id: { type: "string" },
+        id: { type: "string", description: "Unique entry ID" },
         documentId: { type: "string" },
-        locale: { type: "string" },
+        locale: { type: "string", example: "id" },
         availableLocales: { type: "array", items: { type: "string" } },
-        status: { type: "string", enum: ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+        status: { type: "string", enum: CONTENT_STATUS_ENUM, example: "PUBLISHED" },
         publishedAt: { type: "string", format: "date-time", nullable: true },
         createdAt: { type: "string", format: "date-time" },
         updatedAt: { type: "string", format: "date-time" },
-        ...customFieldProps,
+        ...fieldProps,
       },
     }
 
-    // Input schema for create/update — only the caller-supplied custom
-    // fields; id/status/timestamps are always server-generated.
-    schemas[`${schemaName}Input`] = { type: "object", properties: customFieldProps }
-
     paths[`/content/${ct.slug}`] = {
       get: {
-        summary: `List all ${ct.name} entries`,
+        summary: `List ${ct.name} entries`,
+        description: `Fetch published or draft ${ct.name} entries with Strapi-style filtering, search, pagination, and sorting.`,
+        operationId: `list${entrySchema}s`,
         tags: ["Collection Types"],
-        parameters: COLLECTION_QUERY_PARAMS,
+        parameters: [
+          { name: "search", in: "query", schema: { type: "string" }, description: "Full-text search across text fields." },
+          { name: "status", in: "query", schema: { type: "string", enum: [...CONTENT_STATUS_ENUM, "ALL"], default: "PUBLISHED" }, description: "Content status filter (defaults to PUBLISHED only for public, non-write callers)." },
+          { name: "pagination[page]", in: "query", schema: { type: "integer", default: 1 } },
+          { name: "pagination[pageSize]", in: "query", schema: { type: "integer", default: 25, maximum: 100 } },
+          { name: "sort", in: "query", schema: { type: "string", example: "createdAt:desc" }, description: "Field and direction." },
+          { name: "locale", in: "query", schema: { type: "string", example: "id" } },
+          { name: "fields", in: "query", schema: { type: "string" }, description: "Comma-separated field selection, e.g. title,slug." },
+          { name: "populate", in: "query", schema: { type: "string", example: "*" }, description: "Comma-separated relation fields to expand, or * for all." },
+          { name: "filters", in: "query", schema: { type: "object" }, description: "Bracket-syntax field filters, e.g. filters[title][$eq]=Tutorial ($eq/$ne/$gt/$gte/$lt/$lte/$in/$notIn/$contains)." },
+        ],
         responses: {
           "200": {
-            description: "Paginated list of entries",
+            description: `Successfully retrieved list of ${ct.name} entries.`,
             content: {
               "application/json": {
                 schema: {
                   type: "object",
                   properties: {
-                    data: { type: "array", items: { $ref: `#/components/schemas/${schemaName}` } },
-                    meta: {
-                      type: "object",
-                      properties: {
-                        contentType: { type: "object", properties: { name: { type: "string" }, slug: { type: "string" } } },
-                        pagination: {
-                          type: "object",
-                          properties: {
-                            page: { type: "integer" },
-                            pageSize: { type: "integer" },
-                            total: { type: "integer" },
-                            totalPages: { type: "integer" },
-                          },
-                        },
-                      },
-                    },
+                    data: { type: "array", items: { $ref: `#/components/schemas/${entrySchema}` } },
+                    meta: { type: "object", properties: { pagination: { $ref: "#/components/schemas/PaginationMetadata" } } },
                   },
                 },
               },
             },
           },
+          "401": { description: "Unauthorized or missing API token", content: { "application/json": { schema: { $ref: "#/components/schemas/ErrorResponse" } } } },
         },
       },
       post: {
-        summary: `Create a new ${ct.name} (always created as DRAFT)`,
+        summary: `Create new ${ct.name} entry`,
+        operationId: `create${entrySchema}`,
         tags: ["Collection Types"],
         requestBody: {
+          required: true,
           content: {
             "application/json": {
               schema: {
                 type: "object",
-                properties: { data: { $ref: `#/components/schemas/${schemaName}Input` }, locale: { type: "string", nullable: true } },
+                properties: {
+                  data: { $ref: `#/components/schemas/${inputSchema}` },
+                  status: { type: "string", enum: ["DRAFT", "PUBLISHED", "IN_REVIEW"], default: "PUBLISHED" },
+                  locale: { type: "string", default: "id" },
+                },
                 required: ["data"],
               },
             },
@@ -153,61 +232,64 @@ export function buildOpenApiSpec(options: {
         },
         responses: {
           "201": {
-            description: "Created",
-            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } },
+            description: `${ct.name} entry created successfully.`,
+            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${entrySchema}` } } } } },
           },
+          "400": { description: "Invalid field values or payload format" },
+          "401": { description: "Unauthorized" },
         },
       },
     }
 
     paths[`/content/${ct.slug}/{id}`] = {
       get: {
-        summary: `Get a specific ${ct.name} by ID or documentId`,
+        summary: `Get single ${ct.name} entry`,
+        operationId: `get${entrySchema}ById`,
         tags: ["Collection Types"],
         parameters: [
           { name: "id", in: "path", required: true, schema: { type: "string" } },
           { name: "fields", in: "query", schema: { type: "string" } },
-          { name: "populate", in: "query", schema: { type: "string" } },
+          { name: "populate", in: "query", schema: { type: "string", example: "*" } },
           { name: "locale", in: "query", schema: { type: "string" } },
         ],
         responses: {
-          "200": {
-            description: "Success",
-            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } },
-          },
+          "200": { description: "Entry details.", content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${entrySchema}` } } } } } },
+          "404": { description: "Entry not found" },
         },
       },
       put: {
-        summary: `Update a ${ct.name} entry (status is unchanged by this call)`,
+        summary: `Update ${ct.name} entry`,
+        operationId: `update${entrySchema}ById`,
         tags: ["Collection Types"],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         requestBody: {
+          required: true,
           content: {
             "application/json": {
-              schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}Input` } }, required: ["data"] },
+              schema: {
+                type: "object",
+                properties: { data: { $ref: `#/components/schemas/${inputSchema}` }, status: { type: "string", enum: CONTENT_STATUS_ENUM } },
+                required: ["data"],
+              },
             },
           },
         },
         responses: {
-          "200": {
-            description: "Updated",
-            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } },
-          },
+          "200": { description: "Entry updated successfully.", content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${entrySchema}` } } } } } },
+          "404": { description: "Entry not found" },
         },
       },
       delete: {
-        summary: `Delete a ${ct.name} entry`,
+        summary: `Delete ${ct.name} entry`,
+        operationId: `delete${entrySchema}ById`,
         tags: ["Collection Types"],
         parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
         responses: {
           "200": {
-            description: "Deleted",
-            content: {
-              "application/json": {
-                schema: { type: "object", properties: { data: { type: "object", properties: { id: { type: "string" }, deleted: { type: "boolean" } } } } },
-              },
-            },
+            description: "Entry deleted successfully.",
+            content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean", example: true }, message: { type: "string" } } } } },
           },
+          "404": { description: "Entry not found" },
         },
       },
     }
@@ -215,53 +297,49 @@ export function buildOpenApiSpec(options: {
 
   for (const st of singleTypes) {
     const schemaName = `${toPascalCase(st.slug)}Single`
-    const customFieldProps: Record<string, unknown> = {}
-    for (const f of st.fields) customFieldProps[f.slug] = fieldSchema(f)
+    const fieldProps: Record<string, unknown> = {}
+    for (const f of st.fields) fieldProps[f.slug] = fieldSchema(f)
 
-    schemas[schemaName] = {
-      type: "object",
-      properties: {
-        publishedAt: { type: "string", format: "date-time", nullable: true },
-        updatedAt: { type: "string", format: "date-time" },
-        ...customFieldProps,
-      },
-    }
+    schemas[schemaName] = { type: "object", description: `Singleton data for ${st.name}`, properties: fieldProps }
 
     paths[`/single/${st.slug}`] = {
       get: {
         summary: `Get ${st.name} data`,
+        operationId: `get${schemaName}`,
         tags: ["Single Types"],
-        parameters: [{ name: "locale", in: "query", schema: { type: "string" } }],
+        parameters: [{ name: "locale", in: "query", schema: { type: "string", default: "id" } }],
         responses: {
           "200": {
-            description: "Success",
-            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } },
+            description: `Retrieved ${st.name} content data.`,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    data: { $ref: `#/components/schemas/${schemaName}` },
+                    meta: { type: "object", properties: { singleType: { type: "string", example: st.slug }, locale: { type: "string", example: "id" }, updatedAt: { type: "string", format: "date-time" } } },
+                  },
+                },
+              },
+            },
           },
+          "404": { description: "Single type not found" },
         },
       },
       put: {
         summary: `Update ${st.name} data`,
+        operationId: `update${schemaName}`,
         tags: ["Single Types"],
-        parameters: [{ name: "locale", in: "query", schema: { type: "string" } }],
         requestBody: {
+          required: true,
           content: {
             "application/json": {
-              schema: {
-                type: "object",
-                properties: {
-                  data: { type: "object", properties: customFieldProps },
-                  publish: { type: "boolean", description: "Set publishedAt to now when true." },
-                },
-                required: ["data"],
-              },
+              schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` }, locale: { type: "string", default: "id" } }, required: ["data"] },
             },
           },
         },
         responses: {
-          "200": {
-            description: "Updated",
-            content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } },
-          },
+          "200": { description: "Single type updated successfully.", content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` } } } } } },
         },
       },
     }
@@ -272,35 +350,58 @@ export function buildOpenApiSpec(options: {
       summary: "Dynamic GraphQL endpoint — fields mirror the REST schemas above",
       tags: ["GraphQL"],
       requestBody: {
-        content: {
-          "application/json": {
-            schema: { type: "object", properties: { query: { type: "string" }, variables: { type: "object" } }, required: ["query"] },
-          },
-        },
+        content: { "application/json": { schema: { type: "object", properties: { query: { type: "string" }, variables: { type: "object" } }, required: ["query"] } } },
       },
       responses: { "200": { description: "OK" } },
     },
   }
 
+  paths["/brand"] = {
+    get: {
+      summary: "Get Workspace White-Label Brand Info",
+      description: "Fetch public branding assets, site logo, brand name, and color scheme.",
+      operationId: "getWorkspaceBrand",
+      tags: ["Workspace"],
+      responses: {
+        "200": {
+          description: "Branding information.",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  name: { type: "string", example: tenantName },
+                  slug: { type: "string", example: tenantSlug },
+                  logoUrl: { type: "string", nullable: true },
+                  primaryColor: { type: "string", example: "#4f46e5" },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  }
+
   return {
-    openapi: "3.0.0",
+    openapi: "3.1.0",
     info: {
-      title: `API Documentation - ${tenantName}`,
-      description: `Dynamic API documentation for ${tenantName} workspace generated by SaCMS.`,
+      title: `${tenantName} — Headless CMS API`,
+      description: `Dynamic REST API and Action Specification for **${tenantName}** powered by SaCMS.\n\nUse this specification to connect ChatGPT Custom GPTs, Google AI Studio, Manus, Emergent, v0.app, and other AI agents to manage CMS content.\n\n### Authentication\nProvide your API token or API key using standard HTTP Bearer authorization:\n\`Authorization: Bearer <YOUR_API_TOKEN>\`\nor header \`x-api-key: <YOUR_API_KEY>\`.`,
       version: "1.0.0",
     },
-    servers: [{ url: apiBase, description: "Public API Gateway" }],
+    servers: [{ url: apiBase, description: `Primary Public API Gateway for ${tenantName}` }],
+    security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }],
     components: {
       securitySchemes: {
-        BearerAuth: {
-          type: "http",
-          scheme: "bearer",
-          description: "Your workspace API Key, e.g. cf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.",
-        },
+        BearerAuth: { type: "http", scheme: "bearer", bearerFormat: "API Token", description: "SaCMS API Token or Workspace Bearer Token" },
+        ApiKeyAuth: { type: "apiKey", in: "header", name: "x-api-key", description: "SaCMS API Key Header" },
       },
       schemas,
     },
-    security: [{ BearerAuth: [] }],
     paths,
   }
 }
+
+/** CORS headers for the public, cross-origin-callable openapi.json route only — the dashboard route and the MCP tool are same-origin/non-HTTP, they don't need this. */
+export { CORS_HEADERS }
