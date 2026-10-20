@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -9,6 +9,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   Handle,
   Position,
   MarkerType,
@@ -207,6 +208,8 @@ function SchemaDiagramInner({ tenantSlug, refreshKey, data }: SchemaDiagramProps
   const [error, setError] = useState<string | null>(null)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<TableNodeData>>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const { fitView } = useReactFlow()
+  const wrapperRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (data) {
@@ -243,7 +246,31 @@ function SchemaDiagramInner({ tenantSlug, refreshKey, data }: SchemaDiagramProps
     if (!graph) return
     setNodes(graph.nodes)
     setEdges(graph.edges)
-  }, [graph, setNodes, setEdges])
+    // fitView (the prop below) only fits once, at mount — it doesn't
+    // re-run when nodes are replaced later (template switch, refreshKey
+    // refetch), so without this the diagram keeps whatever pan/zoom it
+    // had for the PREVIOUS set of nodes. requestAnimationFrame lets
+    // React Flow actually measure the new nodes first.
+    const raf = requestAnimationFrame(() => fitView({ padding: 0.2, duration: 200 }))
+    return () => cancelAnimationFrame(raf)
+  }, [graph, setNodes, setEdges, fitView])
+
+  // The diagram is often mounted while its tab is hidden (shadcn Tabs
+  // keeps every TabsContent mounted, just `display:none`'d) — React
+  // Flow then measures a zero-size container and fitView's initial
+  // calculation pins every node tiny in the top-left corner. Re-fit the
+  // moment the wrapper actually gets real dimensions (tab becomes
+  // active, fullscreen dialog opens, window resizes).
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect
+      if (width > 0 && height > 0) fitView({ padding: 0.2, duration: 200 })
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fitView])
 
   const totalModels = schema ? schema.contentTypes.length + schema.singleTypes.length + schema.components.length : 0
 
@@ -273,20 +300,23 @@ function SchemaDiagramInner({ tenantSlug, refreshKey, data }: SchemaDiagramProps
   }
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      nodeTypes={nodeTypes}
-      fitView
-      minZoom={0.1}
-      proOptions={{ hideAttribution: true }}
-    >
-      <Background gap={16} />
-      <Controls showInteractive={false} />
-      <MiniMap pannable zoomable className="!bg-card" />
-    </ReactFlow>
+    <div ref={wrapperRef} className="w-full h-full">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.1}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background gap={16} />
+        <Controls showInteractive={false} />
+        <MiniMap pannable zoomable className="!bg-card" />
+      </ReactFlow>
+    </div>
   )
 }
 
