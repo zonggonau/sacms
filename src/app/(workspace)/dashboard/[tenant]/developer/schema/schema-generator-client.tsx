@@ -128,6 +128,15 @@ export function SchemaGeneratorClient({
   }
 
   const handleUseTemplate = (template: { name: string; schema: SchemaExport }) => {
+    const hasExistingSchema = schema.contentTypes.length + schema.singleTypes.length + schema.components.length > 0
+    if (hasExistingSchema) {
+      toast({
+        variant: "destructive",
+        title: "Workspace Belum Kosong",
+        description: "Masih ada Content Type/Single Type/Component di workspace ini. Hapus dulu lewat \"Hapus Semua Schema\" sebelum menerapkan template.",
+      })
+      return
+    }
     setConfirmUseTemplate(template)
   }
 
@@ -138,7 +147,7 @@ export function SchemaGeneratorClient({
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/import-schema`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schema: confirmUseTemplate.schema }),
+        body: JSON.stringify({ schema: confirmUseTemplate.schema, requireEmpty: true }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal menyimpan schema")

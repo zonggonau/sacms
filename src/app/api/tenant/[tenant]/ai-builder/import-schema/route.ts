@@ -35,6 +35,13 @@ const importSchemaBodySchema = z.object({
     singleTypes: z.array(importModelSchema).max(50).default([]),
     components: z.array(importModelSchema).max(50).default([]),
   }),
+  // Set by "Pakai Template" only — the AI Schema Generator's own save
+  // deliberately allows adding to an existing schema (its own banner says
+  // "tambah lagi lewat prompt di sini"), but applying a whole template on
+  // top of unrelated existing structures would silently skip any
+  // slug-conflicting model (materializeSchemaIntoTenant's own behavior)
+  // and leave a confusing mix behind — the workspace must be empty first.
+  requireEmpty: z.boolean().optional(),
 })
 
 export const POST = withStaffAuth(
@@ -44,7 +51,7 @@ export const POST = withStaffAuth(
 
     const parsed = await readJson(req, importSchemaBodySchema)
     if (!parsed.ok) return parsed.response
-    const { schema } = parsed.data
+    const { schema, requireEmpty } = parsed.data
 
     const totalModels = schema.contentTypes.length + schema.singleTypes.length + schema.components.length
     if (totalModels === 0) {
@@ -53,6 +60,19 @@ export const POST = withStaffAuth(
 
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.slug)
+
+    if (requireEmpty) {
+      const [hasCt, hasSt, hasComp] = await Promise.all([
+        tenantDb.contentType.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
+        tenantDb.singleType.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
+        tenantDb.component.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
+      ])
+      if (hasCt || hasSt || hasComp) {
+        return apiError("validation", {
+          message: "Masih ada Content Type/Single Type/Component di workspace ini. Hapus dulu (tombol \"Hapus Semua Schema\") sebelum menerapkan template.",
+        })
+      }
+    }
 
     const { imported } = await materializeSchemaIntoTenant(tenantDb, tenant.id, schema)
 
