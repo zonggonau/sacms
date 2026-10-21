@@ -545,7 +545,10 @@ export async function bulkContentAction(
         if ("success" in result && result.success) successCount++
         else failures.push({ entryId: entry.id, error: ("error" in result && result.error) || "Delete failed" })
       }
-    } else if (action === "publish" || action === "unpublish") {
+    } else if (action === "publish" || action === "unpublish" || action === "draft") {
+      // "draft" is the bulk toolbar's own action name for the same
+      // publish->DRAFT transition "unpublish" already does — the client
+      // (content-entries-manager.tsx) sends "draft", not "unpublish".
       const targetStatus = action === "publish" ? "PUBLISHED" : "DRAFT"
       for (const entry of entries) {
         if (entry.status !== targetStatus) {

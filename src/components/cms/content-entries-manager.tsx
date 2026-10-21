@@ -113,27 +113,36 @@ export function ContentEntriesManager({
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, RelationLabelItem>>(initialRelationLabels)
 
+  const ENTRIES_PAGE_SIZE = 100
+
   // The server only hands us the first page (see cms/content/[slug]/page.tsx —
   // capped at 200 for the initial render). Search/filter here run in-memory
   // over whatever's in `entries`, which used to mean anything past that cap
   // was silently unreachable — "Muat Lebih Banyak" below fetches further
   // pages on demand via the same getEntriesAction the server uses, so large
   // collections stay fully searchable rather than truncated.
+  //
+  // entriesPage tracks how many ENTRIES_PAGE_SIZE-sized pages are ALREADY
+  // covered by what we have — the server's 200-row initial load covers 2
+  // pages' worth at the 100-per-page size "Muat Lebih Banyak" itself uses,
+  // so starting this at 1 (instead of 2) made the very first click re-fetch
+  // rows 101-200, which were already loaded and got silently deduped —
+  // a wasted round-trip with zero new rows to show for it.
+  const initialEntriesPage = (count: number) => Math.max(1, Math.ceil(count / ENTRIES_PAGE_SIZE))
   const [entries, setEntries] = useState<any[]>(initialEntries)
-  const [entriesPage, setEntriesPage] = useState(1)
+  const [entriesPage, setEntriesPage] = useState(() => initialEntriesPage(initialEntries.length))
   const [hasMoreEntries, setHasMoreEntries] = useState(initialEntries.length >= 200)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const ENTRIES_PAGE_SIZE = 100
 
   // router.refresh() after a delete/status-change/bulk action re-runs the
   // server component and hands us a fresh `initialEntries` prop — but
   // useState(initialEntries) only applies on mount, so without this the
   // list would silently keep showing stale data (and any "loaded more"
-  // pages would be lost) on every such refresh. Reset pagination to page 1
-  // since the fresh prop is itself the first page.
+  // pages would be lost) on every such refresh. Reset pagination to match
+  // the fresh prop, same formula as the initial state above.
   useEffect(() => {
     setEntries(initialEntries)
-    setEntriesPage(1)
+    setEntriesPage(initialEntriesPage(initialEntries.length))
     setHasMoreEntries(initialEntries.length >= 200)
   }, [initialEntries])
 
