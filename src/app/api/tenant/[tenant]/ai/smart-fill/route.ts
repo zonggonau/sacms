@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
-import { withStaffAuth, readJson } from "@/lib/api/route-helpers"
+import { withStaffAuth, readJson, apiError } from "@/lib/api/route-helpers"
 
 const smartFillSchema = z.object({
   prompt: z.string().min(1),
@@ -18,11 +18,32 @@ const smartFillSchema = z.object({
   language: z.string().optional().default("Indonesian"),
 })
 
-export const POST = withStaffAuth(async (request, _context, { access }) => {
+// Structural/reference field types — there's no sensible free-text value an
+// LLM can invent for these (a real media asset id, a real related record
+// id, a real nested component shape), so they're excluded from what's sent
+// to the model AND from the offline fallback generator below. Smart Fill
+// only ever touches plain-value fields; these stay exactly as the user left
+// them.
+const STRUCTURAL_FIELD_TYPES = new Set(["media", "mediaMultiple", "file", "relation", "component", "repeater"])
+
+// Same per-generation cost convention as the AI Schema Generator
+// (generate_schema: 5 credits for up to 24000 output tokens) — Smart Fill's
+// 2500-token budget is roughly a tenth of that, so it's priced lower.
+const SMART_FILL_CREDIT_COST = 2
+
+export const POST = withStaffAuth(async (request, _context, { access, session }) => {
     const parsed = await readJson(request, smartFillSchema)
     if (!parsed.ok) return parsed.response
 
-    const { prompt, contentType, schema, tone, language } = parsed.data
+    const { prompt, contentType, schema: fullSchema, tone, language } = parsed.data
+    const schema = fullSchema.filter((f) => !STRUCTURAL_FIELD_TYPES.has(f.type))
+
+    const aiConfig = {
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      creditsCost: SMART_FILL_CREDIT_COST,
+      action: "smart_fill",
+    }
 
     // 1. Try the Vercel AI Gateway if configured
     try {
@@ -57,16 +78,38 @@ ${schemaDescription}`
 
       const { safeGenerateContent } = await import("@/lib/ai")
       const result = await safeGenerateContent(systemPrompt, `User Prompt: ${prompt}`, {
+        ...aiConfig,
         responseFormat: "json_object",
-        tenantId: access.tenantId,
-        action: "smart_fill",
         maxTokens: 2500,
       })
 
-      const parsedContent = JSON.parse(result.text)
+      const rawContent = JSON.parse(result.text)
+      // Defense in depth: even though structural types are never described
+      // to the model, strip any key it might still hallucinate for one
+      // (or for a slug that doesn't exist at all) before this reaches the
+      // form.
+      const allowedSlugs = new Set(schema.map((f) => f.slug))
+      const parsedContent: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(rawContent)) {
+        if (allowedSlugs.has(key)) parsedContent[key] = value
+      }
+
       return NextResponse.json({ success: true, content: parsedContent })
-    } catch (err) {
+    } catch (err: any) {
+      // A real "out of AI credits/quota" rejection must surface as an
+      // error, not get silently swallowed into a free fallback result —
+      // same fix already applied to the AI Schema Generator for the same
+      // reason (src/lib/ai-schema-generator.ts).
+      if (err?.status === 429) {
+        return apiError("rate_limited", { message: err.message })
+      }
       console.warn("AI Gateway Smart Fill error, using intelligent fallback generator:", err)
+      // The Gateway call failed for an infra/model reason, not a quota
+      // one — enforceAiQuota (inside safeGenerateContent) already reserved
+      // this generation's credits before the failure, so give them back
+      // before falling through to the free heuristic generator.
+      const { refundAiQuota } = await import("@/lib/ai")
+      await refundAiQuota(aiConfig)
     }
 
     // 2. Intelligent Mock Generator (when the Gateway is unavailable or not configured)

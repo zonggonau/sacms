@@ -398,11 +398,12 @@ export default function CTBNewEntryClient({
               </div>
 
               <div className="flex items-center gap-2">
-                <AISmartFill 
+                <AISmartFill
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}
                   onApply={handleSmartFill}
+                  currentValues={formData}
                 />
 
                 <Button 

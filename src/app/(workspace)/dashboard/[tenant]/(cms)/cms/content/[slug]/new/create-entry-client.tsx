@@ -477,11 +477,12 @@ export default function CMSCreateEntryClient({
 
             <div className="flex items-center gap-2 flex-wrap">
               {contentType && (
-                <AISmartFill 
+                <AISmartFill
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}
                   onApply={handleSmartFill}
+                  currentValues={formData}
                 />
               )}
 

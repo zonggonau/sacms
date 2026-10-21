@@ -21,12 +21,31 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { cn } from "@/lib/utils"
 
 interface AISmartFillProps {
   tenantSlug: string
   contentTypeName: string
   schema: any[]
   onApply: (data: Record<string, any>) => void
+  /** The form's current field values — used only to detect whether applying
+   *  the AI result would overwrite something the user already filled in, so
+   *  "Generate & Terapkan" can force a review instead of silently clobbering
+   *  it. Omit on a form that's always empty (no behavior change then). */
+  currentValues?: Record<string, unknown>
+}
+
+function isEmptyValue(v: unknown): boolean {
+  if (v === null || v === undefined || v === "") return true
+  if (Array.isArray(v)) return v.length === 0
+  if (typeof v === "object") return Object.keys(v as object).length === 0
+  return false
+}
+
+/** Keys in `generated` that would overwrite a non-empty existing value. */
+function getOverwrittenKeys(generated: Record<string, unknown>, currentValues?: Record<string, unknown>): string[] {
+  if (!currentValues) return []
+  return Object.keys(generated).filter((key) => !isEmptyValue(currentValues[key]))
 }
 
 const QUICK_PROMPTS = [
@@ -57,6 +76,7 @@ export function AISmartFill({
   contentTypeName,
   schema = [],
   onApply,
+  currentValues,
 }: AISmartFillProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -65,6 +85,7 @@ export function AISmartFill({
   const [language, setLanguage] = useState<string>("Indonesian")
   const [generatedData, setGeneratedData] = useState<Record<string, any> | null>(null)
   const { toast } = useToast()
+  const overwrittenKeys = generatedData ? getOverwrittenKeys(generatedData, currentValues) : []
 
   const safeSchema = Array.isArray(schema) ? schema : []
 
@@ -80,9 +101,7 @@ export function AISmartFill({
         required: f.required,
       }))
 
-      const isGlobal = tenantSlug === "global"
-      const url = isGlobal ? `/api/admin/ai/smart-fill` : `/api/tenant/${tenantSlug}/ai/smart-fill`
-      const res = await fetch(url, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai/smart-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -130,9 +149,7 @@ export function AISmartFill({
         required: f.required,
       }))
 
-      const isGlobal = tenantSlug === "global"
-      const url = isGlobal ? `/api/admin/ai/smart-fill` : `/api/tenant/${tenantSlug}/ai/smart-fill`
-      const res = await fetch(url, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai/smart-fill`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,18 +162,31 @@ export function AISmartFill({
       })
 
       const data = await res.json()
-      if (res.ok && data.content) {
-        onApply(data.content)
-        setOpen(false)
-        setPrompt("")
-        setGeneratedData(null)
-        toast({
-          title: "✨ Formulir Berhasil Terisi!",
-          description: `Seluruh field model ${contentTypeName} telah diisi otomatis oleh AI.`,
-        })
-      } else {
+      if (!res.ok || !data.content) {
         throw new Error(data.error || "Gagal memproses AI Smart Fill")
       }
+
+      // Fields the user already filled in would get silently overwritten —
+      // fall back to the same preview-then-confirm flow "Pratinjau Hasil"
+      // uses instead of applying blind, so the user sees exactly what's
+      // about to change before it does.
+      if (getOverwrittenKeys(data.content, currentValues).length > 0) {
+        setGeneratedData(data.content)
+        toast({
+          title: "Tinjau Dulu Sebelum Diterapkan",
+          description: "Beberapa field sudah terisi — periksa pratinjau di bawah sebelum menimpanya.",
+        })
+        return
+      }
+
+      onApply(data.content)
+      setOpen(false)
+      setPrompt("")
+      setGeneratedData(null)
+      toast({
+        title: "✨ Formulir Berhasil Terisi!",
+        description: `Seluruh field model ${contentTypeName} telah diisi otomatis oleh AI.`,
+      })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error AI Smart Fill", description: err.message })
     } finally {
@@ -313,15 +343,34 @@ export function AISmartFill({
                 </Button>
               </div>
 
+              {overwrittenKeys.length > 0 && (
+                <div className="flex items-start gap-1.5 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+                  <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>{overwrittenKeys.length} field</strong> sudah terisi sebelumnya dan akan DITIMPA (ditandai{" "}
+                    <RotateCcw className="h-2.5 w-2.5 inline text-amber-600" /> di bawah) kalau Anda menerapkan hasil ini.
+                  </span>
+                </div>
+              )}
+
               <div className="max-h-48 overflow-y-auto space-y-1.5 text-xs bg-background/90 p-3 rounded-lg border border-emerald-500/20 font-mono">
-                {Object.entries(generatedData).map(([key, val]) => (
-                  <div key={key} className="flex items-start gap-2 py-0.5 border-b border-border/30 last:border-0">
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 shrink-0">{key}:</span>
-                    <span className="text-foreground truncate leading-relaxed">
-                      {typeof val === "object" ? JSON.stringify(val) : String(val)}
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(generatedData).map(([key, val]) => {
+                  const willOverwrite = overwrittenKeys.includes(key)
+                  return (
+                    <div key={key} className="flex items-start gap-2 py-0.5 border-b border-border/30 last:border-0">
+                      <span className={cn(
+                        "font-bold shrink-0 flex items-center gap-1",
+                        willOverwrite ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
+                      )}>
+                        {willOverwrite && <RotateCcw className="h-2.5 w-2.5" />}
+                        {key}:
+                      </span>
+                      <span className="text-foreground truncate leading-relaxed">
+                        {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
