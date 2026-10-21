@@ -2,6 +2,9 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withAdminAuth } from "@/lib/api/route-helpers"
 
+// allowRoles: ["admin"] — matches every other admin billing page (overview,
+// laba-rugi, margin-keuntungan, tenant-economics), which this route was the
+// one outlier stricter than for no apparent reason.
 export const GET = withAdminAuth(async (request) => {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
@@ -62,4 +65,4 @@ export const GET = withAdminAuth(async (request) => {
       transactions,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     })
-})
+}, { allowRoles: ["admin"] })

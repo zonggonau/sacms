@@ -211,6 +211,9 @@ export async function POST(request: NextRequest) {
  * GET /api/admin/billing/generate-invoices
  * Preview what invoices will be generated (for testing)
  */
+// allowRoles: ["admin"] — matches every other admin billing page/route;
+// this was narrower (super_admin only) than the admin-allowed page it
+// previews data for, with no apparent reason.
 export const GET = withAdminAuth(async () => {
     // Get all active subscriptions
     const activeSubscriptions = await db.subscription.findMany({
@@ -274,4 +277,4 @@ export const GET = withAdminAuth(async () => {
       preview,
       timestamp: now.toISOString(),
     })
-})
+}, { allowRoles: ["admin"] })

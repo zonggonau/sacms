@@ -63,7 +63,7 @@ export default function TenantEconomicsPage() {
 
   const exportTenantCSV = () => {
     if (tenants.length === 0) return
-    const headers = ["Tenant Name", "Tenant Slug", "Owner Email", "Plan Name", "Monthly Revenue (IDR)", "Monthly COGS (IDR)", "Monthly Profit (IDR)", "Margin %", "Status"]
+    const headers = ["Tenant Name", "Tenant Slug", "Owner Email", "Plan Name", "Monthly Revenue (IDR)", "Monthly COGS (IDR)", "Monthly Net Profit (IDR)", "Margin %", "Status"]
     const rows = tenants.map((t: any) => [
       `"${t.tenantName}"`,
       t.tenantSlug,
@@ -71,8 +71,8 @@ export default function TenantEconomicsPage() {
       `"${t.planName}"`,
       t.monthlyRevenue,
       t.monthlyCogs,
-      t.monthlyGrossProfit,
-      `${t.marginPercent}%`,
+      t.monthlyNetProfit,
+      `${t.netMarginPercent}%`,
       t.status
     ])
 
@@ -94,6 +94,11 @@ export default function TenantEconomicsPage() {
         <p className="text-xs text-muted-foreground mt-3 font-semibold">Memuat Unit Economics Tenant Aktif...</p>
       </div>
     )
+  }
+
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+    router.push("/dashboard")
+    return null
   }
 
   return (
@@ -186,11 +191,11 @@ export default function TenantEconomicsPage() {
                       {formatRupiah(t.monthlyCogs)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {formatRupiah(t.monthlyGrossProfit)}
+                      {formatRupiah(t.monthlyNetProfit)}
                     </TableCell>
                     <TableCell className="text-right">
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        {t.marginPercent}%
+                        {t.netMarginPercent}%
                       </span>
                     </TableCell>
                   </TableRow>

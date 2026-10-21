@@ -190,6 +190,7 @@ export async function calculateLiveFinancialReports() {
     liveMonthlyGatewayFees += subMonthlyGateway
 
     const monthlyGrossProfit = subMonthlyRevenue - subMonthlyCogs
+    const monthlyNetProfit = monthlyGrossProfit - subMonthlyGateway
     tenantBreakdown.push({
       id: sub.id,
       tenantId: sub.tenantId,
@@ -203,8 +204,13 @@ export async function calculateLiveFinancialReports() {
       monthlyRevenue: subMonthlyRevenue,
       monthlyCogs: subMonthlyCogs,
       monthlyGrossProfit,
-      monthlyNetProfit: monthlyGrossProfit - subMonthlyGateway,
+      monthlyNetProfit,
+      // Gross margin — kept for any other consumer that specifically wants
+      // margin before payment-gateway fees. netMarginPercent below is what
+      // the tenant-economics page pairs with its "Laba Bersih" (net profit)
+      // column, so the two stay internally consistent.
       marginPercent: subMonthlyRevenue > 0 ? Math.round((monthlyGrossProfit / subMonthlyRevenue) * 1000) / 10 : 0,
+      netMarginPercent: subMonthlyRevenue > 0 ? Math.round((monthlyNetProfit / subMonthlyRevenue) * 1000) / 10 : 0,
       currentPeriodEnd: sub.currentPeriodEnd,
       status: sub.status,
     })

@@ -95,6 +95,11 @@ export default function MarginKeuntunganPage() {
     )
   }
 
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+    router.push("/dashboard")
+    return null
+  }
+
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -157,7 +162,7 @@ export default function MarginKeuntunganPage() {
         <CardHeader className="p-5 pb-4 border-b border-border/60 bg-muted/20">
           <CardTitle className="text-sm font-bold text-foreground">Daftar Lengkap Harga Jual & Struktur Biaya Modal</CardTitle>
           <CardDescription className="text-[11px] text-muted-foreground">
-            Harga tahunan dihitung 10x harga bulanan.
+            Harga bulanan & tahunan diambil langsung dari konfigurasi harga live di CMS — rasio diskon tahunan bisa berbeda-beda per paket, tidak selalu kelipatan yang sama.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">

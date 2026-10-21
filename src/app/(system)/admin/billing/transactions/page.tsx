@@ -90,7 +90,7 @@ export default function AdminTransactionsPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin") fetchTransactions(1)
+    if (session?.user?.role === "super_admin" || session?.user?.role === "admin") fetchTransactions(1)
   }, [session, statusFilter])
 
   const exportCSV = () => {
@@ -160,6 +160,11 @@ export default function AdminTransactionsPage() {
         <p className="text-xs text-muted-foreground mt-3 font-semibold">Memuat Transaksi Pembayaran...</p>
       </div>
     )
+  }
+
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+    router.push("/dashboard")
+    return null
   }
 
   return (

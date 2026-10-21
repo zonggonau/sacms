@@ -89,6 +89,11 @@ export default function LabaRugiPage() {
     )
   }
 
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+    router.push("/dashboard")
+    return null
+  }
+
   const s = data?.summary || {}
 
   return (
