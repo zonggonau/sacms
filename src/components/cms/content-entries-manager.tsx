@@ -1257,16 +1257,20 @@ export function ContentEntriesManager({
                 )}
 
                 {/* Trash toggle */}
-                <Button
-                  type="button"
-                  variant={isTrashView ? "default" : "outline"}
-                  size="sm"
-                  onClick={handleToggleTrashView}
-                  className="h-9 rounded-xl text-xs font-bold shrink-0"
-                  title="Lihat entri yang sudah dihapus (bisa dipulihkan)"
-                >
-                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Sampah
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant={isTrashView ? "default" : "outline"}
+                      size="icon"
+                      onClick={handleToggleTrashView}
+                      className="h-9 w-9 rounded-xl shrink-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Sampah</TooltipContent>
+                </Tooltip>
 
                 {/* Export entries as JSON */}
                 <Button
@@ -1319,67 +1323,79 @@ export function ContentEntriesManager({
                 )}
 
                 {/* Column Visibility Manager Button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsColumnModalOpen(true)}
-                  className="h-9 px-3 rounded-xl border-border/80 text-xs font-bold shadow-xs hover:bg-muted/40 flex items-center gap-1.5"
-                  title="Atur kolom utama dan relasi yang ditampilkan pada tabel"
-                >
-                  <Columns className="h-3.5 w-3.5 text-primary" />
-                  <span>Atur Kolom</span>
-                  <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0 h-4 rounded-md ml-0.5">
-                    {visibleColumns.length}
-                  </Badge>
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsColumnModalOpen(true)}
+                      className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40 relative"
+                    >
+                      <Columns className="h-3.5 w-3.5 text-primary" />
+                      <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {visibleColumns.length}
+                      </Badge>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Atur Kolom ({visibleColumns.length})</TooltipContent>
+                </Tooltip>
 
-                {/* View Mode Switcher (Table vs Kanban) */}
+                {/* View Mode Switcher (Table vs Kanban vs Calendar) */}
                 <div className="flex items-center p-1 bg-muted/40 rounded-xl border border-border/80 shadow-xs gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2.5 rounded-lg text-xs font-bold transition-all gap-1.5 border-none",
-                      viewMode === "table" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => handleViewModeChange("table")}
-                    title="Tampilan Tabel Data"
-                  >
-                    <Table2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Tabel</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-7 w-7 rounded-lg transition-all border-none",
+                          viewMode === "table" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => handleViewModeChange("table")}
+                      >
+                        <Table2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Tampilan Tabel</TooltipContent>
+                  </Tooltip>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2.5 rounded-lg text-xs font-bold transition-all gap-1.5 border-none",
-                      viewMode === "kanban" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => handleViewModeChange("kanban")}
-                    title="Tampilan Papan Kanban (Trello-style)"
-                  >
-                    <Kanban className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Kanban</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-7 w-7 rounded-lg transition-all border-none",
+                          viewMode === "kanban" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => handleViewModeChange("kanban")}
+                      >
+                        <Kanban className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Tampilan Kanban</TooltipContent>
+                  </Tooltip>
 
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      "h-7 px-2.5 rounded-lg text-xs font-bold transition-all gap-1.5 border-none",
-                      viewMode === "calendar" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => handleViewModeChange("calendar")}
-                    title="Tampilan Kalender Jadwal Publikasi"
-                  >
-                    <CalendarRange className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Kalender</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn(
+                          "h-7 w-7 rounded-lg transition-all border-none",
+                          viewMode === "calendar" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={() => handleViewModeChange("calendar")}
+                      >
+                        <CalendarRange className="h-3.5 w-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Tampilan Kalender</TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
 
