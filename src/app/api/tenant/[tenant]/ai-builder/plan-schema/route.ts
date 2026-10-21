@@ -29,7 +29,7 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
       return apiError("validation", { message: "Model AI tidak dikenal. Pilih salah satu dari daftar yang tersedia." })
     }
 
-    const { schema, usedFallback, fallbackReason } = await generateSystemSchema(
+    const { schema } = await generateSystemSchema(
       prompt,
       tenant.id,
       session.user.id,
@@ -53,10 +53,10 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
         components: schema.components || [],
         frontendPrompt: prompt,
         // Matches the flat creditsCost the generator actually reserves — see
-        // ai-schema-generator.ts. Fallback runs never reserve/spend credits.
-        estimatedCredits: usedFallback ? 0 : 5,
-        usedFallback,
-        fallbackReason,
+        // ai-schema-generator.ts. A failed call throws (and refunds) instead
+        // of reaching this response at all, so getting here always means a
+        // real, billed AI generation succeeded.
+        estimatedCredits: 5,
       }
     })
 }, { minRole: "admin" })

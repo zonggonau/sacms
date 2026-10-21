@@ -120,6 +120,18 @@ export function handleRouteError(error: unknown, context?: { route?: string; met
     return apiError("rate_limited", { message: error.message })
   }
 
+  // ai-schema-generator.ts throws a plain Error with `.status = 503` and an
+  // already user-safe message when the real AI call fails for a reason
+  // that ISN'T the user's own depleted credits (Gateway not configured, a
+  // provider/Gateway outage, the platform's own upstream AI subscription
+  // exhausted, …) — by deliberate product decision this must surface as a
+  // clear, distinct notice rather than a 429 ("top up your credits", wrong)
+  // or a silently-swapped fallback schema (confusing, looked AI-generated
+  // but wasn't).
+  if (error instanceof Error && (error as { status?: unknown }).status === 503) {
+    return apiError("internal", { message: error.message, status: 503 })
+  }
+
   return apiError("internal")
 }
 

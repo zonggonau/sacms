@@ -272,9 +272,6 @@ interface SchemaPlan {
   contentTypes: SchemaModel[]
   singleTypes: SchemaModel[]
   components: SchemaModel[]
-  /** True if the real AI call failed/wasn't configured and a canned blueprint was used instead. */
-  usedFallback?: boolean
-  fallbackReason?: string
 }
 
 interface SchemaStepProps {
@@ -486,13 +483,13 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
       if (!res.ok) throw new Error(data?.error || "Gagal merencanakan skema")
       setPlan(data.plan)
       setStep("review")
-      if (data.plan?.usedFallback) {
-        toast({
-          title: "AI Gateway Tidak Tersedia",
-          description: "Skema ini dibuat dari blueprint cadangan, bukan hasil AI sesungguhnya — tidak ada kredit yang dipotong. Cek konfigurasi Vercel AI Gateway di Admin > Pengaturan > Mesin AI.",
-        })
-      }
     } catch (err: any) {
+      // No fallback schema is ever generated — a failed call (whether the
+      // user's own AI credits are depleted, or the Gateway/platform AI
+      // subscription itself is unavailable) always surfaces here as a real
+      // error with an already-clear, actionable message (see
+      // ai-schema-generator.ts), never a silently-swapped blueprint that
+      // looks AI-generated but isn't.
       toast({ variant: "destructive", title: "Gagal Membuat Skema", description: err.message })
     } finally {
       setIsPlanning(false)
@@ -592,24 +589,12 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
           <div className="text-center space-y-1.5">
             <div className="flex items-center justify-center gap-2 mb-1">
-              {plan.usedFallback ? (
-                <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> Blueprint Cadangan (bukan AI)
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1">
-                  <Zap className="h-3 w-3" /> Vercel AI Gateway
-                </Badge>
-              )}
+              <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Vercel AI Gateway
+              </Badge>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">{plan.title}</h2>
             <p className="text-xs text-muted-foreground">{plan.summary}</p>
-            {plan.usedFallback && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 max-w-md mx-auto">
-                Vercel AI Gateway tidak merespons, jadi skema ini disusun dari blueprint cadangan, bukan hasil AI sesungguhnya. Tidak ada kredit yang dipotong untuk hasil ini.
-                {plan.fallbackReason && <span className="block text-muted-foreground mt-0.5">({plan.fallbackReason})</span>}
-              </p>
-            )}
           </div>
 
           {isTemplateMode && (
