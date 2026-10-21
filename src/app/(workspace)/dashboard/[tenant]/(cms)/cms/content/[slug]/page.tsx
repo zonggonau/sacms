@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getTenantDb } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
@@ -143,6 +143,19 @@ export default async function CMSContentTypeEntriesPage({
     }
   }
 
+  // Author filter dropdown — TenantMember/User always live in the shared
+  // `db`, never a tenant's dedicated DB (same reason resolveWriteContext in
+  // actions/content.ts looks up membership via `db`, not `tenantDb`).
+  const tenantMembers = await db.tenantMember.findMany({
+    where: { tenantId: access.tenantId },
+    include: { user: { select: { id: true, name: true, email: true } } },
+  })
+  const authors = tenantMembers.map((m) => ({
+    id: m.user.id,
+    name: m.user.name,
+    email: m.user.email,
+  }))
+
   // Enforce plan limits for content entries
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
   const enforcement = await enforcePlanLimit(access.tenantId, "content_entries", session.user.id)
@@ -156,6 +169,7 @@ export default async function CMSContentTypeEntriesPage({
       initialEntries={parsedEntries}
       initialRelationLabels={relationLabels}
       relatedSchemas={relatedSchemas}
+      authors={authors}
       tenantSlug={tenantSlug}
       contentTypeSlug={contentTypeSlug}
       isLimitReached={isLimitReached}

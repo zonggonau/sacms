@@ -47,6 +47,7 @@ import {
   DropdownMenuRadioItem
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { toast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
@@ -74,11 +75,12 @@ function stripHtml(html: string) {
   return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')
 }
 
-export function ContentEntriesManager({ 
-  contentType, 
+export function ContentEntriesManager({
+  contentType,
   initialEntries,
   initialRelationLabels = {},
   relatedSchemas = {},
+  authors = [],
   tenantSlug,
   contentTypeSlug,
   isLimitReached = false,
@@ -87,11 +89,12 @@ export function ContentEntriesManager({
   basePath,
   userRole = "owner",
   customPermissions = null,
-}: { 
-  contentType: any, 
+}: {
+  contentType: any,
   initialEntries: any[],
   initialRelationLabels?: Record<string, RelationLabelItem>,
   relatedSchemas?: Record<string, { name: string; slug: string; fields: any[] }>,
+  authors?: { id: string; name: string | null; email: string }[],
   tenantSlug: string,
   contentTypeSlug: string,
   isLimitReached?: boolean,
@@ -165,6 +168,15 @@ export function ContentEntriesManager({
   const [isServerSearching, setIsServerSearching] = useState(false)
   const skipNextServerLoad = useRef(true)
 
+  // Date range + author filters — same server-round-trip model as search
+  // above, since both need to reach entries beyond whatever's loaded in
+  // `entries`. "" means "no filter" for authorFilter/dateFrom/dateTo.
+  const [dateField, setDateField] = useState<"createdAt" | "publishedAt">("createdAt")
+  const [dateFrom, setDateFrom] = useState("")
+  const [dateTo, setDateTo] = useState("")
+  const [authorFilter, setAuthorFilter] = useState("")
+  const hasDateFilter = Boolean(dateFrom || dateTo)
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
     return () => clearTimeout(t)
@@ -187,6 +199,10 @@ export function ContentEntriesManager({
         search: debouncedSearch || undefined,
         sortBy,
         sortOrder,
+        authorId: authorFilter || undefined,
+        dateField,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       })
       if ("error" in result && result.error) {
         toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
@@ -215,7 +231,7 @@ export function ContentEntriesManager({
     }
     loadServerEntries()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, sortBy, sortOrder])
+  }, [debouncedSearch, sortBy, sortOrder, authorFilter, dateField, dateFrom, dateTo])
 
   const toggleSort = (column: "createdAt" | "updatedAt" | "status") => {
     if (sortBy === column) {
@@ -236,6 +252,10 @@ export function ContentEntriesManager({
         search: debouncedSearch || undefined,
         sortBy,
         sortOrder,
+        authorId: authorFilter || undefined,
+        dateField,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
       })
       if ("error" in result && result.error) {
         toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
@@ -916,6 +936,79 @@ export function ContentEntriesManager({
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                {/* Author Filter */}
+                {authors.length > 0 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0">
+                        <Filter className="h-3.5 w-3.5 mr-1.5" />
+                        {authorFilter
+                          ? (authors.find(a => a.id === authorFilter)?.name || authors.find(a => a.id === authorFilter)?.email || "Penulis")
+                          : "Semua Penulis"}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto rounded-xl border-border bg-card shadow-xs">
+                      <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Filter Berdasarkan Penulis</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup value={authorFilter} onValueChange={setAuthorFilter}>
+                        <DropdownMenuRadioItem value="" className="text-xs font-medium cursor-pointer rounded-lg">
+                          Semua Penulis
+                        </DropdownMenuRadioItem>
+                        {authors.map((a) => (
+                          <DropdownMenuRadioItem key={a.id} value={a.id} className="text-xs font-medium cursor-pointer rounded-lg">
+                            {a.name || a.email}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+
+                {/* Date Range Filter */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0">
+                      <CalendarRange className="h-3.5 w-3.5 mr-1.5" />
+                      Tanggal{hasDateFilter ? " •" : ""}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-72 rounded-xl p-3 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase font-bold text-muted-foreground">Berdasarkan</label>
+                      <UiSelect value={dateField} onValueChange={(v) => setDateField(v as "createdAt" | "publishedAt")}>
+                        <UiSelectTrigger className="h-8 text-xs rounded-lg">
+                          <UiSelectValue />
+                        </UiSelectTrigger>
+                        <UiSelectContent>
+                          <UiSelectItem value="createdAt" className="text-xs">Tanggal Dibuat</UiSelectItem>
+                          <UiSelectItem value="publishedAt" className="text-xs">Tanggal Dipublikasikan</UiSelectItem>
+                        </UiSelectContent>
+                      </UiSelect>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground">Dari</label>
+                        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 text-xs rounded-lg" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-bold text-muted-foreground">Sampai</label>
+                        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 text-xs rounded-lg" />
+                      </div>
+                    </div>
+                    {hasDateFilter && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs font-bold w-full rounded-lg"
+                        onClick={() => { setDateFrom(""); setDateTo("") }}
+                      >
+                        <X className="h-3 w-3 mr-1" /> Reset Filter Tanggal
+                      </Button>
+                    )}
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Right Toolbar: Column Configurator, View Switcher & Bulk Actions */}

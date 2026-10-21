@@ -136,6 +136,10 @@ async function getWorkflowContext(
 // branch below) interpolating an unsafe column identifier.
 const SORTABLE_COLUMNS = new Set(["createdAt", "updatedAt", "status"])
 
+// Same reasoning as SORTABLE_COLUMNS above — only ever interpolated into the
+// raw-SQL branch after being checked against this whitelist.
+const DATE_FILTER_COLUMNS = new Set(["createdAt", "publishedAt"])
+
 export async function getEntriesAction(
   tenantSlug: string,
   contentTypeSlug: string,
@@ -147,6 +151,10 @@ export async function getEntriesAction(
     search?: string
     sortBy?: string
     sortOrder?: "asc" | "desc"
+    authorId?: string
+    dateField?: string
+    dateFrom?: string
+    dateTo?: string
   }
 ) {
   try {
@@ -186,9 +194,12 @@ export async function getEntriesAction(
 
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
-    const { status, locale, search } = params
+    const { status, locale, search, authorId } = params
     const sortBy = params.sortBy && SORTABLE_COLUMNS.has(params.sortBy) ? params.sortBy : "createdAt"
     const sortOrder: "asc" | "desc" = params.sortOrder === "asc" ? "asc" : "desc"
+    const dateField = params.dateField && DATE_FILTER_COLUMNS.has(params.dateField) ? params.dateField : "createdAt"
+    const dateFrom = params.dateFrom ? new Date(params.dateFrom) : null
+    const dateTo = params.dateTo ? new Date(params.dateTo) : null
 
     const where: Record<string, unknown> = {
       contentTypeId: contentType.id,
@@ -196,6 +207,13 @@ export async function getEntriesAction(
     }
     if (status) where.status = status
     if (locale) where.locale = locale
+    if (authorId) where.createdBy = authorId
+    if (dateFrom || dateTo) {
+      where[dateField] = {
+        ...(dateFrom && !isNaN(dateFrom.getTime()) ? { gte: dateFrom } : {}),
+        ...(dateTo && !isNaN(dateTo.getTime()) ? { lte: dateTo } : {}),
+      }
+    }
 
     let entries: any[]
     let total: number
@@ -214,6 +232,24 @@ export async function getEntriesAction(
       if (locale) {
         whereParts.push(`"locale" = $${paramIdx}`)
         queryParams.push(locale)
+        paramIdx++
+      }
+
+      if (authorId) {
+        whereParts.push(`"createdBy" = $${paramIdx}`)
+        queryParams.push(authorId)
+        paramIdx++
+      }
+
+      if (dateFrom && !isNaN(dateFrom.getTime())) {
+        whereParts.push(`"${dateField}" >= $${paramIdx}`)
+        queryParams.push(dateFrom)
+        paramIdx++
+      }
+
+      if (dateTo && !isNaN(dateTo.getTime())) {
+        whereParts.push(`"${dateField}" <= $${paramIdx}`)
+        queryParams.push(dateTo)
         paramIdx++
       }
 
