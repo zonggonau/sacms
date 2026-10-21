@@ -180,7 +180,7 @@ export default function MarginKeuntunganPage() {
             </TableHeader>
             <TableBody className="divide-y divide-border/60 text-xs">
               {filteredCatalog.map((item: any) => (
-                <TableRow key={item.slug} className="hover:bg-muted/20 transition-colors">
+                <TableRow key={`${item.category}-${item.slug}`} className="hover:bg-muted/20 transition-colors">
                   <TableCell className="py-3.5">
                     <div className="font-bold text-foreground">{item.name}</div>
                     <div className="text-[10px] text-muted-foreground font-mono">{item.slug}</div>
