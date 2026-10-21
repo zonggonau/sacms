@@ -369,6 +369,70 @@ export function ContentEntriesManager({
     }
   }
 
+  // Structured field types a flat CSV cell can't represent faithfully —
+  // serialized as JSON text in their cell instead of being dropped, same
+  // spirit as the JSON export's own fidelity concerns, but this export is
+  // explicitly a flattened report/spreadsheet view, never meant to be
+  // re-imported (JSON stays the only round-trip format, see entries/export
+  // route.ts's own comment on this).
+  const CSV_STRUCTURAL_TYPES = new Set(["relation", "component", "repeater", "media", "mediaMultiple", "file", "json"])
+
+  function csvCell(value: unknown): string {
+    const str = value === null || value === undefined ? "" : String(value)
+    if (/[",\n]/.test(str)) return `"${str.replace(/"/g, '""')}"`
+    return str
+  }
+
+  const [isExportingCsv, setIsExportingCsv] = useState(false)
+
+  const handleExportEntriesCsv = async () => {
+    setIsExportingCsv(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/export`)
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || "Gagal mengekspor data")
+      }
+      const payload = await res.json()
+      const fields = contentType?.fields || []
+
+      const headers = ["id", "status", "locale", ...fields.map((f: any) => f.name || f.slug), "publishedAt", "createdAt"]
+      const rows = (payload.entries || []).map((e: any) => {
+        const row = [e.sourceId, e.status, e.locale]
+        for (const f of fields) {
+          const raw = e.data?.[f.slug]
+          if (CSV_STRUCTURAL_TYPES.has(f.type)) {
+            row.push(raw ? JSON.stringify(raw) : "")
+          } else if (f.type === "richText") {
+            row.push(stripHtml(raw || ""))
+          } else {
+            row.push(raw ?? "")
+          }
+        }
+        row.push(e.publishedAt || "", e.createdAt || "")
+        return row
+      })
+
+      const csv = [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n")
+      // BOM so Excel detects UTF-8 instead of mangling non-ASCII (e.g. Indonesian diacritics).
+      const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `sacms-entries-${contentTypeSlug}-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+
+      toast({ title: "Data Diekspor", description: `${rows.length} entri berhasil diunduh sebagai CSV.` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mengekspor Data", description: err.message })
+    } finally {
+      setIsExportingCsv(false)
+    }
+  }
+
   const handleImportFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = "" // allow re-selecting the same file
@@ -1090,6 +1154,19 @@ export function ContentEntriesManager({
                   title="Ekspor semua data entri content type ini sebagai JSON"
                 >
                   {isExportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                </Button>
+
+                {/* Export entries as CSV (flattened report view, not for re-import) */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportEntriesCsv}
+                  disabled={isExportingCsv}
+                  className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                  title="Ekspor semua data entri content type ini sebagai CSV (spreadsheet)"
+                >
+                  {isExportingCsv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
                 </Button>
 
                 {/* Import entries from JSON */}
