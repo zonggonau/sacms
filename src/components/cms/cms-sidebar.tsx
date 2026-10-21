@@ -4,7 +4,6 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   LayoutDashboard,
   Database,
@@ -113,8 +112,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
             {contentTypes.length === 0 ? (
               <p className="px-3 text-xs text-muted-foreground/60 italic">Belum ada skema</p>
             ) : (
-              <ScrollArea className="max-h-64 -mr-3 pr-2">
-              <div className="space-y-1">
+              <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
               {contentTypes.map(ct => {
                 const active = pathname.startsWith(href(`/content/${ct.slug}`))
                 return (
@@ -152,7 +150,6 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                 )
               })}
               </div>
-              </ScrollArea>
             )}
           </div>
 
@@ -184,8 +181,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
             </Link>
 
             {singleTypes.length > 0 && (
-              <ScrollArea className="max-h-64 -mr-3 pr-2">
-              <div className="space-y-1">
+              <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
               {singleTypes.map(st => {
               const active = pathname.startsWith(href(`/single-types/${st.slug}`))
               return (
@@ -215,7 +211,6 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               )
               })}
               </div>
-              </ScrollArea>
             )}
           </div>
 
