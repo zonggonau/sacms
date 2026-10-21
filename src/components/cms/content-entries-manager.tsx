@@ -27,6 +27,7 @@ import {
   SelectValue as UiSelectValue,
 } from "@/components/ui/select"
 import { ContentKanbanBoard } from "@/components/cms/content-kanban-board"
+import { ContentCalendarView } from "@/components/cms/content-calendar-view"
 import { ColumnSettingsModal } from "@/components/cms/column-settings-modal"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -114,7 +115,7 @@ export function ContentEntriesManager({
   const [statusFilter, setStatusFilter] = useState<string[]>(["DRAFT", "PUBLISHED", "IN_REVIEW", "ARCHIVED", "APPROVED", "SCHEDULED", "REJECTED"])
   const [isApiSnippetOpen, setIsApiSnippetOpen] = useState(false)
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false)
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
+  const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">("table")
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, RelationLabelItem>>(initialRelationLabels)
 
   const ENTRIES_PAGE_SIZE = 100
@@ -433,13 +434,13 @@ export function ContentEntriesManager({
   useEffect(() => {
     try {
       const saved = localStorage.getItem("sacms_cms_view_mode")
-      if (saved === "table" || saved === "kanban") {
+      if (saved === "table" || saved === "kanban" || saved === "calendar") {
         setViewMode(saved)
       }
     } catch {}
   }, [])
 
-  const handleViewModeChange = (mode: "table" | "kanban") => {
+  const handleViewModeChange = (mode: "table" | "kanban" | "calendar") => {
     setViewMode(mode)
     try {
       localStorage.setItem("sacms_cms_view_mode", mode)
@@ -1142,13 +1143,28 @@ export function ContentEntriesManager({
                     <Kanban className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Kanban</span>
                   </Button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "h-7 px-2.5 rounded-lg text-xs font-bold transition-all gap-1.5 border-none",
+                      viewMode === "calendar" ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => handleViewModeChange("calendar")}
+                    title="Tampilan Kalender Jadwal Publikasi"
+                  >
+                    <CalendarRange className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Kalender</span>
+                  </Button>
                 </div>
               </div>
 
             </div>
           </Card>
 
-          {/* Conditional View: Kanban Board vs Table */}
+          {/* Conditional View: Kanban Board vs Table vs Calendar */}
           {viewMode === "kanban" ? (
             <div className="pt-1 animate-in fade-in duration-200">
               <ContentKanbanBoard
@@ -1160,6 +1176,15 @@ export function ContentEntriesManager({
                 navBasePath={navBasePath}
                 onStatusChange={() => router.refresh()}
                 onDeleteEntry={() => router.refresh()}
+              />
+            </div>
+          ) : viewMode === "calendar" ? (
+            <div className="pt-1 animate-in fade-in duration-200">
+              <ContentCalendarView
+                entries={filteredEntries}
+                tenantSlug={tenantSlug}
+                contentTypeSlug={contentTypeSlug}
+                navBasePath={navBasePath}
               />
             </div>
           ) : (
