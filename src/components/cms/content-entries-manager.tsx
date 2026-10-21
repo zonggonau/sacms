@@ -1273,30 +1273,38 @@ export function ContentEntriesManager({
                 </Tooltip>
 
                 {/* Export entries as JSON */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleExportEntries}
-                  disabled={isExportingEntries}
-                  className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
-                  title="Ekspor semua data entri content type ini sebagai JSON"
-                >
-                  {isExportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleExportEntries}
+                      disabled={isExportingEntries}
+                      className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                    >
+                      {isExportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ekspor Data (JSON)</TooltipContent>
+                </Tooltip>
 
                 {/* Export entries as CSV (flattened report view, not for re-import) */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleExportEntriesCsv}
-                  disabled={isExportingCsv}
-                  className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
-                  title="Ekspor semua data entri content type ini sebagai CSV (spreadsheet)"
-                >
-                  {isExportingCsv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleExportEntriesCsv}
+                      disabled={isExportingCsv}
+                      className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                    >
+                      {isExportingCsv ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5 text-primary" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Ekspor Data (CSV)</TooltipContent>
+                </Tooltip>
 
                 {/* Import entries from JSON */}
                 {canCreateEntry && (
@@ -1308,17 +1316,21 @@ export function ContentEntriesManager({
                       className="hidden"
                       onChange={handleImportFileSelected}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() => importFileInputRef.current?.click()}
-                      disabled={isImportingEntries}
-                      className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
-                      title="Impor entri dari berkas JSON (hasil Ekspor Data) — masuk sebagai draft"
-                    >
-                      {isImportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 text-primary rotate-180" />}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => importFileInputRef.current?.click()}
+                          disabled={isImportingEntries}
+                          className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                        >
+                          {isImportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 text-primary rotate-180" />}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Impor Data (JSON)</TooltipContent>
+                    </Tooltip>
                   </>
                 )}
 
