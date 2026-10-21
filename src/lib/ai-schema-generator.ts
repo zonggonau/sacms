@@ -85,6 +85,9 @@ Field Selection Rules:
 - Search engine optimization MUST use 'seo' — every public-facing Single Type and Content Type gets one, not just the homepage.
 - Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
 - Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
+- 'document_template' is ONLY for a Content Type that represents a fillable letter/official document (surat), and only add it when the user's prompt or attached reference material actually describes one. Never add it to ordinary business content (products, articles, bookings, etc.).
+
+If the user's reference material includes a block labeled "Variabel Placeholder Dokumen" listing exact field keys (e.g. from an uploaded .docx letter template), you MUST: create one Content Type representing that document, give it fields whose slugs are EXACTLY those keys verbatim — including underscores, NOT converted to kebab-case, this is the one exception to the kebab-case rule below — using the suggested types, and add exactly one additional field of type 'document_template' to that same Content Type. This lets the uploaded document later be attached as that type's fill-in letter template with the field slugs already matching.
 
 Do not skip step 1 or step 2 even if the user's prompt only describes the business content from step 3 — a real frontend always has a header, a footer, and at least a homepage, so the schema must cover them whether or not the user mentioned them explicitly.
 
@@ -536,7 +539,7 @@ export interface GenerateSystemSchemaResult {
   fallbackReason?: string
 }
 
-export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GenerateSystemSchemaResult> {
+async function generateSystemSchemaCore(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GenerateSystemSchemaResult> {
   // 1. Coba AI LLM via Vercel AI Gateway
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
@@ -583,5 +586,48 @@ export async function generateSystemSchema(prompt: string, tenantId?: string, us
     // 3. Fallback Heuristic Generator Terstruktur
     console.log("[AI Schema] Using High-Accuracy Multi-Collection Domain Synthesizer...")
     return { schema: finalizeGeneratedSchema(generateHeuristicSchema(prompt)), usedFallback: true, fallbackReason }
+  }
+}
+
+/**
+ * placeholderKeys: the exact {placeholder} keys detected in an attached
+ * .docx letter template (see document-analysis.ts / docx-template-parser.ts,
+ * surfaced through schema-step.tsx's attachment flow). normalizeSchemaSlugs
+ * (inside finalizeGeneratedSchema, used by every path in
+ * generateSystemSchemaCore) unconditionally kebab-cases every field slug —
+ * which would silently break the document_template merge for any of these
+ * fields, since that merge matches by exact slug text, underscores
+ * included. This restores the verbatim key wherever a field's
+ * kebab-normalized slug matches one of these, so the schema stays correct
+ * by construction even if the model's prompt-level instruction to preserve
+ * them verbatim isn't followed exactly.
+ */
+export async function generateSystemSchema(
+  prompt: string,
+  tenantId?: string,
+  userId?: string,
+  model?: string,
+  skipQuotaCheck?: boolean,
+  placeholderKeys?: string[],
+): Promise<GenerateSystemSchemaResult> {
+  const result = await generateSystemSchemaCore(prompt, tenantId, userId, model, skipQuotaCheck)
+  if (!placeholderKeys || placeholderKeys.length === 0) return result
+  return { ...result, schema: restoreVerbatimPlaceholderSlugs(result.schema, placeholderKeys) }
+}
+
+function restoreVerbatimPlaceholderSlugs(schema: GeneratedSystemSchema, placeholderKeys: string[]): GeneratedSystemSchema {
+  const byKebab = new Map(placeholderKeys.map((k) => [toKebabSlug(k), k]))
+  type Model = GeneratedSystemSchema["contentTypes"][number]
+  const fix = (model: Model): Model => ({
+    ...model,
+    fields: (model.fields || []).map((field) => {
+      const verbatim = byKebab.get(field.slug)
+      return verbatim ? { ...field, slug: verbatim } : field
+    }),
+  })
+  return {
+    contentTypes: (schema.contentTypes || []).map(fix),
+    singleTypes: (schema.singleTypes || []).map(fix),
+    components: (schema.components || []).map(fix),
   }
 }

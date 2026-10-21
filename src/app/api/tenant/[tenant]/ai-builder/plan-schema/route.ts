@@ -4,12 +4,22 @@ import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isAllowedSchemaModel, DEFAULT_SCHEMA_MODEL } from "@/lib/ai/schema-models"
 
 export const POST = withStaffAuth(async (req, _context, { access, session }) => {
-    const { prompt, model } = await req.json()
+    const { prompt, model, documentPlaceholders } = await req.json()
     const tenant = access.tenant
 
     if (!prompt) {
       return apiError("validation", { message: "Prompt is required" })
     }
+
+    // Exact {placeholder} keys detected from an attached .docx letter
+    // template (schema-step.tsx's attachment flow) — passed straight
+    // through so generateSystemSchema can restore them verbatim after its
+    // own kebab-case slug normalization, keeping the document_template
+    // merge's exact-slug-match working. Never trust an arbitrary array
+    // shape from the client beyond "list of strings".
+    const placeholderKeys: string[] | undefined = Array.isArray(documentPlaceholders)
+      ? documentPlaceholders.filter((k: unknown): k is string => typeof k === "string").slice(0, 100)
+      : undefined
 
     // The dropdown only ever offers SCHEMA_MODEL_OPTIONS — reject anything
     // else server-side too, since all tenants share one Vercel AI Gateway
@@ -24,6 +34,8 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
       tenant.id,
       session.user.id,
       model || DEFAULT_SCHEMA_MODEL,
+      undefined,
+      placeholderKeys,
     )
 
     const totalFields = schema.contentTypes.reduce((acc, ct) => acc + (ct.fields?.length || 0), 0) +

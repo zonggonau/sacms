@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { SCHEMA_MODEL_OPTIONS } from "@/lib/ai/schema-models"
+import type { ExtractedPlaceholder } from "@/lib/docx-template-parser"
 
 // Mirrors the flat creditsCost generateSystemSchema reserves per call
 // (src/lib/ai-schema-generator.ts) — kept as a literal here since that
@@ -366,16 +367,27 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
   const insufficientCredits = !!creditInfo && !creditInfo.isUnlimited && creditInfo.remaining < SCHEMA_GENERATE_COST
 
-  // Reference document AI reads alongside the prompt (e.g. a business brief
-  // or a sample data export) — read client-side as plain text, folded into
-  // the prompt sent to /ai-builder/plan-schema. No binary parsing (PDF/DOCX)
-  // on the server, so only text-ish formats are accepted.
+  // Reference document AI reads alongside the prompt (e.g. a business brief,
+  // a sample data export, or an existing letter template). Plain-text
+  // formats (.txt/.md/.csv/.json) are read client-side via FileReader, same
+  // as before. Binary formats (.docx/.xlsx/.xls/.pdf) are sent to the new
+  // /ai-builder/parse-document route — a real server-side parse (docx
+  // placeholders + full text, spreadsheet rows, PDF text), not a raw-bytes
+  // dump — since the browser can't make sense of those formats as text.
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [attachedFile, setAttachedFile] = useState<{ name: string; content: string } | null>(null)
+  const [attachedFile, setAttachedFile] = useState<{
+    name: string
+    content: string
+    placeholders?: ExtractedPlaceholder[]
+    sheets?: { name: string; headers: string[] }[]
+  } | null>(null)
+  const [isParsingFile, setIsParsingFile] = useState(false)
   const MAX_ATTACHMENT_BYTES = 400_000
   const MAX_ATTACHMENT_CHARS = 20_000
+  const TEXT_ATTACHMENT_EXTENSIONS = new Set(["txt", "md", "csv", "json"])
+  const BINARY_ATTACHMENT_EXTENSIONS = new Set(["docx", "xlsx", "xls", "pdf"])
 
-  const handleFileSelected = (file: File) => {
+  const handleTextFileSelected = (file: File) => {
     if (file.size > MAX_ATTACHMENT_BYTES) {
       toast({ variant: "destructive", title: "File Terlalu Besar", description: "Maksimal 400KB untuk dokumen referensi teks." })
       return
@@ -391,6 +403,41 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
     reader.readAsText(file)
   }
 
+  const handleBinaryFileSelected = async (file: File) => {
+    setIsParsingFile(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/parse-document`, {
+        method: "POST",
+        body: formData,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal menganalisa dokumen")
+      setAttachedFile({
+        name: file.name,
+        content: data.fullText || "",
+        placeholders: data.placeholders || undefined,
+        sheets: data.sheets || undefined,
+      })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Menganalisa Dokumen", description: err.message })
+    } finally {
+      setIsParsingFile(false)
+    }
+  }
+
+  const handleFileSelected = (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase() || ""
+    if (BINARY_ATTACHMENT_EXTENSIONS.has(ext)) {
+      handleBinaryFileSelected(file)
+    } else if (TEXT_ATTACHMENT_EXTENSIONS.has(ext)) {
+      handleTextFileSelected(file)
+    } else {
+      toast({ variant: "destructive", title: "Format Tidak Didukung", description: "Gunakan .txt, .md, .csv, .json, .docx, .xlsx, .xls, atau .pdf." })
+    }
+  }
+
   // Only used in "template" mode — metadata for the SchemaTemplate row.
   const [templateName, setTemplateName] = useState("")
   const [templateCategory, setTemplateCategory] = useState("")
@@ -401,13 +448,39 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
     if (!prompt.trim()) return
     setIsPlanning(true)
     try {
-      const fullPrompt = attachedFile
-        ? `${prompt}\n\n---\nReferensi dari dokumen terlampir ("${attachedFile.name}"), gunakan sebagai konteks tambahan untuk menyusun skema:\n${attachedFile.content}`
-        : prompt
+      let fullPrompt = prompt
+      if (attachedFile) {
+        fullPrompt += `\n\n---\nReferensi dari dokumen terlampir ("${attachedFile.name}"), gunakan sebagai konteks tambahan untuk menyusun skema:\n${attachedFile.content}`
+
+        // Detected {placeholder} letter variables (document_template's own
+        // upload wizard uses the same extractor) — tell the AI to design a
+        // Content Type with fields matching these EXACT keys, so this same
+        // document can later be attached as that type's document_template
+        // and have the merge actually line up field-for-field.
+        if (attachedFile.placeholders && attachedFile.placeholders.length > 0) {
+          const list = attachedFile.placeholders
+            .map((p) => `- key: "${p.key}" (nama: "${p.name}", tipe field disarankan: ${p.inferredType})`)
+            .join("\n")
+          fullPrompt += `\n\n---\nVariabel Placeholder Dokumen (terdeteksi otomatis dari template surat/dokumen di atas):\n${list}\n\nBuat satu Content Type yang merepresentasikan dokumen ini, dengan field slug PERSIS SAMA dengan setiap "key" di atas (termasuk underscore jika ada — JANGAN ubah ke kebab-case untuk field-field ini), memakai tipe yang disarankan. Tambahkan juga satu field bertipe "document_template" di Content Type yang sama, supaya dokumen ini nantinya bisa dipasang sebagai template surat yang field-nya sudah cocok.`
+        }
+
+        // Spreadsheet structure (headers per sheet) — helps the AI infer a
+        // Content Type whose fields mirror the user's existing data columns.
+        if (attachedFile.sheets && attachedFile.sheets.length > 0) {
+          const list = attachedFile.sheets
+            .map((s) => `- Sheet "${s.name}": kolom ${s.headers.join(", ") || "(tidak terdeteksi)"}`)
+            .join("\n")
+          fullPrompt += `\n\n---\nStruktur Spreadsheet Terlampir:\n${list}`
+        }
+      }
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/plan-schema`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: fullPrompt, model }),
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          model,
+          documentPlaceholders: attachedFile?.placeholders?.map((p) => p.key) || undefined,
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal merencanakan skema")
@@ -647,11 +720,25 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             }}
           />
 
-          {attachedFile && (
+          {isParsingFile && (
+            <div className="flex items-center gap-2 px-4 pb-2">
+              <Badge variant="outline" className="gap-1.5 text-[11px] font-semibold bg-muted/40 border-border/70 text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Menganalisa dokumen...
+              </Badge>
+            </div>
+          )}
+
+          {attachedFile && !isParsingFile && (
             <div className="flex items-center gap-2 px-4 pb-2">
               <Badge variant="outline" className="gap-1.5 text-[11px] font-semibold bg-primary/5 border-primary/20 text-foreground max-w-full">
                 <FileUp className="h-3 w-3 text-primary shrink-0" />
                 <span className="truncate max-w-[220px]">{attachedFile.name}</span>
+                {!!attachedFile.placeholders?.length && (
+                  <span className="text-muted-foreground">— {attachedFile.placeholders.length} variabel terdeteksi</span>
+                )}
+                {!!attachedFile.sheets?.length && (
+                  <span className="text-muted-foreground">— {attachedFile.sheets.length} sheet terdeteksi</span>
+                )}
                 <button
                   type="button"
                   onClick={() => setAttachedFile(null)}
@@ -668,7 +755,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             <input
               ref={fileInputRef}
               type="file"
-              accept=".txt,.md,.csv,.json"
+              accept=".txt,.md,.csv,.json,.docx,.xlsx,.xls,.pdf"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0]
@@ -678,11 +765,12 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             />
             <button
               type="button"
+              disabled={isParsingFile}
               onClick={() => fileInputRef.current?.click()}
-              title="Upload dokumen referensi (.txt, .md, .csv, .json) agar AI menganalisanya"
-              className="flex items-center gap-1 h-7 px-1.5 rounded-lg text-[11px] font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer"
+              title="Upload dokumen referensi (.txt, .md, .csv, .json, .docx, .xlsx, .xls, .pdf) agar AI menganalisanya"
+              className="flex items-center gap-1 h-7 px-1.5 rounded-lg text-[11px] font-semibold text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Paperclip className="h-3.5 w-3.5" />
+              {isParsingFile ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
             </button>
             <Cpu className="h-3 w-3 text-muted-foreground shrink-0" />
             <Select value={model} onValueChange={setModel}>
@@ -714,14 +802,12 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
                   {creditInfo.isUnlimited ? "Tidak Terbatas" : `${creditInfo.remaining} Kredit`}
                 </div>
               )}
-              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-                <Zap className="h-2.5 w-2.5" /> Vercel AI Gateway
-              </div>
+         
             </div>
           </div>
         </div>
         <p className="text-[10px] text-muted-foreground text-center -mt-2">
-          Opsional: lampirkan dokumen referensi (.txt, .md, .csv, .json) — AI akan membacanya sebagai konteks tambahan untuk menyusun skema.
+          Opsional: lampirkan dokumen referensi (.txt, .md, .csv, .json, .docx, .xlsx, .xls, .pdf) — AI akan menganalisanya sebagai konteks tambahan. Untuk template surat (.docx), variabel placeholder-nya otomatis terdeteksi dan field skema akan dibuat cocok supaya bisa dipakai lewat field "document_template".
         </p>
 
         <div className="flex flex-col items-center gap-2">
