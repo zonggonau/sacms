@@ -57,6 +57,7 @@ import {
   deleteEntryAction,
   updateContentEntryStatusAction,
   getEntriesAction,
+  duplicateEntryAction,
 } from "@/actions/content"
 import { extractEntryLabel, extractEntrySubtitle, RelationLabelItem } from "@/lib/relation-labels"
 import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
@@ -656,6 +657,25 @@ export function ContentEntriesManager({
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menghapus entri" })
+    }
+  }
+
+  const [duplicatingEntryId, setDuplicatingEntryId] = useState<string | null>(null)
+
+  const handleDuplicateEntry = async (id: string) => {
+    setDuplicatingEntryId(id)
+    try {
+      const res = await duplicateEntryAction(tenantSlug, contentTypeSlug, id)
+      if (res.success && res.entry) {
+        toast({ title: "Entri Diduplikasi", description: "Salinan baru dibuat sebagai Draft." })
+        router.push(`${navBasePath}/content/${contentTypeSlug}/edit/${res.entry.id}`)
+      } else {
+        toast({ variant: "destructive", title: "Gagal Menduplikasi", description: res.error })
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal menduplikasi entri" })
+    } finally {
+      setDuplicatingEntryId(null)
     }
   }
 
@@ -1508,7 +1528,7 @@ export function ContentEntriesManager({
                                     </DropdownMenuItem>
                                   )}
 
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     className="text-xs font-medium rounded-lg cursor-pointer gap-2 py-1.5"
                                     onClick={() => {
                                       navigator.clipboard.writeText(JSON.stringify(entry.data, null, 2))
@@ -1517,7 +1537,22 @@ export function ContentEntriesManager({
                                   >
                                     <Download className="h-3.5 w-3.5" /> Salin JSON
                                   </DropdownMenuItem>
-                                  
+
+                                  {canCreateEntry && (
+                                    <DropdownMenuItem
+                                      className="text-xs font-medium rounded-lg cursor-pointer gap-2 py-1.5"
+                                      disabled={duplicatingEntryId === entry.id}
+                                      onClick={() => handleDuplicateEntry(entry.id)}
+                                    >
+                                      {duplicatingEntryId === entry.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                      )}
+                                      Duplikat Entri
+                                    </DropdownMenuItem>
+                                  )}
+
                                   {canDeleteEntry && (
                                     <>
                                       <DropdownMenuSeparator />

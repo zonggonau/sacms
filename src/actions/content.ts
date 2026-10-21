@@ -444,6 +444,51 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
 }
 
 /**
+ * Duplicate an existing entry as a brand-new DRAFT with the same data.
+ * Always lands as DRAFT regardless of the source's status — a clone of a
+ * PUBLISHED/SCHEDULED entry should never silently go live on its own.
+ * Slug-type fields are safe to copy verbatim: createContentEntry already
+ * runs processAutoSlugs, which detects the collision against the source
+ * entry and appends a disambiguating suffix automatically.
+ */
+export async function duplicateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string) {
+  try {
+    const resolved = await resolveWriteContext(tenantSlug)
+    if (!resolved.ok) return actionError(resolved.error)
+
+    if (resolved.actor.kind === "staff") {
+      const canCreate = await hasAnyPermission(tenantSlug, [PERMISSIONS.CONTENT_CREATE])
+      if (!canCreate) return actionError("Forbidden: Missing content.create permission")
+    }
+
+    const source = await resolved.ctx.client.contentEntry.findFirst({
+      where: { id: entryId, tenantId: resolved.ctx.tenantId },
+    })
+    if (!source) return actionError("Entri sumber tidak ditemukan")
+
+    let sourceData: any = source.data
+    if (typeof sourceData === "string") {
+      try { sourceData = JSON.parse(sourceData) } catch { sourceData = {} }
+    }
+
+    const result = await createContentEntry(resolved.ctx, resolved.actor, {
+      contentTypeSlug,
+      data: sourceData,
+      status: "DRAFT",
+      locale: source.locale,
+      scheduledAt: null,
+    })
+    if (!result.ok) return serviceFailure(result)
+
+    for (const path of contentRevalidatePaths(tenantSlug, contentTypeSlug)) revalidatePath(path)
+    return actionOk(result.data)
+  } catch (error: any) {
+    console.error("Error duplicating entry:", error)
+    return actionError(error.message || "Internal server error")
+  }
+}
+
+/**
  * Update an entry (or create translation)
  */
 export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; locale: string; scheduledAt?: Date | null; expectedUpdatedAt?: Date | string | null }) {
