@@ -8,7 +8,8 @@ import {
   CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle,
   Check, Layers, Sparkles, Code2, LayoutGrid, Table2, Kanban,
   Columns, ChevronDown, X, Link2, FileDown, Loader2,
-  ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet, RotateCcw
+  ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet, RotateCcw,
+  ListFilter, User
 } from "lucide-react"
 import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
 import {
@@ -49,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
@@ -1039,19 +1041,22 @@ export function ContentEntriesManager({
                 
                 {/* Search Target Selector */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0 bg-muted/20 hover:bg-muted/40 gap-1.5 max-w-[200px]"
-                    >
-                      <span className="text-muted-foreground font-normal text-[11px]">Cari di:</span>
-                      <span className="truncate text-foreground font-bold">
-                        {searchOptions.find(o => o.value === searchTargetField)?.label || "Semua Kolom"}
-                      </span>
-                      <ChevronDown className="h-3 w-3 opacity-50 shrink-0" />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-9 w-9 rounded-xl border-border/80 shrink-0 bg-muted/20 hover:bg-muted/40"
+                        >
+                          <ListFilter className="h-3.5 w-3.5 text-primary" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Cari di: {searchOptions.find(o => o.value === searchTargetField)?.label || "Semua Kolom"}
+                    </TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align="start" className="w-56 max-h-[300px] overflow-y-auto rounded-xl border-border bg-card shadow-lg">
                     <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Target Field Pencarian</DropdownMenuLabel>
                     <DropdownMenuSeparator />
@@ -1091,11 +1096,19 @@ export function ContentEntriesManager({
 
                 {/* Status Filter */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0">
-                      <Filter className="h-3.5 w-3.5 mr-1.5" /> Status ({statusFilter.length})
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-border/80 shrink-0 relative">
+                          <Filter className="h-3.5 w-3.5" />
+                          <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 h-4 min-w-4 px-1 text-[9px] font-bold rounded-full flex items-center justify-center">
+                            {statusFilter.length}
+                          </Badge>
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Status ({statusFilter.length})</TooltipContent>
+                  </Tooltip>
                   <DropdownMenuContent align="end" className="w-48 rounded-xl border-border bg-card shadow-xs">
                     {Object.keys(STATUS_CONFIG).map(s => (
                       <DropdownMenuCheckboxItem
@@ -1115,14 +1128,20 @@ export function ContentEntriesManager({
                 {/* Author Filter */}
                 {authors.length > 0 && (
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0">
-                        <Filter className="h-3.5 w-3.5 mr-1.5" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant={authorFilter ? "default" : "outline"} size="icon" className="h-9 w-9 rounded-xl shrink-0">
+                            <User className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>
                         {authorFilter
-                          ? (authors.find(a => a.id === authorFilter)?.name || authors.find(a => a.id === authorFilter)?.email || "Penulis")
+                          ? `Penulis: ${authors.find(a => a.id === authorFilter)?.name || authors.find(a => a.id === authorFilter)?.email || "Penulis"}`
                           : "Semua Penulis"}
-                      </Button>
-                    </DropdownMenuTrigger>
+                      </TooltipContent>
+                    </Tooltip>
                     <DropdownMenuContent align="end" className="w-56 max-h-[300px] overflow-y-auto rounded-xl border-border bg-card shadow-xs">
                       <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Filter Berdasarkan Penulis</DropdownMenuLabel>
                       <DropdownMenuSeparator />
@@ -1142,12 +1161,16 @@ export function ContentEntriesManager({
 
                 {/* Date Range Filter */}
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 rounded-xl border-border/80 text-xs font-bold shrink-0">
-                      <CalendarRange className="h-3.5 w-3.5 mr-1.5" />
-                      Tanggal{hasDateFilter ? " •" : ""}
-                    </Button>
-                  </PopoverTrigger>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <PopoverTrigger asChild>
+                        <Button variant={hasDateFilter ? "default" : "outline"} size="icon" className="h-9 w-9 rounded-xl shrink-0">
+                          <CalendarRange className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>Tanggal{hasDateFilter ? " (aktif)" : ""}</TooltipContent>
+                  </Tooltip>
                   <PopoverContent align="end" className="w-72 rounded-xl p-3 space-y-3">
                     <div className="space-y-1.5">
                       <label className="text-[10px] uppercase font-bold text-muted-foreground">Berdasarkan</label>
