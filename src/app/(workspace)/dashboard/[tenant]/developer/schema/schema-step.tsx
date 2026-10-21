@@ -17,11 +17,16 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
   Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, Zap,
-  Paperclip, X, FileUp,
+  Paperclip, X, FileUp, Coins,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { SCHEMA_MODEL_OPTIONS } from "@/lib/ai/schema-models"
+
+// Mirrors the flat creditsCost generateSystemSchema reserves per call
+// (src/lib/ai-schema-generator.ts) — kept as a literal here since that
+// module pulls in server-only AI/DB code that must never reach the client.
+const SCHEMA_GENERATE_COST = 5
 
 export const QUICK_PROMPT_INSPIRATIONS = [
   {
@@ -336,6 +341,31 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
   const [plan, setPlan] = useState<SchemaPlan | null>(null)
   const [isImporting, setIsImporting] = useState(false)
 
+  // AI credit balance — shown so the user knows what a Generate click will
+  // cost them, and used to disable Generate outright once they can't afford
+  // it rather than letting the request round-trip just to be rejected
+  // server-side. The server (enforceAiQuota/reserveUserAiCredits) remains
+  // the real enforcement point — this is a UX nicety only, so it fails open
+  // (doesn't disable anything) if the balance can't be loaded.
+  const [creditInfo, setCreditInfo] = useState<{ remaining: number; max: number; isUnlimited: boolean } | null>(null)
+
+  const loadCreditInfo = async () => {
+    try {
+      const res = await fetch("/api/ai/account-credits")
+      if (!res.ok) return
+      const data = await res.json()
+      setCreditInfo({ remaining: data.creditsRemaining, max: data.creditsTotal, isUnlimited: data.isUnlimited })
+    } catch {
+      // fail open — leave creditInfo as-is (null on first load keeps Generate enabled)
+    }
+  }
+
+  useEffect(() => {
+    loadCreditInfo()
+  }, [])
+
+  const insufficientCredits = !!creditInfo && !creditInfo.isUnlimited && creditInfo.remaining < SCHEMA_GENERATE_COST
+
   // Reference document AI reads alongside the prompt (e.g. a business brief
   // or a sample data export) — read client-side as plain text, folded into
   // the prompt sent to /ai-builder/plan-schema. No binary parsing (PDF/DOCX)
@@ -393,6 +423,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
       toast({ variant: "destructive", title: "Gagal Membuat Skema", description: err.message })
     } finally {
       setIsPlanning(false)
+      loadCreditInfo() // refresh the displayed balance — this call may have just spent credits
     }
   }
 
@@ -667,8 +698,25 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
                 ))}
               </SelectContent>
             </Select>
-            <div className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
-              <Zap className="h-2.5 w-2.5" /> Vercel AI Gateway
+            <div className="ml-auto flex items-center gap-1.5">
+              {creditInfo && (
+                <div
+                  className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                    creditInfo.isUnlimited
+                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                      : insufficientCredits
+                        ? "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20"
+                        : "text-foreground bg-muted/50 border-border/70"
+                  }`}
+                  title={creditInfo.isUnlimited ? "Kredit AI tidak terbatas" : `Sisa kredit AI: ${creditInfo.remaining} dari ${creditInfo.max}`}
+                >
+                  <Coins className="h-2.5 w-2.5" />
+                  {creditInfo.isUnlimited ? "Tidak Terbatas" : `${creditInfo.remaining} Kredit`}
+                </div>
+              )}
+              <div className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                <Zap className="h-2.5 w-2.5" /> Vercel AI Gateway
+              </div>
             </div>
           </div>
         </div>
@@ -679,15 +727,24 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
         <div className="flex flex-col items-center gap-2">
           <Button
             onClick={handlePlanSchema}
-            disabled={isPlanning || !prompt.trim()}
+            disabled={isPlanning || !prompt.trim() || insufficientCredits}
             className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs"
           >
             {isPlanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            {isPlanning ? "Merencanakan Skema via Gateway..." : isTemplateMode ? "Rencanakan Template dengan AI" : "Generate Schema via Vercel AI Gateway (-5 Credits)"}
+            {isPlanning
+              ? "Merencanakan Skema via Gateway..."
+              : isTemplateMode
+                ? "Rencanakan Template dengan AI"
+                : `Generate Schema via Vercel AI Gateway (-${SCHEMA_GENERATE_COST} Credits)`}
           </Button>
-          {!isTemplateMode && (
+          {insufficientCredits ? (
+            <p className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+              Kredit AI Anda sudah habis ({creditInfo?.remaining}/{creditInfo?.max}) — isi ulang di halaman{" "}
+              <a href="/dashboard/billing" className="underline hover:text-red-700 dark:hover:text-red-300">Billing</a> untuk pakai AI Schema Generator lagi.
+            </p>
+          ) : !isTemplateMode && (
             <p className="text-[10px] text-muted-foreground">
-              Ditenagai Vercel AI Gateway. Otomatis memakai blueprint gratis jika saldo AI Credit tidak cukup.
+              Ditenagai Vercel AI Gateway. Jika Gateway gagal merespons, otomatis memakai blueprint gratis (kredit tidak dipotong).
             </p>
           )}
         </div>
