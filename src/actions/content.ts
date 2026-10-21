@@ -130,10 +130,24 @@ async function getWorkflowContext(
 /**
  * Get all entries for a content type with pagination and filtering
  */
+// Whitelisted sortable columns only — these are real Prisma scalar columns,
+// never a dynamic JSON field path, so there's no risk of sorting by
+// unindexed/unbounded user-controlled data or (in the raw-SQL search
+// branch below) interpolating an unsafe column identifier.
+const SORTABLE_COLUMNS = new Set(["createdAt", "updatedAt", "status"])
+
 export async function getEntriesAction(
   tenantSlug: string,
   contentTypeSlug: string,
-  params: { page?: number; pageSize?: number; status?: string; locale?: string; search?: string }
+  params: {
+    page?: number
+    pageSize?: number
+    status?: string
+    locale?: string
+    search?: string
+    sortBy?: string
+    sortOrder?: "asc" | "desc"
+  }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -173,6 +187,8 @@ export async function getEntriesAction(
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
     const { status, locale, search } = params
+    const sortBy = params.sortBy && SORTABLE_COLUMNS.has(params.sortBy) ? params.sortBy : "createdAt"
+    const sortOrder: "asc" | "desc" = params.sortOrder === "asc" ? "asc" : "desc"
 
     const where: Record<string, unknown> = {
       contentTypeId: contentType.id,
@@ -216,8 +232,13 @@ export async function getEntriesAction(
       )
       total = Number(countResult[0].count)
 
+      // sortBy is whitelist-checked against SORTABLE_COLUMNS above and
+      // sortOrder is hard-narrowed to the "asc"/"desc" literal union — never
+      // raw user input — so interpolating them directly as an identifier/
+      // direction here (Postgres can't bind those as query parameters) is
+      // safe, unlike the values above which all go through $N placeholders.
       entries = await tenantDb.$queryRawUnsafe(
-        `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY "createdAt" DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY "${sortBy}" ${sortOrder.toUpperCase()} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         ...queryParams,
         pageSize,
         (page - 1) * pageSize
@@ -226,7 +247,7 @@ export async function getEntriesAction(
       const [rawEntries, count] = await Promise.all([
         tenantDb.contentEntry.findMany({
           where,
-          orderBy: { createdAt: "desc" },
+          orderBy: { [sortBy]: sortOrder },
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),

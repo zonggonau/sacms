@@ -7,7 +7,8 @@ import {
   Clock, CheckCircle2, Archive, Search, Filter,
   CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle,
   Check, Layers, Sparkles, Code2, LayoutGrid, Table2, Kanban,
-  Columns, ChevronDown, X, Link2, FileDown, Loader2
+  Columns, ChevronDown, X, Link2, FileDown, Loader2,
+  ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet
 } from "lucide-react"
 import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
 import {
@@ -146,6 +147,85 @@ export function ContentEntriesManager({
     setHasMoreEntries(initialEntries.length >= 200)
   }, [initialEntries])
 
+  // ── Server-side search & sort ──────────────────────────────────────────
+  // searchQuery used to only filter whatever happened to already be in
+  // `entries` (the first 200 rows, or however much "Muat Lebih Banyak" had
+  // pulled in) — a collection bigger than that silently hid any match past
+  // the loaded window. getEntriesAction already supports a real `search`
+  // param (Postgres tsvector/ILIKE across the whole collection) and now
+  // also `sortBy`/`sortOrder` (see actions/content.ts) — debounced here so
+  // typing doesn't fire a request per keystroke, and re-fetches page 1
+  // (replacing `entries` outright) whenever the search term or sort
+  // changes. The existing client-side `filteredEntries` below still runs
+  // on top of this for status-filter narrowing and the relation-label-aware
+  // "search inside a related record" refinement the server can't do.
+  const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "status">("createdAt")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [isServerSearching, setIsServerSearching] = useState(false)
+  const skipNextServerLoad = useRef(true)
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  const parseEntryData = (e: any) => {
+    let parsedData = e.data
+    if (typeof e.data === "string") {
+      try { parsedData = JSON.parse(e.data) } catch { parsedData = {} }
+    }
+    return { ...e, data: parsedData }
+  }
+
+  const loadServerEntries = async () => {
+    setIsServerSearching(true)
+    try {
+      const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
+        page: 1,
+        pageSize: ENTRIES_PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
+      })
+      if ("error" in result && result.error) {
+        toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
+        return
+      }
+      const newEntries = (result.entries || []).map(parseEntryData)
+      setEntries(newEntries)
+      setRelationLabelsMap(result.relationLabels || {})
+      setEntriesPage(1)
+      const total = result.meta?.pagination?.total ?? newEntries.length
+      setHasMoreEntries(newEntries.length < total)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Memuat Data", description: err.message || "Terjadi kesalahan" })
+    } finally {
+      setIsServerSearching(false)
+    }
+  }
+
+  useEffect(() => {
+    // Skip the very first run — `initialEntries` from the server already
+    // reflects the default (no search, createdAt desc) state, so refetching
+    // it immediately on mount would just be a redundant round-trip.
+    if (skipNextServerLoad.current) {
+      skipNextServerLoad.current = false
+      return
+    }
+    loadServerEntries()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, sortBy, sortOrder])
+
+  const toggleSort = (column: "createdAt" | "updatedAt" | "status") => {
+    if (sortBy === column) {
+      setSortOrder(prev => (prev === "asc" ? "desc" : "asc"))
+    } else {
+      setSortBy(column)
+      setSortOrder("desc")
+    }
+  }
+
   const handleLoadMoreEntries = async () => {
     setIsLoadingMore(true)
     try {
@@ -153,18 +233,15 @@ export function ContentEntriesManager({
       const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
         page: nextPage,
         pageSize: ENTRIES_PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        sortBy,
+        sortOrder,
       })
       if ("error" in result && result.error) {
         toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
         return
       }
-      const newEntries = (result.entries || []).map((e: any) => {
-        let parsedData = e.data
-        if (typeof e.data === "string") {
-          try { parsedData = JSON.parse(e.data) } catch { parsedData = {} }
-        }
-        return { ...e, data: parsedData }
-      })
+      const newEntries = (result.entries || []).map(parseEntryData)
       setEntries(prev => {
         const existingIds = new Set(prev.map((e: any) => e.id))
         return [...prev, ...newEntries.filter((e: any) => !existingIds.has(e.id))]
@@ -795,9 +872,13 @@ export function ContentEntriesManager({
 
                 {/* Search Input */}
                 <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input 
-                    placeholder={`Cari ${searchTargetField === 'all' ? 'semua data' : searchOptions.find(o => o.value === searchTargetField)?.label || 'data'}...`} 
+                  {isServerSearching ? (
+                    <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground animate-spin" />
+                  ) : (
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                  <Input
+                    placeholder={`Cari ${searchTargetField === 'all' ? 'semua data' : searchOptions.find(o => o.value === searchTargetField)?.label || 'data'}...`}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     className="pl-9 pr-8 h-9 bg-muted/30 border-border/80 rounded-xl text-xs"
@@ -1011,8 +1092,34 @@ export function ContentEntriesManager({
                       </TableHead>
                     ))}
 
-                    <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground text-center py-3">Status</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3">Terakhir Diubah</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground text-center py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("status")}
+                        className="inline-flex items-center gap-1 cursor-pointer hover:text-foreground"
+                      >
+                        Status
+                        {sortBy === "status" ? (
+                          sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
+                    </TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort("updatedAt")}
+                        className="inline-flex items-center gap-1 cursor-pointer hover:text-foreground"
+                      >
+                        Terakhir Diubah
+                        {sortBy === "updatedAt" ? (
+                          sortOrder === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
+                    </TableHead>
                     <TableHead className="text-right pr-5 font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
