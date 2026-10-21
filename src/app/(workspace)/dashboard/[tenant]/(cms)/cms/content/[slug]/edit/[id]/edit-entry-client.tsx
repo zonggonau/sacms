@@ -555,17 +555,6 @@ export default function CMSEditEntryClient({
                 />
               )}
 
-              <ContentHistorySidebar
-                tenantSlug={tenantSlug}
-                contentTypeSlug={contentTypeSlug}
-                entryId={entryId}
-                currentData={formData}
-                onRestoreSuccess={(newData) => {
-                  if (newData) setFormData(newData)
-                  else fetchData()
-                }}
-              />
-
               <Button
                 variant="outline"
                 size="sm"
