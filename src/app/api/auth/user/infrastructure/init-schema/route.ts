@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { hasAccountLicense } from "@/lib/account-license"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { rateLimit } from "@/lib/rate-limit"
 
@@ -27,6 +28,9 @@ export async function POST(_req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  if (isPlatformStaff(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const rl = await rateLimit(`infra-init-schema:${session.user.id}`, { limit: 5, windowSeconds: 300 })

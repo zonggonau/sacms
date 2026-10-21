@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db, PrismaClient, invalidateOwnerMasterInfraCache } from "@/lib/database"
 import { hasAccountLicense } from "@/lib/account-license"
+import { isPlatformStaff } from "@/lib/platform-roles"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { rateLimit } from "@/lib/rate-limit"
 import { assertPublicHost, assertPublicUrl, SsrfError } from "@/lib/safe-url"
@@ -20,6 +21,11 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  // Platform staff (super_admin + developer) don't get this page or its
+  // API — same restriction global-sidebar.tsx and the page itself enforce.
+  if (isPlatformStaff(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   const user = await db.user.findUnique({
@@ -72,6 +78,9 @@ export async function PUT(req: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+    if (isPlatformStaff(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // Test-only mode: run every validation/connection check below against

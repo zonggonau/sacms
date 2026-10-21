@@ -24,6 +24,7 @@ import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
 import { Logo } from "@/components/ui/logo"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
+import { isPlatformStaff } from "@/lib/platform-roles"
 
 interface NavItem {
   title: string
@@ -52,9 +53,15 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName, hasEnterpr
     setMounted(true)
   }, [])
 
+  // Platform staff (super_admin + developer) don't get this page at all —
+  // it configures BYODB/BYOS for the signed-in account's OWN workspaces,
+  // which isn't a meaningful thing for a staff account to set up for
+  // itself, regardless of whether it happens to carry an enterprise plan.
+  const canUseAccountInfrastructure = hasEnterpriseLicense && !isPlatformStaff(session?.user?.role)
+
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
-    ...(hasEnterpriseLicense ? [{ title: "Database & Storage", href: "/dashboard/infrastructure", icon: Database }] : []),
+    ...(canUseAccountInfrastructure ? [{ title: "Database & Storage", href: "/dashboard/infrastructure", icon: Database }] : []),
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
