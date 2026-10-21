@@ -8,7 +8,7 @@ import {
   CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle,
   Check, Layers, Sparkles, Code2, LayoutGrid, Table2, Kanban,
   Columns, ChevronDown, X, Link2, FileDown, Loader2,
-  ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet
+  ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet, RotateCcw
 } from "lucide-react"
 import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
 import {
@@ -58,6 +58,8 @@ import {
   updateContentEntryStatusAction,
   getEntriesAction,
   duplicateEntryAction,
+  restoreEntryAction,
+  permanentlyDeleteEntryAction,
 } from "@/actions/content"
 import { extractEntryLabel, extractEntrySubtitle, RelationLabelItem } from "@/lib/relation-labels"
 import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
@@ -71,6 +73,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   ARCHIVED:  { label: "Archived",   color: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20", icon: Archive },
   REJECTED:  { label: "Rejected",   color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", icon: AlertCircle },
 }
+
+// Mirrors TRASH_RESTORE_WINDOW_DAYS in entry-service.ts — kept as a literal
+// here rather than imported since that module pulls in server-only Prisma/DB
+// code that must never end up in the client bundle.
+const TRASH_RESTORE_WINDOW_DAYS = 30
 
 function stripHtml(html: string) {
   if (!html) return ""
@@ -680,7 +687,7 @@ export function ContentEntriesManager({
       action === "delete" &&
       !(await confirm({
         title: `Hapus ${selectedIds.length} entri terpilih?`,
-        description: "Entri akan dihapus secara permanen.",
+        description: `Entri akan dipindahkan ke Sampah dan masih bisa dipulihkan selama ${TRASH_RESTORE_WINDOW_DAYS} hari.`,
         confirmLabel: "Hapus entri",
         variant: "destructive",
       }))
@@ -740,6 +747,89 @@ export function ContentEntriesManager({
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal menduplikasi entri" })
     } finally {
       setDuplicatingEntryId(null)
+    }
+  }
+
+  // ── Trash (soft-delete restore window) ───────────────────────────────────
+  // "Hapus Entri" soft-deletes now (entry-service.ts's deleteContentEntry) —
+  // this toggles a separate view fetching those trashed rows via the same
+  // getEntriesAction, just with trashed: true, so Restore/Delete Forever has
+  // somewhere to live without duplicating the pagination/search plumbing.
+  const [isTrashView, setIsTrashView] = useState(false)
+  const [trashedEntries, setTrashedEntries] = useState<any[]>([])
+  const [isLoadingTrash, setIsLoadingTrash] = useState(false)
+  const [restoringEntryId, setRestoringEntryId] = useState<string | null>(null)
+  const [purgingEntryId, setPurgingEntryId] = useState<string | null>(null)
+
+  const loadTrashedEntries = async () => {
+    setIsLoadingTrash(true)
+    try {
+      const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
+        page: 1,
+        pageSize: 100,
+        trashed: true,
+        sortBy: "updatedAt",
+        sortOrder: "desc",
+      })
+      if ("error" in result && result.error) {
+        toast({ variant: "destructive", title: "Gagal Memuat Sampah", description: result.error })
+        return
+      }
+      setTrashedEntries((result.entries || []).map(parseEntryData))
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Memuat Sampah", description: err.message || "Terjadi kesalahan" })
+    } finally {
+      setIsLoadingTrash(false)
+    }
+  }
+
+  const handleToggleTrashView = () => {
+    const next = !isTrashView
+    setIsTrashView(next)
+    if (next) loadTrashedEntries()
+  }
+
+  const handleRestoreEntry = async (id: string) => {
+    setRestoringEntryId(id)
+    try {
+      const res = await restoreEntryAction(tenantSlug, contentTypeSlug, id)
+      if (res.success) {
+        toast({ title: "Entri Dipulihkan", description: "Entri telah dikembalikan sebagai Draft." })
+        setTrashedEntries(prev => prev.filter(e => e.id !== id))
+        router.refresh()
+      } else {
+        toast({ variant: "destructive", title: "Gagal Memulihkan", description: res.error })
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal memulihkan entri" })
+    } finally {
+      setRestoringEntryId(null)
+    }
+  }
+
+  const handlePermanentlyDeleteEntry = async (id: string) => {
+    if (
+      !(await confirm({
+        title: "Hapus permanen entri ini?",
+        description: "Tindakan ini tidak dapat dibatalkan — entri akan dihapus selamanya.",
+        confirmLabel: "Hapus Selamanya",
+        variant: "destructive",
+      }))
+    )
+      return
+    setPurgingEntryId(id)
+    try {
+      const res = await permanentlyDeleteEntryAction(tenantSlug, contentTypeSlug, id)
+      if (res.success) {
+        toast({ title: "Entri Dihapus Permanen" })
+        setTrashedEntries(prev => prev.filter(e => e.id !== id))
+      } else {
+        toast({ variant: "destructive", title: "Gagal Menghapus", description: res.error })
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal menghapus entri" })
+    } finally {
+      setPurgingEntryId(null)
     }
   }
 
@@ -1143,6 +1233,18 @@ export function ContentEntriesManager({
                   </div>
                 )}
 
+                {/* Trash toggle */}
+                <Button
+                  type="button"
+                  variant={isTrashView ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleToggleTrashView}
+                  className="h-9 rounded-xl text-xs font-bold shrink-0"
+                  title="Lihat entri yang sudah dihapus (bisa dipulihkan)"
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Sampah
+                </Button>
+
                 {/* Export entries as JSON */}
                 <Button
                   type="button"
@@ -1261,6 +1363,18 @@ export function ContentEntriesManager({
             </div>
           </Card>
 
+          {isTrashView ? (
+            <TrashPanel
+              entries={trashedEntries}
+              isLoading={isLoadingTrash}
+              restoringEntryId={restoringEntryId}
+              purgingEntryId={purgingEntryId}
+              onRestore={handleRestoreEntry}
+              onPermanentlyDelete={handlePermanentlyDeleteEntry}
+              restoreWindowDays={TRASH_RESTORE_WINDOW_DAYS}
+            />
+          ) : (
+          <>
           {/* Conditional View: Kanban Board vs Table vs Calendar */}
           {viewMode === "kanban" ? (
             <div className="pt-1 animate-in fade-in duration-200">
@@ -1668,9 +1782,100 @@ export function ContentEntriesManager({
               </Button>
             </div>
           )}
+          </>
+          )}
 
         </div>
       </div>
     </div>
+  )
+}
+
+function TrashPanel({
+  entries,
+  isLoading,
+  restoringEntryId,
+  purgingEntryId,
+  onRestore,
+  onPermanentlyDelete,
+  restoreWindowDays,
+}: {
+  entries: any[]
+  isLoading: boolean
+  restoringEntryId: string | null
+  purgingEntryId: string | null
+  onRestore: (id: string) => void
+  onPermanentlyDelete: (id: string) => void
+  restoreWindowDays: number
+}) {
+  return (
+    <Card className="rounded-2xl border-border/80 shadow-xs overflow-hidden bg-card animate-in fade-in duration-200">
+      <div className="px-4 py-3 border-b border-border/60 bg-amber-500/5">
+        <p className="text-xs font-medium text-muted-foreground">
+          Entri di sini otomatis dihapus permanen setelah <span className="font-bold text-foreground">{restoreWindowDays} hari</span>. Pulihkan sebelum itu jika masih dibutuhkan.
+        </p>
+      </div>
+      <CardContent className="p-0">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-16 text-muted-foreground">
+            <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center border border-border/60">
+              <Trash2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="font-bold text-xs text-foreground mt-1">Sampah kosong</p>
+            <p className="text-[11px] text-muted-foreground">Entri yang dihapus akan muncul di sini.</p>
+          </div>
+        ) : (
+          <Table>
+            <TableHeader className="bg-muted/20 border-b border-border/60">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3 pl-5">Entri</TableHead>
+                <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3">Dihapus Pada</TableHead>
+                <TableHead className="text-right pr-5 font-bold text-[10px] uppercase tracking-wider text-muted-foreground py-3">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow key={entry.id} className="hover:bg-muted/20 transition-colors border-b border-border/60 last:border-b-0">
+                  <TableCell className="pl-5 py-3 text-xs font-semibold text-foreground">
+                    {extractEntryLabel(entry.data, entry.id)}
+                  </TableCell>
+                  <TableCell className="py-3 text-xs text-muted-foreground" suppressHydrationWarning>
+                    {entry.deletedAt ? new Date(entry.deletedAt).toLocaleString('id-ID') : "-"}
+                  </TableCell>
+                  <TableCell className="text-right pr-5 py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2.5 rounded-xl text-xs font-bold gap-1.5"
+                        disabled={restoringEntryId === entry.id}
+                        onClick={() => onRestore(entry.id)}
+                      >
+                        {restoringEntryId === entry.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                        Pulihkan
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2.5 rounded-xl text-red-600 hover:bg-red-500/10 hover:text-red-700 text-xs font-bold gap-1.5"
+                        disabled={purgingEntryId === entry.id}
+                        onClick={() => onPermanentlyDelete(entry.id)}
+                      >
+                        {purgingEntryId === entry.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                        Hapus Permanen
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   )
 }

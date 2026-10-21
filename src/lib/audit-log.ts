@@ -47,6 +47,8 @@ export const AuditAction = {
   CONTENT_PUBLISHED: "content.published",
   CONTENT_UNPUBLISHED: "content.unpublished",
   CONTENT_VERSION_RESTORED: "content.version_restored",
+  CONTENT_TRASH_RESTORED: "content.trash_restored",
+  CONTENT_PERMANENTLY_DELETED: "content.permanently_deleted",
 
   // Single Types
   SINGLE_TYPE_UPDATED: "single_type.updated",

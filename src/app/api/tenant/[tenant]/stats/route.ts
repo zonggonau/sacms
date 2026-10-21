@@ -26,13 +26,13 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
       tenantDb.tenantSingleTypeAssignment.count({ where: { tenantId } }),
       tenantDb.contentEntry.groupBy({
         by: ["status"],
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         _count: { _all: true },
       }),
       tenantDb.apiToken.count({ where: { tenantId } }),
       tenantDb.webhook.count({ where: { tenantId } }),
       tenantDb.contentEntry.findMany({
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         select: {
           id: true,
           status: true,

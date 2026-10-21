@@ -5,3 +5,6 @@
 # LICENSE_SERVER_URL is set) and refresh the lockout flag src/proxy.ts reads.
 # Only load-bearing on a standalone/self-hosted install (LICENSE_KEY env var).
 0 * * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/license-check
+# 02:00 UTC daily: hard-delete content entries that have sat in the trash
+# past their restore window (TRASH_RESTORE_WINDOW_DAYS, entry-service.ts).
+0 2 * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/purge-trash

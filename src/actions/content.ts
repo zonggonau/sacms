@@ -18,6 +18,8 @@ import {
   createContentEntry,
   updateContentEntry,
   deleteContentEntry,
+  restoreContentEntry,
+  permanentlyDeleteContentEntry,
   transitionContentEntryStatus,
   contentRevalidatePaths,
   type ContentActor,
@@ -155,6 +157,7 @@ export async function getEntriesAction(
     dateField?: string
     dateFrom?: string
     dateTo?: string
+    trashed?: boolean
   }
 ) {
   try {
@@ -201,9 +204,16 @@ export async function getEntriesAction(
     const dateFrom = params.dateFrom ? new Date(params.dateFrom) : null
     const dateTo = params.dateTo ? new Date(params.dateTo) : null
 
+    // Trash is a separate view, never mixed into the normal list — default
+    // (trashed: false/undefined) excludes soft-deleted rows; trashed: true
+    // flips to showing ONLY them, reusing this same search/sort/pagination
+    // machinery for the Trash tab instead of duplicating it.
+    const trashed = Boolean(params.trashed)
+
     const where: Record<string, unknown> = {
       contentTypeId: contentType.id,
       tenantId: access.tenantId,
+      deletedAt: trashed ? { not: null } : null,
     }
     if (status) where.status = status
     if (locale) where.locale = locale
@@ -219,7 +229,11 @@ export async function getEntriesAction(
     let total: number
 
     if (search) {
-      const whereParts: string[] = [`"contentTypeId" = $1`, `"tenantId" = $2`]
+      const whereParts: string[] = [
+        `"contentTypeId" = $1`,
+        `"tenantId" = $2`,
+        trashed ? `"deletedAt" IS NOT NULL` : `"deletedAt" IS NULL`,
+      ]
       const queryParams: unknown[] = [contentType.id, access.tenantId]
       let paramIdx = 3
 
@@ -352,9 +366,10 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
     // If no entryId provided (like for single types where we might search by content type)
     if (!entryId) {
       const entry = await tenantDb.contentEntry.findFirst({
-        where: { 
-          contentTypeId: contentType.id, 
+        where: {
+          contentTypeId: contentType.id,
           locale,
+          deletedAt: null,
           OR: [
             { tenantId: access.tenantId },
             { tenantId: null }
@@ -365,9 +380,10 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
     }
 
     const baseEntry = await tenantDb.contentEntry.findFirst({
-      where: { 
-        id: entryId, 
-        contentTypeId: contentType.id, 
+      where: {
+        id: entryId,
+        contentTypeId: contentType.id,
+        deletedAt: null,
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null }
@@ -388,9 +404,10 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
       isNewTranslation = false
     } else {
       entry = await tenantDb.contentEntry.findFirst({
-        where: { 
-          documentId, 
-          locale, 
+        where: {
+          documentId,
+          locale,
+          deletedAt: null,
           OR: [
             { tenantId: access.tenantId },
             { tenantId: null }
@@ -541,6 +558,45 @@ export async function deleteEntryAction(tenantSlug: string, contentTypeSlug: str
     return actionError(error.message || "Internal server error")
   }
 }
+
+/**
+ * Restore a soft-deleted entry out of the trash.
+ */
+export async function restoreEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string) {
+  try {
+    const resolved = await resolveWriteContext(tenantSlug)
+    if (!resolved.ok) return actionError(resolved.error)
+
+    const result = await restoreContentEntry(resolved.ctx, resolved.actor, { contentTypeSlug, entryId })
+    if (!result.ok) return serviceFailure(result)
+
+    for (const path of contentRevalidatePaths(tenantSlug, contentTypeSlug)) revalidatePath(path)
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error restoring entry:", error)
+    return actionError(error.message || "Internal server error")
+  }
+}
+
+/**
+ * Permanently delete an entry that's already in the trash ("empty trash" /
+ * "delete forever"). Unlike deleteEntryAction, this is unrecoverable.
+ */
+export async function permanentlyDeleteEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string) {
+  try {
+    const resolved = await resolveWriteContext(tenantSlug)
+    if (!resolved.ok) return actionError(resolved.error)
+
+    const result = await permanentlyDeleteContentEntry(resolved.ctx, resolved.actor, { contentTypeSlug, entryId })
+    if (!result.ok) return serviceFailure(result)
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("Error permanently deleting entry:", error)
+    return actionError(error.message || "Internal server error")
+  }
+}
+
 /**
  * Update an entry's status
  */

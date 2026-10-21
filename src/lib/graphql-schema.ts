@@ -246,6 +246,7 @@ async function resolveContentCollection(
     contentTypeId,
     tenantId,
     status: args?.status ?? "PUBLISHED",
+    deletedAt: null,
   }
   if (args?.locale) where.locale = args.locale
   // Legacy support: published=false returns all statuses
@@ -307,7 +308,7 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
   if (!contentType) return null
 
   const entry = await _db.contentEntry.findFirst({
-    where: { id, contentTypeId: contentType.id, tenantId },
+    where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
   })
   if (!entry) return null
 
@@ -442,7 +443,7 @@ async function resolveMutationUpdate(
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await _db.contentEntry.findFirst({
-    where: { id: args.id, contentTypeId: contentType.id, tenantId },
+    where: { id: args.id, contentTypeId: contentType.id, tenantId, deletedAt: null },
   })
   if (!existing) throw new Error("Entry not found")
 
@@ -519,7 +520,7 @@ async function resolveMutationDelete(
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await _db.contentEntry.findFirst({
-    where: { id, contentTypeId: contentType.id, tenantId },
+    where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
   })
   if (!existing) throw new Error("Entry not found")
 
@@ -532,7 +533,10 @@ async function resolveMutationDelete(
     throw new Error(hookResult.rejectMessage || "Rejected by webhook")
   }
 
-  await _db.contentEntry.delete({ where: { id } })
+  // Soft-delete into trash — same semantics as the REST/dashboard delete
+  // path (entry-service.ts's deleteContentEntry), so a GraphQL client can't
+  // bypass the restore window the dashboard relies on.
+  await _db.contentEntry.update({ where: { id }, data: { deletedAt: new Date() } })
 
   logAudit({
     tenantId,
@@ -572,7 +576,7 @@ async function resolveMutationPublish(
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await _db.contentEntry.findFirst({
-    where: { id, contentTypeId: contentType.id, tenantId },
+    where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
   })
   if (!existing) throw new Error("Entry not found")
 

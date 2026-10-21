@@ -169,7 +169,7 @@ export async function batchFetchRelationLabels(
   try {
     // 1. Fetch from contentEntry
     const relatedEntries = await tenantDb.contentEntry.findMany({
-      where: { id: { in: ids }, tenantId },
+      where: { id: { in: ids }, tenantId, deletedAt: null },
       select: { id: true, data: true },
     })
 

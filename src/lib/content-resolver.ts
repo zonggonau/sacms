@@ -123,7 +123,7 @@ async function resolveRelation(tenantId: string, idOrSlug: string, targetModel: 
 
   // Try to find as content entry (default)
   const entry = await db.contentEntry.findFirst({
-    where: { id: idOrSlug, tenantId },
+    where: { id: idOrSlug, tenantId, deletedAt: null },
     include: { contentType: { include: { schemaFields: true } } },
   })
 

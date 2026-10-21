@@ -172,6 +172,7 @@ export async function queryContentForTenant(
   const whereClause: any = {
     contentTypeId: ct.id,
     tenantId,
+    deletedAt: null,
   }
   if (status && status !== "ALL") {
     whereClause.status = status

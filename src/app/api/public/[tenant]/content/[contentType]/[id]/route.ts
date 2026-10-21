@@ -110,6 +110,7 @@ async function writeHandler(
         tenantId: actor.tenantId,
         OR: [{ id: entryIdOrDocId }, { documentId: entryIdOrDocId }],
         contentType: { slug: contentTypeSlug },
+        deletedAt: null,
       },
       select: { id: true },
     })
@@ -331,6 +332,7 @@ export async function GET(
         contentTypeId: contentType.id,
         tenantId: tenantId,
         locale: locale,
+        deletedAt: null,
         OR: [
           { id: entryIdOrDocId },
           { documentId: entryIdOrDocId },
@@ -347,6 +349,7 @@ export async function GET(
           tenantId: tenantId,
           locale: defaultLocale,
           documentId: entryIdOrDocId,
+          deletedAt: null,
           ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
         },
       })
@@ -364,6 +367,7 @@ export async function GET(
             documentId: documentId,
             contentTypeId: contentType.id,
             tenantId: tenantId,
+            deletedAt: null,
             ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
           select: { locale: true },
@@ -409,6 +413,7 @@ export async function GET(
           where: {
             id: { in: Array.from(relatedIds) },
             tenantId: tenantId,
+            deletedAt: null,
             ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
           select: { id: true, data: true, locale: true, status: true },

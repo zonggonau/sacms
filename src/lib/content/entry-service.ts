@@ -461,6 +461,7 @@ export async function updateContentEntry(
     where: {
       id: input.entryId,
       contentTypeId: contentType.id,
+      deletedAt: null,
       OR: tenantId === null ? [{ tenantId: null }] : [{ tenantId }, { tenantId: null }],
     },
   })
@@ -485,6 +486,7 @@ export async function updateContentEntry(
           where: {
             documentId,
             locale: targetLocale,
+            deletedAt: null,
             OR: tenantId === null ? [{ tenantId: null }] : [{ tenantId }, { tenantId: null }],
           },
         })
@@ -726,7 +728,30 @@ export async function transitionContentEntryStatus(
   })
 }
 
-// ── DELETE ───────────────────────────────────────────────────────────────
+// ── DELETE (soft-delete into trash, with a restore window) ───────────────
+
+// How long a soft-deleted entry stays recoverable before the trash-purge
+// cron (api/cron/purge-trash) hard-deletes it for good.
+export const TRASH_RESTORE_WINDOW_DAYS = 30
+
+function checkDeletionAuthority(actor: ContentActor, entry: { createdBy: string | null }): ServiceResult<never> | null {
+  if (actor.kind === "staff") {
+    if (actor.role === "author" || actor.role === "contributor") {
+      if (entry.createdBy !== actor.userId) {
+        return fail("forbidden", "You do not have permission to delete content you do not own")
+      }
+    } else if (!["admin", "owner", "editor"].includes(actor.role)) {
+      return fail("forbidden", "You do not have permission to delete entries")
+    }
+  } else if (actor.kind === "member") {
+    if (actor.ownershipRequired && entry.createdBy !== actor.memberId) {
+      return fail("forbidden", "You can only delete entries you created")
+    }
+  } else if (actor.kind === "public") {
+    return fail("forbidden", "Authentication is required to delete content")
+  }
+  return null
+}
 
 export async function deleteContentEntry(
   ctx: EntryWriteContext,
@@ -743,6 +768,7 @@ export async function deleteContentEntry(
     where: {
       id: input.entryId,
       contentTypeId: contentType.id,
+      deletedAt: null,
       OR: tenantId === null ? [{ tenantId: null }] : [{ tenantId }, { tenantId: null }],
     },
   })
@@ -754,22 +780,8 @@ export async function deleteContentEntry(
     return fail("forbidden", "This entry is globally shared and cannot be deleted by tenant admins")
   }
 
-  // Deletion authority.
-  if (actor.kind === "staff") {
-    if (actor.role === "author" || actor.role === "contributor") {
-      if (entry.createdBy !== actor.userId) {
-        return fail("forbidden", "You do not have permission to delete content you do not own")
-      }
-    } else if (!["admin", "owner", "editor"].includes(actor.role)) {
-      return fail("forbidden", "You do not have permission to delete entries")
-    }
-  } else if (actor.kind === "member") {
-    if (actor.ownershipRequired && entry.createdBy !== actor.memberId) {
-      return fail("forbidden", "You can only delete entries you created")
-    }
-  } else if (actor.kind === "public") {
-    return fail("forbidden", "Authentication is required to delete content")
-  }
+  const authFailure = checkDeletionAuthority(actor, entry)
+  if (authFailure) return authFailure
 
   if (tenantId) {
     const beforeDelete = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_DELETE, {
@@ -779,7 +791,12 @@ export async function deleteContentEntry(
     if (!beforeDelete.allowed) return fail("rejected_by_hook", beforeDelete.rejectMessage || "Rejected by hook")
   }
 
-  await client.contentEntry.delete({ where: { id: entry.id } })
+  // Soft-delete: move into trash instead of removing the row. The entry
+  // disappears from every normal read path (getEntriesAction, public API,
+  // GraphQL, MCP query_content, relation pickers all filter deletedAt:
+  // null) but stays recoverable via restoreContentEntry until the
+  // trash-purge cron hard-deletes it after TRASH_RESTORE_WINDOW_DAYS.
+  await client.contentEntry.update({ where: { id: entry.id }, data: { deletedAt: new Date() } })
 
   if (tenantId) {
     triggerWebhooks(tenantId, WebhookEvents.CONTENT_DELETED, {
@@ -792,6 +809,88 @@ export async function deleteContentEntry(
     tenantId: tenantId ?? undefined,
     userId: actorUserId(actor) ?? undefined,
     action: AuditAction.CONTENT_DELETED,
+    entity: "content_entry",
+    entityId: entry.id,
+    data: { contentType: input.contentTypeSlug },
+  })
+
+  return done({ id: entry.id })
+}
+
+export async function restoreContentEntry(
+  ctx: EntryWriteContext,
+  actor: ContentActor,
+  input: { contentTypeSlug: string; entryId: string },
+): Promise<ServiceResult<{ id: string }>> {
+  const { client, tenantId, tenantSlug } = ctx
+
+  const ctResult = await resolveWritableContentType(client, input.contentTypeSlug, { tenantId, isGlobal: ctx.isGlobal })
+  if (!ctResult.ok) return ctResult
+  const { contentType } = ctResult.data
+
+  const entry = await client.contentEntry.findFirst({
+    where: {
+      id: input.entryId,
+      contentTypeId: contentType.id,
+      deletedAt: { not: null },
+      OR: tenantId === null ? [{ tenantId: null }] : [{ tenantId }, { tenantId: null }],
+    },
+  })
+  if (!entry) return fail("not_found", "Entry not found in trash")
+
+  // Same authority as deleting it in the first place — if you couldn't
+  // have deleted it, you can't bring it back either.
+  const authFailure = checkDeletionAuthority(actor, entry)
+  if (authFailure) return authFailure
+
+  await client.contentEntry.update({ where: { id: entry.id }, data: { deletedAt: null } })
+
+  await invalidateContentCaches(tenantSlug, input.contentTypeSlug)
+  logAudit({
+    tenantId: tenantId ?? undefined,
+    userId: actorUserId(actor) ?? undefined,
+    action: AuditAction.CONTENT_TRASH_RESTORED,
+    entity: "content_entry",
+    entityId: entry.id,
+    data: { contentType: input.contentTypeSlug },
+  })
+
+  return done({ id: entry.id })
+}
+
+export async function permanentlyDeleteContentEntry(
+  ctx: EntryWriteContext,
+  actor: ContentActor,
+  input: { contentTypeSlug: string; entryId: string },
+): Promise<ServiceResult<{ id: string }>> {
+  const { client, tenantId, tenantSlug } = ctx
+
+  const ctResult = await resolveWritableContentType(client, input.contentTypeSlug, { tenantId, isGlobal: ctx.isGlobal })
+  if (!ctResult.ok) return ctResult
+  const { contentType } = ctResult.data
+
+  // Only ever operates on something already in the trash — this is the
+  // "empty trash" / "delete forever" action, not a shortcut around it.
+  const entry = await client.contentEntry.findFirst({
+    where: {
+      id: input.entryId,
+      contentTypeId: contentType.id,
+      deletedAt: { not: null },
+      OR: tenantId === null ? [{ tenantId: null }] : [{ tenantId }, { tenantId: null }],
+    },
+  })
+  if (!entry) return fail("not_found", "Entry not found in trash")
+
+  const authFailure = checkDeletionAuthority(actor, entry)
+  if (authFailure) return authFailure
+
+  await client.contentEntry.delete({ where: { id: entry.id } })
+
+  await invalidateContentCaches(tenantSlug, input.contentTypeSlug)
+  logAudit({
+    tenantId: tenantId ?? undefined,
+    userId: actorUserId(actor) ?? undefined,
+    action: AuditAction.CONTENT_PERMANENTLY_DELETED,
     entity: "content_entry",
     entityId: entry.id,
     data: { contentType: input.contentTypeSlug },

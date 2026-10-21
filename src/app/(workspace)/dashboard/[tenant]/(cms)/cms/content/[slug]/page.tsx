@@ -73,6 +73,7 @@ export default async function CMSContentTypeEntriesPage({
     where: {
       contentTypeId: contentType.id,
       tenantId: access.tenantId,
+      deletedAt: null,
     },
     orderBy: { createdAt: "desc" },
     take: 200,

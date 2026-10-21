@@ -21,6 +21,8 @@ import {
   normalizeScheduledAt,
   createContentEntry,
   deleteContentEntry,
+  restoreContentEntry,
+  permanentlyDeleteContentEntry,
 } from "@/lib/content/entry-service"
 
 function makeClient(overrides: any = {}) {
@@ -150,11 +152,12 @@ describe("deleteContentEntry", () => {
     if (!res.ok) expect(res.code).toBe("forbidden")
   })
 
-  it("lets a member delete their own entry", async () => {
+  it("lets a member delete their own entry (soft-delete, not a hard row delete)", async () => {
+    const update = vi.fn().mockResolvedValue({})
     const client = makeClient({
       contentEntry: {
         findFirst: vi.fn().mockResolvedValue({ id: "e1", createdBy: "m1" }),
-        delete: vi.fn().mockResolvedValue({}),
+        update,
       },
     })
     const res = await deleteContentEntry(
@@ -164,5 +167,66 @@ describe("deleteContentEntry", () => {
     )
     expect(res.ok).toBe(true)
     if (res.ok) expect(res.data.id).toBe("e1")
+    expect(update).toHaveBeenCalledWith({ where: { id: "e1" }, data: { deletedAt: expect.any(Date) } })
+  })
+})
+
+describe("restoreContentEntry", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("restores a trashed entry back out of the trash", async () => {
+    const update = vi.fn().mockResolvedValue({})
+    const client = makeClient({
+      contentEntry: {
+        findFirst: vi.fn().mockResolvedValue({ id: "e1", createdBy: "m1", deletedAt: new Date() }),
+        update,
+      },
+    })
+    const res = await restoreContentEntry(
+      ctx(client),
+      { kind: "member", memberId: "m1", ownershipRequired: true },
+      { contentTypeSlug: "posts", entryId: "e1" },
+    )
+    expect(res.ok).toBe(true)
+    expect(update).toHaveBeenCalledWith({ where: { id: "e1" }, data: { deletedAt: null } })
+  })
+
+  it("404s when the entry isn't actually in the trash", async () => {
+    const client = makeClient({
+      contentEntry: { findFirst: vi.fn().mockResolvedValue(null) },
+    })
+    const res = await restoreContentEntry(ctx(client), { kind: "system" }, { contentTypeSlug: "posts", entryId: "e1" })
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.code).toBe("not_found")
+  })
+})
+
+describe("permanentlyDeleteContentEntry", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("hard-deletes an entry already in the trash", async () => {
+    const del = vi.fn().mockResolvedValue({})
+    const client = makeClient({
+      contentEntry: {
+        findFirst: vi.fn().mockResolvedValue({ id: "e1", createdBy: "m1", deletedAt: new Date() }),
+        delete: del,
+      },
+    })
+    const res = await permanentlyDeleteContentEntry(
+      ctx(client),
+      { kind: "member", memberId: "m1", ownershipRequired: true },
+      { contentTypeSlug: "posts", entryId: "e1" },
+    )
+    expect(res.ok).toBe(true)
+    expect(del).toHaveBeenCalledWith({ where: { id: "e1" } })
+  })
+
+  it("404s when the entry isn't in the trash", async () => {
+    const client = makeClient({
+      contentEntry: { findFirst: vi.fn().mockResolvedValue(null) },
+    })
+    const res = await permanentlyDeleteContentEntry(ctx(client), { kind: "system" }, { contentTypeSlug: "posts", entryId: "e1" })
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.code).toBe("not_found")
   })
 })

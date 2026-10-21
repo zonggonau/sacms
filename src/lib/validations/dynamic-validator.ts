@@ -123,6 +123,7 @@ export async function validateDynamicContent(
           where: {
             id: { in: targetIds as string[] },
             contentTypeId: targetContentType.id,
+            deletedAt: null,
             OR: [{ tenantId }, { tenantId: null }],
           },
         })
@@ -140,6 +141,7 @@ export async function validateDynamicContent(
         where: {
           contentTypeId,
           tenantId,
+          deletedAt: null,
           id: entryId ? { not: entryId } : undefined,
           data: {
             path: [field.slug],

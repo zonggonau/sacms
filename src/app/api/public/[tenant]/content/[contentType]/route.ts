@@ -221,6 +221,7 @@ export async function GET(
       contentTypeId: contentType.id,
       tenantId: tenantId,
       status,
+      deletedAt: null,
     }
     if (locale) baseWhere.locale = locale
 
@@ -245,6 +246,7 @@ export async function GET(
         `"contentTypeId" = $1`,
         `"tenantId" = $2`,
         `"status"::text = $3`,
+        `"deletedAt" IS NULL`,
       ]
       const queryParams: unknown[] = [contentType.id, tenantId, status]
       let paramIdx = 4
@@ -367,6 +369,7 @@ export async function GET(
         where: {
           id: { in: Array.from(allRelatedIds) },
           tenantId: tenantId,
+          deletedAt: null,
           ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
         },
         select: { id: true, data: true, locale: true, status: true }
@@ -413,6 +416,7 @@ export async function GET(
             documentId: { in: documentIds },
             contentTypeId: contentType.id,
             tenantId: tenantId,
+            deletedAt: null,
             ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
           select: { documentId: true, locale: true, status: true },
@@ -447,6 +451,7 @@ export async function GET(
             locale: defaultLocale,
             contentTypeId: contentType.id,
             tenantId: tenantId,
+            deletedAt: null,
             ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
         })

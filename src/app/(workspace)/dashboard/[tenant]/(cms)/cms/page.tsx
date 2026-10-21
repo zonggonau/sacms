@@ -46,7 +46,7 @@ export default async function CMSDashboardPage({
     tenantDb.tenantContentTypeAssignment.count({ where: { tenantId } }),
     tenantDb.contentEntry.groupBy({
       by: ["status"],
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       _count: { _all: true },
     }),
     tenantDb.media.count({ where: { tenantId } }).catch((err) => {
@@ -54,7 +54,7 @@ export default async function CMSDashboardPage({
       return 0
     }),
     tenantDb.contentEntry.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       select: {
         id: true,
         status: true,

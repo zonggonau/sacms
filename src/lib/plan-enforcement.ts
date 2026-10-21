@@ -750,7 +750,10 @@ async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource):
         return db.contentType.count({ where: { tenantId } })
       case "content_entries": {
         const tenantDb = await getTenantDb(tenantId)
-        return tenantDb.contentEntry.count({ where: { tenantId } }).catch(() => 0)
+        // Soft-deleted (trashed) entries don't count against the plan limit —
+        // they're meant to be freely discardable without a quota penalty
+        // while still recoverable within the restore window.
+        return tenantDb.contentEntry.count({ where: { tenantId, deletedAt: null } }).catch(() => 0)
       }
       case "team_members":
         return db.tenantMember.count({ where: { tenantId, role: { not: "owner" } } })

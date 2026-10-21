@@ -796,7 +796,7 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const entry = await tenantDb.contentEntry.findFirst({
-          where: { id, tenantId: auth.tenantId },
+          where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: {
             contentType: {
               select: { id: true, name: true, slug: true }
@@ -887,7 +887,7 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const existing = await tenantDb.contentEntry.findFirst({
-          where: { id, tenantId: auth.tenantId },
+          where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: { contentType: { select: { slug: true } } },
         })
         if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }
@@ -932,7 +932,7 @@ const handler = createMcpHandler(
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const existing = await tenantDb.contentEntry.findFirst({
-          where: { id, tenantId: auth.tenantId },
+          where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: { contentType: { select: { slug: true } } },
         })
         if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }

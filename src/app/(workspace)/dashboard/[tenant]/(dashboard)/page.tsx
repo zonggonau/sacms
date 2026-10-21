@@ -38,7 +38,7 @@ export default async function TenantDashboardPage({
   const contentTypes = await Promise.all(
     availableContentTypes.map(async (contentType) => {
       const entryCount = await tenantDb.contentEntry.count({
-        where: { contentTypeId: contentType.id, tenantId: tenantId },
+        where: { contentTypeId: contentType.id, tenantId: tenantId, deletedAt: null },
       }).catch(() => 0)
 
       const formattedFields = (contentType.schemaFields || []).map(field => {
@@ -89,13 +89,13 @@ export default async function TenantDashboardPage({
     tenantDb.tenantSingleTypeAssignment.count({ where: { tenantId } }).catch(() => 0),
     tenantDb.contentEntry.groupBy({
       by: ["status"],
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       _count: { _all: true },
     }).catch(() => []),
     tenantDb.apiToken.count({ where: { tenantId } }).catch(() => 0),
     tenantDb.webhook.count({ where: { tenantId } }).catch(() => 0),
     tenantDb.contentEntry.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       select: {
         id: true,
         status: true,

@@ -36,6 +36,7 @@ export async function GET(request: Request) {
           where: {
             tenantId: tenant.id,
             status: "SCHEDULED",
+            deletedAt: null,
             scheduledAt: {
               lte: now,
             },
