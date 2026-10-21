@@ -63,7 +63,7 @@ export default function LabaRugiPage() {
       ["3. LABA KOTOR (GROSS PROFIT)", s.monthlyGrossProfit, s.yearlyGrossProfit],
       ["   - Gross Profit Margin (%)", `${s.grossMarginPercent}%`, `${s.grossMarginPercent}%`],
       ["", "", ""],
-      ["4. BIAYA PEMBAYARAN GATEWAY (MIDTRANS EST 1.5%)", Math.round(s.mrr * 0.015), Math.round(s.arr * 0.015)],
+      ["4. BIAYA PEMBAYARAN GATEWAY (MIDTRANS EST 1.5%)", s.estimatedMonthlyGatewayFees, s.estimatedYearlyGatewayFees],
       ["", "", ""],
       ["5. LABA BERSIH OPERASIONAL (NET PROFIT)", s.monthlyNetProfit, s.yearlyNetProfit],
       ["   - Net Profit Margin (%)", `${s.netMarginPercent}%`, `${s.netMarginPercent}%`],
@@ -188,10 +188,10 @@ export default function LabaRugiPage() {
                   4. ESTIMASI BIAYA GATEWAY (MIDTRANS FEE ~1.5%)
                 </TableCell>
                 <TableCell className="text-right font-mono text-rose-500">
-                  ({formatRupiah(Math.round((s.mrr || 0) * 0.015))})
+                  ({formatRupiah(s.estimatedMonthlyGatewayFees || 0)})
                 </TableCell>
                 <TableCell className="text-right font-mono text-rose-500">
-                  ({formatRupiah(Math.round((s.arr || 0) * 0.015))})
+                  ({formatRupiah(s.estimatedYearlyGatewayFees || 0)})
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground">1.5%</TableCell>
               </TableRow>

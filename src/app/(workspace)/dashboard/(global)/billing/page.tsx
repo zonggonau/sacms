@@ -4,7 +4,7 @@ import { redirect } from "next/navigation"
 import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
 import { db } from "@/lib/database"
-import { cleanPrice, formatRupiah } from "@/lib/plan-pricing"
+import { cleanPrice, formatRupiahPlain as formatRupiah } from "@/lib/plan-pricing"
 import { isEnterpriseTenant } from "@/lib/license"
 
 export default async function BillingPage() {

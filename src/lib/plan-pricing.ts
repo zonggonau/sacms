@@ -10,7 +10,15 @@ export function cleanPrice(val: unknown): number {
   return 0
 }
 
-/** Formats an integer IDR amount as "Rp 29.000"; falls back to "Rp 0". */
-export function formatRupiah(amount: number): string {
+/**
+ * Formats an integer IDR amount as "Rp 29.000"; falls back to "Rp 0".
+ *
+ * Deliberately named differently from src/lib/utils.ts's own `formatRupiah`
+ * (which renders a zero amount as "Gratis" instead) — the two used to share
+ * the identical name while behaving differently depending on which a page
+ * happened to import, which is confusing on its own even though every
+ * current caller of each one is unambiguous about which it wants.
+ */
+export function formatRupiahPlain(amount: number): string {
   return amount > 0 ? `Rp ${amount.toLocaleString("id-ID")}` : "Rp 0"
 }

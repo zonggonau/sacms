@@ -225,11 +225,10 @@ export async function calculateLiveFinancialReports() {
   // personal/account-level subscription's revenue is tracked here rather
   // than silently dropped (the previous version only ever had a "cloud"
   // key, so anything else failed the `if (categoryStats[cat])` guard
-  // closed with no error). Not yet surfaced in the admin UI, which still
-  // only reads categoryStats.cloud — a separate follow-up.
-  const categoryStats: Record<"cloud" | "account", { count: number; mrr: number; cogs: number; profit: number }> = {
-    cloud: { count: 0, mrr: 0, cogs: 0, profit: 0 },
-    account: { count: 0, mrr: 0, cogs: 0, profit: 0 },
+  // closed with no error).
+  const categoryStats: Record<"cloud" | "account", { count: number; mrr: number; cogs: number; profit: number; netProfit: number }> = {
+    cloud: { count: 0, mrr: 0, cogs: 0, profit: 0, netProfit: 0 },
+    account: { count: 0, mrr: 0, cogs: 0, profit: 0, netProfit: 0 },
   }
 
   for (const tb of tenantBreakdown) {
@@ -238,6 +237,7 @@ export async function calculateLiveFinancialReports() {
     categoryStats[cat].mrr += tb.monthlyRevenue
     categoryStats[cat].cogs += tb.monthlyCogs
     categoryStats[cat].profit += tb.monthlyGrossProfit
+    categoryStats[cat].netProfit += tb.monthlyNetProfit
   }
 
   return {
@@ -252,6 +252,15 @@ export async function calculateLiveFinancialReports() {
       estimatedYearlyCogs: liveMonthlyCogs * 12,
       monthlyGrossProfit: liveMonthlyGrossProfit,
       yearlyGrossProfit: liveMonthlyGrossProfit * 12,
+      // The authoritative gateway-fee total — summed per-subscription
+      // (each already individually rounded), not re-derived from mrr/arr.
+      // laba-rugi's table/CSV used to independently recompute
+      // Math.round(mrr * 0.015), which can differ from this by a rupiah or
+      // two (round-per-sub-then-sum vs sum-then-round) and made its own
+      // displayed Gross Profit − Gateway Fee not always equal its own
+      // displayed Net Profit — now both read this single number instead.
+      estimatedMonthlyGatewayFees: liveMonthlyGatewayFees,
+      estimatedYearlyGatewayFees: liveMonthlyGatewayFees * 12,
       monthlyNetProfit: liveMonthlyNetProfit,
       yearlyNetProfit: liveMonthlyNetProfit * 12,
       grossMarginPercent: overallGrossMargin,

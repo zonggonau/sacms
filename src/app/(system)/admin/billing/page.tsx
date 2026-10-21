@@ -241,6 +241,24 @@ export default function AdminBillingOverviewPage() {
                 <span className="text-emerald-600 font-bold">Laba: {formatRupiah(data?.categoryStats?.cloud?.profit || 0)}</span>
               </div>
             </div>
+
+            {/* Account-level plans — only shown once there's actually a
+                personal/account subscription to report, so an install with
+                none doesn't carry a permanently-empty card. */}
+            {(data?.categoryStats?.account?.count || 0) > 0 && (
+              <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1.5">
+                <div className="flex justify-between items-center text-xs font-bold">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Users className="h-3.5 w-3.5 text-violet-500" /> Account Plans
+                  </span>
+                  <span className="text-foreground">{formatRupiah(data?.categoryStats?.account?.mrr || 0)}/bln</span>
+                </div>
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{data?.categoryStats?.account?.count || 0} Akun</span>
+                  <span className="text-emerald-600 font-bold">Laba: {formatRupiah(data?.categoryStats?.account?.profit || 0)}</span>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
