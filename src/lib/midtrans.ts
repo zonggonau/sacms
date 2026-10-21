@@ -304,6 +304,27 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
 }
 
 /**
+ * Resolve a subscription's real monthly price: the live, CMS-configured
+ * price for its plan slug (looked up in the account-plan or workspace-plan
+ * table, matching which one the subscription actually belongs to), falling
+ * back to the static PLAN_PRICES map only when nothing dynamic is
+ * configured for that slug. This is the one true price source actual
+ * billing already used (generate-invoices) — now also reused by the admin
+ * financial reports (financial-engine.ts) so the Executive P&L can no
+ * longer drift from what tenants are actually charged.
+ */
+export function resolveSubscriptionMonthlyPrice(
+  plan: string,
+  isAccountPlan: boolean,
+  dynamicWorkspacePrices: Record<string, { monthly: number; yearly: number }>,
+  dynamicAccountPrices: Record<string, { monthly: number; yearly: number }>,
+): number {
+  const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
+  const rawPrice = dynamicPrices[plan] ?? PLAN_PRICES[plan] ?? 0
+  return typeof rawPrice === "number" ? rawPrice : rawPrice.monthly
+}
+
+/**
  * Calculate period end date based on plan and interval
  */
 export function calculatePeriodEndDate(plan: PlanType, interval: 'month' | 'year' = 'month'): Date {

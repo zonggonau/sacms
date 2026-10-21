@@ -1,29 +1,36 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { PLAN_PRICES, getDynamicWorkspacePrices, getDynamicAccountPrices } from "@/lib/midtrans"
+import { getDynamicWorkspacePrices, getDynamicAccountPrices, resolveSubscriptionMonthlyPrice } from "@/lib/midtrans"
 import { secureEquals } from "@/lib/secure-compare"
 import { withAdminAuth } from "@/lib/api/route-helpers"
 
 /**
  * POST /api/admin/billing/generate-invoices
- * Generate monthly invoices for active subscriptions
- * This is meant to be called by a cron job
+ * Generate monthly invoices for active subscriptions.
+ *
+ * Two legitimate callers, two auth paths:
+ * - The production cron (docker/cron/crontab) sends `Authorization: Bearer
+ *   <CRON_SECRET>` and never has a browser session.
+ * - The admin UI's "Jalankan Siklus Tagihan" button has a real admin
+ *   session but has no business knowing CRON_SECRET (shipping it to the
+ *   client would leak the same secret the cron relies on) — it never sent
+ *   any Authorization header, which used to always fail the cron-only
+ *   check below and make the button non-functional. Falls through to a
+ *   normal super_admin/admin session check instead.
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify cron job secret
     const authHeader = request.headers.get("authorization")
     const cronSecret = process.env.CRON_SECRET
+    const isCronCall = !!cronSecret && secureEquals(authHeader, `Bearer ${cronSecret}`)
 
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: "CRON_SECRET not configured" },
-        { status: 500 }
-      )
-    }
-
-    if (!secureEquals(authHeader, `Bearer ${cronSecret}`)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    if (!isCronCall) {
+      const session = await getServerSession(authOptions)
+      if (!session?.user || !["super_admin", "admin"].includes(session.user.role)) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
     }
 
     // Get all active subscriptions
@@ -107,9 +114,7 @@ export async function POST(request: NextRequest) {
         }
 
         const isAccountPlan = !subscription.tenantId
-        const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-        const rawPrice = dynamicPrices[subscription.plan] ?? PLAN_PRICES[subscription.plan] ?? 0
-        const planPrice = typeof rawPrice === 'number' ? rawPrice : rawPrice.monthly
+        const planPrice = resolveSubscriptionMonthlyPrice(subscription.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
 
         if (planPrice === 0) {
           // Free plan - extend period
@@ -140,24 +145,28 @@ export async function POST(request: NextRequest) {
         const newPeriodEnd = new Date(periodEnd)
         newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1)
 
-        const invoice = await db.invoice.create({
-          data: {
-            subscriptionId: subscription.id,
-            amount: planPrice,
-            currency: "IDR",
-            status: "pending",
-            createdAt: now,
-          },
-        })
-
-        // Update subscription period
-        await db.subscription.update({
-          where: { id: subscription.id },
-          data: {
-            currentPeriodStart: newPeriodStart,
-            currentPeriodEnd: newPeriodEnd,
-          },
-        })
+        // Both writes must land together — an invoice created without its
+        // subscription's period advancing (or vice versa) would make the
+        // next run either re-bill the same period under a second Invoice
+        // row, or advance the period with nothing invoiced for it.
+        await db.$transaction([
+          db.invoice.create({
+            data: {
+              subscriptionId: subscription.id,
+              amount: planPrice,
+              currency: "IDR",
+              status: "pending",
+              createdAt: now,
+            },
+          }),
+          db.subscription.update({
+            where: { id: subscription.id },
+            data: {
+              currentPeriodStart: newPeriodStart,
+              currentPeriodEnd: newPeriodEnd,
+            },
+          }),
+        ])
 
         results.processed++
         results.invoices.push({
@@ -224,9 +233,7 @@ export const GET = withAdminAuth(async () => {
 
     const preview = activeSubscriptions.map((sub) => {
       const isAccountPlan = !sub.tenantId
-      const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-      const rawPrice = dynamicPrices[sub.plan] ?? PLAN_PRICES[sub.plan] ?? 0
-      const price = typeof rawPrice === 'number' ? rawPrice : rawPrice.monthly
+      const price = resolveSubscriptionMonthlyPrice(sub.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
 
       return {
       subscriptionId: sub.id,
