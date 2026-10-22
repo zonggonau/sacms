@@ -11,8 +11,8 @@ const execAsync = promisify(exec)
  */
 const DB_NAME_REGEX = /^[a-z0-9_]{1,63}$/
 
-function sanitizeDbName(slug: string): string {
-  const dbName = `sacms_tenant_${slug.replace(/[^a-z0-9]/gi, "_").toLowerCase()}`
+function sanitizeDbName(slug: string, prefix: string = "tenant"): string {
+  const dbName = `sacms_${prefix}_${slug.replace(/[^a-z0-9]/gi, "_").toLowerCase()}`
   if (!DB_NAME_REGEX.test(dbName)) {
     throw new Error(`Invalid database name derived from slug: "${slug}". Only lowercase alphanumeric and underscores are allowed.`)
   }
@@ -20,11 +20,19 @@ function sanitizeDbName(slug: string): string {
 }
 
 /**
- * Enterprise Database Provisioning Utility
+ * Enterprise Database Provisioning Utility.
+ *
+ * `prefix` distinguishes a per-tenant database (default, "tenant" —
+ * historical per-workspace provisioning, now unused but kept for any
+ * existing databaseUrl already pointing at one) from an account-level
+ * database shared by every workspace an Enterprise License holder owns
+ * ("acct", seeded with the owner's user id — see
+ * POST /api/user/license/activate, which is the only current caller of
+ * that form).
  */
-export async function provisionEnterpriseDb(tenantSlug: string) {
+export async function provisionEnterpriseDb(nameSeed: string, prefix: string = "tenant") {
   // 1. Prepare Database Name and URL (validated)
-  const dbName = sanitizeDbName(tenantSlug)
+  const dbName = sanitizeDbName(nameSeed, prefix)
   
   // Get base connection string from environment (without the database name)
   // Format: postgresql://user:pass@localhost:5432/main_db

@@ -16,6 +16,7 @@ import { authOptions } from "@/lib/auth"
 import { parseLicenseKey, isLicenseExpired, upsertLicenseCache, getLicenseFromDb } from "@/lib/license"
 import { db } from "@/lib/database"
 import { apiError, readJson } from "@/lib/api/route-helpers"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 import { z } from "zod"
 
 export const dynamic = "force-dynamic"
@@ -118,6 +119,38 @@ export async function POST(request: NextRequest) {
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
     status: "active",
   }, session.user.id, licenseKey)
+
+  // 5. Enterprise accounts get their own dedicated database automatically —
+  // every workspace this owner has (now or later) falls back to it via
+  // getOwnerMasterInfra() in src/lib/database.ts, same mechanism the manual
+  // "Koneksi Mandiri (BYODB/BYOS)" self-connect flow at
+  // /dashboard/infrastructure already writes to (User.masterDatabaseUrl).
+  // Never blocks activation itself: a provisioning failure here just leaves
+  // the account on the shared DB, same as that manual flow's own fallback
+  // behavior, and the owner can still self-connect later by hand.
+  if (payload.type === "enterprise") {
+    const existingInfra = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { masterDatabaseUrl: true },
+    })
+    if (!existingInfra?.masterDatabaseUrl) {
+      try {
+        const { provisionEnterpriseDb } = await import("@/lib/enterprise-db")
+        const { invalidateOwnerMasterInfraCache } = await import("@/lib/database")
+        const newDbUrl = await provisionEnterpriseDb(session.user.id, "acct")
+        await db.user.update({ where: { id: session.user.id }, data: { masterDatabaseUrl: newDbUrl } })
+        await invalidateOwnerMasterInfraCache(session.user.id)
+        logAudit({
+          userId: session.user.id,
+          action: AuditAction.SETTINGS_UPDATED,
+          entity: "UserMasterInfra",
+          data: { autoProvisioned: true },
+        })
+      } catch (err) {
+        console.error("[License] Auto-provisioning a dedicated database failed — account stays on the shared DB:", err)
+      }
+    }
+  }
 
   return NextResponse.json({
     success: true,

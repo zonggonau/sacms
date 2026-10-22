@@ -1,50 +1,45 @@
 import { db, getTenantDbById } from "./database"
-import { provisionEnterpriseDb } from "./enterprise-db"
 import { STARTER_KITS } from "./starter-kits"
 
 /**
  * Provision a new tenant with starter content types and demo data.
- * In Hybrid Multi-tenant mode, this also handles automatic database creation.
+ *
+ * A dedicated database is never created HERE — it's provisioned once per
+ * Enterprise-licensed ACCOUNT at license activation time (see
+ * POST /api/user/license/activate), written to the owner's
+ * User.masterDatabaseUrl, and every workspace that owner has (this one
+ * included, whether created before or after activation) picks it up
+ * automatically via getTenantDbById()'s own fallback to
+ * getOwnerMasterInfra() — nothing tenant-specific is needed to opt in.
+ * (Previously this function also auto-created a PER-TENANT database keyed
+ * off a client-supplied `Tenant.plan` string with no real license check —
+ * that was both insecure, since `plan` was never actually validated against
+ * payment/license, and wrong for "pro", which was never meant to get a
+ * dedicated database at all. Removed rather than gated, since the
+ * account-level mechanism above already covers the real "enterprise" case.)
  */
 export async function provisionTenant(tenantId: string, aiPrompt?: string, websiteType?: string) {
   try {
     console.log(`[Provisioning] Starting for tenant: ${tenantId}, Website Type: ${websiteType}`)
 
-    // 1. Check if the tenant needs a dedicated database (Hybrid Multitenancy)
-    let tenant = await db.tenant.findUnique({
+    const tenant = await db.tenant.findUnique({
       where: { id: tenantId },
       select: { id: true, name: true, slug: true, plan: true, status: true, databaseUrl: true }
     })
 
     if (!tenant) throw new Error("Tenant not found")
 
-    // Define which plans get a dedicated database
-    const dedicatedPlans = ["pro", "enterprise"]
-    
-    // Auto-provision DB if plan matches AND it's not the 'system' tenant
-    if (dedicatedPlans.includes(tenant.plan) && !tenant.databaseUrl && tenant.slug !== "system") {
-      console.log(`[Provisioning] Auto-creating dedicated database for ${tenant.slug} (${tenant.plan})`)
-      try {
-        const newDbUrl = await provisionEnterpriseDb(tenant.slug)
-        
-        // Update the master tenant record with the new database URL
-        tenant = await db.tenant.update({
-          where: { id: tenantId },
-          data: { databaseUrl: newDbUrl }
-        })
-        console.log(`[Provisioning] Dedicated database URL updated for ${tenant.slug}`)
-      } catch (dbError) {
-        console.error(`[Provisioning] Failed to create dedicated database for ${tenant.slug}`, dbError)
-        // Fallback to shared DB if DB creation fails (or throw if isolation is mandatory)
-      }
-    }
-
-    // Get the correct DB client (Shared or Dedicated)
-    // IMPORTANT: Use forceFresh: true if it's a dedicated DB to ensure we aren't using a stale connection pool
-    const tenantDb = await getTenantDbById(tenantId, !!tenant.databaseUrl)
+    // Get the correct DB client (shared, this tenant's own override, or its
+    // owner's account-level dedicated DB — getTenantDbById resolves all
+    // three). Returning the exact shared `db` singleton is how it signals
+    // "nothing dedicated applies" — used below as the live, accurate
+    // "is this tenant isolated?" check instead of re-deriving it from
+    // tenant.databaseUrl, which stays null for the account-level case.
+    const tenantDb = await getTenantDbById(tenantId)
+    const isDedicated = tenantDb !== db
 
     // 1.5 Sync Tenant, Owner, and Membership to the dedicated database if it's isolated
-    if (tenant.databaseUrl) {
+    if (isDedicated) {
       console.log(`[Provisioning] Syncing tenant, owner, and membership to dedicated DB for ${tenant.slug}`)
       
       // Ensure the tenant exists in the dedicated DB
