@@ -21,6 +21,19 @@ function isConnectionError(err: any): boolean {
   return /ETIMEDOUT|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|ECONNRESET|connection failure|HTTP response not found/i.test(msg)
 }
 
+// Midtrans's item_details[].name has a hard 50-character limit. A longer
+// name — easy to hit now that plan/addon names come from admin-editable
+// tables (src/lib/pricing.ts), not fixed code — makes Midtrans reject the
+// whole transaction with "Name is too long", and its gross_amount check
+// also fails alongside it (the invalid item is dropped before summing),
+// so one bad name surfaces as two confusing error messages. Truncate here,
+// the one place every checkout request goes through, rather than trusting
+// every caller to keep names short.
+const MIDTRANS_ITEM_NAME_MAX = 50
+function truncateItemName(name: string): string {
+  return name.length <= MIDTRANS_ITEM_NAME_MAX ? name : `${name.slice(0, MIDTRANS_ITEM_NAME_MAX - 1)}…`
+}
+
 function mapMidtransStatus(
   transactionStatus: string
 ): VerifyWebhookResult["status"] {
@@ -96,7 +109,7 @@ export class MidtransProvider implements PaymentProvider {
       },
       item_details: req.items.map((item) => ({
         id: item.id,
-        name: item.name,
+        name: truncateItemName(item.name),
         price: item.price,
         quantity: item.quantity,
       })),

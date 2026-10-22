@@ -122,8 +122,16 @@ export async function POST(request: NextRequest) {
       const BUILTIN_TOPUPS: Record<string, { name: string; price: number; quotaType: string; amountUnits: number }> = {
         topup_ai_500k: { name: "AI Booster (500K Tokens)", price: 25000, quotaType: "ai_tokens", amountUnits: 500000 },
         topup_ai_2m: { name: "AI Power Pack (2M Tokens)", price: 75000, quotaType: "ai_tokens", amountUnits: 2000000 },
-        [MANAGED_INFRA_SETUP_ID]: { name: "Database & Storage Sendiri — Setup + Bulan Pertama", price: MANAGED_INFRA_SETUP_FEE_IDR + MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
-        [MANAGED_INFRA_MONTHLY_ID]: { name: "Database & Storage Sendiri — Perpanjangan 1 Bulan", price: MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
+        // Kept short on purpose: checkout appends " Add-on" to this before
+        // sending it to Midtrans as item_details[].name, which has a hard
+        // 50-character limit — the old, longer names ("... — Setup + Bulan
+        // Pertama" / "... — Perpanjangan 1 Bulan") pushed the combined
+        // string past that, and Midtrans's own 400 response for an invalid
+        // item also makes its separate gross_amount/item-sum check fail
+        // (it drops the invalid item before summing), so this single cause
+        // surfaced as two confusing error messages at checkout.
+        [MANAGED_INFRA_SETUP_ID]: { name: "Database & Storage Sendiri (Setup)", price: MANAGED_INFRA_SETUP_FEE_IDR + MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
+        [MANAGED_INFRA_MONTHLY_ID]: { name: "Database & Storage Sendiri (Bulanan)", price: MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
         topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
         hosting_annual_1yr: { name: "Cloud Edge Hosting (1 Tahun)", price: 650000, quotaType: "hosting_annual", amountUnits: 1 },
         hosting_bundle_domain_1yr: { name: "Cloud Edge Hosting + Domain .com (1 Tahun)", price: 850000, quotaType: "hosting_bundle", amountUnits: 1 },

@@ -77,7 +77,11 @@ export async function createSnapPayment(
       },
       item_details: params.items.map(item => ({
         id: item.id,
-        name: item.name,
+        // Midtrans's item_details[].name has a hard 50-character limit —
+        // see the same guard in lib/payment/midtrans.ts for the full
+        // reasoning (a too-long name also makes Midtrans's own
+        // gross_amount/item-sum check fail alongside it).
+        name: item.name.length <= 50 ? item.name : `${item.name.slice(0, 49)}…`,
         price: item.price,
         quantity: item.quantity,
       })),
