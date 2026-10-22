@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { isPlatformStaff } from "@/lib/platform-roles"
+import { checkEnterpriseModeAction } from "@/actions/billing"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,6 +33,13 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "console">("overview")
+  // Enterprise-licensed workspaces can self-connect their own BYODB/BYOS
+  // directly (no SaCMS IT setup needed) — same perk the subscriptions
+  // page's old "Infrastruktur Khusus Workspace" card offered (moved here;
+  // that card's Save button called a PUT endpoint that was never actually
+  // implemented, so it never worked). Platform staff keep access to this
+  // same form regardless, to help any workspace's connection by hand.
+  const [isEnterpriseWorkspace, setIsEnterpriseWorkspace] = useState(false)
 
   // BYODB & BYOS State
   const [databaseUrl, setDatabaseUrl] = useState("")
@@ -40,6 +48,12 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const [storageSecretKey, setStorageSecretKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
   const [storagePublicUrl, setStoragePublicUrl] = useState("")
+
+  useEffect(() => {
+    if (tenantSlug && session?.user) {
+      checkEnterpriseModeAction(tenantSlug).then(setIsEnterpriseWorkspace).catch(() => {})
+    }
+  }, [tenantSlug, session])
 
   useEffect(() => {
     if (authStatus === "unauthenticated") {
@@ -114,6 +128,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   }
 
   const isSuperAdmin = isPlatformStaff(session?.user?.role)
+  const canManageConnection = isSuperAdmin || isEnterpriseWorkspace
 
   const [managedInfra, setManagedInfra] = useState<{ status: string; paidUntil: string } | null>(null)
   const [storageAddons, setStorageAddons] = useState<
@@ -206,8 +221,14 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
           </Button>
         </div>
 
-        {/* Action Controls & Tab Switcher (Super Admin only for manual console) */}
-        {isSuperAdmin && (
+        {/* Action Controls & Tab Switcher — manual BYODB/BYOS connection form.
+            Platform staff always see it (to help any workspace connect by
+            hand); an enterprise-licensed workspace's own admin/owner also
+            gets it, as a self-service perk of their license — they can
+            connect their own database/storage directly without waiting on
+            SaCMS IT. Regular tenants still go through "Pesan Layanan Setup
+            BYODB" above (SaCMS IT sets it up after payment). */}
+        {(isSuperAdmin || isEnterpriseWorkspace) && (
           <div className="flex items-center gap-2">
             <div className="flex items-center p-1 bg-muted/60 border border-border/80 rounded-xl">
               <button
@@ -233,7 +254,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
               >
                 <span className="flex items-center gap-1.5">
                   <Settings2 className="h-3.5 w-3.5" />
-                  Console IT Support
+                  Koneksi Mandiri (BYODB/BYOS)
                 </span>
               </button>
             </div>
@@ -256,7 +277,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
       {/* ══════════════════════════════════════════════════════════════════ */}
       {/* TAB 1: OVERVIEW                                                     */}
       {/* ══════════════════════════════════════════════════════════════════ */}
-      {(activeTab === "overview" || !isSuperAdmin) && (
+      {(activeTab === "overview" || !canManageConnection) && (
         <div className="space-y-6 animate-in fade-in-50 duration-300">
           {/* 1. ACTIVE SHARED CLUSTER STATUS OVERVIEW CARD */}
           <Card className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs shadow-xs overflow-hidden">
@@ -432,7 +453,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
       {/* ══════════════════════════════════════════════════════════════════ */}
       {/* TAB 2: CONSOLE IT SUPPORT (Super Admin only manual overrides)       */}
       {/* ══════════════════════════════════════════════════════════════════ */}
-      {isSuperAdmin && activeTab === "console" && (
+      {canManageConnection && activeTab === "console" && (
         <div className="space-y-6 animate-in fade-in-50 duration-300">
           {/* BYODB: Custom PostgreSQL Connection */}
           <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">

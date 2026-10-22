@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,7 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles,
+  HardDrive, Users, Database, Package, Shield, Bot, Cloud, Sparkles,
   Layers, Download
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
@@ -71,15 +72,6 @@ export default function TenantSubscriptionsPage() {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
   const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
-  
-  const [infra, setInfra] = useState({
-    databaseUrl: "",
-    s3Bucket: "",
-    s3Region: "",
-    s3AccessKey: "",
-    s3SecretKey: "",
-  })
-  const [savingInfra, setSavingInfra] = useState(false)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
   const [liveTenants, setLiveTenants] = useState<any[]>([])
@@ -125,12 +117,11 @@ export default function TenantSubscriptionsPage() {
   const fetchBillingData = async () => {
     if (!tenantSlug) return
     try {
-      const [subRes, invRes, plansRes, usageRes, settingsRes] = await Promise.all([
+      const [subRes, invRes, plansRes, usageRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/subscription/prorate`),
         fetch(`/api/tenant/${tenantSlug}/invoices`),
         fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`),
         fetch(`/api/tenant/${tenantSlug}/billing/usage`),
-        fetch(`/api/tenant/${tenantSlug}/settings`)
       ])
       
       if (subRes.ok) {
@@ -152,20 +143,6 @@ export default function TenantSubscriptionsPage() {
       if (usageRes.ok) {
         const data = await usageRes.json()
         setUsage(data.usage || [])
-      }
-
-      if (settingsRes.ok) {
-        const data = await settingsRes.json()
-        const s = data.settings
-        if (s) {
-          setInfra({
-            databaseUrl: s.databaseUrl || "",
-            s3Bucket: s.storageConfig?.bucket || "",
-            s3Region: s.storageConfig?.region || "",
-            s3AccessKey: s.storageConfig?.accessKeyId || "",
-            s3SecretKey: s.storageConfig?.secretAccessKey || "",
-          })
-        }
       }
 
       const enterprise = await checkEnterpriseModeAction(tenantSlug)
@@ -201,38 +178,6 @@ export default function TenantSubscriptionsPage() {
       toast({ variant: 'destructive', title: "Terjadi Kesalahan", description: "Gagal membatalkan langganan" })
     } finally {
       setCancellingSubscription(false)
-    }
-  }
-
-  const handleSaveInfra = async () => {
-    if (!tenantSlug) return
-    setSavingInfra(true)
-    try {
-      const storageConfig = {
-        bucket: infra.s3Bucket,
-        region: infra.s3Region,
-        accessKeyId: infra.s3AccessKey,
-        secretAccessKey: infra.s3SecretKey
-      }
-      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          databaseUrl: infra.databaseUrl,
-          storageConfig: storageConfig
-        })
-      })
-      if (res.ok) {
-        toast({ title: "Infrastruktur Tersimpan", description: "Pengaturan infrastruktur workspace berhasil diperbarui." })
-        router.refresh()
-      } else {
-        const error = await res.json()
-        toast({ variant: "destructive", title: "Gagal Menyimpan", description: error.error || "Gagal menyimpan pengaturan" })
-      }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan pengaturan infrastruktur." })
-    } finally {
-      setSavingInfra(false)
     }
   }
 
@@ -882,94 +827,34 @@ export default function TenantSubscriptionsPage() {
               </CardContent>
             </Card>
 
-          {/* Infrastructure Overrides */}
+          {/* Infrastructure Overrides — moved to /infrastructure?tab=database
+              (consolidated with that page's existing, working BYODB/BYOS
+              form; this card's own Save button used to call a PUT endpoint
+              that was never actually implemented, so it never saved
+              anything). Just a pointer here now so it stays discoverable
+              from Billing & Plan. */}
           {isEnterpriseMode && (
-            <div className="space-y-4 mt-8">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-base font-bold tracking-tight text-foreground">Infrastruktur Khusus Workspace</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Koneksi database dan bucket S3 khusus workspace ini.
-                  </p>
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden mt-8">
+              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <Database className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Koneksi Database &amp; Storage Mandiri (BYODB/BYOS)</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Hubungkan PostgreSQL atau S3 milik Anda sendiri untuk workspace ini.
+                    </p>
+                  </div>
                 </div>
-                <Button onClick={handleSaveInfra} disabled={savingInfra} className="rounded-xl font-bold text-xs h-9 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">
-                  {savingInfra ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
-                  Simpan Pengaturan
+                <Button asChild variant="outline" className="rounded-xl font-bold text-xs h-9 border-border/80 shrink-0">
+                  <Link href={`/dashboard/${tenantSlug}/infrastructure?tab=database`}>
+                    <Cloud className="h-3.5 w-3.5 mr-1.5" />
+                    Atur di Hosting &amp; Infrastruktur
+                  </Link>
                 </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden">
-                  <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-xs font-bold flex items-center gap-2 text-foreground">
-                      <Database className="h-4 w-4 text-primary" />
-                      Override Database PostgreSQL
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-muted-foreground">PostgreSQL Connection URL</label>
-                      <input 
-                        className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
-                        value={infra.databaseUrl} 
-                        onChange={(e) => setInfra({ ...infra, databaseUrl: e.target.value })}
-                        placeholder="postgresql://user:password@host:port/database"
-                        type="password"
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden">
-                  <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-xs font-bold flex items-center gap-2 text-foreground">
-                      <Cloud className="h-4 w-4 text-primary" />
-                      Override S3 Storage
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Nama Bucket</label>
-                        <input 
-                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
-                          value={infra.s3Bucket} 
-                          onChange={(e) => setInfra({ ...infra, s3Bucket: e.target.value })}
-                          placeholder="tenant-bucket"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Region</label>
-                        <input 
-                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
-                          value={infra.s3Region} 
-                          onChange={(e) => setInfra({ ...infra, s3Region: e.target.value })}
-                          placeholder="auto"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Access Key</label>
-                        <input 
-                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
-                          value={infra.s3AccessKey} 
-                          onChange={(e) => setInfra({ ...infra, s3AccessKey: e.target.value })}
-                          type="password"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground">Secret Key</label>
-                        <input 
-                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
-                          value={infra.s3SecretKey} 
-                          onChange={(e) => setInfra({ ...infra, s3SecretKey: e.target.value })}
-                          type="password"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
             </>
           )}
