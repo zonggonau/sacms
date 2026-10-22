@@ -171,12 +171,17 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
 
     // 2. Create tenant and initial subscription in transaction
     const tenant = await db.$transaction(async (tx) => {
+      // "free" — not "starter", which isn't a real WorkspacePlan slug (the
+      // admin UI always sends an explicit plan today, so this default is a
+      // safety net for any future/direct caller, not an active bug path).
+      const defaultedPlan = plan || "free"
+
       const newTenant = await tx.tenant.create({
         data: {
           name,
           slug,
           description: description || null,
-          plan: plan || "starter",
+          plan: defaultedPlan,
           status: status || "active",
           databaseUrl: databaseUrl || null,
         },
@@ -190,7 +195,7 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
         data: {
           userId: session.user.id, // Assigned to the admin who created it
           tenantId: newTenant.id,
-          plan: plan || "starter",
+          plan: defaultedPlan,
           status: "trialing",
           currentPeriodStart: new Date(),
           currentPeriodEnd: trialEndDate,

@@ -395,7 +395,7 @@ export default function TenantSubscriptionsPage() {
                     <Button 
                       variant="default" 
                       className="h-10 px-6 font-bold text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
-                      onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${subscription?.plan || 'starter'}&interval=year`)}
+                      onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${subscription?.plan || 'pro'}&interval=year`)}
                     >
                       Bayar Sekarang
                     </Button>

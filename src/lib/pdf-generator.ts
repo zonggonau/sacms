@@ -62,82 +62,85 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   const statusColor = isPaid ? C.green : isPending ? C.amber : C.red
 
+  // Black/grayscale only throughout — this document is meant to be printed
+  // on a home/office printer without burning color toner, so every
+  // structural element (header, table, totals, footer) is a black rule or
+  // border on white, never a filled colour band. The ONE deliberate spot of
+  // colour is the payment status (word + total amount) — small text, not a
+  // fill, cheap on any printer, and it's the one piece of information a
+  // glance at colour genuinely helps with.
+  const BLACK: [number, number, number] = [0, 0, 0]
+
   /* ═══════════════════════════════════════════════════════════════════════
-     1. HEADER BAND
+     1. HEADER — plain, no filled band
   ═══════════════════════════════════════════════════════════════════════ */
-  rgb(doc, C.navy, 'fill')
-  doc.rect(0, 0, W, 52, 'F')
-
-  // Brand
-  rgb(doc, C.white, 'text')
+  rgb(doc, BLACK, 'text')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(22)
-  doc.text('SaCMS', ML, 21)
+  doc.setFontSize(20)
+  doc.text('SaCMS', ML, 20)
 
-  // Tagline
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
-  doc.setTextColor(180, 190, 210)
-  doc.text('Enterprise Headless CMS  ·  billing@sacms.cloud  ·  sacms.cloud', ML, 29)
+  rgb(doc, C.slate, 'text')
+  doc.text('Enterprise Headless CMS  ·  billing@sacms.cloud  ·  sacms.cloud', ML, 27)
 
-  // "INVOICE" — right side, with proper right inset
-  rgb(doc, C.white, 'text')
+  rgb(doc, BLACK, 'text')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(28)
-  doc.text('INVOICE', TR, 24, { align: 'right' })
+  doc.setFontSize(24)
+  doc.text('INVOICE', TR, 20, { align: 'right' })
 
-  // Invoice number
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.setTextColor(180, 190, 210)
-  doc.text(`# ${data.orderId}`, TR, 33, { align: 'right' })
+  rgb(doc, C.slate, 'text')
+  doc.text(`No. ${data.orderId}`, TR, 27, { align: 'right' })
+
+  // Double rule under the header — classic formal-document separator,
+  // zero ink cost beyond two thin black lines.
+  rgb(doc, BLACK, 'draw')
+  doc.setLineWidth(0.6)
+  doc.line(ML, 33, MR, 33)
+  doc.setLineWidth(0.2)
+  doc.line(ML, 35.2, MR, 35.2)
 
   /* ═══════════════════════════════════════════════════════════════════════
-     2. ACCENT LINE
+     2. META BOXES — bordered only, no fill
   ═══════════════════════════════════════════════════════════════════════ */
-  rgb(doc, C.blue, 'fill')
-  doc.rect(0, 52, W, 3, 'F')
-
-  /* ═══════════════════════════════════════════════════════════════════════
-     3. META CARDS
-  ═══════════════════════════════════════════════════════════════════════ */
-  const cardY  = 64
-  const cardH  = 40
+  const cardY  = 45
+  const cardH  = 36
   const gap    = 6
   const totalW = MR - ML               // 180mm
   const card1W = totalW * 0.58         // ~104mm
   const card2W = totalW - card1W - gap // ~70mm
 
-  rgb(doc, C.light, 'fill')
   rgb(doc, C.border, 'draw')
   doc.setLineWidth(0.3)
-  doc.roundedRect(ML,              cardY, card1W,  cardH, 2, 2, 'FD')
-  doc.roundedRect(ML + card1W + gap, cardY, card2W, cardH, 2, 2, 'FD')
+  doc.rect(ML,                cardY, card1W, cardH)
+  doc.rect(ML + card1W + gap, cardY, card2W, cardH)
 
-  // Card 1 — Billed To
+  // Box 1 — Billed To
   const c1xi = ML + 6
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.setTextColor(120, 140, 165)
+  rgb(doc, C.slate, 'text')
   doc.text('TAGIHAN KEPADA', c1xi, cardY + 9)
 
-  rgb(doc, C.dark, 'text')
+  rgb(doc, BLACK, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.text(data.customerName || 'Customer', c1xi, cardY + 18)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.setTextColor(110, 130, 155)
+  rgb(doc, C.slate, 'text')
   doc.text(data.customerEmail || '-', c1xi, cardY + 26)
 
-  // Card 2 — Invoice Details
-  const c2xi  = ML + card1W + gap + 6         // text-left inside card 2
-  const c2xr  = ML + card1W + gap + card2W - 6 // text-right inside card 2 (6mm inset)
+  // Box 2 — Invoice Details
+  const c2xi  = ML + card1W + gap + 6         // text-left inside box 2
+  const c2xr  = ML + card1W + gap + card2W - 6 // text-right inside box 2 (6mm inset)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
-  doc.setTextColor(120, 140, 165)
+  rgb(doc, C.slate, 'text')
   doc.text('DETAIL INVOICE', c2xi, cardY + 9)
 
   const metaRows: [string, string, boolean][] = [
@@ -146,26 +149,22 @@ export function generateInvoicePDF(data: InvoiceData) {
     ['Status',     statusLabel, true ],
   ]
   metaRows.forEach(([label, val, isStatus], i) => {
-    const ry = cardY + 18 + i * 8
+    const ry = cardY + 16 + i * 7.5
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8.5)
-    doc.setTextColor(120, 140, 165)
+    rgb(doc, C.slate, 'text')
     doc.text(label, c2xi, ry)
 
-    if (isStatus) {
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
-      doc.setTextColor(statusColor[0], statusColor[1], statusColor[2])
-    } else {
-      rgb(doc, C.dark, 'text')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
-    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    // Status is the one line allowed a colour — every other value stays
+    // plain black, same as the rest of the document.
+    rgb(doc, isStatus ? statusColor : BLACK, 'text')
     doc.text(val, c2xr, ry, { align: 'right' })
   })
 
   /* ═══════════════════════════════════════════════════════════════════════
-     4. ITEMS TABLE
+     3. ITEMS TABLE — ruled lines, no filled header band
   ═══════════════════════════════════════════════════════════════════════ */
   const tableY = cardY + cardH + 10
   const itemDesc = data.description || (data.planName ? `SaCMS — Paket ${data.planName}` : 'SaCMS — Pembayaran / Upgrade Layanan Cloud & AI')
@@ -184,16 +183,18 @@ export function generateInvoicePDF(data: InvoiceData) {
     ],
     theme: 'plain',
     headStyles: {
-      fillColor: C.navy,
-      textColor: [255, 255, 255],
+      fillColor: [255, 255, 255],
+      textColor: BLACK,
       fontStyle: 'bold',
       fontSize: 9,
       cellPadding: { top: 5, bottom: 5, left: 4, right: 4 },
       overflow: 'visible',
+      lineColor: BLACK,
+      lineWidth: { bottom: 0.5 },
     },
     bodyStyles: {
       fontSize: 9,
-      textColor: C.dark,
+      textColor: BLACK,
       cellPadding: { top: 6, bottom: 6, left: 4, right: 4 },
       lineColor: C.border,
       lineWidth: 0.2,
@@ -206,12 +207,11 @@ export function generateInvoicePDF(data: InvoiceData) {
       3: { cellWidth: 36, halign: 'right' },
       4: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
     },
-    alternateRowStyles: { fillColor: C.light },
     margin: { left: ML, right: W - MR },
   })
 
   /* ═══════════════════════════════════════════════════════════════════════
-     5. TOTALS BLOCK
+     4. TOTALS BLOCK — bordered box, no filled stripe
   ═══════════════════════════════════════════════════════════════════════ */
   const finalY = (doc as any).lastAutoTable?.finalY ?? tableY + 30
   const totBlockW = 85
@@ -225,7 +225,7 @@ export function generateInvoicePDF(data: InvoiceData) {
     doc.setFontSize(9.5)
     rgb(doc, C.slate, 'text')
     doc.text(label, totLX, ty)
-    rgb(doc, C.dark, 'text')
+    rgb(doc, BLACK, 'text')
     doc.text(value, totVX, ty, { align: 'right' })
     ty += 7
   }
@@ -233,21 +233,25 @@ export function generateInvoicePDF(data: InvoiceData) {
   drawSummaryRow('Subtotal (DPP)', fmt(subtotal))
   drawSummaryRow('PPN 11%',        fmt(ppn))
 
-  // Grand total stripe
-  rgb(doc, isPaid ? C.blue : isPending ? C.amber : C.red, 'fill')
-  doc.rect(totLX - 5, ty, totBlockW + 5, 13, 'F')
+  // Grand total — bordered box instead of a filled colour stripe; the
+  // amount itself carries the one status colour (matches the badge above),
+  // the label stays plain black.
+  rgb(doc, BLACK, 'draw')
+  doc.setLineWidth(0.5)
+  doc.rect(totLX - 5, ty, totBlockW + 5, 13)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10.5)
-  rgb(doc, C.white, 'text')
+  rgb(doc, BLACK, 'text')
   doc.text('TOTAL PEMBAYARAN', totLX, ty + 8)
+  rgb(doc, statusColor, 'text')
   doc.text(fmt(total), totVX, ty + 8, { align: 'right' })
   ty += 19
 
   /* ═══════════════════════════════════════════════════════════════════════
-     6. NOTES — left column, sits beside totals
+     5. NOTES — left column, sits beside totals
   ═══════════════════════════════════════════════════════════════════════ */
   const noteY = finalY + 12
-  rgb(doc, C.dark, 'text')
+  rgb(doc, BLACK, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.text('Catatan:', ML, noteY)
@@ -263,47 +267,43 @@ export function generateInvoicePDF(data: InvoiceData) {
   notes.forEach((n, i) => doc.text(n, ML, noteY + 8 + i * 7))
 
   /* ═══════════════════════════════════════════════════════════════════════
-     7. WATERMARK (PAID / DRAFT / CANCEL)
+     6. WATERMARK (PAID / DRAFT / CANCEL) — faint grey, not colour
   ═══════════════════════════════════════════════════════════════════════ */
   doc.saveGraphicsState()
-  doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+  doc.setGState(new (doc as any).GState({ opacity: 0.07 }))
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(60)
+  doc.setTextColor(60, 60, 60)
   if (isPaid) {
-    doc.setTextColor(21, 128, 61)
     doc.text('LUNAS', W / 2, H / 2, { align: 'center', angle: -35 })
   } else if (isCancelled) {
-    doc.setTextColor(185, 28, 28)
     doc.text('DIBATALKAN', W / 2, H / 2, { align: 'center', angle: -35 })
   } else {
-    doc.setTextColor(180, 120, 10)
     doc.text('DRAFT / MENUNGGU', W / 2, H / 2, { align: 'center', angle: -35 })
   }
   doc.restoreGraphicsState()
 
   /* ═══════════════════════════════════════════════════════════════════════
-     8. FOOTER BAR
+     7. FOOTER — plain, thin top rule instead of a filled bar
   ═══════════════════════════════════════════════════════════════════════ */
-  rgb(doc, C.navy, 'fill')
-  doc.rect(0, H - 22, W, 22, 'F')
+  rgb(doc, BLACK, 'draw')
+  doc.setLineWidth(0.4)
+  doc.line(ML, H - 20, MR, H - 20)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
-  doc.setTextColor(160, 175, 200)
+  rgb(doc, C.slate, 'text')
   doc.text(
     'Dokumen ini dibuat secara otomatis oleh sistem SaCMS. Tidak memerlukan tanda tangan.',
     W / 2, H - 13, { align: 'center' }
   )
-  doc.setTextColor(120, 135, 165)
-  doc.text(`© ${new Date().getFullYear()} SaCMS, Inc. — www.sacms.com`, W / 2, H - 6, { align: 'center' })
+  doc.text(`© ${new Date().getFullYear()} SaCMS, Inc. — www.sacms.com`, W / 2, H - 7, { align: 'center' })
 
-  doc.setTextColor(180, 190, 210)
   doc.setFontSize(7.5)
-  // Footer page number: inset 5mm from right
-  doc.text('Halaman 1 / 1', TR, H - 6, { align: 'right' })
+  doc.text('Halaman 1 / 1', TR, H - 7, { align: 'right' })
 
   /* ═══════════════════════════════════════════════════════════════════════
-     9. SAVE
+     8. SAVE
   ═══════════════════════════════════════════════════════════════════════ */
   doc.save(`Invoice_${data.orderId}.pdf`)
 }

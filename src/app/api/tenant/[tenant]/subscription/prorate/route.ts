@@ -37,7 +37,16 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
 /** POST /api/tenant/[tenant]/subscription/prorate — prorated cost for an upgrade. */
 export const POST = withStaffAuth(async (request, _context, { access }) => {
   const { newPlan } = await request.json()
-  if (!newPlan || !["free", "starter", "pro", "enterprise"].includes(newPlan)) {
+  // Validated against the real, admin-editable WorkspacePlan table (see
+  // src/lib/pricing.ts) instead of a hardcoded slug list — the previous
+  // list ("free"/"starter"/"pro"/"enterprise") was stale account-plan
+  // naming bleeding into workspace-plan validation: it rejected the real
+  // "business" workspace plan outright, silently dropping proration credit
+  // for anyone upgrading to it (checkout ignores a failed prorate call and
+  // proceeds at full price instead of blocking).
+  const { getWorkspacePlans } = await import("@/lib/pricing")
+  const validSlugs = (await getWorkspacePlans({ includeInactive: true })).map((p) => p.slug)
+  if (!newPlan || !validSlugs.includes(newPlan)) {
     return apiError("validation", { message: "Invalid plan" })
   }
 
