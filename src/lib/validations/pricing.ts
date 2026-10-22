@@ -81,3 +81,25 @@ export const addonSchema = z.object({
   order: z.coerce.number().int().optional(),
 })
 export type AddonInput = z.infer<typeof addonSchema>
+
+export const vpsOfferingSchema = z.object({
+  slug: pricingSlugSchema,
+  name: z.string().min(1).max(200),
+  description: z.string().max(2000).optional().nullable(),
+  // Biznet Gio NEO Lite product_id + OS image vmid — admin looks these up
+  // from GET /neolites/products / /neolites/products/{id}/oss themselves;
+  // not validated against the live API here (keeps this form usable
+  // offline/without a key, same as every other admin pricing form).
+  biznetProductId: z.string().min(1).max(50),
+  biznetOsImageId: z.string().min(1).max(50),
+  osLabel: z.string().min(1).max(100),
+  cpuCores: z.coerce.number().int().min(1),
+  memoryMb: z.coerce.number().int().min(1),
+  diskGb: z.coerce.number().int().min(1),
+  priceMonthlyIdr: z.coerce.number().min(0),
+  priceAnnualIdr: z.coerce.number().min(0).optional().nullable(),
+  features: featuresSchema,
+  isActive: z.boolean().optional(),
+  order: z.coerce.number().int().optional(),
+})
+export type VpsOfferingInput = z.infer<typeof vpsOfferingSchema>

@@ -35,7 +35,8 @@ export async function POST(request: NextRequest) {
     const { planId, tenantId, interval, type, renewsAddonId } = result.data
 
     const isAiCreditPack = type === "ai_credits" || planId.startsWith("ai_pack_")
-    const isAccountPlan = !isAiCreditPack && (type === "account" || !tenantId)
+    const isVpsOffering = type === "vps"
+    const isAccountPlan = !isAiCreditPack && !isVpsOffering && (type === "account" || !tenantId)
 
     let amount = 0
     let planName = planId
@@ -83,6 +84,47 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid AI credit pack" }, { status: 400 })
       }
       isAddon = true
+    } else if (isVpsOffering) {
+      // One-time purchase, never a recurring plan change — billed/fulfilled
+      // the same way an addon is (see isAddon usage below), just with its
+      // own VPS- orderId prefix and its own fulfillment step
+      // (fulfillVpsOrder in payment-success.ts) instead of
+      // fulfillAddonOrder. Can be bought either for a specific workspace
+      // (tenantId present — same ownership check a tenant-scoped addon
+      // purchase already gets) or for the account as a whole (no tenantId,
+      // same as an AI credit pack — just needs to be authenticated).
+      const { getVpsOffering } = await import("@/lib/pricing")
+      const offering = await getVpsOffering(planId)
+      if (!offering) {
+        return NextResponse.json({ error: "Invalid VPS offering" }, { status: 400 })
+      }
+      const yearlyPrice = offering.priceAnnualIdr ?? offering.priceMonthlyIdr * 10
+      amount = interval === "year" ? yearlyPrice : offering.priceMonthlyIdr
+      planName = offering.name
+      isAddon = true
+
+      if (tenantId) {
+        const tenant = await db.tenant.findFirst({
+          where: { OR: [{ id: tenantId }, { slug: tenantId }] },
+          include: { members: true },
+        })
+        if (!tenant) {
+          return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+        }
+        dbTenant = tenant
+
+        const membership = tenant.members.find((m) => m.userId === session.user.id)
+        const isSuperAdmin = session.user.role === "super_admin"
+        if (!membership && !isSuperAdmin) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+        if (membership && membership.role !== "owner" && membership.role !== "admin") {
+          return NextResponse.json(
+            { error: "Only owner or admin can manage subscription" },
+            { status: 403 }
+          )
+        }
+      }
     } else if (isAccountPlan) {
       // Logic for account plan pricing
       const dynamicPrices = await getDynamicAccountPrices()
@@ -230,13 +272,19 @@ export async function POST(request: NextRequest) {
     // by orderId are a real access boundary elsewhere (status route).
     const { randomBytes } = await import("crypto")
     const randomSuffix = randomBytes(4).toString("hex");
-    const prefix = isAiCreditPack ? 'AIC' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB'));
+    const prefix = isAiCreditPack ? 'AIC' : (isVpsOffering ? 'VPS' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB')));
     const orderId = `${prefix}-${formattedDate}-${randomSuffix}`;
+
+    // An account-scoped VPS purchase (no tenantId) behaves like an AI
+    // credit pack here — keyed to the user's own tenantless subscription
+    // row, not a specific workspace's. A tenant-scoped VPS purchase
+    // (dbTenant set above) behaves like any other tenant-scoped addon.
+    const isAccountScoped = isAccountPlan || isAiCreditPack || (isVpsOffering && !dbTenant)
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
-      where: isAccountPlan || isAiCreditPack
-        ? { userId: session.user.id, tenantId: { equals: null } as any } 
+      where: isAccountScoped
+        ? { userId: session.user.id, tenantId: { equals: null } as any }
         : { tenantId: dbTenant.id },
     })
 
@@ -280,7 +328,7 @@ export async function POST(request: NextRequest) {
       subscription = await db.subscription.create({
         data: {
           userId: session.user.id,
-          tenantId: (isAccountPlan || isAiCreditPack) ? null : dbTenant.id,
+          tenantId: isAccountScoped ? null : dbTenant.id,
           // Always start at the unpaid baseline — never the plan being
           // checked out. Writing the intended plan/period here (the old
           // behavior) meant an abandoned, never-paid checkout permanently
@@ -308,15 +356,17 @@ export async function POST(request: NextRequest) {
     // column, so the addon/non-addon shapes just differ in which keys they carry.
     const rawResponse = isAiCreditPack
       ? { isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" }
-      : isAddon
-        ? {
-            isAddon,
-            addonId: planId,
-            ...(addonQuotaType ? { quotaType: addonQuotaType } : {}),
-            ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
-            ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
-          }
-        : { intendedPlan: planId, intendedInterval: interval }
+      : isVpsOffering
+        ? { isAddon: true, isVps: true, addonId: planId, scope: dbTenant ? "tenant" : "account", interval }
+        : isAddon
+          ? {
+              isAddon,
+              addonId: planId,
+              ...(addonQuotaType ? { quotaType: addonQuotaType } : {}),
+              ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
+              ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
+            }
+          : { intendedPlan: planId, intendedInterval: interval }
 
     // Create payment transaction record
     const transaction = await db.paymentTransaction.create({

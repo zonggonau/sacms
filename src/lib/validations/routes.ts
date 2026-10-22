@@ -48,7 +48,7 @@ export const updateContentEntrySchema = z.object({
 export const checkoutSchema = z.object({
   planId: z.string().min(1),
   tenantId: z.string().min(1).optional(),
-  type: z.enum(["workspace", "account", "ai_credits"]).optional().default("workspace"),
+  type: z.enum(["workspace", "account", "ai_credits", "vps"]).optional().default("workspace"),
   interval: z.enum(["month", "year"]).optional().default("month"),
   /** Storage add-on being renewed: the new month starts when that one expires. */
   renewsAddonId: z.string().min(1).max(64).optional(),

@@ -12,7 +12,7 @@ const BUILTIN_TOPUP_NAMES: Record<string, string> = {
 }
 
 export interface PurchaseLabelInput {
-  /** e.g. "ACC-20261022-ab12", "SUB-...", "ADD-...", "AIC-..." — see checkout/route.ts. */
+  /** e.g. "ACC-20261022-ab12", "SUB-...", "ADD-...", "AIC-...", "VPS-..." — see checkout/route.ts. */
   orderId: string
   rawResponse: unknown
   /** Subscription.plan — used only when rawResponse has nothing better (a safety net for data predating this metadata). */
@@ -42,7 +42,7 @@ export async function resolvePurchaseLabel({
   fallbackPlanSlug,
 }: PurchaseLabelInput): Promise<PurchaseLabel> {
   const raw = (rawResponse as any) || {}
-  const { getAccountPlan, getWorkspacePlan, getAddon, getAiCreditPack } = await import("@/lib/pricing")
+  const { getAccountPlan, getWorkspacePlan, getAddon, getAiCreditPack, getVpsOffering } = await import("@/lib/pricing")
   const isAccountOrder = orderId.startsWith("ACC-")
 
   if (raw.type === "ai_credits" || orderId.startsWith("AIC-")) {
@@ -51,6 +51,14 @@ export async function resolvePurchaseLabel({
     return {
       purchasedId: addonId || fallbackPlanSlug,
       purchasedLabel: pack?.name || (raw.credits ? `${raw.credits} AI Credits Pack` : "AI Credits Pack"),
+    }
+  }
+
+  if (raw.isVps && raw.addonId) {
+    const offering = await getVpsOffering(raw.addonId)
+    return {
+      purchasedId: raw.addonId,
+      purchasedLabel: offering?.name || `VPS (${raw.addonId})`,
     }
   }
 

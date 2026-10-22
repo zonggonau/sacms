@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAccountPlans, getWorkspacePlans, getAddons, getAiCreditPacks } from "@/lib/pricing"
+import { getAccountPlans, getWorkspacePlans, getAddons, getAiCreditPacks, getVpsOfferings } from "@/lib/pricing"
 
 export const dynamic = "force-dynamic"
 
@@ -330,7 +330,30 @@ export async function GET(
       amountUnits: pack.credits
     }))
 
-    const plans = [...workspacePlans, ...addonPlans, ...aiCreditPlans]
+    // ─── LOAD VPS OFFERINGS ───
+    // Mapped into the same AddonCard-shaped entry every other purchasable
+    // item here uses (id/name/price/features/isTopup/icon/buttonText) so
+    // the subscriptions page's Storage tab can render it with zero new
+    // component code — see src/lib/biznetgio.ts / vps-fulfillment.ts for
+    // what actually happens once one of these is bought.
+    const vpsOfferings = await getVpsOfferings()
+    const vpsPlans = vpsOfferings.map(o => ({
+      id: o.slug,
+      name: o.name,
+      type: "vps",
+      price: o.priceMonthlyIdr,
+      yearlyPrice: o.priceAnnualIdr ?? o.priceMonthlyIdr * 10,
+      description: o.description || `${o.cpuCores} vCPU · ${(o.memoryMb / 1024).toFixed(o.memoryMb % 1024 === 0 ? 0 : 1)} GB RAM · ${o.diskGb} GB Disk · ${o.osLabel}`,
+      features: Array.isArray(o.features) && o.features.length > 0
+        ? o.features
+        : [`${o.cpuCores} vCPU`, `${(o.memoryMb / 1024).toFixed(o.memoryMb % 1024 === 0 ? 0 : 1)} GB RAM`, `${o.diskGb} GB Disk`, o.osLabel],
+      popular: false,
+      buttonText: "Sewa VPS Ini",
+      icon: "Server",
+      isTopup: true,
+    }))
+
+    const plans = [...workspacePlans, ...addonPlans, ...aiCreditPlans, ...vpsPlans]
 
     return NextResponse.json({ plans, aiCreditPacks: aiCreditPlans })
   } catch (error) {

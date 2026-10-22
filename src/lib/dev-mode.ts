@@ -30,6 +30,7 @@ export type MockableService =
   | "vercel"
   | "v0"
   | "r2"
+  | "biznetgio"
 
 /** True outside of `production` — covers local dev (`next dev`) and the
  *  automated test suite (Vitest sets `NODE_ENV=test`) alike. */

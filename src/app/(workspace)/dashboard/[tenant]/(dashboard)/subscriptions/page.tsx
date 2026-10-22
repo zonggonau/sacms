@@ -14,7 +14,7 @@ import {
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
   HardDrive, Users, Database, Package, Shield, Bot, Cloud, Sparkles,
-  Layers, Download
+  Layers, Download, Server
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
+import { VpsStatusList } from "@/components/dashboard/vps-status-list"
 
 interface Subscription {
   id: string
@@ -283,6 +284,7 @@ export default function TenantSubscriptionsPage() {
   const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false && !STORAGE_QUOTA_TYPES.includes(p.quotaType))
   const storagePlans = plans.filter(p => p.type === "addons" && p.listed !== false && STORAGE_QUOTA_TYPES.includes(p.quotaType))
   const aiCreditPlans = plans.filter(p => p.type === "ai_plan")
+  const vpsPlans = plans.filter(p => p.type === "vps")
   const storageUsage = usage.find((u) => u.unit === "bytes")
 
   return (
@@ -699,6 +701,24 @@ export default function TenantSubscriptionsPage() {
                   ))}
                 </div>
               )}
+
+              {/* VPS — Biznet Gio NEO Lite, provisioned automatically after payment */}
+              {vpsPlans.length > 0 && (
+                <div className="space-y-3 pt-4">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
+                      <Server className="h-4 w-4 text-primary" /> Virtual Private Server (VPS)
+                    </h3>
+                    <p className="text-xs text-muted-foreground">Sewa VPS khusus workspace ini — disiapkan otomatis setelah pembayaran berhasil.</p>
+                  </div>
+                  <VpsStatusList scope="tenant" tenantSlug={tenantSlug} />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {vpsPlans.map((addon) => (
+                      <AddonCard key={addon.id} addon={addon} tenantSlug={tenantSlug} activeAddons={activeAddons} router={router} formatPrice={formatPrice} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -888,7 +908,8 @@ function AddonCard({ addon, tenantSlug, activeAddons, router, formatPrice }: {
                 {addon.icon === 'Bot' && <Bot className="h-4 w-4" />}
                 {addon.icon === 'HardDrive' && <HardDrive className="h-4 w-4" />}
                 {addon.icon === 'FileText' && <FileText className="h-4 w-4" />}
-                {!['Shield', 'ShieldCheck', 'Sparkles', 'Zap', 'Database', 'Bot', 'HardDrive', 'FileText'].includes(addon.icon) && (
+                {addon.icon === 'Server' && <Server className="h-4 w-4" />}
+                {!['Shield', 'ShieldCheck', 'Sparkles', 'Zap', 'Database', 'Bot', 'HardDrive', 'FileText', 'Server'].includes(addon.icon) && (
                   addon.name.toLowerCase().includes('backup') ? <History className="h-4 w-4" /> : <Package className="h-4 w-4" />
                 )}
               </div>
