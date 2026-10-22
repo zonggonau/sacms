@@ -1,6 +1,5 @@
 "use server"
 
-import { getDynamicAccountPrices } from "@/lib/midtrans"
 import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -33,15 +32,21 @@ export async function getAccountPricingAction(planId: string) {
       }
     }
 
-    const dynamicPrices = await getDynamicAccountPrices()
-    const prices = dynamicPrices[planId]
-    
-    if (prices) {
+    // Read the full AccountPlan row directly instead of just its price —
+    // the dynamicPrices map only carries monthly/yearly numbers, which
+    // used to leave this checkout page showing a capitalized slug ("Pro")
+    // instead of the plan's real name, and no description/features at all.
+    const { getAccountPlan } = await import("@/lib/pricing")
+    const plan = await getAccountPlan(planId)
+    if (plan) {
       return {
-        id: planId,
-        name: planId.charAt(0).toUpperCase() + planId.slice(1),
-        priceAmount: prices.monthly,
-        yearlyPrice: prices.yearly
+        id: plan.slug,
+        name: plan.name,
+        description: plan.description || "",
+        priceAmount: plan.price,
+        yearlyPrice: plan.yearlyPrice ?? plan.price * 10,
+        workspaces: plan.maxWorkspaces,
+        features: Array.isArray(plan.features) ? plan.features : [],
       }
     }
     return null
@@ -114,7 +119,27 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
       db.paymentTransaction.count({ where }),
     ])
 
-    return { transactions, total, page, totalPages: Math.ceil(total / limit) }
+    // Each transaction is enriched with the real purchased item (addon id,
+    // or the plan slug being bought) and its display name, resolved from
+    // rawResponse rather than Subscription.plan — see resolvePurchaseLabel
+    // for why: an addon/top-up never touches that field, and a plan's
+    // CURRENT value can drift from what a given historical order actually
+    // bought. Without this, every transaction on one subscription row
+    // showed that subscription's current plan, and "Bayar Sekarang" on a
+    // pending addon had no real id to resume checkout at.
+    const { resolvePurchaseLabel } = await import("@/lib/billing/purchase-label")
+    const enrichedTransactions = await Promise.all(
+      transactions.map(async (t) => {
+        const { purchasedId, purchasedLabel } = await resolvePurchaseLabel({
+          orderId: t.orderId,
+          rawResponse: t.rawResponse,
+          fallbackPlanSlug: t.subscription?.plan || "unknown",
+        })
+        return { ...t, purchasedId, purchasedLabel }
+      })
+    )
+
+    return { transactions: enrichedTransactions, total, page, totalPages: Math.ceil(total / limit) }
   } catch (error) {
     console.error("Error fetching transactions:", error)
     return { transactions: [], total: 0, page, totalPages: 1 }

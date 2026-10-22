@@ -51,6 +51,8 @@ export interface TransactionInvoiceItem {
     } | null
   } | null
   rawResponse?: any
+  /** Resolved server-side from rawResponse (see resolvePurchaseLabel) — the real item this order was for. */
+  purchasedLabel?: string
 }
 
 interface InvoiceDetailDialogProps {
@@ -94,19 +96,24 @@ export function InvoiceDetailDialog({
     minute: "2-digit"
   })
 
-  // Detect plan or service item name
-  let serviceName = "Langganan Paket SaCMS Cloud"
-  if (invoice.orderId.startsWith("ACC-")) {
-    const rawPlan = invoice.subscription?.plan || "Starter"
-    serviceName = `Paket Akun SaaS (${rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)}) — Langganan Tahunan`
-  } else if (invoice.orderId.startsWith("SUB-")) {
-    const wsName = invoice.subscription?.tenant?.name || "Workspace"
-    const rawPlan = invoice.subscription?.plan || "Pro"
-    serviceName = `Workspace ${wsName} (${rawPlan.toUpperCase()}) — Langganan Tahunan`
-  } else if (invoice.orderId.startsWith("AI-")) {
-    serviceName = "Paket Booster AI Frontend & Schema Builder Credits"
-  } else if (invoice.rawResponse?.type === "ai_credits") {
-    serviceName = `${invoice.rawResponse.credits || "Booster"} AI Frontend Credits Pack`
+  // Detect plan or service item name — purchasedLabel is resolved
+  // server-side from the transaction's rawResponse (see
+  // resolvePurchaseLabel), not from subscription.plan, so an addon/storage
+  // purchase shows its real name instead of a generic subscription label,
+  // and so this doesn't drift from what a given historical order actually
+  // bought after a later plan change.
+  let serviceName = invoice.purchasedLabel ? `${invoice.purchasedLabel} — Langganan Tahunan` : "Langganan Paket SaCMS Cloud"
+  if (!invoice.purchasedLabel) {
+    if (invoice.orderId.startsWith("ACC-")) {
+      const rawPlan = invoice.subscription?.plan || "Starter"
+      serviceName = `Paket Akun SaaS (${rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)}) — Langganan Tahunan`
+    } else if (invoice.orderId.startsWith("SUB-")) {
+      const wsName = invoice.subscription?.tenant?.name || "Workspace"
+      const rawPlan = invoice.subscription?.plan || "Pro"
+      serviceName = `Workspace ${wsName} (${rawPlan.toUpperCase()}) — Langganan Tahunan`
+    } else if (invoice.rawResponse?.type === "ai_credits") {
+      serviceName = `${invoice.rawResponse.credits || "Booster"} AI Frontend Credits Pack`
+    }
   }
 
   const handleCopyOrderId = () => {

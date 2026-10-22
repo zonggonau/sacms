@@ -126,7 +126,7 @@ export default function BillingClient({
       if (debouncedHistorySearch.trim()) {
         const q = debouncedHistorySearch.toLowerCase()
         const orderId = (t.orderId || "").toLowerCase()
-        const plan = (t.subscription?.plan || "").toLowerCase()
+        const plan = (t.purchasedLabel || t.subscription?.plan || "").toLowerCase()
         const tenantName = (t.subscription?.tenant?.name || "").toLowerCase()
         return orderId.includes(q) || plan.includes(q) || tenantName.includes(q)
       }
@@ -136,14 +136,20 @@ export default function BillingClient({
   }, [transactions, historyStatusFilter, debouncedHistorySearch])
 
   const handlePayNow = (tx: any) => {
+    // `purchasedId` (resolved server-side from rawResponse — see
+    // resolvePurchaseLabel) is the real item this pending order was for: an
+    // addon id, or the plan slug being bought. Using subscription.plan here
+    // instead used to resume ACC-/SUB- orders at whatever plan the
+    // subscription CURRENTLY happens to be on (wrong after a later plan
+    // change), and had no equivalent at all for ADD- (addon) orders — those
+    // fell to the "unrecognized" error below no matter what.
+    const purchasedId = tx.purchasedId || tx.subscription?.plan
     if (tx.orderId.startsWith("ACC-")) {
-      const plan = tx.subscription?.plan || "starter"
-      router.push(`/dashboard/billing/checkout?plan=${plan}&type=account&interval=year`)
-    } else if (tx.orderId.startsWith("SUB-")) {
+      router.push(`/dashboard/billing/checkout?plan=${purchasedId || "starter"}&type=account&interval=year`)
+    } else if (tx.orderId.startsWith("SUB-") || tx.orderId.startsWith("ADD-")) {
       const tenantSlug = tx.subscription?.tenant?.slug || "workspace"
-      const plan = tx.subscription?.plan || "pro"
-      router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan}&interval=year`)
-    } else if (tx.rawResponse?.type === "ai_credits") {
+      router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${purchasedId || "pro"}&interval=year`)
+    } else if (tx.orderId.startsWith("AIC-") || tx.rawResponse?.type === "ai_credits") {
       const tenantSlug = tx.subscription?.tenant?.slug || session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id || "workspace"
       router.push(`/dashboard/${tenantSlug}/subscriptions?tab=ai-plans`)
     } else {
@@ -597,19 +603,19 @@ export default function BillingClient({
                       const isPending = isPendingStatus(tx.status)
                       const isCancelled = isCancelledStatus(tx.status)
 
-                      // Determine title
-                      let itemTitle = "Langganan Paket SaCMS Cloud"
-                      if (tx.orderId.startsWith("ACC-")) {
+                      // Determine title — purchasedLabel is resolved server-side
+                      // from the transaction's rawResponse (see
+                      // resolvePurchaseLabel), not from subscription.plan, so an
+                      // addon/storage purchase shows its real name instead of
+                      // always falling back to a generic subscription label.
+                      let itemTitle = tx.purchasedLabel || "Langganan Paket SaCMS Cloud"
+                      if (tx.orderId.startsWith("ACC-") && !tx.purchasedLabel) {
                         const rawPlan = tx.subscription?.plan || "Starter"
                         itemTitle = `Paket Akun SaaS (${rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)})`
-                      } else if (tx.orderId.startsWith("SUB-")) {
+                      } else if (tx.orderId.startsWith("SUB-") && !tx.purchasedLabel) {
                         const wsName = tx.subscription?.tenant?.name || "Workspace"
                         const rawPlan = tx.subscription?.plan || "Pro"
                         itemTitle = `Workspace ${wsName} (${rawPlan.toUpperCase()})`
-                      } else if (tx.orderId.startsWith("AI-")) {
-                        itemTitle = "Booster AI Frontend Credits"
-                      } else if (tx.rawResponse?.type === "ai_credits") {
-                        itemTitle = `${tx.rawResponse.credits || "Booster"} AI Credits Pack`
                       }
 
                       return (
