@@ -473,9 +473,9 @@ export default function BillingClient({
           <section className="space-y-3">
             <div>
               <h3 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                <Server className="h-4 w-4 text-primary" /> Virtual Private Server (VPS)
+                <Server className="h-4 w-4 text-primary" /> VPS Database & Storage Sendiri
               </h3>
-              <p className="text-xs text-muted-foreground">Infrastruktur bersama untuk seluruh workspace akun Anda — disiapkan otomatis setelah pembayaran berhasil.</p>
+              <p className="text-xs text-muted-foreground">Infrastruktur database & storage bersama untuk seluruh workspace akun Anda — PostgreSQL & MinIO otomatis disiapkan dan dihubungkan setelah pembayaran berhasil.</p>
             </div>
 
             <VpsStatusList scope="account" />

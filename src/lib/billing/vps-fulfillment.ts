@@ -85,12 +85,18 @@ export async function fulfillVpsOrder(params: {
   }
 }
 
-async function openVpsSupportTicket(ownerId: string, tenantId: string | null, orderId: string, reason: string): Promise<void> {
+export async function openVpsSupportTicket(
+  ownerId: string,
+  tenantId: string | null,
+  orderId: string,
+  reason: string,
+  subject = `Provisioning VPS gagal — order ${orderId}`,
+): Promise<void> {
   await db.supportTicket.create({
     data: {
       tenantId,
       userId: ownerId,
-      subject: `Provisioning VPS gagal — order ${orderId}`,
+      subject,
       category: "infrastructure",
       priority: "high",
       messages: {
@@ -98,9 +104,9 @@ async function openVpsSupportTicket(ownerId: string, tenantId: string | null, or
           senderId: ownerId,
           senderRole: "system",
           message:
-            `Pelanggan sudah membayar VPS (order ${orderId}) tapi provisioning via Biznet Gio gagal.\n\n` +
-            `Error: ${reason}\n\n` +
-            `Tugas tim: cek akun Biznet Gio SaCMS (saldo/metode pembayaran, kuota region), coba provisioning ulang secara manual, atau proses refund jika tidak bisa dipenuhi.`,
+            `Pelanggan sudah membayar VPS (order ${orderId}).\n\n` +
+            `Masalah: ${reason}\n\n` +
+            `Tugas tim: cek akun Biznet Gio SaCMS (saldo/metode pembayaran, kuota region), coba lagi secara manual, atau proses refund jika tidak bisa dipenuhi.`,
         },
       },
     },

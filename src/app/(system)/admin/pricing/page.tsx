@@ -444,7 +444,7 @@ export default function AdminPricingPage() {
           {!canEdit && " Role Anda (admin) hanya bisa melihat — perubahan hanya bisa dilakukan super_admin."}
         </p>
         <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 font-medium">
-          ⚠️ Tab VPS: harga di sini adalah harga JUAL ke customer, terpisah dari biaya asli Biznet Gio. Setiap VPS yang terjual langsung menagih metode pembayaran akun Biznet Gio SaCMS sendiri — pastikan harga jual sudah ada margin yang cukup di atas harga produk Biznet Gio yang dipilih.
+          ⚠️ Tab VPS: harga di sini adalah harga JUAL ke customer, terpisah dari biaya asli Biznet Gio. Setiap VPS yang terjual langsung menagih metode pembayaran akun Biznet Gio SaCMS sendiri — pastikan harga jual sudah ada margin yang cukup di atas harga produk Biznet Gio yang dipilih. VPS ini bukan server serbaguna: begitu VM aktif, SaCMS otomatis memasang PostgreSQL &amp; MinIO lewat SSH dan menghubungkannya sebagai database/storage mandiri (BYODB/BYOS) milik akun atau workspace pembeli.
         </p>
       </div>
 

@@ -57,6 +57,8 @@ export async function GET(request: Request) {
       rootUser: i.rootUser,
       rootPassword: i.rootPassword ? MASK : null,
       failureReason: i.failureReason,
+      dbStorageStatus: i.dbStorageStatus,
+      dbStorageError: i.dbStorageError,
       nextDueAt: i.nextDueAt,
       createdAt: i.createdAt,
       offering: i.offering,

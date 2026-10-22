@@ -707,9 +707,9 @@ export default function TenantSubscriptionsPage() {
                 <div className="space-y-3 pt-4">
                   <div className="space-y-1">
                     <h3 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                      <Server className="h-4 w-4 text-primary" /> Virtual Private Server (VPS)
+                      <Server className="h-4 w-4 text-primary" /> VPS Database & Storage Sendiri
                     </h3>
-                    <p className="text-xs text-muted-foreground">Sewa VPS khusus workspace ini — disiapkan otomatis setelah pembayaran berhasil.</p>
+                    <p className="text-xs text-muted-foreground">VPS khusus untuk workspace ini — setelah pembayaran berhasil, PostgreSQL & MinIO otomatis disiapkan dan dihubungkan sebagai database/storage mandiri workspace ini.</p>
                   </div>
                   <VpsStatusList scope="tenant" tenantSlug={tenantSlug} />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

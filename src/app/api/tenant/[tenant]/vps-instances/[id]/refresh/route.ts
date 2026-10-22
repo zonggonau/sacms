@@ -32,7 +32,18 @@ export const POST = withStaffAuth(async (_request, context, { access }) => {
       },
     })
 
-    return NextResponse.json({ status: updated.status, ipAddress: updated.ipAddress })
+    // First time this instance has a real IP — kick off the automatic
+    // PostgreSQL + MinIO install in the background (see vps-db-storage.ts).
+    // Not awaited: it takes a few minutes, so this request returns right
+    // away and the owner clicks Refresh again later to see it land.
+    if (updated.ipAddress && updated.dbStorageStatus === "pending") {
+      await db.vpsInstance.update({ where: { id: updated.id }, data: { dbStorageStatus: "connecting" } })
+      import("@/lib/vps-db-storage")
+        .then(({ provisionVpsDbAndStorageTask }) => provisionVpsDbAndStorageTask(updated.id))
+        .catch((e) => console.error(`[VPS] Failed to start DB/Storage bootstrap for ${updated.id}:`, e))
+    }
+
+    return NextResponse.json({ status: updated.status, ipAddress: updated.ipAddress, dbStorageStatus: updated.dbStorageStatus })
   } catch (err) {
     console.error(`[VPS] Status refresh failed for instance ${instance.id}:`, err)
     return apiError("internal", { message: "Gagal mengambil status terbaru dari Biznet Gio. Coba lagi beberapa saat lagi." })

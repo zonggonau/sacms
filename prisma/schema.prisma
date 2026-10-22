@@ -5,32 +5,32 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                  String         @id @default(cuid())
-  email               String         @unique
+  id                  String          @id @default(cuid())
+  email               String          @unique
   name                String?
   password            String?
   image               String?
-  role                String         @default("owner")
-  ownerSlug           String?        @unique
+  role                String          @default("owner")
+  ownerSlug           String?         @unique
   emailVerified       DateTime?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  plan                String         @default("free")
-  aiCreditsUsed       Int            @default(0)
-  aiCreditsExtra      Int            @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  plan                String          @default("free")
+  aiCreditsUsed       Int             @default(0)
+  aiCreditsExtra      Int             @default(0)
   masterDatabaseUrl   String?
   masterStorageConfig Json?
   accounts            Account[]
   sessions            Session[]
   subscriptions       Subscription[]
   tenants             TenantMember[]
-  ownedTenants        Tenant[]       @relation("OwnerTenants")
+  ownedTenants        Tenant[]        @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
 
@@ -76,43 +76,43 @@ model VerificationToken {
 }
 
 model Tenant {
-  id                     String                        @id @default(cuid())
-  name                   String
-  slug                   String                        @unique
-  description            String?
-  logo                   String?
-  plan                   String                        @default("free")
-  status                 String                        @default("active")
-  createdAt              DateTime                      @default(now())
-  updatedAt              DateTime                      @updatedAt
-  ownerId                String?
-  owner                  User?                         @relation("OwnerTenants", fields: [ownerId], references: [id], onDelete: SetNull)
-  brandLogo              String?
-  brandName              String?
-  customDomain           String?                       @unique
-  customDomainStatus     String?
-  customDomainVerifiedAt DateTime?
-  customEmailSender      String?
-  databaseUrl            String?
-  licenseKey             String?                       @unique
-  faviconUrl             String?
-  primaryColor           String?
-  storageConfig          Json?
-  hostingStatus          String?                       @default("trial")
-  hostingExpiresAt       DateTime?
-  vercelProjectId        String?
-  vercelDeploymentUrl    String?
-  aiTokensUsed           Int                           @default(0)
-  aiCreditsExtra         Int                           @default(0)
+  id                              String                        @id @default(cuid())
+  name                            String
+  slug                            String                        @unique
+  description                     String?
+  logo                            String?
+  plan                            String                        @default("free")
+  status                          String                        @default("active")
+  createdAt                       DateTime                      @default(now())
+  updatedAt                       DateTime                      @updatedAt
+  ownerId                         String?
+  owner                           User?                         @relation("OwnerTenants", fields: [ownerId], references: [id], onDelete: SetNull)
+  brandLogo                       String?
+  brandName                       String?
+  customDomain                    String?                       @unique
+  customDomainStatus              String?
+  customDomainVerifiedAt          DateTime?
+  customEmailSender               String?
+  databaseUrl                     String?
+  licenseKey                      String?                       @unique
+  faviconUrl                      String?
+  primaryColor                    String?
+  storageConfig                   Json?
+  hostingStatus                   String?                       @default("trial")
+  hostingExpiresAt                DateTime?
+  vercelProjectId                 String?
+  vercelDeploymentUrl             String?
+  aiTokensUsed                    Int                           @default(0)
+  aiCreditsExtra                  Int                           @default(0)
   /// No longer read: storage add-ons live in StorageAddon and expire monthly.
-  storageExtraBytes      BigInt                        @default(0)
-  apiCallsExtra          Int                           @default(0)
+  storageExtraBytes               BigInt                        @default(0)
+  apiCallsExtra                   Int                           @default(0)
   // Headless member auth policy
-  allowMemberRegistration        Boolean               @default(true)
-  requireMemberEmailVerification Boolean               @default(false)
+  allowMemberRegistration         Boolean                       @default(true)
+  requireMemberEmailVerification  Boolean                       @default(false)
   /// Exact origins allowed to call the credential-issuing auth endpoints with CORS.
   /// Empty = fall back to the tenant's own domains (+ localhost in dev).
-  allowedAuthOrigins             String[]              @default([])
+  allowedAuthOrigins              String[]                      @default([])
   /// Where the member email-verification link should point (the developer's own
   /// frontend). The one-time code is appended as `?code=<token>`. Empty = use the
   /// SaCMS-hosted fallback confirmation page.
@@ -123,37 +123,37 @@ model Tenant {
   /// Draft/final toggle for the tenant's CMS schema (null = draft/editable,
   /// set = finalized/locked). Only enforced on dashboard-facing schema
   /// mutations — see src/lib/schema-lock.ts for why MCP bypasses this.
-  schemaFinalizedAt      DateTime?
-  apiKeys                ApiKey[]
-  apiRequests            ApiRequest[]
-  apiTokens              ApiToken[]
-  auditLogs              AuditLog[]
-  components             Component[]
-  contentEntries         ContentEntry[]
-  contentTypes           ContentType[]
-  media                  Media[]
-  mediaFolders           MediaFolder[]
-  settings               Setting[]
-  singleTypes            SingleType[]
-  subscriptions          Subscription[]
-  componentAssignments   TenantComponentAssignment[]
-  contentTypeAssignments TenantContentTypeAssignment[]
-  locales                TenantLocale[]
-  members                TenantMember[]
-  singleTypeAssignments  TenantSingleTypeAssignment[]
-  webhooks               Webhook[]
-  aiQuotaLedgers         AiQuotaLedger[]
-  customDomains          CustomDomain[]
-  oauthClients           OAuthClient[]
-  oauthCodes             OAuthCode[]
-  oauthTokens            OAuthToken[]
-  supportTickets         SupportTicket[]
-  storageAddons          StorageAddon[]
-  managedInfraService    ManagedInfraService?
-  enterpriseStorageAllocation EnterpriseStorageAllocation?
-  appMembers             Member[]
-  memberRoles            MemberRole[]
-  vpsInstances           VpsInstance[]
+  schemaFinalizedAt               DateTime?
+  apiKeys                         ApiKey[]
+  apiRequests                     ApiRequest[]
+  apiTokens                       ApiToken[]
+  auditLogs                       AuditLog[]
+  components                      Component[]
+  contentEntries                  ContentEntry[]
+  contentTypes                    ContentType[]
+  media                           Media[]
+  mediaFolders                    MediaFolder[]
+  settings                        Setting[]
+  singleTypes                     SingleType[]
+  subscriptions                   Subscription[]
+  componentAssignments            TenantComponentAssignment[]
+  contentTypeAssignments          TenantContentTypeAssignment[]
+  locales                         TenantLocale[]
+  members                         TenantMember[]
+  singleTypeAssignments           TenantSingleTypeAssignment[]
+  webhooks                        Webhook[]
+  aiQuotaLedgers                  AiQuotaLedger[]
+  customDomains                   CustomDomain[]
+  oauthClients                    OAuthClient[]
+  oauthCodes                      OAuthCode[]
+  oauthTokens                     OAuthToken[]
+  supportTickets                  SupportTicket[]
+  storageAddons                   StorageAddon[]
+  managedInfraService             ManagedInfraService?
+  enterpriseStorageAllocation     EnterpriseStorageAllocation?
+  appMembers                      Member[]
+  memberRoles                     MemberRole[]
+  vpsInstances                    VpsInstance[]
 
   @@map("tenants")
 }
@@ -222,27 +222,27 @@ model ContentType {
 }
 
 model SchemaField {
-  id            String      @id @default(cuid())
-  name          String
-  slug          String
-  type          String
-  required      Boolean     @default(false)
-  unique        Boolean     @default(false)
-  order         Int         @default(0)
-  jsonPath      String?
-  localizable   Boolean     @default(true)
-  relationSlug  String?
-  options       Json?
+  id           String  @id @default(cuid())
+  name         String
+  slug         String
+  type         String
+  required     Boolean @default(false)
+  unique       Boolean @default(false)
+  order        Int     @default(0)
+  jsonPath     String?
+  localizable  Boolean @default(true)
+  relationSlug String?
+  options      Json?
 
   // Polymorphic relations
   contentTypeId String?
   contentType   ContentType? @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
-  
-  singleTypeId  String?
-  singleType    SingleType?  @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
-  
-  componentId   String?
-  component     Component?   @relation(fields: [componentId], references: [id], onDelete: Cascade)
+
+  singleTypeId String?
+  singleType   SingleType? @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
+
+  componentId String?
+  component   Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
 
   @@unique([contentTypeId, slug])
   @@unique([singleTypeId, slug])
@@ -251,17 +251,17 @@ model SchemaField {
 }
 
 model AiQuotaLedger {
-  id          String   @id @default(cuid())
-  tenantId    String?
-  userId      String?
-  action      String
-  tokens      Int      @default(0)
-  credits     Int      @default(0)
-  words       Int      @default(0)
-  model       String?
-  createdAt   DateTime @default(now())
-  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String?
+  action    String
+  tokens    Int      @default(0)
+  credits   Int      @default(0)
+  words     Int      @default(0)
+  model     String?
+  createdAt DateTime @default(now())
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([userId])
@@ -351,20 +351,20 @@ model ContentReviewAssignment {
 }
 
 model SingleType {
-  id          String                       @id @default(cuid())
-  name        String
-  slug        String
-  description String?
-  createdAt   DateTime                     @default(now())
-  updatedAt   DateTime                     @updatedAt
-  isPublished Boolean                      @default(false)
-  showInCms   Boolean                      @default(true)
-  tenantId    String?
+  id              String                       @id @default(cuid())
+  name            String
+  slug            String
+  description     String?
+  createdAt       DateTime                     @default(now())
+  updatedAt       DateTime                     @updatedAt
+  isPublished     Boolean                      @default(false)
+  showInCms       Boolean                      @default(true)
+  tenantId        String?
   // See ContentType.draftTemplateId — same draft-tag convention.
   draftTemplateId String?
-  schemaFields SchemaField[]
-  tenant      Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  tenants     TenantSingleTypeAssignment[]
+  schemaFields    SchemaField[]
+  tenant          Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenants         TenantSingleTypeAssignment[]
 
   @@unique([tenantId, slug])
   @@index([draftTemplateId])
@@ -389,19 +389,19 @@ model TenantSingleTypeAssignment {
 }
 
 model Component {
-  id          String                      @id @default(cuid())
-  name        String
-  slug        String
-  description String?
-  category    String?
-  createdAt   DateTime                    @default(now())
-  updatedAt   DateTime                    @updatedAt
-  tenantId    String?
+  id              String                      @id @default(cuid())
+  name            String
+  slug            String
+  description     String?
+  category        String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+  tenantId        String?
   // See ContentType.draftTemplateId — same draft-tag convention.
   draftTemplateId String?
-  schemaFields SchemaField[]
-  tenant      Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  tenants     TenantComponentAssignment[]
+  schemaFields    SchemaField[]
+  tenant          Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenants         TenantComponentAssignment[]
 
   @@unique([tenantId, slug])
   @@index([draftTemplateId])
@@ -609,8 +609,8 @@ model Addon {
 /// VpsInstance below). One fixed config per offering; no customer-facing
 /// OS/hostname picker.
 model VpsOffering {
-  id              String   @id @default(cuid())
-  slug            String   @unique
+  id              String        @id @default(cuid())
+  slug            String        @unique
   name            String
   description     String?
   biznetProductId String
@@ -622,10 +622,10 @@ model VpsOffering {
   priceMonthlyIdr Float
   priceAnnualIdr  Float?
   features        Json?
-  isActive        Boolean  @default(true)
-  order           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  isActive        Boolean       @default(true)
+  order           Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   instances       VpsInstance[]
 
   @@map("vps_offerings")
@@ -636,30 +636,40 @@ model VpsOffering {
 /// shared infrastructure for every workspace the owner has) or workspace-
 /// specific (tenantId set — bought from that one workspace's Billing tab).
 model VpsInstance {
-  id              String      @id @default(cuid())
-  offeringId      String
-  offering        VpsOffering @relation(fields: [offeringId], references: [id])
+  id                   String      @id @default(cuid())
+  offeringId           String
+  offering             VpsOffering @relation(fields: [offeringId], references: [id])
   /// Always set — the paying account.
-  ownerId         String
+  ownerId              String
   /// Set only for a workspace-scoped purchase.
-  tenantId        String?
-  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  orderId         String      @unique
-  status          String      @default("provisioning") // provisioning | active | failed | terminated
-  billingCycle    String      // "m" | "a" — mirrors Biznet Gio's own cycle codes
-  biznetAccountId String?
-  biznetKeypairId String?
-  hostname        String?
-  ipAddress       String?
-  rootUser        String?
+  tenantId             String?
+  tenant               Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  orderId              String      @unique
+  status               String      @default("provisioning") // provisioning | active | failed | terminated
+  billingCycle         String // "m" | "a" — mirrors Biznet Gio's own cycle codes
+  biznetAccountId      String?
+  biznetKeypairId      String?
+  hostname             String?
+  ipAddress            String?
+  rootUser             String?
   /// Plain text, same as every other credential this codebase already
   /// stores this way (e.g. User.masterStorageConfig.secretKey) — masked in
   /// API responses, revealed on demand only.
-  rootPassword    String?
-  failureReason   String?
-  nextDueAt       DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  rootPassword         String?
+  failureReason        String?
+  /// This VPS's whole purpose is to host this account's/workspace's own
+  /// PostgreSQL + MinIO (BYODB/BYOS) — auto-installed via SSH once the VM
+  /// has a real IP, then wired into Tenant.databaseUrl/storageConfig (a
+  /// tenant-scoped instance) or User.masterDatabaseUrl/masterStorageConfig
+  /// (an account-scoped one). pending | connecting | connected | skipped
+  /// (an existing DB/storage connection was already present — never
+  /// clobbered) | failed.
+  dbStorageStatus      String      @default("pending")
+  dbStorageError       String?
+  dbStorageConnectedAt DateTime?
+  nextDueAt            DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   @@index([ownerId])
   @@index([tenantId])
@@ -768,8 +778,6 @@ model Media {
   @@index([tenantId, mimeType])
   @@map("media")
 }
-
-
 
 model ApiToken {
   id          String    @id @default(cuid())
@@ -880,8 +888,6 @@ model TenantLocale {
   @@map("tenant_locales")
 }
 
-
-
 enum ContentStatus {
   DRAFT
   IN_REVIEW
@@ -895,14 +901,14 @@ enum ContentStatus {
 // ─── Enterprise Self-Hosting ────────────────────────────────────────────
 
 model EnterpriseLicense {
-  id              String   @id @default(cuid())
-  licenseKey      String   @unique
+  id              String              @id @default(cuid())
+  licenseKey      String              @unique
   customerName    String
   customerEmail   String?
   customerPhone   String?
   organization    String?
-  type            String   @default("enterprise") // enterprise | partner | trial
-  features        Json?    // ["self-host", "unlimited-workspaces", ...]
+  type            String              @default("enterprise") // enterprise | partner | trial
+  features        Json? // ["self-host", "unlimited-workspaces", ...]
   /// Pooled storage grant (GB) for an ACCOUNT-level license (shared across
   /// every workspace the license holder owns — see isEnterpriseTenant(userId)
   /// usage in plan-enforcement.ts). Null for licenses that don't grant pooled
@@ -932,17 +938,17 @@ model EnterpriseLicense {
   /// Defaults to 1, i.e. "one license, one account": the first account to
   /// activate the key binds it, and every other account is rejected until
   /// an admin raises this (or an activation row is removed).
-  maxInstances    Int      @default(1)
+  maxInstances    Int                 @default(1)
   activations     LicenseActivation[]
-  issuedAt        DateTime @default(now())
+  issuedAt        DateTime            @default(now())
   expiresAt       DateTime
   lastValidatedAt DateTime?
-  validatedCount  Int      @default(0)
-  status          String   @default("active")  // active | expired | revoked
+  validatedCount  Int                 @default(0)
+  status          String              @default("active") // active | expired | revoked
   metadata        Json?
   createdBy       String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
 
   @@index([licenseKey, status])
   @@index([expiresAt])
@@ -954,12 +960,12 @@ model EnterpriseLicense {
 /// account re-activating" (fine) apart from "a different account trying to
 /// use an already-bound key" (rejected once the count hits maxInstances).
 model LicenseActivation {
-  id          String   @id @default(cuid())
+  id          String            @id @default(cuid())
   licenseId   String
   license     EnterpriseLicense @relation(fields: [licenseId], references: [id], onDelete: Cascade)
   userId      String
   userEmail   String?
-  activatedAt DateTime @default(now())
+  activatedAt DateTime          @default(now())
 
   @@unique([licenseId, userId])
   @@index([licenseId])
@@ -1027,7 +1033,6 @@ model CustomDomain {
   @@index([tenantId])
   @@map("custom_domains")
 }
-
 
 // ─── OAuth 2.0 ─────────────────────────────────────────────────────────
 
@@ -1107,19 +1112,19 @@ model RolePermission {
 
 /// Storage bought on top of a workspace's plan quota, valid for one month (lib/billing/storage-addon.ts).
 model StorageAddon {
-  id        String   @id @default(cuid())
-  tenantId  String
-  bytes     BigInt
+  id               String    @id @default(cuid())
+  tenantId         String
+  bytes            BigInt
   /// Payment order that bought it; unique so a payment is never granted twice.
-  orderId   String   @unique
-  startsAt  DateTime @default(now())
-  expiresAt DateTime
+  orderId          String    @unique
+  startsAt         DateTime  @default(now())
+  expiresAt        DateTime
   /// The add-on this purchase continues: it starts when that one expires.
-  renewsAddonId    String?  @unique
+  renewsAddonId    String?   @unique
   reminder7dSentAt DateTime?
   reminder1dSentAt DateTime?
-  createdAt DateTime @default(now())
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt        DateTime  @default(now())
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, expiresAt])
   @@map("storage_addons")
@@ -1167,19 +1172,19 @@ model ManagedInfraPayment {
 // ─── Customer Support & IT Helpdesk ───────────────────────────────────
 
 model SupportTicket {
-  id           String           @id @default(cuid())
-  tenantId     String?
-  userId       String
-  subject      String
-  category     String           @default("general") // general | billing | technical | infrastructure | domain
-  priority     String           @default("normal")  // low | normal | high | urgent
-  status       String           @default("open")    // open | in_progress | resolved | closed
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-  
-  tenant       Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  messages     SupportMessage[]
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String
+  subject   String
+  category  String   @default("general") // general | billing | technical | infrastructure | domain
+  priority  String   @default("normal") // low | normal | high | urgent
+  status    String   @default("open") // open | in_progress | resolved | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
 
   @@index([tenantId, status])
   @@index([userId])
@@ -1187,16 +1192,16 @@ model SupportTicket {
 }
 
 model SupportMessage {
-  id          String        @id @default(cuid())
+  id          String   @id @default(cuid())
   ticketId    String
   senderId    String
-  senderRole  String        @default("user") // user | admin | system
-  message     String        @db.Text
-  attachments Json?         // Array of file metadata or URLs
-  isRead      Boolean       @default(false)
-  createdAt   DateTime      @default(now())
+  senderRole  String   @default("user") // user | admin | system
+  message     String   @db.Text
+  attachments Json? // Array of file metadata or URLs
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
-  ticket      SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   @@index([ticketId])
   @@map("support_messages")
@@ -1205,23 +1210,23 @@ model SupportMessage {
 // ─── Multi-Tenant End-User Members & Headless Auth ──────────────────
 
 model Member {
-  id            String          @id @default(cuid())
-  tenantId      String
-  email         String
-  passwordHash  String
-  name          String?
-  avatar        String?
-  role          String          @default("authenticated") // slug of MemberRole (public | authenticated | custom slugs)
-  status        String          @default("active") // active | suspended | pending_verification
-  emailVerified DateTime?
-  metadata      Json?           // Custom attributes (e.g. phone, address, preferences)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  lastLoginAt   DateTime?
-  passwordResetToken   String?  @unique
+  id                   String          @id @default(cuid())
+  tenantId             String
+  email                String
+  passwordHash         String
+  name                 String?
+  avatar               String?
+  role                 String          @default("authenticated") // slug of MemberRole (public | authenticated | custom slugs)
+  status               String          @default("active") // active | suspended | pending_verification
+  emailVerified        DateTime?
+  metadata             Json? // Custom attributes (e.g. phone, address, preferences)
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  lastLoginAt          DateTime?
+  passwordResetToken   String?         @unique
   passwordResetExpires DateTime?
-  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sessions      MemberSession[]
+  tenant               Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions             MemberSession[]
 
   @@unique([tenantId, email])
   @@index([tenantId, status])
@@ -1253,8 +1258,8 @@ model MemberSession {
 model MemberRole {
   id          String                 @id @default(cuid())
   tenantId    String
-  name        String                 // Human label e.g. "VIP Member"
-  slug        String                 // Identifier e.g. "vip-member"
+  name        String // Human label e.g. "VIP Member"
+  slug        String // Identifier e.g. "vip-member"
   description String?
   isSystem    Boolean                @default(false) // true = public | authenticated (cannot delete)
   createdAt   DateTime               @default(now())
@@ -1270,17 +1275,16 @@ model MemberRole {
 /// Granular permission granted to a MemberRole for a content-type and action
 /// action: find | findOne | create | update | delete
 model MemberRolePermission {
-  id            String     @id @default(cuid())
-  memberRoleId  String
-  contentTypeSlug String   // slug of ContentType, or "*" = all
-  action        String     // find | findOne | create | update | delete
-  granted       Boolean    @default(true)
-  conditions    Json?      // Optional: field-level or ownership conditions
-  createdAt     DateTime   @default(now())
-  memberRole    MemberRole @relation(fields: [memberRoleId], references: [id], onDelete: Cascade)
+  id              String     @id @default(cuid())
+  memberRoleId    String
+  contentTypeSlug String // slug of ContentType, or "*" = all
+  action          String // find | findOne | create | update | delete
+  granted         Boolean    @default(true)
+  conditions      Json? // Optional: field-level or ownership conditions
+  createdAt       DateTime   @default(now())
+  memberRole      MemberRole @relation(fields: [memberRoleId], references: [id], onDelete: Cascade)
 
   @@unique([memberRoleId, contentTypeSlug, action])
   @@index([memberRoleId])
   @@map("member_role_permissions")
 }
-

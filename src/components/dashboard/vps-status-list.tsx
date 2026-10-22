@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { Server, RefreshCw, Loader2, Eye, EyeOff, Copy, Check, AlertCircle } from "lucide-react"
+import { Server, RefreshCw, Loader2, Eye, EyeOff, Copy, Check, AlertCircle, Database } from "lucide-react"
 
 interface VpsInstanceSummary {
   id: string
@@ -17,6 +17,8 @@ interface VpsInstanceSummary {
   rootUser: string | null
   rootPassword: string | null // masked ("••••••••") unless just revealed
   failureReason: string | null
+  dbStorageStatus: string
+  dbStorageError: string | null
   nextDueAt: string | null
   createdAt: string
   offering: { name: string; osLabel: string; cpuCores: number; memoryMb: number; diskGb: number } | null
@@ -27,6 +29,14 @@ const STATUS_LABEL: Record<string, string> = {
   active: "Aktif",
   failed: "Gagal",
   terminated: "Dihentikan",
+}
+
+const DB_STORAGE_STATUS_LABEL: Record<string, string> = {
+  pending: "Menunggu VPS Aktif",
+  connecting: "Memasang PostgreSQL & MinIO…",
+  connected: "Terhubung ke Database & Storage",
+  skipped: "Dilewati",
+  failed: "Gagal Disiapkan",
 }
 
 /**
@@ -154,6 +164,31 @@ export function VpsStatusList({ scope, tenantSlug }: { scope: "account" | "tenan
                   <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   <span>{instance.failureReason} — tim SaCMS sudah diberi tahu untuk menindaklanjuti.</span>
                 </div>
+              )}
+
+              {/* Database & Storage auto-setup — this VPS's whole purpose
+                  (PostgreSQL + MinIO auto-installed via SSH, then wired
+                  into this account's/workspace's BYODB/BYOS settings once
+                  the VM has a real IP — see src/lib/vps-db-storage.ts). */}
+              {instance.status !== "failed" && (
+                <div className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-1.5 text-[11px]">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Database className="h-3 w-3" /> Database & Storage
+                  </span>
+                  <span className={cn(
+                    "font-bold flex items-center gap-1",
+                    instance.dbStorageStatus === "connected" ? "text-emerald-600 dark:text-emerald-400"
+                      : instance.dbStorageStatus === "failed" ? "text-red-600 dark:text-red-400"
+                      : instance.dbStorageStatus === "skipped" ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground"
+                  )}>
+                    {instance.dbStorageStatus === "connecting" && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                    {DB_STORAGE_STATUS_LABEL[instance.dbStorageStatus] || instance.dbStorageStatus}
+                  </span>
+                </div>
+              )}
+              {(instance.dbStorageStatus === "failed" || instance.dbStorageStatus === "skipped") && instance.dbStorageError && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed">{instance.dbStorageError}</p>
               )}
 
               {instance.ipAddress && (
