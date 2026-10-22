@@ -4,9 +4,29 @@ import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-export async function checkEnterpriseModeAction() {
+/**
+ * Whether this workspace is covered by an Enterprise License — either its
+ * own tenant-level license, or (the common case for the per-workspace
+ * storage-allocation feature) the caller's account-level license. Used by
+ * the subscriptions page to hide the workspace-plan picker tab (an
+ * enterprise workspace isn't on a Free/Pro/Business tier, it's covered by
+ * the account's license) while keeping Storage/Add-ons/AI-Credits visible.
+ * Previously this always returned false unconditionally — a real bug that
+ * meant the plan picker never actually hid for any enterprise workspace.
+ */
+export async function checkEnterpriseModeAction(tenantSlugOrId: string): Promise<boolean> {
   try {
-    return false
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id || !tenantSlugOrId) return false
+
+    const tenant = await db.tenant.findFirst({
+      where: { OR: [{ id: tenantSlugOrId }, { slug: tenantSlugOrId }] },
+      select: { id: true },
+    })
+    if (!tenant) return false
+
+    const { isEnterpriseTenant } = await import("@/lib/license")
+    return await isEnterpriseTenant(tenant.id, session.user.id)
   } catch (err) {
     return false
   }

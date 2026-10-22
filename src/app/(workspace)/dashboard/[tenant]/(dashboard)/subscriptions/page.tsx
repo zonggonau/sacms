@@ -49,10 +49,14 @@ export default function TenantSubscriptionsPage() {
   const { toast } = useToast()
 
   const tabParam = searchParams?.get('tab')
-  const initialSection: 'plans' | 'storage' | 'addons' =
+  const initialSection: 'plans' | 'storage' | 'addons' | 'ai-plans' =
     tabParam === 'storage'
       ? 'storage'
-      : (tabParam === 'addons' ? 'addons' : 'plans')
+      : tabParam === 'addons'
+        ? 'addons'
+        : tabParam === 'ai-plans'
+          ? 'ai-plans'
+          : 'plans'
 
   const [subscription, setSubscription] = useState<Subscription>({ id: '', plan: 'free', status: 'active', currentPeriodEnd: null })
   const [activeAddons, setActiveAddons] = useState<string[]>([])
@@ -62,7 +66,7 @@ export default function TenantSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
-  const [activeSection, setActiveSection] = useState<'plans' | 'storage' | 'addons'>(initialSection)
+  const [activeSection, setActiveSection] = useState<'plans' | 'storage' | 'addons' | 'ai-plans'>(initialSection)
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
@@ -164,7 +168,7 @@ export default function TenantSubscriptionsPage() {
         }
       }
 
-      const enterprise = await checkEnterpriseModeAction()
+      const enterprise = await checkEnterpriseModeAction(tenantSlug)
       setIsEnterpriseMode(enterprise)
       
       const globalId = await getGlobalWorkspaceIdAction()
@@ -235,6 +239,17 @@ export default function TenantSubscriptionsPage() {
   useEffect(() => {
     if (session?.user?.id) fetchBillingData()
   }, [tenantSlug, session?.user?.id])
+
+  // Enterprise workspaces have no "Paket Langganan" tab (see the tab bar
+  // below) — if nothing in the URL asked for a specific tab, land on
+  // Storage instead of the now-hidden Plans section once we know this
+  // workspace is enterprise-licensed. An explicit ?tab=... deep link is
+  // always respected as-is.
+  useEffect(() => {
+    if (isEnterpriseMode && !tabParam && activeSection === 'plans') {
+      setActiveSection('storage')
+    }
+  }, [isEnterpriseMode])
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -322,6 +337,7 @@ export default function TenantSubscriptionsPage() {
   const STORAGE_QUOTA_TYPES = ['storage', 'managed_infra']
   const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false && !STORAGE_QUOTA_TYPES.includes(p.quotaType))
   const storagePlans = plans.filter(p => p.type === "addons" && p.listed !== false && STORAGE_QUOTA_TYPES.includes(p.quotaType))
+  const aiCreditPlans = plans.filter(p => p.type === "ai_plan")
   const storageUsage = usage.find((u) => u.unit === "bytes")
 
   return (
@@ -504,9 +520,14 @@ export default function TenantSubscriptionsPage() {
             </div>
           </div>
 
-          {/* Plans / Add-ons Section Tabs */}
-          {!isEnterpriseMode && (
-            <div className="flex items-center gap-1 border-b border-border/60">
+          {/* Plans / Storage / Add-ons / AI Credits Section Tabs */}
+          <div className="flex items-center gap-1 border-b border-border/60">
+            {/* Enterprise workspaces are covered by the owner's account-level
+                license, not a workspace plan tier — no plan to pick, so this
+                tab (and the grid below it) is hidden for them. They still
+                manage their own storage allocation/top-ups and AI credits,
+                which is exactly what the remaining tabs are for. */}
+            {!isEnterpriseMode && (
               <button
                 type="button"
                 onClick={() => {
@@ -524,42 +545,59 @@ export default function TenantSubscriptionsPage() {
               >
                 <Layers className="h-3.5 w-3.5" /> Paket Langganan ({mainPlans.length})
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSection('storage')
-                  const url = new URL(window.location.href)
-                  url.searchParams.set('tab', 'storage')
-                  window.history.replaceState({}, '', url.toString())
-                }}
-                className={cn(
-                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                  activeSection === 'storage'
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <HardDrive className="h-3.5 w-3.5" /> Storage ({storagePlans.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSection('addons')
-                  const url = new URL(window.location.href)
-                  url.searchParams.set('tab', 'addons')
-                  window.history.replaceState({}, '', url.toString())
-                }}
-                className={cn(
-                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                  activeSection === 'addons'
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Package className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection('storage')
+                const url = new URL(window.location.href)
+                url.searchParams.set('tab', 'storage')
+                window.history.replaceState({}, '', url.toString())
+              }}
+              className={cn(
+                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
+                activeSection === 'storage'
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <HardDrive className="h-3.5 w-3.5" /> Storage ({storagePlans.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection('addons')
+                const url = new URL(window.location.href)
+                url.searchParams.set('tab', 'addons')
+                window.history.replaceState({}, '', url.toString())
+              }}
+              className={cn(
+                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
+                activeSection === 'addons'
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Package className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSection('ai-plans')
+                const url = new URL(window.location.href)
+                url.searchParams.set('tab', 'ai-plans')
+                window.history.replaceState({}, '', url.toString())
+              }}
+              className={cn(
+                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
+                activeSection === 'ai-plans'
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Bot className="h-3.5 w-3.5" /> AI Credits ({aiCreditPlans.length})
+            </button>
+          </div>
 
           {/* Main Plans Grid */}
           {!isEnterpriseMode && activeSection === 'plans' && (
@@ -664,8 +702,12 @@ export default function TenantSubscriptionsPage() {
             </div>
           )}
 
-          {/* Storage Section */}
-          {!isEnterpriseMode && activeSection === 'storage' && (
+          {/* Storage Section — visible for every workspace, enterprise
+              included: an enterprise workspace's own slice of the pooled
+              license grant (see EnterpriseLicenseBanner's allocation
+              section) is the "plan" storageUsage/storagePlans already
+              reflect, and buying a tier here stacks on top of that slice. */}
+          {activeSection === 'storage' && (
             <div className="space-y-3">
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Storage & Database</h2>
@@ -716,7 +758,7 @@ export default function TenantSubscriptionsPage() {
           )}
 
           {/* Add-ons Section */}
-          {!isEnterpriseMode && activeSection === 'addons' && (
+          {activeSection === 'addons' && (
             <div className="space-y-3">
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Add-on & Ekstra Kuota</h2>
@@ -737,9 +779,36 @@ export default function TenantSubscriptionsPage() {
             </div>
           )}
 
+          {/* AI Credits Section — top up the account-wide AI credit balance
+              (not workspace-specific — see plan-enforcement.ts's
+              getUserAiCreditLicense/enforceUserAiCredits, which have no
+              tenant dimension at all) from whichever workspace is
+              convenient. Reachable via ?tab=ai-plans, the same link several
+              other pages (EnterpriseLicenseBanner, the account billing
+              page's "Bayar Sekarang") already point at. */}
+          {activeSection === 'ai-plans' && (
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Top Up AI Credits</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Saldo AI Credits berlaku untuk akun Anda secara keseluruhan, bukan hanya workspace ini.</p>
+              </div>
+              {aiCreditPlans.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl">
+                  <Bot className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="font-bold text-xs text-foreground">Belum ada paket AI Credits tersedia</p>
+                </div>
+              ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aiCreditPlans.map((addon) => (
+                  <AddonCard key={addon.id} addon={addon} tenantSlug={tenantSlug} activeAddons={activeAddons} router={router} formatPrice={formatPrice} />
+                ))}
+              </div>
+              )}
+            </div>
+          )}
+
           {/* Invoices */}
-          {!isEnterpriseMode && (
-            <Card id="billing-history" className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden scroll-mt-24">
+          <Card id="billing-history" className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden scroll-mt-24">
               <CardHeader className="bg-muted/20 p-5 border-b border-border/60">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -812,7 +881,6 @@ export default function TenantSubscriptionsPage() {
                 )}
               </CardContent>
             </Card>
-          )}
 
           {/* Infrastructure Overrides */}
           {isEnterpriseMode && (
