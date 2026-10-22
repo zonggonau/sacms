@@ -26,6 +26,7 @@ import {
   Gem,
   Webhook,
   Headphones,
+  Tag,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -56,6 +57,7 @@ const adminNavSections: NavSection[] = [
       { title: "Support & Chat CS", href: "/admin/support", icon: Headphones },
       { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
+      { title: "Pricing & Plans", href: "/admin/pricing", icon: Tag },
     ],
   },
   {

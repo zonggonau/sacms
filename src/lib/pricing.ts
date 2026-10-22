@@ -1,5 +1,19 @@
-import { db } from "@/lib/database"
+import { db, Prisma } from "@/lib/database"
 import type { AccountPlan, WorkspacePlan, AiCreditPack, Addon } from "@prisma/client"
+
+/**
+ * Prisma's Json? columns don't accept a literal `null` in create/update
+ * data (it's ambiguous between "no value" and "a JSON null") — it wants
+ * `Prisma.JsonNull` instead, or `undefined` to leave the field untouched.
+ * The admin pricing API's Zod schemas allow `features` to come in as
+ * `null` (clearing it) or `undefined` (not provided), so every write path
+ * needs this conversion.
+ */
+export function toFeaturesJson(features: string[] | null | undefined) {
+  if (features === undefined) return undefined
+  if (features === null) return Prisma.JsonNull
+  return features
+}
 
 /**
  * Platform pricing — the single, type-safe read path for all four kinds of
