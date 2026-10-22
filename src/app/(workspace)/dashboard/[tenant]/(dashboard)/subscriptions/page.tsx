@@ -37,6 +37,7 @@ interface Invoice {
   midtransInvoiceId: string | null
   isTransaction?: boolean
   plan?: string
+  planLabel?: string
 }
 
 export default function TenantSubscriptionsPage() {
@@ -798,7 +799,7 @@ export default function TenantSubscriptionsPage() {
                                 status: inv.status,
                                 date: new Date(inv.createdAt).toLocaleDateString('id-ID'),
                                 customerName: currentTenant?.name || "Workspace",
-                                description: `Langganan Workspace ${currentTenant?.name || ""} (${inv.plan || "Pro"})`
+                                description: `Langganan Workspace ${currentTenant?.name || ""} (${inv.planLabel || inv.plan || "Pro"})`
                               })}
                             >
                               <Download className="h-3.5 w-3.5" />
