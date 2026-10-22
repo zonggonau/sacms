@@ -488,6 +488,118 @@ model PaymentTransaction {
   @@map("payment_transactions")
 }
 
+// ── Pricing (platform-level, not tenant content) ──────────────────────────
+//
+// Previously modeled as CMS Content Entries under the "SaCMS Global" tenant
+// (sacms-account-pricing / sacms-workspace-pricing / sacms-ai-pricing /
+// sacms-addons content types) — at least 4 independent, hand-written
+// readers existed across the codebase (getDynamicWorkspacePrices/
+// getDynamicAccountPrices in midtrans.ts, plus separate direct ContentEntry
+// queries in checkout, subscriptions/plans, tenant-plan.ts, public/plans,
+// the account dashboard/billing pages, and public-api.ts's landing-page
+// aggregator — which additionally fell back to a THIRD, hardcoded copy in
+// default-landing-page.ts when the CMS entries were empty). None of them
+// agreed on the fallback/parsing rule, so admin edits could silently not
+// reach every consumer. These four tables are the single, type-safe source
+// of truth each kind of pricing needed — one table per kind rather than one
+// wide table with a category discriminator, since their real field sets
+// are mostly disjoint (an AI credit pack has no `maxTeamMembers`, an addon
+// has no `credits`), not variations of one shape.
+//
+// Landing-page content (hero, FAQ, testimonials, etc.) stays as regular CMS
+// content under the Global tenant — unaffected, and correctly CMS-shaped.
+
+model AccountPlan {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  price         Float
+  yearlyPrice   Float?
+  maxWorkspaces Int
+  features      Json?
+  isPopular     Boolean  @default(false)
+  ctaText       String?
+  ctaHref       String?
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("account_plans")
+}
+
+model WorkspacePlan {
+  id                 String   @id @default(cuid())
+  slug               String   @unique
+  name               String
+  description        String?
+  price              Float
+  yearlyPrice        Float?
+  maxContentTypes    Int
+  maxContentEntries  Int
+  maxTeamMembers     Int
+  maxStorageMb       Int
+  maxLocales         Int
+  maxApiCalls        Int
+  // Informational fair-use figure for shared-hosting plans — not literally
+  // metered (see the equivalent field's comment in the old CMS seed data);
+  // the quota actually enforced is maxApiCalls.
+  fairUseBandwidthGb Int?
+  features           Json?
+  isActive           Boolean  @default(true)
+  order              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("workspace_plans")
+}
+
+model AiCreditPack {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  credits     Int
+  priceUsd    Float
+  price       Float
+  badge       String?
+  features    Json?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_credit_packs")
+}
+
+model Addon {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  description   String?
+  icon          String?
+  price         Float?
+  priceLabel    String?
+  unit          String?
+  featureKey    String?
+  // Top-up-specific fields (e.g. storage tiers) — null for a plain
+  // feature-flag addon that doesn't grant a metered quota.
+  checkoutAlias String?
+  yearlyPrice   Float?
+  isTopup       Boolean  @default(false)
+  quotaType     String?
+  amountUnits   BigInt?
+  billingPeriod String?
+  features      Json?
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("addons")
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   tenantId  String?
