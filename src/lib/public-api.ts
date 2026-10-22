@@ -49,8 +49,30 @@ export const getLandingData = cache(async function getLandingData() {
     // Mapping format baru: "sacms-landing-page" berisi object komplit
     const lp = singleTypesData?.["sacms-landing-page"] || {};
 
-    // Pricing dan addons masih berbentuk collections
-    const pricingAccounts = collectionsData?.["sacms-account-pricing"] || [];
+    // Pricing & addons now live in dedicated tables (src/lib/pricing.ts), not
+    // CMS collections — mapped back into the same CMS-shaped field names
+    // (plan_slug, max_workspaces, is_popular, ...) the landing-page
+    // components already consume, so no downstream component changes.
+    const { getAccountPlans, getWorkspacePlans, getAddons } = await import("@/lib/pricing")
+    const [accountPlanRows, workspacePlanRows, addonRows] = await Promise.all([
+      getAccountPlans(),
+      getWorkspacePlans(),
+      getAddons(),
+    ])
+
+    const pricingAccounts = accountPlanRows.map(p => ({
+      name: p.name,
+      plan_slug: p.slug,
+      price: p.price,
+      yearly_price: p.yearlyPrice,
+      max_workspaces: p.maxWorkspaces,
+      description: p.description || "",
+      features: Array.isArray(p.features) ? p.features : [],
+      is_popular: p.isPopular,
+      cta_text: p.ctaText || "",
+      cta_href: p.ctaHref || "",
+    }));
+
     const PLAN_ORDER: Record<string, number> = {
       free: 1,
       starter: 2,
@@ -58,9 +80,23 @@ export const getLandingData = cache(async function getLandingData() {
       business: 4,
       enterprise: 4,
     }
-    const rawPricingWorkspaces = collectionsData?.["sacms-workspace-pricing"] || []
-    const pricingWorkspacesList = rawPricingWorkspaces.length > 0 
-      ? rawPricingWorkspaces 
+    const rawPricingWorkspaces = workspacePlanRows.map(p => ({
+      name: p.name,
+      plan_slug: p.slug,
+      price: p.price,
+      yearly_price: p.yearlyPrice,
+      max_content_types: p.maxContentTypes,
+      max_content_entries: p.maxContentEntries,
+      max_team_members: p.maxTeamMembers,
+      max_storage: p.maxStorageMb,
+      max_locales: p.maxLocales,
+      max_api_calls: p.maxApiCalls,
+      fair_use_bandwidth_gb: p.fairUseBandwidthGb,
+      description: p.description || "",
+      features: Array.isArray(p.features) ? p.features : [],
+    }))
+    const pricingWorkspacesList = rawPricingWorkspaces.length > 0
+      ? rawPricingWorkspaces
       : (DEFAULT_LANDING_PAGE_DATA["sacms-workspace-pricing"] || [])
 
     const pricingWorkspaces = pricingWorkspacesList.sort((a: any, b: any) => {
@@ -68,7 +104,23 @@ export const getLandingData = cache(async function getLandingData() {
       const slugB = (b.plan_slug || b.id || "").toLowerCase()
       return (PLAN_ORDER[slugA] || 99) - (PLAN_ORDER[slugB] || 99) || (Number(a.price) || 0) - (Number(b.price) || 0)
     });
-    const addons = collectionsData?.["sacms-addons"] || [];
+    const addons = addonRows.map(a => ({
+      icon: a.icon || "",
+      name: a.name,
+      addon_slug: a.slug,
+      description: a.description || "",
+      price: a.price,
+      price_label: a.priceLabel || "",
+      unit: a.unit || "",
+      feature_key: a.featureKey || "",
+      plan_slug: a.checkoutAlias || "",
+      yearly_price: a.yearlyPrice,
+      is_topup: a.isTopup,
+      quota_type: a.quotaType || "",
+      amount_units: a.amountUnits !== null && a.amountUnits !== undefined ? Number(a.amountUnits) : undefined,
+      billing_period: a.billingPeriod || "",
+      features: Array.isArray(a.features) ? a.features : [],
+    }));
 
     const def = DEFAULT_LANDING_PAGE_DATA
 

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getPaymentProvider } from "@/lib/payment"
-import { getDynamicAccountPrices, getDynamicWorkspacePrices } from "@/lib/midtrans"
+import { getDynamicAccountPrices } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
@@ -48,38 +48,21 @@ export async function POST(request: NextRequest) {
     let dbTenant: any = null;
 
     if (isAiCreditPack) {
-      // Prefer the admin-editable CMS pricing table (sacms-ai-pricing) over
-      // the hardcoded AI_CREDIT_PACKS fallback, mirroring how plan pricing
-      // below already prefers its CMS table — otherwise a pack added only
-      // in the CMS 400s here, and a pack whose price/credits an admin
-      // changed in the CMS still gets charged/granted at the old hardcoded
-      // amount since the UI shows the CMS value but checkout never read it.
+      // Prefer the admin-editable AiCreditPack table over the hardcoded
+      // AI_CREDIT_PACKS fallback, mirroring how plan pricing below already
+      // prefers its own table — otherwise a pack added only there 400s
+      // here, and a pack whose price/credits an admin changed still gets
+      // charged/granted at the old hardcoded amount since the UI shows the
+      // table's value but checkout never read it.
       let packFound = false
       try {
-        const aiPricingType = await db.contentType.findFirst({ where: { slug: "sacms-ai-pricing" } })
-        if (aiPricingType) {
-          const entries = await db.contentEntry.findMany({
-            where: { contentTypeId: aiPricingType.id, status: "PUBLISHED" },
-          })
-          const match = entries.find((e) => {
-            let d = e.data
-            if (typeof d === "string") {
-              try { d = JSON.parse(d) } catch { d = {} }
-            }
-            const data = d as any
-            return (data.pack_slug || e.id) === planId
-          })
-          if (match) {
-            let d = match.data
-            if (typeof d === "string") {
-              try { d = JSON.parse(d) } catch { d = {} }
-            }
-            const data = d as any
-            amount = Number(data.price) || 0
-            planName = data.name || "AI Credits"
-            creditAmount = Number(data.credits) || 0
-            packFound = true
-          }
+        const { getAiCreditPack } = await import("@/lib/pricing")
+        const pack = await getAiCreditPack(planId)
+        if (pack) {
+          amount = pack.price
+          planName = pack.name
+          creditAmount = pack.credits
+          packFound = true
         }
       } catch (e) {
         console.error("Error fetching dynamic AI credit pack price:", e)
@@ -154,78 +137,33 @@ export async function POST(request: NextRequest) {
         addonQuotaType = topup.quotaType
         addonAmountUnits = topup.amountUnits
       } else {
-        // Storage tiers (5/10/20/50/100GB, 1TB — see scripts/seed/seed-storage-addons.ts)
-        // and any other CMS-only addon resolve here, never as a BUILTIN_TOPUPS entry.
-        const pricingContentTypes = await db.contentType.findMany({
-          where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing", "sacms-addons"] } }
-        })
+        // Storage tiers (5/10/20/50/100GB, 1TB) and any other admin-defined
+        // addon resolve here, never as a BUILTIN_TOPUPS entry. Tries a
+        // WorkspacePlan first, then an Addon (same two tables the admin
+        // pricing UI edits), and only falls back to the static PLAN_PRICES
+        // map if the slug matches neither — e.g. a legacy plan slug that
+        // was never migrated into either table.
+        const { getWorkspacePlan, getAddon } = await import("@/lib/pricing")
+        const workspacePlan = await getWorkspacePlan(planId)
+        const addon = workspacePlan ? null : await getAddon(planId)
 
-        if (pricingContentTypes.length > 0) {
-          const contentTypeIds = pricingContentTypes.map(ct => ct.id)
-          const planEntries = await db.contentEntry.findMany({
-            where: { contentTypeId: { in: contentTypeIds }, status: "PUBLISHED" }
-          })
-
-          const planEntry = planEntries.find(e => {
-            let d = e.data
-            if (typeof d === 'string') {
-              try { d = JSON.parse(d) } catch (e) { d = {} }
-            }
-            const data = d as any
-            return data.plan_slug === planId || data.addon_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
-          })
-
-          if (planEntry) {
-            let d = planEntry.data
-            if (typeof d === 'string') {
-              try { d = JSON.parse(d) } catch (e) { d = {} }
-            }
-            const data = d as any
-
-            let rawPrice = data.price || "0"
-            let monthlyPrice = 0
-            let yearlyPrice = 0
-            if (typeof rawPrice === 'string') {
-              monthlyPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
-            } else {
-              monthlyPrice = Number(rawPrice) || 0
-            }
-
-            if (data.yearly_price !== undefined) {
-              yearlyPrice = Number(data.yearly_price)
-            } else {
-              yearlyPrice = monthlyPrice * 10
-            }
-
-            amount = interval === 'year' ? yearlyPrice : monthlyPrice
-            planName = data.name || planId
-            const addonContentType = pricingContentTypes.find(ct => ct.slug === "sacms-addons")
-            isAddon = addonContentType?.id === planEntry.contentTypeId
-            if (isAddon) {
-              addonQuotaType = data.quota_type || undefined
-              addonAmountUnits = data.amount_units !== undefined ? (Number(data.amount_units) || 0) : undefined
-            }
-          } else {
-            const dynamicPrices = await getDynamicWorkspacePrices()
-            const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
-            amount = interval === 'year' ? prices.yearly : prices.monthly
-            // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
-            if (!amount) {
-              const { PLAN_PRICES } = await import('@/lib/midtrans')
-              const base = PLAN_PRICES[planId] ?? 0
-              amount = interval === 'year' ? base * 10 : base
-            }
-          }
+        if (workspacePlan) {
+          const yearlyPrice = workspacePlan.yearlyPrice ?? workspacePlan.price * 10
+          amount = interval === "year" ? yearlyPrice : workspacePlan.price
+          planName = workspacePlan.name
+        } else if (addon) {
+          const monthlyPrice = addon.price ?? 0
+          const yearlyPrice = addon.yearlyPrice ?? monthlyPrice * 10
+          amount = interval === "year" ? yearlyPrice : monthlyPrice
+          planName = addon.name
+          isAddon = true
+          addonQuotaType = addon.quotaType || undefined
+          addonAmountUnits = addon.amountUnits !== null && addon.amountUnits !== undefined ? Number(addon.amountUnits) : undefined
         } else {
-          const dynamicPrices = await getDynamicWorkspacePrices()
-          const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
-          amount = interval === 'year' ? prices.yearly : prices.monthly
-          // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
-          if (!amount) {
-            const { PLAN_PRICES } = await import('@/lib/midtrans')
-            const base = PLAN_PRICES[planId] ?? 0
-            amount = interval === 'year' ? base * 10 : base
-          }
+          const { PLAN_PRICES } = await import("@/lib/midtrans")
+          const base = PLAN_PRICES[planId] ?? 0
+          amount = interval === "year" ? base * 10 : base
+          planName = planId
         }
       }
 

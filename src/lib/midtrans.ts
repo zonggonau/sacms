@@ -208,46 +208,27 @@ export const PLAN_PRICES: Record<string, number> = {
 export type PlanType = string
 
 /**
- * Fetch dynamic plan prices from CMS
+ * Fetch dynamic plan prices — from the dedicated AccountPlan/WorkspacePlan
+ * tables (src/lib/pricing.ts), not CMS Content Entries anymore. Shape
+ * (`Record<slug, {monthly, yearly}>`) is unchanged on purpose, so every
+ * existing caller of these two functions keeps working without its own
+ * changes. Falls back to the same hardcoded figures as before only if the
+ * table is genuinely empty (shouldn't happen post-migration, but matches
+ * the old "never return nothing" behavior rather than a new failure mode).
  */
 export async function getDynamicAccountPrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
-    const { db } = await import('@/lib/database')
-    const pricingContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-account-pricing" }
-    })
-    
-    if (pricingContentType) {
-      const planEntries = await db.contentEntry.findMany({
-        where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
-      })
-      
-      const parseNum = (val: any) => {
-        if (val === undefined || val === null) return 0
-        if (typeof val === 'number') return val
-        if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
-        return Number(val) || 0
-      }
-
+    const { getAccountPlans } = await import("@/lib/pricing")
+    const plans = await getAccountPlans()
+    if (plans.length > 0) {
       const prices: Record<string, { monthly: number, yearly: number }> = {}
-      for (const entry of planEntries) {
-        let data = entry.data
-        if (typeof data === 'string') {
-          try { data = JSON.parse(data) } catch (e) { data = {} }
-        }
-        const d = data as any
-        if (d.plan_slug && (d.price !== undefined || d.yearly_price !== undefined)) {
-          const monthly = parseNum(d.price)
-          const yearly = d.yearly_price !== undefined ? parseNum(d.yearly_price) : (monthly > 0 ? monthly * 10 : 0)
-          prices[d.plan_slug] = { monthly, yearly }
-        }
-      }
-      if (Object.keys(prices).length > 0) return prices
+      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: p.yearlyPrice ?? 0 }
+      return prices
     }
   } catch (e) {
     console.error("Error fetching dynamic account prices:", e)
   }
-  
+
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
     starter: { monthly: 49000, yearly: 390000 },
@@ -259,42 +240,17 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
 
 export async function getDynamicWorkspacePrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
-    const { db } = await import('@/lib/database')
-    const pricingContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-workspace-pricing" }
-    })
-    
-    if (pricingContentType) {
-      const planEntries = await db.contentEntry.findMany({
-        where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
-      })
-      
-      const parseNum = (val: any) => {
-        if (val === undefined || val === null) return 0
-        if (typeof val === 'number') return val
-        if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
-        return Number(val) || 0
-      }
-
+    const { getWorkspacePlans } = await import("@/lib/pricing")
+    const plans = await getWorkspacePlans()
+    if (plans.length > 0) {
       const prices: Record<string, { monthly: number, yearly: number }> = {}
-      for (const entry of planEntries) {
-        let data = entry.data
-        if (typeof data === 'string') {
-          try { data = JSON.parse(data) } catch (e) { data = {} }
-        }
-        const d = data as any
-        if (d.plan_slug && (d.price !== undefined || d.yearly_price !== undefined)) {
-          const monthly = parseNum(d.price)
-          const yearly = d.yearly_price !== undefined ? parseNum(d.yearly_price) : (monthly > 0 ? monthly * 10 : 0)
-          prices[d.plan_slug] = { monthly, yearly }
-        }
-      }
-      if (Object.keys(prices).length > 0) return prices
+      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: p.yearlyPrice ?? 0 }
+      return prices
     }
   } catch (e) {
     console.error("Error fetching dynamic workspace prices:", e)
   }
-  
+
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
     pro: { monthly: 249000, yearly: 1490000 },

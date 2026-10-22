@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/database"
-import { getGlobalWorkspaceId } from "@/lib/settings"
+import { getAccountPlans, getWorkspacePlans, getAddons, getAiCreditPacks } from "@/lib/pricing"
 
 export const dynamic = "force-dynamic"
 
@@ -11,99 +10,55 @@ export async function GET(
   try {
     const { tenant } = await context.params
     const isAccount = tenant === "account"
-    const globalTenantId = await getGlobalWorkspaceId()
-
-    // 1. Fetch Pricing Content Type
-    const pricingContentType = await db.contentType.findFirst({
-      where: { 
-        slug: isAccount ? "sacms-account-pricing" : "sacms-workspace-pricing",
-        tenantId: null 
-      }
-    })
-
-    // 2. Fetch SaCMS Addons
-    const addonContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-addons", tenantId: null }
-    })
-
-    const cleanPrice = (val: any) => {
-      if (typeof val === 'number') return val
-      if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
-      return 0
-    }
-
-    const parseFeatures = (val: any) => {
-      if (Array.isArray(val)) return val
-      if (typeof val === 'string' && val.trim().length > 0) {
-        if (val.startsWith('[') && val.endsWith(']')) {
-          try {
-            const parsed = JSON.parse(val)
-            if (Array.isArray(parsed)) return parsed
-          } catch (e) {}
-        }
-        return val.split(',').map(s => s.trim())
-      }
-      return []
-    }
 
     let workspacePlans: any[] = []
 
-    // ─── LOAD WORKSPACE / ACCOUNT PLANS DYNAMICALLY FROM GLOBAL CMS ───
-    if (pricingContentType) {
-      const pricingEntries = await db.contentEntry.findMany({
-        where: {
-          contentTypeId: pricingContentType.id,
-          status: "PUBLISHED",
-          tenantId: globalTenantId
-        },
-        orderBy: { createdAt: "asc" }
-      })
+    // ─── LOAD WORKSPACE / ACCOUNT PLANS FROM THE DEDICATED PRICING TABLES ───
+    if (isAccount) {
+      const accountPlans = await getAccountPlans()
+      workspacePlans = accountPlans.map(p => ({
+        id: p.slug,
+        name: p.name,
+        description: p.description || "",
+        type: "account",
+        price: p.price,
+        yearlyPrice: p.yearlyPrice ?? p.price * 10,
+        features: Array.isArray(p.features) ? p.features : [],
+        popular: p.isPopular,
+        buttonText: p.ctaText || "Pilih Paket",
+        maxWorkspaces: p.maxWorkspaces,
+      }))
+    } else {
+      const plans = await getWorkspacePlans()
+      workspacePlans = plans.map(p => ({
+        id: p.slug,
+        name: p.name,
+        description: p.description || "",
+        type: "workspace",
+        price: p.price,
+        yearlyPrice: p.yearlyPrice ?? p.price * 10,
+        features: Array.isArray(p.features) ? p.features : [],
+        popular: p.slug === "pro",
+        buttonText: "Pilih Paket",
+        maxContentTypes: p.maxContentTypes,
+        maxContentEntries: p.maxContentEntries,
+        maxTeamMembers: p.maxTeamMembers,
+        maxApiCalls: p.maxApiCalls,
+        maxStorage: p.maxStorageMb,
+        maxLocales: p.maxLocales,
+        auditLogRetention: 0,
+        supportLevel: p.slug === "enterprise" ? "Prioritas & SLA" : p.slug === "pro" ? "Prioritas" : "Email"
+      }))
+    }
 
-      if (pricingEntries.length > 0) {
-        workspacePlans = pricingEntries.map(entry => {
-          const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
-          const numericPrice = cleanPrice(d.price)
-
-          let yearlyPrice = 0
-          if (d.yearly_price !== undefined) {
-            if (typeof d.yearly_price === 'string') {
-              yearlyPrice = parseInt(d.yearly_price.replace(/[^\d]/g, ''), 10) || 0
-            } else {
-              yearlyPrice = Number(d.yearly_price) || 0
-            }
-          } else {
-            yearlyPrice = numericPrice * 10
-          }
-
-          return {
-            id: d.plan_slug || entry.id,
-            name: d.name || "Unnamed Plan",
-            description: d.description || "",
-            type: isAccount ? "account" : "workspace",
-            price: numericPrice,
-            yearlyPrice: yearlyPrice,
-            features: parseFeatures(d.features),
-            popular: d.is_popular === true || d.popular === true || d.plan_slug === "pro",
-            buttonText: d.cta_text || "Pilih Paket",
-            maxContentTypes: parseInt(d.max_content_types, 10) || 0,
-            maxContentEntries: parseInt(d.max_content_entries, 10) || 0,
-            maxTeamMembers: parseInt(d.max_team_members, 10) || 0,
-            maxApiCalls: parseInt(d.max_api_calls, 10) || 0,
-            maxStorage: parseInt(d.max_storage, 10) || 0,
-            maxLocales: parseInt(d.max_locales, 10) || 0,
-            auditLogRetention: parseInt(d.audit_log_retention, 10) || 0,
-            supportLevel: d.support_level || (d.plan_slug === "enterprise" ? "Prioritas & SLA" : d.plan_slug === "pro" ? "Prioritas" : "Email")
-          }
-        })
-
-        const PLAN_ORDER: Record<string, number> = {
-          free: 1,
-          pro: 2,
-          business: 3,
-          enterprise: 3,
-        }
-        workspacePlans.sort((a, b) => (PLAN_ORDER[a.id] || 99) - (PLAN_ORDER[b.id] || 99) || a.price - b.price)
+    if (workspacePlans.length > 0) {
+      const PLAN_ORDER: Record<string, number> = {
+        free: 1,
+        pro: 2,
+        business: 3,
+        enterprise: 3,
       }
+      workspacePlans.sort((a, b) => (PLAN_ORDER[a.id] || 99) - (PLAN_ORDER[b.id] || 99) || a.price - b.price)
     }
 
     // Fallback ONLY when database has 0 published entries
@@ -217,18 +172,17 @@ export async function GET(
       }
     }
 
-    // ─── LOAD ADDONS: system topups + CMS overlay ───
+    // ─── LOAD ADDONS: system topups + Addon-table overlay ───
     // These hardcoded ids are wired into real billing logic server-side
     // (checkout's BUILTIN_TOPUPS map, fulfillment, usage enforcement
     // upsell links like "Beli Storage Tambahan") — they must always be
     // resolvable here, same as checkout itself always recognizes them
-    // regardless of what's published in the CMS. Replacing this whole
-    // list with CMS entries whenever ANY were published used to make
-    // every hardcoded topup vanish — including ones an admin never
-    // touched in the CMS — the moment a single custom CMS addon went
-    // live, breaking any page still linking to them by id (404/"plan not
-    // found" at checkout). CMS entries now only add to or override this
-    // list by addon_slug, never replace it wholesale.
+    // regardless of what's defined in the Addon table. Replacing this whole
+    // list with table rows whenever ANY existed used to make every
+    // hardcoded topup vanish — including ones an admin never touched —
+    // the moment a single custom addon went live, breaking any page still
+    // linking to them by id (404/"plan not found" at checkout). Addon rows
+    // now only add to or override this list by slug, never replace it wholesale.
     const SYSTEM_ADDONS: any[] = [
       {
         id: "topup_ai_500k",
@@ -257,8 +211,8 @@ export async function GET(
         amountUnits: 2000000
       },
       // Storage tiers (5/10/20/50/100GB, 1TB) are deliberately NOT hardcoded
-      // here — they're fully CMS-driven (sacms-addons entries with
-      // quota_type: "storage", seeded by scripts/seed/seed-storage-addons.ts)
+      // here — they're fully admin-driven (Addon table rows with
+      // quotaType: "storage", editable from /admin/pricing)
       // so sizes and prices can change without a deploy. If every such
       // entry is ever deleted, storage tiers simply disappear from the
       // catalogue — same behavior as emptying any other pricing content type.
@@ -314,76 +268,48 @@ export async function GET(
 
     const addonMap = new Map<string, any>(SYSTEM_ADDONS.map(a => [a.id, a]))
 
-    if (addonContentType) {
-      const addonEntries = await db.contentEntry.findMany({
-        where: {
-          contentTypeId: addonContentType.id,
-          status: "PUBLISHED",
-          tenantId: globalTenantId
-        },
-        orderBy: { createdAt: "asc" }
+    const addons = await getAddons()
+    for (const addon of addons) {
+      const numericPrice = addon.price ?? 0
+
+      addonMap.set(addon.slug, {
+        id: addon.slug,
+        name: addon.name || "Unnamed Addon",
+        type: "addons",
+        price: numericPrice,
+        priceLabel: addon.priceLabel || "",
+        features: addon.description ? [addon.description] : (Array.isArray(addon.features) ? addon.features : ["Feature upgrade"]),
+        popular: false,
+        buttonText: addon.priceLabel ? (numericPrice === 0 ? "Included" : "Activate") : (addon.isTopup ? "Top Up Now" : "Activate"),
+        icon: addon.icon || "Package",
+        isTopup: addon.isTopup,
+        // Carried through so quota-specific tabs/fulfillment (e.g. the
+        // Storage tab, checkout's addon fulfillment) can recognize an
+        // admin-defined addon the same way they recognize a hardcoded one —
+        // without this, a table-only entry (like the seeded storage tiers)
+        // would silently fall outside any quota-aware behavior.
+        ...(addon.quotaType ? { quotaType: addon.quotaType } : {}),
+        ...(addon.amountUnits !== null && addon.amountUnits !== undefined ? { amountUnits: Number(addon.amountUnits) } : {}),
+        ...(addon.billingPeriod ? { billingPeriod: addon.billingPeriod } : {}),
       })
-
-      for (const entry of addonEntries) {
-        const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
-        const numericPrice = cleanPrice(d.price)
-        const isTopup = d.is_topup === true || d.is_topup === "true" || d.unit === "once"
-        const id = d.addon_slug || entry.id
-
-        addonMap.set(id, {
-          id,
-          name: d.name || "Unnamed Addon",
-          type: "addons",
-          price: numericPrice,
-          priceLabel: d.price_label || "",
-          features: d.description ? [d.description] : (Array.isArray(d.features) ? d.features : ["Feature upgrade"]),
-          popular: false,
-          buttonText: d.price_label ? (numericPrice === 0 ? "Included" : "Activate") : (isTopup ? "Top Up Now" : "Activate"),
-          icon: d.icon || "Package",
-          isTopup: isTopup,
-          // Carried through so quota-specific tabs/fulfillment (e.g. the
-          // Storage tab, checkout's addon fulfillment) can recognize a
-          // CMS-defined addon the same way they recognize a hardcoded one —
-          // without this, a CMS-only entry (like the seeded storage tiers)
-          // would silently fall outside any quota-aware behavior.
-          ...(d.quota_type ? { quotaType: d.quota_type } : {}),
-          ...(d.amount_units !== undefined ? { amountUnits: Number(d.amount_units) || 0 } : {}),
-          ...(d.billing_period ? { billingPeriod: d.billing_period } : {}),
-        })
-      }
     }
 
     const addonPlans = Array.from(addonMap.values())
 
     const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
-    let aiCreditPacks = AI_CREDIT_PACKS
-    try {
-      const aiPricingContentType = await db.contentType.findFirst({
-        where: { slug: "sacms-ai-pricing", tenantId: null }
-      })
-      if (aiPricingContentType) {
-        const aiEntries = await db.contentEntry.findMany({
-          where: { contentTypeId: aiPricingContentType.id, status: "PUBLISHED" },
-          orderBy: { createdAt: "asc" }
-        })
-        if (aiEntries.length > 0) {
-          aiCreditPacks = aiEntries.map(t => {
-            const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
-            return {
-              id: d.pack_slug || t.id,
-              name: d.name || "AI Credits",
-              credits: Number(d.credits) || 0,
-              price_usd: Number(d.price_usd) || 0,
-              price_idr: Number(d.price) || 0,
-              badge: d.badge || undefined,
-              description: d.description || "",
-              features: Array.isArray(d.features) ? d.features : []
-            }
-          }).sort((a, b) => a.price_idr - b.price_idr)
-        }
-      }
-    } catch (e) {
-      console.warn("Failed to fetch custom AI pricing from db, using defaults:", e)
+    let aiCreditPacks: any[] = AI_CREDIT_PACKS
+    const aiPacks = await getAiCreditPacks()
+    if (aiPacks.length > 0) {
+      aiCreditPacks = aiPacks.map(p => ({
+        id: p.slug,
+        name: p.name || "AI Credits",
+        credits: p.credits,
+        price_usd: p.priceUsd,
+        price_idr: p.price,
+        badge: p.badge || undefined,
+        description: p.description || "",
+        features: Array.isArray(p.features) ? p.features : []
+      })).sort((a, b) => a.price_idr - b.price_idr)
     }
 
     const aiCreditPlans = aiCreditPacks.map(pack => ({

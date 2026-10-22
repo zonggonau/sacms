@@ -3,8 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
-import { db } from "@/lib/database"
-import { cleanPrice, formatRupiahPlain as formatRupiah } from "@/lib/plan-pricing"
+import { formatRupiahPlain as formatRupiah } from "@/lib/plan-pricing"
 import { isEnterpriseTenant } from "@/lib/license"
 
 export default async function BillingPage() {
@@ -14,40 +13,32 @@ export default async function BillingPage() {
     redirect("/login")
   }
 
-  // 1. Fetch Account Plans directly from DB
+  // 1. Fetch Account Plans from the dedicated AccountPlan table
   let accountPlans: any[] = []
   try {
-    const entries = await db.contentEntry.findMany({
-      where: { contentType: { slug: "sacms-account-pricing" }, status: "PUBLISHED" },
-      orderBy: { createdAt: "asc" }
-    })
+    const { getAccountPlans } = await import("@/lib/pricing")
+    const plans = await getAccountPlans()
 
-    if (entries.length > 0) {
-      accountPlans = entries.map(t => {
-        const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
-
-        const monthlyPrice = cleanPrice(d.price)
-        const yearlyPrice = d.yearly_price !== undefined ? cleanPrice(d.yearly_price) : monthlyPrice * 10
+    if (plans.length > 0) {
+      accountPlans = plans.map(p => {
+        const monthlyPrice = p.price
+        const yearlyPrice = p.yearlyPrice ?? monthlyPrice * 10
         const displayYearlyPrice = formatRupiah(yearlyPrice)
         const displayMonthlyPrice = formatRupiah(monthlyPrice)
 
-        const features = Array.isArray(d.features)
-          ? d.features 
-          : (typeof d.features === 'string' ? d.features.split(',').map((s: string) => s.trim()) : [])
-
         return {
-          id: d.plan_slug || t.id,
-          name: d.name || "Unnamed Plan",
-          description: d.description || "",
-          workspaces: d.max_workspaces || "Unlimited",
+          id: p.slug,
+          name: p.name || "Unnamed Plan",
+          description: p.description || "",
+          workspaces: p.maxWorkspaces || "Unlimited",
           price: displayYearlyPrice,
           priceAmount: yearlyPrice,
           monthlyPrice: displayMonthlyPrice,
           monthlyPriceAmount: monthlyPrice,
           yearlyPrice: displayYearlyPrice,
           yearlyPriceAmount: yearlyPrice,
-          features: features,
-          popular: d.is_popular === true || d.plan_slug === "pro"
+          features: Array.isArray(p.features) ? p.features : [],
+          popular: p.isPopular === true || p.slug === "pro"
         }
       })
     }
@@ -112,13 +103,10 @@ export default async function BillingPage() {
       }
     ]
 
-    // Only fall back to the fully hardcoded set when NOTHING is published —
-    // this must match getDynamicAccountPrices()'s own fallback rule exactly
-    // (it only reverts to hardcoded defaults with zero published entries,
-    // otherwise returning exactly the published slugs). Reverting here on
-    // "fewer than 3" used to discard real published plans and show
-    // hardcoded ones a user could click but checkout would then reject as
-    // "not found", since checkout reads the CMS table directly.
+    // Only fall back to the fully hardcoded set when the AccountPlan table
+    // is genuinely empty — same rule getDynamicAccountPrices() in
+    // midtrans.ts uses, and both now read the same table, so this and
+    // checkout can no longer disagree about which plans exist.
     if (accountPlans.length === 0) {
       accountPlans = canonicalPlans
     }

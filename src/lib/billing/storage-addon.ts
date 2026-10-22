@@ -3,9 +3,11 @@ import { db } from "@/lib/database"
 /**
  * Storage add-on: extra storage on top of a workspace's plan quota, sold as
  * a flat one-year top-up. Tiers (5/10/20/50/100GB, 1TB) and their prices are
- * NOT hardcoded here — they live in the "sacms-addons" CMS content type
- * (entries with quota_type: "storage", seeded by scripts/seed/seed-storage-addons.ts)
- * so an admin can add/retire tiers or change prices without a deploy. Only
+ * NOT hardcoded here — they live in the Addon table (src/lib/pricing.ts,
+ * rows with quotaType: "storage", originally seeded by
+ * scripts/seed/seed-storage-addons.ts into the old CMS catalog and migrated
+ * by scripts/migrate/backfill-pricing-plans.ts) so an admin can add/retire
+ * tiers or change prices from /admin/pricing without a deploy. Only
  * the one-year duration is fixed in code, since every tier is sold on that
  * same term by design. Each purchase is its own row, so two purchases in
  * the same year add up. Renewing an add-on starts the new year when the

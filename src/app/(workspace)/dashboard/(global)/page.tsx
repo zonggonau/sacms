@@ -6,7 +6,6 @@ import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 import { getGlobalWorkspaceId } from "@/lib/settings"
-import { cleanPrice } from "@/lib/plan-pricing"
 import { isPlatformStaff } from "@/lib/platform-roles"
 
 export default async function WorkspaceSelectionPage() {
@@ -143,50 +142,36 @@ export default async function WorkspaceSelectionPage() {
   let usage: any = null
 
   try {
+    const { getWorkspacePlans, getAddons } = await import("@/lib/pricing")
     const [wPlans, aPlans] = await Promise.all([
-      db.contentEntry.findMany({
-        where: { contentType: { slug: "sacms-workspace-pricing" }, status: "PUBLISHED" },
-        select: { id: true, data: true }
-      }),
-      db.contentEntry.findMany({
-        where: { contentType: { slug: "sacms-addons" }, status: "PUBLISHED" },
-        select: { id: true, data: true }
-      }),
+      getWorkspacePlans(),
+      getAddons(),
     ])
 
-    workspacePlans = wPlans.map(t => {
-      const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
-      const price = cleanPrice(d.price)
-      const yearlyPrice = d.yearly_price !== undefined ? cleanPrice(d.yearly_price) : price * 10
+    workspacePlans = wPlans.map(p => ({
+      id: p.slug,
+      plan_slug: p.slug || "free",
+      name: p.name || "Workspace Plan",
+      desc: p.description || "",
+      priceAmount: p.price,
+      yearlyPrice: p.yearlyPrice ?? p.price * 10,
+      max_content_types: p.maxContentTypes,
+      max_content_entries: p.maxContentEntries,
+      max_storage: p.maxStorageMb,
+      max_team_members: p.maxTeamMembers,
+      max_locales: p.maxLocales,
+      max_api_calls: p.maxApiCalls,
+      features: Array.isArray(p.features) ? p.features : []
+    })).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
 
-      return {
-        id: d.plan_slug || t.id,
-        plan_slug: d.plan_slug || "free",
-        name: d.name || "Workspace Plan",
-        desc: d.description || d.desc || "",
-        priceAmount: price,
-        yearlyPrice: yearlyPrice,
-        max_content_types: d.max_content_types,
-        max_content_entries: d.max_content_entries,
-        max_storage: d.max_storage,
-        max_team_members: d.max_team_members,
-        max_locales: d.max_locales,
-        max_api_calls: d.max_api_calls,
-        features: Array.isArray(d.features) ? d.features : []
-      }
-    }).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
-
-    addonPlans = aPlans.map(t => {
-      const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
-      return {
-        id: d.addon_slug || t.id,
-        name: d.name || "Add-on",
-        desc: d.description || "",
-        priceLabel: d.price_label || "",
-        priceAmount: cleanPrice(d.price),
-        icon: d.icon || "Sparkles"
-      }
-    })
+    addonPlans = aPlans.map(a => ({
+      id: a.slug,
+      name: a.name || "Add-on",
+      desc: a.description || "",
+      priceLabel: a.priceLabel || "",
+      priceAmount: a.price ?? 0,
+      icon: a.icon || "Sparkles"
+    }))
 
     // Check user plan limits using centralized enforcement (handles enterprise/admin bypasses)
     const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")

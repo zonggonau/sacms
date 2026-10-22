@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/database"
-import { getGlobalWorkspaceId } from "@/lib/settings"
+import { getAccountPlans, getWorkspacePlans } from "@/lib/pricing"
 
 /**
  * Truly Global Plans API - /api/public/plans
@@ -11,13 +10,6 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get("type") || "workspace" // workspace or account
-
-    const slug = type === "account" ? "sacms-account-pricing" : "sacms-workspace-pricing"
-
-    // 1. Fetch Truly Global Content Type
-    const contentType = await db.contentType.findFirst({
-      where: { slug, tenantId: null }
-    })
 
     let plans: any[] = []
 
@@ -35,48 +27,21 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (contentType) {
-      const globalTenantId = await getGlobalWorkspaceId();
-      const entries = await db.contentEntry.findMany({
-        where: {
-          contentTypeId: contentType.id,
-          tenantId: globalTenantId,
-          status: "PUBLISHED"
-        },
-        orderBy: { createdAt: "asc" }
-      })
+    const tablePlans = type === "account" ? await getAccountPlans() : await getWorkspacePlans()
+    const dynamicPlans = tablePlans.map(p => ({
+      id: p.slug,
+      name: p.name || "Unnamed Plan",
+      description: p.description || "",
+      price: p.price,
+      interval: "bulan",
+      features: Array.isArray(p.features) ? p.features : [],
+      isPopular: "isPopular" in p ? !!p.isPopular : false,
+      cta: "ctaText" in p ? (p.ctaText || "Get Started") : "Get Started"
+    }))
 
-      const dynamicPlans = entries.map(entry => {
-        const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
-        
-        // Clean price
-        let price = 0
-        if (typeof d.price === 'string') {
-          price = parseInt(d.price.replace(/[^\d]/g, ''), 10) || 0
-        } else {
-          price = Number(d.price) || 0
-        }
-
-        const features = Array.isArray(d.features) 
-          ? d.features 
-          : (typeof d.features === 'string' ? d.features.split(',').map((s: string) => s.trim()) : [])
-
-        return {
-          id: d.plan_slug || entry.id,
-          name: d.name || "Unnamed Plan",
-          description: d.description || "",
-          price: price,
-          interval: d.period === "month" ? "bulan" : "tahun",
-          features: features,
-          isPopular: !!d.is_popular,
-          cta: d.cta_text || "Get Started"
-        }
-      })
-
-      // Merge and deduplicate (favoring database entries over static free plan if IDs match)
-      const dynamicIds = new Set(dynamicPlans.map(p => p.id))
-      plans = [...plans.filter(p => !dynamicIds.has(p.id)), ...dynamicPlans]
-    }
+    // Merge and deduplicate (favoring table entries over static free plan if IDs match)
+    const dynamicIds = new Set(dynamicPlans.map(p => p.id))
+    plans = [...plans.filter(p => !dynamicIds.has(p.id)), ...dynamicPlans]
 
     // Sort by price
     plans.sort((a, b) => a.price - b.price)
