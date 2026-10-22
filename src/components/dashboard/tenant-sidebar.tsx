@@ -241,7 +241,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
           },
         ] : []),
         ...(isAdmin || isEditor ? [{ title: s.auditLog, href: "/system/audit", icon: ClipboardList }] : []),
-        ...(isAdmin && !isEnterpriseMode ? [{
+        // Shown for enterprise workspaces too — they no longer need to pick
+        // a Free/Pro/Business tier (the page itself hides that tab once it
+        // detects enterprise mode), but still need to reach it to top up
+        // their own storage allocation, buy extra storage addons, or top
+        // up AI credits. Hiding the whole nav item left no way to reach
+        // /subscriptions from the sidebar for any enterprise workspace.
+        ...(isAdmin ? [{
           title: s.subscriptions,
           href: "/subscriptions",
           icon: CreditCard,
