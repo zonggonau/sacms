@@ -150,6 +150,7 @@ model Tenant {
   supportTickets         SupportTicket[]
   storageAddons          StorageAddon[]
   managedInfraService    ManagedInfraService?
+  enterpriseStorageAllocation EnterpriseStorageAllocation?
   appMembers             Member[]
   memberRoles            MemberRole[]
 
@@ -898,6 +899,29 @@ model LicenseActivation {
   @@unique([licenseId, userId])
   @@index([licenseId])
   @@map("license_activations")
+}
+
+/// Owner's explicit slice of their own pooled EnterpriseLicense.storageGb
+/// grant, assigned to one specific owned workspace — see
+/// getOwnerStorageAllocationPlan() in plan-enforcement.ts. One row per
+/// tenant that has been EXPLICITLY assigned a figure; a tenant with no row
+/// here gets an equal share of the pool's remainder, computed live on every
+/// read — there is no "auto" row/sentinel stored anywhere, so creating or
+/// deleting a workspace, or changing another workspace's allocation, is
+/// reflected immediately with no backfill/migration step.
+model EnterpriseStorageAllocation {
+  id          String   @id @default(cuid())
+  ownerId     String
+  tenantId    String   @unique
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Always > 0 — to hand a workspace back to the auto-split pool, delete
+  /// this row rather than writing 0.
+  allocatedGb Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@map("enterprise_storage_allocations")
 }
 
 model LicenseCache {

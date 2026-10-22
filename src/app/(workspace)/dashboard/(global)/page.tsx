@@ -7,6 +7,7 @@ import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { isPlatformStaff } from "@/lib/platform-roles"
+import { getStorageQuota } from "@/lib/plan-enforcement"
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
@@ -97,6 +98,19 @@ export default async function WorkspaceSelectionPage() {
 
     const enterprise = isGlobalEnterprise || await isEnterpriseTenant(t.id, session.user.id)
 
+    // Per-workspace storage figures, read-only here — only fetched for
+    // enterprise-licensed tenants, where each workspace now has its own
+    // slice of the owner's pooled grant (see getStorageQuota()'s enterprise
+    // branch in plan-enforcement.ts). Regular tenants' usage is already
+    // shown on their own subscriptions page, not surfaced in this list.
+    let storageUsedBytes: number | null = null
+    let storageLimitBytes: number | null = null
+    if (enterprise && !isGlobalWorkspace) {
+      const quota = await getStorageQuota(t.id)
+      storageUsedBytes = quota.usedBytes
+      storageLimitBytes = quota.limitBytes
+    }
+
     if (!enterprise) {
       if (t.status === "suspended") {
         isExpired = true
@@ -123,6 +137,8 @@ export default async function WorkspaceSelectionPage() {
       subscriptionStatus: sub?.status || null,
       expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null,
       isGlobalWorkspace,
+      storageUsedBytes,
+      storageLimitBytes,
     }
   }
 
@@ -186,12 +202,15 @@ export default async function WorkspaceSelectionPage() {
     if (isGlobalEnterprise) {
       // One single option, not a tier pick — every new workspace this
       // account creates is simply covered by its account-level Enterprise
-      // License (unlimited content/team/API, pooled storage shared across
-      // every workspace the owner has — see EnterpriseLicenseBanner /
-      // getOwnerStorageLicense() in plan-enforcement.ts). No per-workspace
-      // storage addons either: storage isn't metered per workspace under
-      // this license, so offering a storage top-up here would be
-      // meaningless — addonPlans is cleared below for the same reason.
+      // License (unlimited content/team/API; storage comes out of the
+      // owner's pooled grant — see EnterpriseLicenseBanner's "Alokasi
+      // Storage per Workspace" section / getOwnerStorageAllocationPlan() in
+      // plan-enforcement.ts, where the owner can assign this brand-new
+      // workspace its own GB slice once it exists). No storage add-on
+      // picker at creation time either — a workspace with zero usage so far
+      // has nothing to top up yet; that's handled later from its own
+      // /subscriptions?tab=storage page, which already supports it —
+      // addonPlans is cleared below just for this creation step.
       workspacePlans = [
         {
           id: "enterprise-license",

@@ -59,6 +59,17 @@ interface Tenant {
   isEnterprise?: boolean
   /** The SaCMS Global workspace itself — no manage/delete menu, just a way in. */
   isGlobalWorkspace?: boolean
+  /** This workspace's own slice of its owner's pooled Enterprise storage
+   *  grant (see getStorageQuota()'s enterprise branch) — only set for
+   *  enterprise-licensed tenants; null/undefined otherwise. Read-only here;
+   *  manage the split from EnterpriseLicenseBanner's allocation section. */
+  storageUsedBytes?: number | null
+  storageLimitBytes?: number | null
+}
+
+function formatBytesGb(bytes: number): string {
+  const gb = bytes / (1024 * 1024 * 1024)
+  return gb >= 1024 ? `${(gb / 1024).toFixed(gb % 1024 === 0 ? 0 : 1)} TB` : `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB`
 }
 
 interface WorkspaceManagerProps {
@@ -483,6 +494,12 @@ export function WorkspaceManager({
                         {tenant.plan}
                       </Badge>
 
+                      {tenant.isEnterprise && tenant.storageLimitBytes != null && tenant.storageUsedBytes != null && (
+                        <Badge variant="outline" className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full border-border/80 text-muted-foreground">
+                          {formatBytesGb(tenant.storageUsedBytes)} / {formatBytesGb(tenant.storageLimitBytes)}
+                        </Badge>
+                      )}
+
                       <Badge variant="outline" className="text-[10px] font-semibold capitalize px-2 py-0.5 rounded-full border-border/80 text-muted-foreground">
                         {tenant.role.replace('_', ' ')}
                       </Badge>
@@ -583,6 +600,11 @@ export function WorkspaceManager({
                         <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-wider">
                           {tenant.plan}
                         </Badge>
+                        {tenant.isEnterprise && tenant.storageLimitBytes != null && tenant.storageUsedBytes != null && (
+                          <p className="text-[10px] text-muted-foreground font-mono mt-1">
+                            {formatBytesGb(tenant.storageUsedBytes)} / {formatBytesGb(tenant.storageLimitBytes)}
+                          </p>
+                        )}
                       </TableCell>
                       <TableCell className="py-3">
                         <Badge variant="outline" className="text-[10px] capitalize border-border text-muted-foreground">

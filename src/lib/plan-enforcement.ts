@@ -109,6 +109,70 @@ export async function getOwnerPooledStorageUsedBytes(ownerId: string): Promise<n
   return perTenantBytes.reduce((sum, bytes) => sum + bytes, 0)
 }
 
+export interface WorkspaceStorageSlice {
+  allocatedBytes: number
+  isExplicit: boolean
+}
+
+/**
+ * This owner's pooled license storage, split across every workspace they
+ * currently own. Explicit EnterpriseStorageAllocation rows are honored
+ * first; every owned tenant WITHOUT a row gets an equal share of
+ * (poolLimitBytes − sum(explicit)), divided by however many owned tenants
+ * are currently unassigned. Recomputed from the CURRENT explicit rows +
+ * CURRENT owner-member count on every call — nothing here is cached or
+ * stored, so creating/deleting a workspace, or setting/clearing an explicit
+ * allocation, is reflected on the very next read with no migration/backfill
+ * step. Remainder clamps at 0 rather than going negative (e.g. after a
+ * license downgrade leaves the explicit sum over the new pool size) — see
+ * getStorageQuota()'s enterprise branch for what that means for an upload.
+ */
+export async function getOwnerStorageAllocationPlan(
+  ownerId: string,
+  poolLimitBytes: number
+): Promise<Map<string, WorkspaceStorageSlice>> {
+  const [ownedTenants, explicitRows] = await Promise.all([
+    db.tenantMember.findMany({ where: { userId: ownerId, role: "owner" }, select: { tenantId: true } }),
+    db.enterpriseStorageAllocation.findMany({ where: { ownerId }, select: { tenantId: true, allocatedGb: true } }),
+  ])
+
+  const ownedTenantIds = new Set(ownedTenants.map((t) => t.tenantId))
+  // Only count explicit rows for tenants still actually owned by this user —
+  // guards against a stale row surviving an ownership change.
+  const explicitByTenant = new Map(
+    explicitRows
+      .filter((r) => ownedTenantIds.has(r.tenantId))
+      .map((r) => [r.tenantId, r.allocatedGb * 1024 * MB] as const)
+  )
+
+  const unassignedTenantIds = [...ownedTenantIds].filter((id) => !explicitByTenant.has(id))
+  const explicitTotalBytes = [...explicitByTenant.values()].reduce((sum, b) => sum + b, 0)
+  const remainderBytes = Math.max(0, poolLimitBytes - explicitTotalBytes)
+  const autoShareBytes = unassignedTenantIds.length > 0 ? Math.floor(remainderBytes / unassignedTenantIds.length) : 0
+
+  const plan = new Map<string, WorkspaceStorageSlice>()
+  for (const tenantId of ownedTenantIds) {
+    plan.set(
+      tenantId,
+      explicitByTenant.has(tenantId)
+        ? { allocatedBytes: explicitByTenant.get(tenantId)!, isExplicit: true }
+        : { allocatedBytes: autoShareBytes, isExplicit: false }
+    )
+  }
+  return plan
+}
+
+/** This single workspace's own slice of its owner's storage pool, or null if the owner has no active storage license. */
+export async function getWorkspaceStorageAllocation(
+  tenantId: string,
+  ownerId: string
+): Promise<WorkspaceStorageSlice | null> {
+  const ownerLicense = await getOwnerStorageLicense(ownerId)
+  if (!ownerLicense.licensed) return null
+  const plan = await getOwnerStorageAllocationPlan(ownerId, ownerLicense.limitBytes)
+  return plan.get(tenantId) ?? { allocatedBytes: 0, isExplicit: false }
+}
+
 /**
  * This user's own account-level enterprise license, if it grants a bounded
  * AI credit pool (admin sets this per-license — not every enterprise
@@ -203,12 +267,20 @@ export async function getStorageQuota(tenantId: string): Promise<StorageQuota> {
 
       const ownerLicense = await getOwnerStorageLicense(ownerId)
       if (ownerLicense.licensed) {
-        const pooledUsedBytes = await getOwnerPooledStorageUsedBytes(ownerId)
+        // Per-workspace slice of the pool (owner-assigned, or an even share
+        // of whatever's left over — see getWorkspaceStorageAllocation),
+        // plus this workspace's own active storage add-ons. usedBytes/
+        // addonBytes are already this workspace's own numbers from above —
+        // previously this branch discarded both in favor of the account-wide
+        // pooled total, so every workspace under the same license saw an
+        // identical used/limit pair and one workspace's uploads could block
+        // every sibling workspace regardless of its own allocation.
+        const slice = (await getWorkspaceStorageAllocation(tenantId, ownerId)) ?? { allocatedBytes: 0, isExplicit: false }
         return {
-          usedBytes: pooledUsedBytes,
-          limitBytes: ownerLicense.limitBytes,
-          planBytes: ownerLicense.limitBytes,
-          addonBytes: 0,
+          usedBytes,
+          limitBytes: slice.allocatedBytes + addonBytes,
+          planBytes: slice.allocatedBytes,
+          addonBytes,
           planSlug: "enterprise",
         }
       }

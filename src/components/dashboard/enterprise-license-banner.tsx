@@ -17,6 +17,10 @@ import {
   Check,
   ExternalLink,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  RotateCcw,
 } from "lucide-react"
 
 interface EnterpriseLicenseInfo {
@@ -311,6 +315,8 @@ export function EnterpriseLicenseBanner({
           )
         })()}
 
+        {scope === "user" && license.storageLimitBytes != null && <StorageAllocationSection />}
+
         {license.aiCredits != null && license.aiCreditsUsed != null && (() => {
           const creditPct = license.aiCredits > 0
             ? Math.round((license.aiCreditsUsed / license.aiCredits) * 100)
@@ -354,5 +360,225 @@ export function EnterpriseLicenseBanner({
         })()}
       </CardContent>
     </Card>
+  )
+}
+
+interface StorageAllocationWorkspace {
+  tenantId: string
+  name: string
+  slug: string
+  allocatedBytes: number
+  isExplicit: boolean
+  usedBytes: number
+  addonBytes: number
+  effectiveLimitBytes: number
+}
+
+interface StorageAllocationResponse {
+  licensed: boolean
+  poolLimitBytes?: number
+  poolUsedBytes?: number
+  overAllocated?: boolean
+  workspaces?: StorageAllocationWorkspace[]
+}
+
+/**
+ * Lets the account owner split their pooled Enterprise storage grant across
+ * specific owned workspaces (give one workspace a fixed GB figure, the rest
+ * auto-split whatever's left — see getOwnerStorageAllocationPlan() in
+ * plan-enforcement.ts) instead of every workspace silently sharing one
+ * combined number. Fetches lazily, only once expanded, since the backing
+ * endpoint does an N-tenant fan-out this banner's cheap default load
+ * shouldn't pay for on every dashboard mount.
+ */
+function StorageAllocationSection() {
+  const { toast } = useToast()
+  const [expanded, setExpanded] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [data, setData] = useState<StorageAllocationResponse | null>(null)
+  const [editingTenantId, setEditingTenantId] = useState<string | null>(null)
+  const [editValue, setEditValue] = useState("")
+  const [savingTenantId, setSavingTenantId] = useState<string | null>(null)
+
+  const fetchAllocations = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch("/api/user/storage-allocations")
+      if (res.ok) setData(await res.json())
+    } catch {
+      // Section just stays empty — the combined storage bar above still works.
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExpand = () => {
+    const next = !expanded
+    setExpanded(next)
+    if (next && !data) fetchAllocations()
+  }
+
+  const handleSave = async (tenantId: string) => {
+    const allocatedGb = Number(editValue)
+    if (!Number.isInteger(allocatedGb) || allocatedGb <= 0) {
+      toast({ variant: "destructive", title: "Nilai Tidak Valid", description: "Masukkan jumlah GB berupa bilangan bulat lebih dari 0." })
+      return
+    }
+    setSavingTenantId(tenantId)
+    try {
+      const res = await fetch(`/api/user/storage-allocations/${tenantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allocatedGb }),
+      })
+      const body = await res.json()
+      if (res.ok) {
+        toast({ title: "Alokasi Disimpan", description: `Workspace ini kini mendapat ${allocatedGb} GB.` })
+        setEditingTenantId(null)
+        await fetchAllocations()
+      } else {
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description: body.error || "Gagal menyimpan alokasi." })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan alokasi." })
+    } finally {
+      setSavingTenantId(null)
+    }
+  }
+
+  const handleReset = async (tenantId: string) => {
+    setSavingTenantId(tenantId)
+    try {
+      const res = await fetch(`/api/user/storage-allocations/${tenantId}`, { method: "DELETE" })
+      if (res.ok) {
+        toast({ title: "Dikembalikan ke Otomatis", description: "Workspace ini kini mendapat bagian rata dari sisa kuota." })
+        await fetchAllocations()
+      } else {
+        toast({ variant: "destructive", title: "Gagal", description: "Gagal mengembalikan ke alokasi otomatis." })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal mengembalikan ke alokasi otomatis." })
+    } finally {
+      setSavingTenantId(null)
+    }
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/60">
+      <button
+        type="button"
+        onClick={handleExpand}
+        className="w-full flex items-center justify-between gap-2 text-left"
+      >
+        <span className="text-[11px] font-bold text-foreground">Alokasi Storage per Workspace</span>
+        {expanded ? <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          {loading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memuat alokasi...
+            </div>
+          ) : !data?.licensed || !data.workspaces?.length ? (
+            <p className="text-xs text-muted-foreground py-1">Belum ada workspace untuk dialokasikan.</p>
+          ) : (
+            <>
+              {data.overAllocated && (
+                <div className="text-[11px] text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                  Total alokasi manual melebihi kuota lisensi — kurangi salah satu alokasi di bawah.
+                </div>
+              )}
+              {data.workspaces.map((w) => {
+                const pct = w.effectiveLimitBytes > 0 ? Math.round((w.usedBytes / w.effectiveLimitBytes) * 100) : 0
+                const full = pct >= 100
+                const warning = pct >= 90
+                const isEditing = editingTenantId === w.tenantId
+                const isSaving = savingTenantId === w.tenantId
+
+                return (
+                  <div key={w.tenantId} className="rounded-xl border border-border/60 p-3 space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-foreground">{w.name}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[9px] font-semibold px-1.5 py-0 rounded-full",
+                            w.isExplicit ? "border-primary/30 text-primary" : "border-border text-muted-foreground"
+                          )}
+                        >
+                          {w.isExplicit ? "Manual" : "Otomatis"}
+                        </Badge>
+                      </div>
+
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min={1}
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="h-7 w-20 text-xs rounded-lg"
+                            disabled={isSaving}
+                          />
+                          <span className="text-[10px] text-muted-foreground">GB</span>
+                          <Button size="sm" className="h-7 px-2 text-[11px] rounded-lg" disabled={isSaving} onClick={() => handleSave(w.tenantId)}>
+                            {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-[11px] rounded-lg" disabled={isSaving} onClick={() => setEditingTenantId(null)}>
+                            Batal
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[11px] rounded-lg border-border"
+                            disabled={isSaving}
+                            onClick={() => {
+                              setEditingTenantId(w.tenantId)
+                              setEditValue(String(Math.max(1, Math.round(w.allocatedBytes / (1024 * 1024 * 1024)))))
+                            }}
+                          >
+                            <Pencil className="w-3 h-3 mr-1" />
+                            {w.isExplicit ? "Ubah" : "Atur Manual"}
+                          </Button>
+                          {w.isExplicit && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-[11px] rounded-lg"
+                              disabled={isSaving}
+                              onClick={() => handleReset(w.tenantId)}
+                            >
+                              {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {formatBytesGb(w.usedBytes)} / {formatBytesGb(w.effectiveLimitBytes)}
+                          {w.addonBytes > 0 && <span className="ml-1">(termasuk +{formatBytesGb(w.addonBytes)} add-on)</span>}
+                        </span>
+                      </div>
+                      <Progress
+                        value={Math.min(pct, 100)}
+                        className={cn("h-1", full ? "[&>div]:bg-red-500" : warning ? "[&>div]:bg-yellow-500" : undefined)}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
