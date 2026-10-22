@@ -146,19 +146,29 @@ export default function BillingClient({
     const purchasedId = tx.purchasedId || tx.subscription?.plan
     if (tx.orderId.startsWith("ACC-")) {
       router.push(`/dashboard/billing/checkout?plan=${purchasedId || "starter"}&type=account&interval=year`)
-    } else if (tx.orderId.startsWith("SUB-") || tx.orderId.startsWith("ADD-")) {
-      const tenantSlug = tx.subscription?.tenant?.slug || "workspace"
-      router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${purchasedId || "pro"}&interval=year`)
-    } else if (tx.orderId.startsWith("AIC-") || tx.rawResponse?.type === "ai_credits") {
-      const tenantSlug = tx.subscription?.tenant?.slug || session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id || "workspace"
-      router.push(`/dashboard/${tenantSlug}/subscriptions?tab=ai-plans`)
-    } else {
+      return
+    }
+
+    // SUB- (plan change), ADD- (addon) and AIC- (AI credit pack) all resume
+    // through the same tenant checkout page — it already resolves any of
+    // these three generically by id from /subscriptions/plans (see
+    // checkout/page.tsx: isAiPack = plan.id?.startsWith("ai_pack_") ||
+    // plan.type === "ai_plan"). An AI-credit subscription is never tied to
+    // one tenant (checkout always creates it with tenantId: null), so any
+    // tenant the user owns works just to reach the checkout page from.
+    const tenantSlug = tx.subscription?.tenant?.slug
+      || (tx.orderId.startsWith("AIC-") || tx.rawResponse?.type === "ai_credits"
+        ? (session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id)
+        : null)
+    if (!tenantSlug) {
       toast({
         variant: "destructive",
         title: "Tidak Dapat Melanjutkan Pembayaran",
         description: "Jenis transaksi ini tidak dikenali. Silakan hubungi dukungan pelanggan.",
       })
+      return
     }
+    router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${purchasedId || "pro"}&interval=year`)
   }
 
   const handleCheckStatus = async (orderId: string) => {
