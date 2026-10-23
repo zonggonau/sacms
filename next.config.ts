@@ -32,6 +32,9 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["node:inspector"],
+  experimental: {
+    agentUpgrade: "security",
+  },
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
