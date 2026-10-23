@@ -22,6 +22,11 @@ interface LogoProps {
    *  the wide lockup's wordmark is baked into the image and can't be
    *  swapped for custom text. */
   variant?: "compact" | "wide"
+  /** Only applies to variant="wide". "auto" (default) follows the resolved
+   *  theme like the compact variant does; pin to "black" or "white" to
+   *  always use that lockup regardless of theme (e.g. a navbar whose own
+   *  background stays light in both themes). */
+  wideColor?: "auto" | "black" | "white"
   showText?: boolean
   useOrange?: boolean
   customName?: string
@@ -45,6 +50,7 @@ export function Logo({
   className,
   iconSize = "md",
   variant = "compact",
+  wideColor = "auto",
   showText = true,
   useOrange = true,
   customName,
@@ -73,7 +79,15 @@ export function Logo({
     <div className={cn("flex items-center gap-2.5 group", className)}>
       {useWide ? (
         <Image
-          src={isDark ? "/assets/img/header-footer-white.png" : "/assets/img/header-footer-black.png"}
+          src={
+            wideColor === "black"
+              ? "/assets/img/header-footer-black.png"
+              : wideColor === "white"
+              ? "/assets/img/header-footer-white.png"
+              : isDark
+              ? "/assets/img/header-footer-white.png"
+              : "/assets/img/header-footer-black.png"
+          }
           alt="SaCMS"
           width={Math.round(px * WIDE_ASPECT)}
           height={px}
