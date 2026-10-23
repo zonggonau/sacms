@@ -37,6 +37,9 @@ const nextConfig: NextConfig = {
   // asset". Marking it external makes Next.js resolve it from node_modules
   // at runtime instead of tracing/bundling it.
   serverExternalPackages: ["node:inspector", "ssh2", "cpu-features"],
+  experimental: {
+    agentUpgrade: "security",
+  },
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
