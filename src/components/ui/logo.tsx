@@ -92,7 +92,8 @@ export function Logo({
           width={Math.round(px * WIDE_ASPECT)}
           height={px}
           priority
-          className="shrink-0 transition-transform group-hover:scale-105 object-contain"
+          className="shrink-0 w-auto transition-transform group-hover:scale-105 object-contain"
+          style={{ height: px }}
         />
       ) : (
         <Image
@@ -101,7 +102,8 @@ export function Logo({
           width={px}
           height={px}
           priority
-          className="shrink-0 transition-transform group-hover:scale-105 object-contain"
+          className="shrink-0 w-auto transition-transform group-hover:scale-105 object-contain"
+          style={{ height: px }}
         />
       )}
 
