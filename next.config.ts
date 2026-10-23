@@ -31,7 +31,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  serverExternalPackages: ["node:inspector"],
+  // ssh2 (used by src/lib/vps-db-storage.ts) ships an optional native crypto
+  // addon (sshcrypto.node) that Turbopack cannot place inside an ESM server
+  // chunk — bundling it crashes the build with "non-ecmascript placeable
+  // asset". Marking it external makes Next.js resolve it from node_modules
+  // at runtime instead of tracing/bundling it.
+  serverExternalPackages: ["node:inspector", "ssh2", "cpu-features"],
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
