@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og"
+import { SACMS_ICON_WHITE_PNG_BASE64 } from "@/lib/brand-assets"
 
 export const runtime = "nodejs"
 export const alt = "SaCMS — Smart Content Management System"
@@ -74,24 +75,16 @@ export default async function Image() {
             marginBottom: "20px",
           }}
         >
-          <div
+          {/* next/og's Satori renderer needs a plain <img>, not next/image */}
+          <img
+            src={SACMS_ICON_WHITE_PNG_BASE64}
+            width="70"
+            height="70"
+            alt="SaCMS"
             style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: "70px",
-              height: "70px",
-              borderRadius: "18px",
-              backgroundColor: "#f97316",
-              color: "white",
-              fontSize: "36px",
-              fontFamily: "monospace",
-              fontWeight: "900",
-              boxShadow: "0 10px 25px rgba(249, 115, 22, 0.4)",
+              filter: "drop-shadow(0 10px 25px rgba(249, 115, 22, 0.4))",
             }}
-          >
-            &lt;/&gt;
-          </div>
+          />
           <div style={{ display: "flex", fontSize: "72px", fontWeight: "900", letterSpacing: "-2px" }}>
             <span>Sa</span>
             <span style={{ color: "#f97316" }}>CMS</span>

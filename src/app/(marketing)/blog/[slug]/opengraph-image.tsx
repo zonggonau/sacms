@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og"
 import { getLandingData } from "@/lib/public-api"
 import { type BlogPost } from "@/components/blog/blog-explorer"
+import { SACMS_ICON_WHITE_PNG_BASE64 } from "@/lib/brand-assets"
 
 export const runtime = "nodejs"
 export const size = {
@@ -79,23 +80,8 @@ export default async function Image({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "48px",
-                height: "48px",
-                borderRadius: "12px",
-                backgroundColor: "#f97316",
-                color: "white",
-                fontSize: "24px",
-                fontFamily: "monospace",
-                fontWeight: "900",
-              }}
-            >
-              &lt;/&gt;
-            </div>
+            {/* next/og's Satori renderer needs a plain <img>, not next/image */}
+            <img src={SACMS_ICON_WHITE_PNG_BASE64} width="48" height="48" alt="SaCMS" />
             <span style={{ fontSize: "32px", fontWeight: "900", letterSpacing: "-1px" }}>
               Sa<span style={{ color: "#f97316" }}>CMS</span>
             </span>

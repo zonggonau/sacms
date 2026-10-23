@@ -1,5 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+import { SACMS_ICON_BLACK_PNG_BASE64, SACMS_ICON_WHITE_PNG_BASE64 } from "./brand-assets"
 
 export interface InvoiceData {
   orderId: string
@@ -62,22 +63,25 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   const statusColor = isPaid ? C.green : isPending ? C.amber : C.red
 
-  // Black/grayscale only throughout — this document is meant to be printed
+  // Grayscale structure throughout — this document is meant to be printed
   // on a home/office printer without burning color toner, so every
-  // structural element (header, table, totals, footer) is a black rule or
-  // border on white, never a filled colour band. The ONE deliberate spot of
-  // colour is the payment status (word + total amount) — small text, not a
-  // fill, cheap on any printer, and it's the one piece of information a
-  // glance at colour genuinely helps with.
+  // structural element (table, totals, footer) is a black rule or border
+  // on white, never a filled colour band. The two deliberate spots of
+  // colour are the real SaCMS logo mark in the header and the payment
+  // status (word + total amount) — both small, not fills, cheap on any
+  // printer, and both are information a glance at colour genuinely helps
+  // with (brand recognition, payment state).
   const BLACK: [number, number, number] = [0, 0, 0]
 
   /* ═══════════════════════════════════════════════════════════════════════
      1. HEADER — plain, no filled band
   ═══════════════════════════════════════════════════════════════════════ */
+  doc.addImage(SACMS_ICON_BLACK_PNG_BASE64, 'PNG', ML, 10, 9, 9)
+
   rgb(doc, BLACK, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(20)
-  doc.text('SaCMS', ML, 20)
+  doc.text('SaCMS', ML + 11, 20)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
@@ -306,6 +310,7 @@ export function generateInvoicePDF(data: InvoiceData) {
      8. SAVE
   ═══════════════════════════════════════════════════════════════════════ */
   doc.save(`Invoice_${data.orderId}.pdf`)
+  return doc
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -391,6 +396,8 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   doc.rect(0, 0, W, 4, 'F')
   doc.rect(0, H - 4, W, 4, 'F')
 
+  doc.addImage(SACMS_ICON_WHITE_PNG_BASE64, 'PNG', W / 2 - 8, 26, 16, 16)
+
   rgb(doc, C.white, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(28)
@@ -473,10 +480,12 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
     rgb(doc, C.blue, 'fill')
     doc.rect(0, bandH, W, 2, 'F')
 
+    doc.addImage(SACMS_ICON_WHITE_PNG_BASE64, 'PNG', ML, 4, 8, 8)
+
     rgb(doc, C.white, 'text')
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.text('SaCMS — Perjanjian Kerja Sama Lisensi Perangkat Lunak', ML, 10)
+    doc.text('SaCMS — Perjanjian Kerja Sama Lisensi Perangkat Lunak', ML + 10, 10)
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(180, 190, 210)
@@ -793,4 +802,5 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
 
   const safeName = partyTwoName.replace(/[^a-z0-9]+/gi, '_')
   doc.save(`Kontrak_Lisensi_${safeName}_${refCode}.pdf`)
+  return doc
 }

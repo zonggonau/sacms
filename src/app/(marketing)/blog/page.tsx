@@ -73,7 +73,7 @@ export default async function BlogPage() {
       "name": "SaCMS — Smart Content Management System",
       "logo": {
         "@type": "ImageObject",
-        "url": `${siteUrl}/logo.svg`
+        "url": `${siteUrl}/favicon-512.png`
       }
     },
     "hasPart": blogs.map((b) => {

@@ -94,8 +94,8 @@ export async function sendVerificationEmail(email: string, token: string, name: 
   const subject = "Verifikasi Alamat Email Anda — SaCMS"
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
-        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span></span>
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <img src="${baseUrl}/assets/img/header-footer-black-email.png" alt="SaCMS" height="28" style="display: block; width: auto;" />
       </div>
       <h2 style="color: #0f172a; margin-top: 0;">Selamat Datang di SaCMS!</h2>
       <p style="color: #334155; font-size: 15px; line-height: 1.6;">Halo <strong>${name}</strong>,</p>
@@ -201,8 +201,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   const subject = "Atur Ulang Kata Sandi — SaCMS"
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
-        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span></span>
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <img src="${baseUrl}/assets/img/header-footer-black-email.png" alt="SaCMS" height="28" style="display: block; width: auto;" />
       </div>
       <h2 style="color: #0f172a; margin-top: 0;">Permintaan Reset Kata Sandi</h2>
       <p style="color: #475569; font-size: 14px; line-height: 1.6;">Kami menerima permintaan untuk mengatur ulang kata sandi akun SaCMS Anda. Klik tombol di bawah untuk membuat kata sandi baru:</p>
@@ -489,6 +489,7 @@ export async function sendSupportNotificationEmail({
   const safeSenderName = escapeHtml(senderName)
   const safeSubject = escapeHtml(subject)
   const safeMessagePreview = escapeHtml(messagePreview)
+  const baseUrl = await getBaseUrl()
 
   // Header injection guard: a crafted ticket subject/sender name containing
   // CR/LF could otherwise inject extra headers into the raw email subject line.
@@ -500,8 +501,9 @@ export async function sendSupportNotificationEmail({
 
   const html = `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
-        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span> Support</span>
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <img src="${baseUrl}/assets/img/header-footer-black-email.png" alt="SaCMS" height="28" style="display: block; width: auto;" />
+        <span style="font-size: 14px; font-weight: 700; color: #0f172a;">Support</span>
       </div>
       <h3 style="color: #0f172a; margin-top: 0;">Halo ${safeRecipientName},</h3>
       <p style="color: #475569; font-size: 14px; line-height: 1.6;">

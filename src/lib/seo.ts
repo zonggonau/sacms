@@ -55,7 +55,7 @@ export function generatePlatformJsonLd() {
         "logo": {
           "@type": "ImageObject",
           "@id": `${baseUrl}/#logo`,
-          "url": `${baseUrl}/logo.svg`,
+          "url": `${baseUrl}/favicon-512.png`,
           "caption": "SaCMS Logo"
         },
         "description": SEO_CONFIG.defaultDescription,
@@ -161,7 +161,7 @@ export function generateBlogPostJsonLd(post: {
       "name": "SaCMS — Smart Content Management System",
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/logo.svg`
+        "url": `${baseUrl}/favicon-512.png`
       }
     }
   }
@@ -190,7 +190,7 @@ export function generateDocsJsonLd() {
       "name": "SaCMS — Smart Content Management System",
       "logo": {
         "@type": "ImageObject",
-        "url": `${baseUrl}/logo.svg`
+        "url": `${baseUrl}/favicon-512.png`
       }
     }
   }
