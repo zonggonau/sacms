@@ -262,6 +262,7 @@ jobs:
             # there), not silently applied by an unattended deploy pipeline.
             docker compose run --rm app bun x prisma db push --skip-generate
             docker compose run --rm app bun run seed:permissions || true
+            docker compose run --rm app bun run seed:pricing || true
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans

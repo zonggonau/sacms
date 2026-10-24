@@ -45,6 +45,7 @@
     "db:tenant:push": "bun scripts/push-tenant-schema.ts",
     "seed:global": "bun prisma/seed-global.ts",
     "seed:permissions": "bun scripts/seed-permissions.ts",
+    "seed:pricing": "bun scripts/seed/seed-pricing-catalog.ts",
     "cron:publish": "bun scripts/scheduled-publish.ts",
     "qa": "bun scripts/qa-runner.ts",
     "cli": "bun scripts/cli.ts"
