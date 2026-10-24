@@ -22,8 +22,8 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
       answer: "Kami mendukung seluruh pembayaran lokal via Midtrans: QRIS, GoPay, OVO, ShopeePay, Transfer Bank (BCA, Mandiri, BNI, BRI, Permata), dan Kartu Kredit Visa/Mastercard.",
     },
     {
-      question: "Apakah saya bisa menggunakan database PostgreSQL saya sendiri (BYODB)?",
-      answer: "Ya! Anda dapat memasukkan string koneksi PostgreSQL Anda sendiri (seperti Supabase, Neon, AWS RDS) langsung di menu Pengaturan Workspace.",
+      question: "Apakah data workspace saya terisolasi dari pelanggan lain?",
+      answer: "Ya. Setiap workspace terisolasi secara logis di infrastruktur PostgreSQL terkelola SaCMS. Untuk kebutuhan isolasi yang lebih tinggi, pemegang Lisensi Enterprise mendapatkan satu database PostgreSQL khusus (dedicated) yang dibuat otomatis untuk akun mereka — menampung seluruh workspace yang mereka miliki, tanpa perlu mengelola server sendiri.",
     },
   ]
 

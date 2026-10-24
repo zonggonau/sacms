@@ -14,7 +14,7 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
     {
       icon: "Landmark",
       label: "Pemerintah & BUMN",
-      desc: "Keamanan database terisolasi (BYODB), kedaulatan data lokal, dan kepatuhan audit sistem.",
+      desc: "Keamanan database khusus (dedicated), kedaulatan data lokal, dan kepatuhan audit sistem.",
     },
     {
       icon: "ShoppingBag",

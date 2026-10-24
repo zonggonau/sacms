@@ -137,7 +137,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
                 Mulai Gratis, Tingkatkan Saat Butuh Lebih
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground font-medium leading-relaxed">
-                Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Database &amp; Storage Sendiri (BYODB) berlisensi Enterprise.
+                Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Database Khusus berlisensi Enterprise.
               </p>
               <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-foreground/80">
                 <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Tanpa Kartu Kredit</span>

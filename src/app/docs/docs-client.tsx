@@ -1062,10 +1062,10 @@ export function DocsClient() {
               <ul className="space-y-1 text-sm">
                 <li>
                   <a
-                    href="#byodb"
+                    href="#dedicated-db"
                     className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
-                    Bring Your Own DB (BYODB)
+                    Database Khusus Enterprise
                   </a>
                 </li>
                 <li>
@@ -1805,43 +1805,17 @@ await sacms.auth.logout(session.refreshToken)`}
             </div>
           </section>
 
-          {/* BRING YOUR OWN DATABASE (BYODB) */}
-          <section id="byodb" className="scroll-mt-24 space-y-6">
+          {/* DEDICATED DATABASE FOR ENTERPRISE */}
+          <section id="dedicated-db" className="scroll-mt-24 space-y-6">
             <div className="flex items-center gap-2.5">
               <div className="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600 dark:text-amber-400">
                 <Database className="w-5 h-5" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">Bring Your Own Database (BYODB)</h2>
+              <h2 className="text-2xl font-bold tracking-tight">Database Khusus Enterprise</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              Enterprise and Pro workspaces can connect dedicated external PostgreSQL databases and S3 object storage buckets for absolute data isolation and compliance.
+              Setiap workspace SaCMS berjalan di infrastruktur PostgreSQL terkelola milik SaCMS dengan isolasi logis per workspace. Untuk kebutuhan isolasi yang lebih tinggi, pemegang Lisensi Enterprise mendapatkan satu database PostgreSQL khusus (dedicated) yang dibuat otomatis saat lisensi diaktifkan — menampung seluruh workspace yang dimiliki akun tersebut. Tidak perlu menyambungkan server atau database eksternal sendiri; semuanya tetap dikelola di infrastruktur SaCMS.
             </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-xl border bg-card space-y-2">
-                <div className="font-bold text-sm text-emerald-600">⚡ Supabase</div>
-                <p className="text-muted-foreground">Gunakan Connection Pooling URI pada port 6543 atau 5432 direct connection.</p>
-                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
-                  postgresql://postgres.xxx:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
-                </code>
-              </div>
-
-              <div className="p-4 rounded-xl border bg-card space-y-2">
-                <div className="font-bold text-sm text-blue-600">🌊 Neon DB</div>
-                <p className="text-muted-foreground">Serverless Postgres URL dengan SSL mode require.</p>
-                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
-                  postgresql://[USER]:[PASS]@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-                </code>
-              </div>
-
-              <div className="p-4 rounded-xl border bg-card space-y-2">
-                <div className="font-bold text-sm text-amber-600">📦 AWS RDS / S3</div>
-                <p className="text-muted-foreground">PostgreSQL RDS instance dan S3 bucket dengan AWS Access Keys.</p>
-                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
-                  postgresql://root:[PASS]@mydb.c123.ap-southeast-1.rds.amazonaws.com:5432/sacms
-                </code>
-              </div>
-            </div>
           </section>
 
           {/* CUSTOM DOMAINS & DNS */}

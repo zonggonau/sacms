@@ -73,8 +73,13 @@ export async function GET() {
         daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
       }
 
-      // Only a tenant that connected its own database (BYODB) is off the shared pool.
-      const hasDedicatedInfra = Boolean(t.databaseUrl)
+      // tenant.databaseUrl has no remaining writer since BYODB self-service was
+      // removed — an Enterprise-licensed account's dedicated database lives on
+      // the OWNER's masterDatabaseUrl instead (getOwnerMasterInfra), which this
+      // lightweight list endpoint doesn't resolve per-tenant to avoid N+1
+      // lookups; the plan-name fallback (same heuristic layout.tsx already
+      // uses) keeps this badge accurate for Enterprise tenants in the meantime.
+      const hasDedicatedInfra = Boolean(t.databaseUrl || t.plan?.toLowerCase().includes("enterprise"))
 
       return {
         id: t.id,
