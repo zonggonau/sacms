@@ -56,7 +56,7 @@ bun run cli help
 bun run cli seed:global         # Seed master content types, components & data
 bun run cli seed:permissions    # Seed matriks izin RBAC & default role
 bun run cli seed:workflow       # Seed izin transisi workflow (Doc 14)
-bun run cli seed:plans          # Seed tier paket workspace & langganan
+bun run cli seed:pricing          # Seed tier paket workspace & langganan
 
 # Migrasi & Dedicated DB
 bun run cli migrate:tenant demo # Push skema ke database dedicated tenant

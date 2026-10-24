@@ -19,7 +19,7 @@ scripts/
 ├── seed/                # Database seeding & initial state configuration
 │   ├── seed-all-global.ts       # Master seeder for platform models, components & landing data
 │   ├── seed-permissions.ts      # Global RBAC permissions & default role matrix
-│   ├── seed-plans.ts            # Workspace, account & add-on subscription tiers
+│   ├── seed-pricing-catalog.ts  # Account/workspace plans, AI credit packs & addons (create-only-if-missing)
 │   ├── setup-sacms.ts           # Canonical initial platform content models
 │   ├── setup-system-settings.ts # Default system settings
 │   ├── setup-templates.ts       # Pre-built website templates (blog, ecommerce, company)
@@ -77,7 +77,7 @@ bun scripts/cli.ts help
 bun run cli seed:global
 bun run cli seed:permissions
 bun run cli seed:workflow         # Doc 14 Content Workflow Permissions
-bun run cli seed:plans
+bun run cli seed:pricing
 
 # Migrations & Tenant DB
 bun run cli migrate:tenant <tenantSlugOrId>

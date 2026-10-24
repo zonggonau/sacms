@@ -298,7 +298,7 @@ bun run cli help
 # Database & Seeding
 bun run cli seed:global         # Inisialisasi skema & landing global
 bun run cli seed:permissions    # Matriks izin RBAC & role defaults
-bun run cli seed:plans          # Inisialisasi tier paket langganan
+bun run cli seed:pricing          # Inisialisasi tier paket langganan
 bun run cli migrate:tenant demo # Push skema ke tenant dedicated
 bun run cli migrate:fts         # Setup index PostgreSQL FTS
 

@@ -35,10 +35,10 @@ const COMMANDS: Record<string, CommandDefinition> = {
     category: "Seed",
     description: "Seed content workflow transition permissions (Doc 14)",
   },
-  "seed:plans": {
-    script: "scripts/seed/seed-plans.ts",
+  "seed:pricing": {
+    script: "scripts/seed/seed-pricing-catalog.ts",
     category: "Seed",
-    description: "Seed default subscription and workspace plans",
+    description: "Seed a starter catalog into the admin pricing tables (account/workspace plans, AI credit packs, addons) — create-only-if-missing, safe to re-run",
   },
   "seed:sacms": {
     script: "scripts/seed/setup-sacms.ts",
