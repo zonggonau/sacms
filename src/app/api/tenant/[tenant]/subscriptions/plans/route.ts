@@ -351,6 +351,11 @@ export async function GET(
       buttonText: "Sewa VPS Ini",
       icon: "Server",
       isTopup: true,
+      // A VPS is a recurring monthly/annual rental, not a one-off top-up —
+      // isTopup:true is only there to reuse AddonCard's generic purchase
+      // flow; without this, AddonCard's price label falls back to
+      // "(Sekali Bayar)" for any isTopup item with no billingPeriod set.
+      billingPeriod: "month",
     }))
 
     const plans = [...workspacePlans, ...addonPlans, ...aiCreditPlans, ...vpsPlans]
