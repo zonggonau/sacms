@@ -122,12 +122,10 @@ export async function POST(request: NextRequest) {
 
   // 5. Enterprise accounts get their own dedicated database automatically —
   // every workspace this owner has (now or later) falls back to it via
-  // getOwnerMasterInfra() in src/lib/database.ts, same mechanism the manual
-  // "Koneksi Mandiri (BYODB/BYOS)" self-connect flow at
-  // /dashboard/infrastructure already writes to (User.masterDatabaseUrl).
-  // Never blocks activation itself: a provisioning failure here just leaves
-  // the account on the shared DB, same as that manual flow's own fallback
-  // behavior, and the owner can still self-connect later by hand.
+  // getOwnerMasterInfra() in src/lib/database.ts (User.masterDatabaseUrl).
+  // This is the only writer of that field — there is no self-service
+  // connect-your-own-database flow. Never blocks activation itself: a
+  // provisioning failure here just leaves the account on the shared DB.
   if (payload.type === "enterprise") {
     const existingInfra = await db.user.findUnique({
       where: { id: session.user.id },

@@ -4,16 +4,13 @@ import { withStaffAuth } from "@/lib/api/route-helpers"
 
 export const dynamic = "force-dynamic"
 
-/** GET: the workspace's paid monthly services — storage add-ons still running and the managed database/storage service. */
+/** GET: the workspace's paid monthly services — storage add-ons still running. */
 export const GET = withStaffAuth(async (_request, _context, { access }) => {
   const tenantId = access.tenantId
-  const [addons, managedInfra] = await Promise.all([
-    db.storageAddon.findMany({
-      where: { tenantId, expiresAt: { gt: new Date() } },
-      orderBy: { expiresAt: "asc" },
-    }),
-    db.managedInfraService.findUnique({ where: { tenantId }, select: { status: true, paidUntil: true } }),
-  ])
+  const addons = await db.storageAddon.findMany({
+    where: { tenantId, expiresAt: { gt: new Date() } },
+    orderBy: { expiresAt: "asc" },
+  })
   const renewedIds = new Set(addons.map((a) => a.renewsAddonId).filter(Boolean))
 
   return NextResponse.json({
@@ -24,6 +21,5 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
       expiresAt: a.expiresAt,
       renewed: renewedIds.has(a.id),
     })),
-    managedInfra,
   })
 })

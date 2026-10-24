@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
-import { Loader2, Plus, Pencil, Trash2, Tag, Building2, Sparkles, Puzzle, Server } from "lucide-react"
+import { Loader2, Plus, Pencil, Trash2, Tag, Building2, Sparkles, Puzzle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { formatRupiah } from "@/lib/utils"
@@ -128,38 +128,6 @@ const CATEGORIES: CategoryConfig[] = [
       { key: "quotaType", label: "Tipe Kuota", type: "text" },
       { key: "amountUnits", label: "Jumlah Unit (bytes)", type: "number" },
       { key: "billingPeriod", label: "Periode Billing", type: "text" },
-      { key: "features", label: "Fitur (satu per baris)", type: "features" },
-      { key: "isActive", label: "Aktif", type: "boolean", showInTable: true },
-    ],
-  },
-  {
-    key: "vps-offerings",
-    title: "VPS",
-    icon: Server,
-    apiPath: "/api/admin/pricing/vps-offerings",
-    listKey: "vpsOfferings",
-    fields: [
-      { key: "slug", label: "Slug", type: "text", required: true, showInTable: true },
-      { key: "name", label: "Nama Paket", type: "text", required: true, showInTable: true },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      {
-        key: "biznetProductId",
-        label: "Biznet Gio Product ID (dari GET /neolites/products)",
-        type: "text",
-        required: true,
-      },
-      {
-        key: "biznetOsImageId",
-        label: "Biznet Gio OS Image ID / vmid (dari GET /neolites/products/{id}/oss)",
-        type: "text",
-        required: true,
-      },
-      { key: "osLabel", label: "Label OS (tampilan)", type: "text", required: true, showInTable: true },
-      { key: "cpuCores", label: "CPU (cores)", type: "number", required: true, showInTable: true },
-      { key: "memoryMb", label: "RAM (MB)", type: "number", required: true, showInTable: true },
-      { key: "diskGb", label: "Disk (GB)", type: "number", required: true },
-      { key: "priceMonthlyIdr", label: "Harga Jual Bulanan (IDR)", type: "number", required: true, showInTable: true, formatValue: money },
-      { key: "priceAnnualIdr", label: "Harga Jual Tahunan (IDR)", type: "number", formatValue: money },
       { key: "features", label: "Fitur (satu per baris)", type: "features" },
       { key: "isActive", label: "Aktif", type: "boolean", showInTable: true },
     ],
@@ -440,11 +408,8 @@ export default function AdminPricingPage() {
       <div className="border-b border-border/70 pb-5">
         <h1 className="text-xl font-black text-foreground">Pricing &amp; Plans</h1>
         <p className="text-xs text-muted-foreground mt-1">
-          Kelola harga akun, workspace, paket kredit AI, addon, dan VPS secara langsung — sumber kebenaran tunggal yang dipakai checkout, halaman harga publik, dan dashboard.
+          Kelola harga akun, workspace, paket kredit AI, dan addon secara langsung — sumber kebenaran tunggal yang dipakai checkout, halaman harga publik, dan dashboard.
           {!canEdit && " Role Anda (admin) hanya bisa melihat — perubahan hanya bisa dilakukan super_admin."}
-        </p>
-        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 font-medium">
-          ⚠️ Tab VPS: harga di sini adalah harga JUAL ke customer, terpisah dari biaya asli Biznet Gio. Setiap VPS yang terjual langsung menagih metode pembayaran akun Biznet Gio SaCMS sendiri — pastikan harga jual sudah ada margin yang cukup di atas harga produk Biznet Gio yang dipilih. VPS ini bukan server serbaguna: begitu VM aktif, SaCMS otomatis memasang PostgreSQL &amp; MinIO lewat SSH dan menghubungkannya sebagai database/storage mandiri (BYODB/BYOS) milik akun atau workspace pembeli.
         </p>
       </div>
 

@@ -156,7 +156,7 @@ export function MediaLibraryView({
       if (infraRes.ok) {
         const infraData = await infraRes.json()
         if (infraData.isCustomStorageConfigured) {
-          setStorageProvider("Custom S3 (BYOS)")
+          setStorageProvider("Storage Khusus (Enterprise)")
           setIsDedicatedStorage(true)
         } else {
           setStorageProvider("Storage bersama SaCMS")

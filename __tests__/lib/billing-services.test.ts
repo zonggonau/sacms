@@ -8,36 +8,12 @@ vi.mock("@/lib/mail", () => ({
 import { db } from "@/lib/database"
 import { sendBillingNoticeEmail } from "@/lib/mail"
 import { grantStorageAddon, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
-import {
-  MANAGED_INFRA_MONTHLY_ID,
-  MANAGED_INFRA_SETUP_ID,
-  activateManagedInfraIfConnected,
-  fulfillManagedInfraOrder,
-  managedInfraOrderRefusal,
-} from "@/lib/billing/managed-infra"
 import { fulfillAddonOrder, mergeProviderResponse } from "@/lib/billing/addon-fulfillment"
 import { runBillingReminders } from "@/lib/billing/reminders"
 
 const mockDb = db as any
 const now = new Date("2026-09-17T10:00:00Z")
 const FIVE_GB = 5 * 1024 ** 3
-
-function managedDb(existing: any, tenant: any = { databaseUrl: null, storageConfig: null }) {
-  const tx = {
-    managedInfraService: {
-      findUnique: vi.fn().mockResolvedValue(existing),
-      upsert: vi.fn(async ({ create }: any) => ({ id: "svc1", ...create })),
-      update: vi.fn().mockResolvedValue({}),
-    },
-    managedInfraPayment: { create: vi.fn().mockResolvedValue({}) },
-    tenant: { findUnique: vi.fn().mockResolvedValue(tenant) },
-  }
-  mockDb.$transaction = vi.fn(async (fn: any) => fn(tx))
-  mockDb.managedInfraService = { findUnique: vi.fn().mockResolvedValue(existing), update: vi.fn(), updateMany: vi.fn() }
-  mockDb.tenant.findUnique = vi.fn().mockResolvedValue({ name: "Acme", slug: "acme" })
-  mockDb.supportTicket = { create: vi.fn().mockResolvedValue({ id: "ticket1" }) }
-  return tx
-}
 
 describe("storage add-on renewal", () => {
   beforeEach(() => {
@@ -90,69 +66,6 @@ describe("storage add-on renewal", () => {
   })
 })
 
-describe("managed database/storage service", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("setup payment opens the service for one month and a ticket for IT", async () => {
-    const tx = managedDb(null)
-
-    const result = await fulfillManagedInfraOrder({ tenantId: "t1", orderId: "ADD-1", productId: MANAGED_INFRA_SETUP_ID, userId: "u1", now })
-
-    expect(result.applied).toBe(true)
-    expect(tx.managedInfraService.upsert.mock.calls[0][0].create).toMatchObject({ tenantId: "t1", status: "awaiting_setup" })
-    expect(tx.managedInfraPayment.create.mock.calls[0][0].data).toMatchObject({ orderId: "ADD-1", kind: "setup", amount: 3_500_000 })
-    expect(mockDb.supportTicket.create.mock.calls[0][0].data).toMatchObject({ tenantId: "t1", category: "infrastructure", priority: "high" })
-    expect(mockDb.managedInfraService.update).toHaveBeenCalledWith({ where: { id: "svc1" }, data: { ticketId: "ticket1" } })
-  })
-
-  it("monthly payment extends from the end of the paid period", async () => {
-    const tx = managedDb({ id: "svc1", status: "active", paidUntil: new Date("2026-09-20T00:00:00Z") })
-
-    await fulfillManagedInfraOrder({ tenantId: "t1", orderId: "ADD-2", productId: MANAGED_INFRA_MONTHLY_ID, now })
-
-    expect(tx.managedInfraPayment.create.mock.calls[0][0].data).toMatchObject({ kind: "monthly", amount: 1_000_000 })
-    expect(tx.managedInfraService.update.mock.calls[0][0].data.paidUntil.toISOString()).toBe("2026-10-20T00:00:00.000Z")
-  })
-
-  it("monthly payment after expiry reactivates a still-connected workspace", async () => {
-    const tx = managedDb({ id: "svc1", status: "expired", paidUntil: new Date("2026-09-01T00:00:00Z") }, { databaseUrl: "postgres://x", storageConfig: null })
-
-    await fulfillManagedInfraOrder({ tenantId: "t1", orderId: "ADD-3", productId: MANAGED_INFRA_MONTHLY_ID, now })
-
-    const data = tx.managedInfraService.update.mock.calls[0][0].data
-    expect(data.status).toBe("active")
-    expect(data.paidUntil.toISOString()).toBe("2026-10-17T10:00:00.000Z")
-  })
-
-  it("a second delivery of the same order changes nothing", async () => {
-    managedDb({ id: "svc1", status: "active", paidUntil: now })
-    mockDb.$transaction = vi.fn().mockRejectedValue(Object.assign(new Error("dup"), { code: "P2002" }))
-
-    const result = await fulfillManagedInfraOrder({ tenantId: "t1", orderId: "ADD-2", productId: MANAGED_INFRA_MONTHLY_ID, now })
-
-    expect(result.applied).toBe(false)
-    expect(mockDb.supportTicket.create).not.toHaveBeenCalled()
-  })
-
-  it("refuses a second setup and a renewal without a service", async () => {
-    managedDb({ id: "svc1", status: "awaiting_setup" })
-    expect(await managedInfraOrderRefusal("t1", MANAGED_INFRA_SETUP_ID)).toMatch(/sudah dipesan/)
-    managedDb(null)
-    expect(await managedInfraOrderRefusal("t1", MANAGED_INFRA_MONTHLY_ID)).toMatch(/terlebih dahulu/)
-    expect(await managedInfraOrderRefusal("t1", MANAGED_INFRA_SETUP_ID)).toBeNull()
-  })
-
-  it("activates a waiting service when IT saves a connection", async () => {
-    managedDb(null)
-    await activateManagedInfraIfConnected("t1", false)
-    expect(mockDb.managedInfraService.updateMany).not.toHaveBeenCalled()
-    await activateManagedInfraIfConnected("t1", true)
-    expect(mockDb.managedInfraService.updateMany.mock.calls[0][0].where).toEqual({ tenantId: "t1", status: "awaiting_setup" })
-  })
-})
-
 describe("payment fulfillment", () => {
   it("keeps checkout fields when the provider reports back", () => {
     const merged = mergeProviderResponse({ isAddon: true, addonId: "topup_storage_10gb" }, { transaction_status: "pending" })
@@ -170,10 +83,9 @@ describe("billing reminders", () => {
     vi.clearAllMocks()
     mockDb.tenant.findMany = vi.fn().mockResolvedValue([{ id: "t1", slug: "acme", name: "Acme" }])
     mockDb.tenantMember = { findMany: vi.fn().mockResolvedValue([{ user: { email: "owner@example.com" } }]) }
-    mockDb.supportTicket = { create: vi.fn() }
   })
 
-  it("reminds once before an add-on ends and expires unpaid services", async () => {
+  it("reminds once before a storage add-on ends", async () => {
     const addon = { id: "a1", tenantId: "t1", expiresAt: new Date("2026-09-18T00:00:00Z"), reminder7dSentAt: null }
     mockDb.storageAddon = {
       findMany: vi.fn()
@@ -183,18 +95,11 @@ describe("billing reminders", () => {
         .mockResolvedValueOnce([]),
       update: vi.fn(),
     }
-    const expired = { id: "svc1", tenantId: "t1", status: "active", paidUntil: new Date("2026-09-16T00:00:00Z"), requestedById: "u1" }
-    mockDb.managedInfraService = {
-      findMany: vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([expired]),
-      update: vi.fn(),
-    }
 
     const result = await runBillingReminders(now)
 
-    expect(result).toEqual({ storageReminders: 1, managedReminders: 0, managedExpired: 1 })
+    expect(result).toEqual({ storageReminders: 1 })
     expect(mockDb.storageAddon.update.mock.calls[0][0].data).toMatchObject({ reminder1dSentAt: now, reminder7dSentAt: now })
-    expect(mockDb.managedInfraService.update).toHaveBeenCalledWith({ where: { id: "svc1" }, data: { status: "expired", expiredAt: now } })
-    expect(mockDb.supportTicket.create).toHaveBeenCalledTimes(1)
-    expect(sendBillingNoticeEmail).toHaveBeenCalledTimes(2)
+    expect(sendBillingNoticeEmail).toHaveBeenCalledTimes(1)
   })
 })

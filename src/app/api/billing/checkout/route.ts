@@ -8,14 +8,6 @@ import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
 import { STORAGE_QUOTA_TYPE, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
-import {
-  MANAGED_INFRA_MONTHLY_FEE_IDR,
-  MANAGED_INFRA_MONTHLY_ID,
-  MANAGED_INFRA_SETUP_FEE_IDR,
-  MANAGED_INFRA_SETUP_ID,
-  isManagedInfraProduct,
-  managedInfraOrderRefusal,
-} from "@/lib/billing/managed-infra"
 
 /**
  * POST /api/checkout
@@ -35,8 +27,7 @@ export async function POST(request: NextRequest) {
     const { planId, tenantId, interval, type, renewsAddonId } = result.data
 
     const isAiCreditPack = type === "ai_credits" || planId.startsWith("ai_pack_")
-    const isVpsOffering = type === "vps"
-    const isAccountPlan = !isAiCreditPack && !isVpsOffering && (type === "account" || !tenantId)
+    const isAccountPlan = !isAiCreditPack && (type === "account" || !tenantId)
 
     let amount = 0
     let planName = planId
@@ -84,47 +75,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Invalid AI credit pack" }, { status: 400 })
       }
       isAddon = true
-    } else if (isVpsOffering) {
-      // One-time purchase, never a recurring plan change — billed/fulfilled
-      // the same way an addon is (see isAddon usage below), just with its
-      // own VPS- orderId prefix and its own fulfillment step
-      // (fulfillVpsOrder in payment-success.ts) instead of
-      // fulfillAddonOrder. Can be bought either for a specific workspace
-      // (tenantId present — same ownership check a tenant-scoped addon
-      // purchase already gets) or for the account as a whole (no tenantId,
-      // same as an AI credit pack — just needs to be authenticated).
-      const { getVpsOffering } = await import("@/lib/pricing")
-      const offering = await getVpsOffering(planId)
-      if (!offering) {
-        return NextResponse.json({ error: "Invalid VPS offering" }, { status: 400 })
-      }
-      const yearlyPrice = offering.priceAnnualIdr ?? offering.priceMonthlyIdr * 10
-      amount = interval === "year" ? yearlyPrice : offering.priceMonthlyIdr
-      planName = offering.name
-      isAddon = true
-
-      if (tenantId) {
-        const tenant = await db.tenant.findFirst({
-          where: { OR: [{ id: tenantId }, { slug: tenantId }] },
-          include: { members: true },
-        })
-        if (!tenant) {
-          return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-        }
-        dbTenant = tenant
-
-        const membership = tenant.members.find((m) => m.userId === session.user.id)
-        const isSuperAdmin = session.user.role === "super_admin"
-        if (!membership && !isSuperAdmin) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-        }
-        if (membership && membership.role !== "owner" && membership.role !== "admin") {
-          return NextResponse.json(
-            { error: "Only owner or admin can manage subscription" },
-            { status: 403 }
-          )
-        }
-      }
     } else if (isAccountPlan) {
       // Logic for account plan pricing
       const dynamicPrices = await getDynamicAccountPrices()
@@ -172,8 +122,6 @@ export async function POST(request: NextRequest) {
         // item also makes its separate gross_amount/item-sum check fail
         // (it drops the invalid item before summing), so this single cause
         // surfaced as two confusing error messages at checkout.
-        [MANAGED_INFRA_SETUP_ID]: { name: "Database & Storage Sendiri (Setup)", price: MANAGED_INFRA_SETUP_FEE_IDR + MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
-        [MANAGED_INFRA_MONTHLY_ID]: { name: "Database & Storage Sendiri (Bulanan)", price: MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
         topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
         hosting_annual_1yr: { name: "Cloud Edge Hosting (1 Tahun)", price: 650000, quotaType: "hosting_annual", amountUnits: 1 },
         hosting_bundle_domain_1yr: { name: "Cloud Edge Hosting + Domain .com (1 Tahun)", price: 850000, quotaType: "hosting_bundle", amountUnits: 1 },
@@ -217,10 +165,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      if (isManagedInfraProduct(planId)) {
-        const refusal = await managedInfraOrderRefusal(tenant.id, planId)
-        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
-      }
       if (renewsAddonId) {
         const refusal = addonQuotaType === STORAGE_QUOTA_TYPE
           ? await storageAddonRenewalRefusal(tenant.id, renewsAddonId)
@@ -272,14 +216,10 @@ export async function POST(request: NextRequest) {
     // by orderId are a real access boundary elsewhere (status route).
     const { randomBytes } = await import("crypto")
     const randomSuffix = randomBytes(4).toString("hex");
-    const prefix = isAiCreditPack ? 'AIC' : (isVpsOffering ? 'VPS' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB')));
+    const prefix = isAiCreditPack ? 'AIC' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB'));
     const orderId = `${prefix}-${formattedDate}-${randomSuffix}`;
 
-    // An account-scoped VPS purchase (no tenantId) behaves like an AI
-    // credit pack here — keyed to the user's own tenantless subscription
-    // row, not a specific workspace's. A tenant-scoped VPS purchase
-    // (dbTenant set above) behaves like any other tenant-scoped addon.
-    const isAccountScoped = isAccountPlan || isAiCreditPack || (isVpsOffering && !dbTenant)
+    const isAccountScoped = isAccountPlan || isAiCreditPack
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
@@ -356,17 +296,15 @@ export async function POST(request: NextRequest) {
     // column, so the addon/non-addon shapes just differ in which keys they carry.
     const rawResponse = isAiCreditPack
       ? { isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" }
-      : isVpsOffering
-        ? { isAddon: true, isVps: true, addonId: planId, scope: dbTenant ? "tenant" : "account", interval }
-        : isAddon
-          ? {
-              isAddon,
-              addonId: planId,
-              ...(addonQuotaType ? { quotaType: addonQuotaType } : {}),
-              ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
-              ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
-            }
-          : { intendedPlan: planId, intendedInterval: interval }
+      : isAddon
+        ? {
+            isAddon,
+            addonId: planId,
+            ...(addonQuotaType ? { quotaType: addonQuotaType } : {}),
+            ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
+            ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
+          }
+        : { intendedPlan: planId, intendedInterval: interval }
 
     // Create payment transaction record
     const transaction = await db.paymentTransaction.create({

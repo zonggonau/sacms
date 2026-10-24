@@ -13,7 +13,7 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package, Shield, Bot, Cloud, Sparkles,
+  HardDrive, Users, Database, Package, Shield, Bot, Sparkles,
   Layers, Download, Server
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
-import { VpsStatusList } from "@/components/dashboard/vps-status-list"
 
 interface Subscription {
   id: string
@@ -265,7 +264,7 @@ export default function TenantSubscriptionsPage() {
   const currentPlanSlug = subscription?.plan || 'free'
   const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
-  // Hanya paket workspace standar, pro, dan bisnis (infrastruktur dedicated/BYODB dikelola dari tab Infrastructure > Database & Storage workspace masing-masing)
+  // Hanya paket workspace standar, pro, dan bisnis (status database dedicated untuk workspace Enterprise ada di tab Infrastructure > Database & Storage)
   const WORKSPACE_TIERS = ['free', 'pro', 'business']
   const mainPlans = plans
     .filter(p => {
@@ -277,14 +276,13 @@ export default function TenantSubscriptionsPage() {
       const order: Record<string, number> = { free: 1, pro: 2, business: 3 }
       return (order[a.id] || 99) - (order[b.id] || 99)
     })
-  // Storage-related add-ons (extra storage top-up, dedicated BYODB) get
-  // their own tab instead of sitting in the generic add-on grid, mirroring
-  // the Infrastructure page's "Database & Storage" grouping.
-  const STORAGE_QUOTA_TYPES = ['storage', 'managed_infra']
+  // Storage-related add-ons (extra storage top-up) get their own tab
+  // instead of sitting in the generic add-on grid, mirroring the
+  // Infrastructure page's "Database & Storage" grouping.
+  const STORAGE_QUOTA_TYPES = ['storage']
   const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false && !STORAGE_QUOTA_TYPES.includes(p.quotaType))
   const storagePlans = plans.filter(p => p.type === "addons" && p.listed !== false && STORAGE_QUOTA_TYPES.includes(p.quotaType))
   const aiCreditPlans = plans.filter(p => p.type === "ai_plan")
-  const vpsPlans = plans.filter(p => p.type === "vps")
   const storageUsage = usage.find((u) => u.unit === "bytes")
 
   return (
@@ -701,24 +699,6 @@ export default function TenantSubscriptionsPage() {
                   ))}
                 </div>
               )}
-
-              {/* VPS — Biznet Gio NEO Lite, provisioned automatically after payment */}
-              {vpsPlans.length > 0 && (
-                <div className="space-y-3 pt-4">
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                      <Server className="h-4 w-4 text-primary" /> VPS Database & Storage Sendiri
-                    </h3>
-                    <p className="text-xs text-muted-foreground">VPS khusus untuk workspace ini — setelah pembayaran berhasil, PostgreSQL & MinIO otomatis disiapkan dan dihubungkan sebagai database/storage mandiri workspace ini.</p>
-                  </div>
-                  <VpsStatusList scope="tenant" tenantSlug={tenantSlug} />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {vpsPlans.map((addon) => (
-                      <AddonCard key={addon.id} addon={addon} tenantSlug={tenantSlug} activeAddons={activeAddons} router={router} formatPrice={formatPrice} />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -847,35 +827,6 @@ export default function TenantSubscriptionsPage() {
               </CardContent>
             </Card>
 
-          {/* Infrastructure Overrides — moved to /infrastructure?tab=database
-              (consolidated with that page's existing, working BYODB/BYOS
-              form; this card's own Save button used to call a PUT endpoint
-              that was never actually implemented, so it never saved
-              anything). Just a pointer here now so it stays discoverable
-              from Billing & Plan. */}
-          {isEnterpriseMode && (
-            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden mt-8">
-              <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                    <Database className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-foreground">Koneksi Database &amp; Storage Mandiri (BYODB/BYOS)</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Hubungkan PostgreSQL atau S3 milik Anda sendiri untuk workspace ini.
-                    </p>
-                  </div>
-                </div>
-                <Button asChild variant="outline" className="rounded-xl font-bold text-xs h-9 border-border/80 shrink-0">
-                  <Link href={`/dashboard/${tenantSlug}/infrastructure?tab=database`}>
-                    <Cloud className="h-3.5 w-3.5 mr-1.5" />
-                    Atur di Hosting &amp; Infrastruktur
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
             </>
           )}
 
@@ -973,17 +924,9 @@ function AddonCard({ addon, tenantSlug, activeAddons, router, formatPrice }: {
 
 type BillingServices = {
   storageAddons: { id: string; bytes: number; startsAt: string; expiresAt: string; renewed: boolean }[]
-  managedInfra: { status: string; paidUntil: string } | null
 }
 
-const MANAGED_INFRA_STATUS: Record<string, string> = {
-  awaiting_setup: "Menunggu setup tim IT SaCMS",
-  active: "Aktif",
-  expired: "Kedaluwarsa",
-  cancelled: "Dibatalkan",
-}
-
-/** Paid monthly services (storage addons & managed BYODB) of this workspace */
+/** Paid monthly services (storage addons) of this workspace */
 function ActiveServices({ tenantSlug, storageTiers }: { tenantSlug: string; storageTiers: any[] }) {
   const router = useRouter()
   const [services, setServices] = useState<BillingServices | null>(null)
@@ -997,9 +940,8 @@ function ActiveServices({ tenantSlug, storageTiers }: { tenantSlug: string; stor
   }, [tenantSlug])
 
   const hasStorageAddons = services?.storageAddons && services.storageAddons.length > 0
-  const hasManagedInfra = Boolean(services?.managedInfra)
 
-  if (!hasStorageAddons && !hasManagedInfra) return null
+  if (!hasStorageAddons) return null
   const date = (value: string) => new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
   // Storage tiers are CMS-driven, not fixed ids — renew with whichever
   // currently-catalogued tier matches this row's byte size; if none match
@@ -1039,21 +981,6 @@ function ActiveServices({ tenantSlug, storageTiers }: { tenantSlug: string; stor
             </div>
           )
         })}
-
-        {/* Managed BYODB Infra */}
-        {services?.managedInfra && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div>
-              <p className="font-semibold text-foreground">Database & Storage Sendiri — {MANAGED_INFRA_STATUS[services.managedInfra.status] ?? services.managedInfra.status}</p>
-              <p className="text-muted-foreground">Dibayar sampai {date(services.managedInfra.paidUntil)}</p>
-            </div>
-            {services.managedInfra.status !== "cancelled" && (
-              <Button size="sm" className="rounded-xl h-8 text-xs" onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_monthly`)}>
-                Perpanjang 1 Bulan
-              </Button>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   )

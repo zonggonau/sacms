@@ -323,9 +323,10 @@ interface OwnerMasterInfraCacheEntry extends OwnerMasterInfra {
 }
 
 /**
- * Account-level DB/storage override an Enterprise License holder sets once
- * at /dashboard (see PUT /api/auth/user/infrastructure) — the fallback used
- * by every workspace that owner owns which has no override of its own
+ * Account-level DB/storage override, auto-provisioned once for an
+ * Enterprise License holder on activation (see
+ * src/app/api/user/license/activate/route.ts) — the fallback used by every
+ * workspace that owner owns which has no override of its own
  * (`tenant.databaseUrl`/`storageConfig` null). Priority is always: tenant's
  * own override > owner's master override > SaCMS shared default.
  *
@@ -375,8 +376,9 @@ export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMaster
   return result
 }
 
-/** Called after PUT /api/auth/user/infrastructure saves — so every workspace
- *  this owner owns reflects the change immediately instead of up to 60s later. */
+/** Called after an Enterprise License activation provisions/saves the
+ *  account's dedicated database — so every workspace this owner owns
+ *  reflects the change immediately instead of up to 60s later. */
 export async function invalidateOwnerMasterInfraCache(ownerId: string): Promise<void> {
   const owned = await db.tenantMember.findMany({ where: { userId: ownerId, role: 'owner' }, select: { tenantId: true } })
   for (const { tenantId } of owned) {

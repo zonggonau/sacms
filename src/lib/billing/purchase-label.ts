@@ -1,5 +1,3 @@
-import { MANAGED_INFRA_SETUP_ID, MANAGED_INFRA_MONTHLY_ID } from "./managed-infra"
-
 // Addon ids sold as flat top-ups with no row in the Addon table (mirrors
 // BUILTIN_TOPUPS in checkout/route.ts) — kept here too so a resolved label
 // still shows a real name instead of the raw id for these.
@@ -7,12 +5,10 @@ const BUILTIN_TOPUP_NAMES: Record<string, string> = {
   topup_ai_500k: "AI Booster (500K Tokens)",
   topup_ai_2m: "AI Power Pack (2M Tokens)",
   topup_api_500k: "Extra API Quota (500K Calls)",
-  [MANAGED_INFRA_SETUP_ID]: "Database & Storage Sendiri — Setup",
-  [MANAGED_INFRA_MONTHLY_ID]: "Database & Storage Sendiri — Perpanjangan 1 Bulan",
 }
 
 export interface PurchaseLabelInput {
-  /** e.g. "ACC-20261022-ab12", "SUB-...", "ADD-...", "AIC-...", "VPS-..." — see checkout/route.ts. */
+  /** e.g. "ACC-20261022-ab12", "SUB-...", "ADD-...", "AIC-..." — see checkout/route.ts. */
   orderId: string
   rawResponse: unknown
   /** Subscription.plan — used only when rawResponse has nothing better (a safety net for data predating this metadata). */
@@ -42,7 +38,7 @@ export async function resolvePurchaseLabel({
   fallbackPlanSlug,
 }: PurchaseLabelInput): Promise<PurchaseLabel> {
   const raw = (rawResponse as any) || {}
-  const { getAccountPlan, getWorkspacePlan, getAddon, getAiCreditPack, getVpsOffering } = await import("@/lib/pricing")
+  const { getAccountPlan, getWorkspacePlan, getAddon, getAiCreditPack } = await import("@/lib/pricing")
   const isAccountOrder = orderId.startsWith("ACC-")
 
   if (raw.type === "ai_credits" || orderId.startsWith("AIC-")) {
@@ -51,14 +47,6 @@ export async function resolvePurchaseLabel({
     return {
       purchasedId: addonId || fallbackPlanSlug,
       purchasedLabel: pack?.name || (raw.credits ? `${raw.credits} AI Credits Pack` : "AI Credits Pack"),
-    }
-  }
-
-  if (raw.isVps && raw.addonId) {
-    const offering = await getVpsOffering(raw.addonId)
-    return {
-      purchasedId: raw.addonId,
-      purchasedLabel: offering?.name || `VPS (${raw.addonId})`,
     }
   }
 

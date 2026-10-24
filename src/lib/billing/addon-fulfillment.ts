@@ -1,5 +1,4 @@
 import { STORAGE_QUOTA_TYPE, grantStorageAddon } from "./storage-addon"
-import { fulfillManagedInfraOrder, isManagedInfraProduct } from "./managed-infra"
 
 /**
  * Checkout stores what was bought in PaymentTransaction.rawResponse; payment providers
@@ -21,7 +20,6 @@ export async function fulfillAddonOrder(params: {
   raw: Record<string, any>
   userId?: string | null
 }): Promise<boolean> {
-  const addonId = String(params.raw.addonId || "")
   if (params.raw.quotaType === STORAGE_QUOTA_TYPE) {
     // Size is whatever was resolved and stored at checkout time, not a
     // fixed constant — see the comment on grantStorageAddon.
@@ -30,15 +28,6 @@ export async function fulfillAddonOrder(params: {
       await grantStorageAddon(params.tenantId, params.orderId, bytes, { renewsAddonId: params.raw.renewsAddonId })
       return true
     }
-  }
-  if (isManagedInfraProduct(addonId)) {
-    await fulfillManagedInfraOrder({
-      tenantId: params.tenantId,
-      orderId: params.orderId,
-      productId: addonId,
-      userId: params.userId,
-    })
-    return true
   }
   return false
 }

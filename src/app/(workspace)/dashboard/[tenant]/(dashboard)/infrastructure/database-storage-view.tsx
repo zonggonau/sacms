@@ -3,24 +3,15 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { isPlatformStaff } from "@/lib/platform-roles"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
-  Database,
-  Upload,
   Activity,
   CheckCircle2,
-  Loader2,
   RefreshCw,
-  Layers,
-  Settings2,
-  Save,
   HardDrive,
 } from "lucide-react"
 import Link from "next/link"
@@ -31,23 +22,12 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<"overview" | "console">("overview")
-  // Enterprise-licensed workspaces can self-connect their own BYODB/BYOS
-  // directly (no SaCMS IT setup needed) — same perk the subscriptions
-  // page's old "Infrastruktur Khusus Workspace" card offered (moved here;
-  // that card's Save button called a PUT endpoint that was never actually
-  // implemented, so it never worked). Platform staff keep access to this
-  // same form regardless, to help any workspace's connection by hand.
+  // Every tenant is always on SaCMS's own shared infrastructure — the only
+  // exception is a workspace owned by an Enterprise-licensed account, which
+  // transparently routes to that account's dedicated SaCMS-hosted database
+  // (see getOwnerMasterInfra() in src/lib/database.ts, auto-provisioned on
+  // license activation — never something this workspace connects itself).
   const [isEnterpriseWorkspace, setIsEnterpriseWorkspace] = useState(false)
-
-  // BYODB & BYOS State
-  const [databaseUrl, setDatabaseUrl] = useState("")
-  const [storageEndpoint, setStorageEndpoint] = useState("")
-  const [storageAccessKey, setStorageAccessKey] = useState("")
-  const [storageSecretKey, setStorageSecretKey] = useState("")
-  const [storageBucket, setStorageBucket] = useState("")
-  const [storagePublicUrl, setStoragePublicUrl] = useState("")
 
   useEffect(() => {
     if (tenantSlug && session?.user) {
@@ -61,76 +41,12 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
     }
   }, [authStatus, router])
 
-  const fetchInfrastructure = async () => {
-    if (!tenantSlug) return
-    try {
-      const settingsRes = await fetch(`/api/tenant/${tenantSlug}/settings`)
-
-      if (settingsRes.ok) {
-        const settingsData = await settingsRes.json()
-        const s = settingsData.settings || {}
-        const dbUrl = s.databaseUrl || ""
-        setDatabaseUrl(dbUrl)
-        if (s.storageConfig) {
-          setStorageEndpoint(s.storageConfig.endpoint || "")
-          setStorageAccessKey(s.storageConfig.accessKey || "")
-          setStorageSecretKey(s.storageConfig.secretKey || "")
-          setStorageBucket(s.storageConfig.bucket || "")
-          setStoragePublicUrl(s.storageConfig.publicUrl || "")
-        }
-      }
-    } catch {
-      toast.error("Gagal memuat konfigurasi infrastruktur")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
     if (tenantSlug && session?.user) {
-      fetchInfrastructure()
+      setLoading(false)
     }
   }, [tenantSlug, session])
 
-  const handleSaveConfig = async () => {
-    setSaving(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/settings`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          databaseUrl: databaseUrl.trim() === "" ? null : databaseUrl.trim(),
-          storageConfig:
-            storageEndpoint && storageAccessKey && storageSecretKey && storageBucket
-              ? {
-                  endpoint: storageEndpoint,
-                  accessKey: storageAccessKey,
-                  secretKey: storageSecretKey,
-                  bucket: storageBucket,
-                  publicUrl: storagePublicUrl,
-                }
-              : null,
-        }),
-      })
-
-      if (res.ok) {
-        toast.success("Konfigurasi infrastruktur berhasil disimpan!")
-        fetchInfrastructure()
-      } else {
-        const data = await res.json()
-        toast.error(data.error || "Gagal menyimpan konfigurasi")
-      }
-    } catch {
-      toast.error("Terjadi kesalahan saat menyimpan")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const isSuperAdmin = isPlatformStaff(session?.user?.role)
-  const canManageConnection = isSuperAdmin || isEnterpriseWorkspace
-
-  const [managedInfra, setManagedInfra] = useState<{ status: string; paidUntil: string } | null>(null)
   const [storageAddons, setStorageAddons] = useState<
     { id: string; bytes: number; startsAt: string; expiresAt: string; renewed: boolean }[]
   >([])
@@ -139,7 +55,6 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
     fetch(`/api/tenant/${tenantSlug}/billing/services`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        setManagedInfra(data?.managedInfra ?? null)
         setStorageAddons(data?.storageAddons ?? [])
       })
       .catch(() => {})
@@ -161,8 +76,6 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   }, [tenantSlug, session])
 
   const matchingTierId = (bytes: number) => storageTiers.find((t) => t.amountUnits === bytes)?.id
-
-  const hasDedicated = Boolean(databaseUrl && databaseUrl.trim() !== "")
 
   if (loading) {
     return (
@@ -192,13 +105,13 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Top Status & Controls Toolbar (No double H2) */}
+      {/* Top Status Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-card/60 p-3 px-4 rounded-2xl border border-border/80 shadow-xs">
         <div className="flex items-center gap-2.5">
-          {hasDedicated ? (
+          {isEnterpriseWorkspace ? (
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs font-bold rounded-full flex items-center gap-1.5 py-1 px-3">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Database Sendiri (BYODB)
+              Database Khusus Enterprise
             </Badge>
           ) : (
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-xs font-bold rounded-full flex items-center gap-1.5 py-1 px-3">
@@ -211,7 +124,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
             variant="ghost"
             size="sm"
             onClick={async () => {
-              await fetchInfrastructure()
+              setIsEnterpriseWorkspace(await checkEnterpriseModeAction(tenantSlug).catch(() => false))
               toast.success("Status infrastruktur diperbarui")
             }}
             className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground rounded-lg"
@@ -220,355 +133,124 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
             Refresh
           </Button>
         </div>
-
-        {/* Action Controls & Tab Switcher — manual BYODB/BYOS connection form.
-            Platform staff always see it (to help any workspace connect by
-            hand); an enterprise-licensed workspace's own admin/owner also
-            gets it, as a self-service perk of their license — they can
-            connect their own database/storage directly without waiting on
-            SaCMS IT. Regular tenants still go through "Pesan Layanan Setup
-            BYODB" above (SaCMS IT sets it up after payment). */}
-        {(isSuperAdmin || isEnterpriseWorkspace) && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center p-1 bg-muted/60 border border-border/80 rounded-xl">
-              <button
-                onClick={() => setActiveTab("overview")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  activeTab === "overview"
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Layers className="h-3.5 w-3.5" />
-                  Status
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab("console")}
-                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  activeTab === "console"
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <span className="flex items-center gap-1.5">
-                  <Settings2 className="h-3.5 w-3.5" />
-                  Koneksi Mandiri (BYODB/BYOS)
-                </span>
-              </button>
-            </div>
-
-            {activeTab === "console" && (
-              <Button
-                onClick={handleSaveConfig}
-                disabled={saving}
-                size="sm"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs cursor-pointer gap-1.5"
-              >
-                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Simpan
-              </Button>
-            )}
-          </div>
-        )}
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {/* TAB 1: OVERVIEW                                                     */}
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {(activeTab === "overview" || !canManageConnection) && (
-        <div className="space-y-6 animate-in fade-in-50 duration-300">
-          {/* 1. ACTIVE SHARED CLUSTER STATUS OVERVIEW CARD */}
-          <Card className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs shadow-xs overflow-hidden">
-            <CardHeader className="p-5 pb-3 bg-muted/20 border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-emerald-500" />
-                  Status Lingkungan Basis Data Saat Ini
-                </CardTitle>
-                <Badge
-                  variant="outline"
-                  className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold"
-                >
-                  <CheckCircle2 className="w-3 h-3 mr-1" />
-                  {hasDedicated ? "Dedicated Server Beroperasi" : "Shared Pool Beroperasi Normal"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-5 pt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipe Database</span>
-                  <p className="text-xs font-bold text-foreground">
-                    {hasDedicated ? "Database Terisolasi" : "Database Bersama"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {hasDedicated ? "Dedicated Tenant Engine" : "Shared Multi-Tenant Engine"}
-                  </p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Object Storage</span>
-                  <p className="text-xs font-bold text-foreground">
-                    {storageEndpoint ? "S3 Milik Sendiri (BYOS)" : "Storage Bersama SaCMS"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Kuota dihitung per workspace</p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Isolasi Keamanan</span>
-                  <p className="text-xs font-bold text-foreground">
-                    {hasDedicated ? "Physical & Logical Isolation" : "Tenant Logical Scoping"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Enkripsi Data In-Transit &amp; At-Rest</p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Alokasi Resource</span>
-                  <p className="text-xs font-bold text-foreground">
-                    {hasDedicated ? "Dedicated Hardware" : "Shared Pool SaCMS"}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {hasDedicated ? "Zero Noisy Neighbor" : "Aplikasi dan API SaCMS bersama"}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* 2. STORAGE ADD-ON CARD */}
-          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+      <div className="space-y-6 animate-in fade-in-50 duration-300">
+        {/* 1. ACTIVE CLUSTER STATUS OVERVIEW CARD */}
+        <Card className="rounded-2xl border border-border/80 bg-card/60 backdrop-blur-xs shadow-xs overflow-hidden">
+          <CardHeader className="p-5 pb-3 bg-muted/20 border-b border-border/60">
+            <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <HardDrive className="h-4 w-4 text-primary" />
-                Tambah Kapasitas Storage
+                <Activity className="h-4 w-4 text-emerald-500" />
+                Status Lingkungan Basis Data Saat Ini
               </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Butuh ruang lebih untuk media workspace ini? Tambah kapasitas langsung dari SaCMS, berlaku 1 tahun dan aktif seketika setelah pembayaran.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 space-y-3">
-              <p className="text-xs text-foreground">
-                Mulai dari <span className="font-bold">5 GB</span> hingga <span className="font-bold">1 TB</span>, sekali bayar untuk <span className="font-bold">1 tahun</span> &middot; bisa dibeli berkali-kali
-              </p>
-              {storageAddons.length > 0 ? (
-                <div className="space-y-2">
-                  {storageAddons.map((addon) => {
-                    const renewPlanId = matchingTierId(addon.bytes)
-                    const renewHref = renewPlanId
-                      ? `/dashboard/${tenantSlug}/subscriptions/checkout?plan=${renewPlanId}&renew=${addon.id}`
-                      : `/dashboard/${tenantSlug}/subscriptions?tab=storage`
-                    return (
-                      <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/60">
-                        <div>
-                          <p className="font-semibold text-foreground">+{Math.round(addon.bytes / 1024 ** 3)} GB</p>
-                          <p className="text-muted-foreground">
-                            Berlaku sampai{" "}
-                            {new Date(addon.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
-                          </p>
-                        </div>
-                        {addon.renewed ? (
-                          <span className="text-muted-foreground">Sudah diperpanjang</span>
-                        ) : (
-                          <Button
-                            asChild
-                            size="sm"
-                            variant="outline"
-                            className="rounded-xl h-8 text-xs font-bold shrink-0"
-                          >
-                            <Link href={renewHref}>Perpanjang</Link>
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  })}
-                  <Button asChild size="sm" className="rounded-xl h-8 text-xs font-bold">
-                    <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
-                      Beli Storage Lagi
-                    </Link>
-                  </Button>
-                </div>
-              ) : (
-                <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
-                  <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
-                    Beli Storage Tambahan
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* 3. MANAGED INFRASTRUCTURE BYODB / BYOS CARD */}
-          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Database className="h-4 w-4 text-primary" />
-                Layanan Terkelola: Database &amp; Storage Sendiri (BYODB/BYOS)
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Opsi migrasi khusus bagi instansi yang memiliki server on-premise atau infrastruktur cloud terpisah. Tim IT SaCMS membantu setup dan pemeliharaan bulanan.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 space-y-3">
-              <p className="text-xs text-foreground">
-                <span className="font-bold">Rp2.500.000</span> biaya setup satu kali + <span className="font-bold">Rp1.000.000/bulan</span> (bulan pertama dibayar saat memesan).
-              </p>
-              {managedInfra ? (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                  <p className="text-muted-foreground">
-                    Status:{" "}
-                    <span className="font-bold text-foreground">
-                      {({
-                        awaiting_setup: "Menunggu setup tim IT SaCMS",
-                        active: "Aktif",
-                        expired: "Kedaluwarsa",
-                        cancelled: "Dibatalkan",
-                      } as Record<string, string>)[managedInfra.status] ?? managedInfra.status}
-                    </span>
-                    {" · "}dibayar sampai{" "}
-                    {new Date(managedInfra.paidUntil).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                  {managedInfra.status !== "cancelled" && (
-                    <Button asChild size="sm" className="rounded-xl h-8 text-xs">
-                      <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_monthly`}>
-                        Perpanjang 1 Bulan
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
-                  <Link href={`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_setup`}>
-                    Pesan Layanan Setup BYODB
-                  </Link>
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {/* TAB 2: CONSOLE IT SUPPORT (Super Admin only manual overrides)       */}
-      {/* ══════════════════════════════════════════════════════════════════ */}
-      {canManageConnection && activeTab === "console" && (
-        <div className="space-y-6 animate-in fade-in-50 duration-300">
-          {/* BYODB: Custom PostgreSQL Connection */}
-          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Database className="h-4 w-4 text-primary" />
-                Koneksi Basis Data Sendiri (Bring Your Own Database / BYODB)
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Hubungkan instance PostgreSQL eksternal milik instansi Anda untuk menyimpan seluruh konten dan skema secara terisolasi.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="databaseUrl" className="text-xs font-semibold text-foreground">
-                  PostgreSQL Connection URL
-                </Label>
-                <Input
-                  id="databaseUrl"
-                  type="password"
-                  placeholder="postgresql://user:password@db.perusahaan.com:5432/tenant_db?sslmode=require"
-                  value={databaseUrl}
-                  onChange={(e) => setDatabaseUrl(e.target.value)}
-                  className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                />
-                <p className="text-[10px] text-muted-foreground">
-                  Kosongkan nilai ini dan simpan jika ingin kembali menggunakan cluster database bersama (Shared Pool) default dari SaCMS Cloud.
+              <Badge
+                variant="outline"
+                className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold"
+              >
+                <CheckCircle2 className="w-3 h-3 mr-1" />
+                {isEnterpriseWorkspace ? "Dedicated Server Beroperasi" : "Shared Pool Beroperasi Normal"}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Tipe Database</span>
+                <p className="text-xs font-bold text-foreground">
+                  {isEnterpriseWorkspace ? "Database Terisolasi" : "Database Bersama"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {isEnterpriseWorkspace ? "Dedicated Enterprise Engine" : "Shared Multi-Tenant Engine"}
                 </p>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* BYOS: Custom S3 Storage */}
-          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                <Upload className="h-4 w-4 text-primary" />
-                Koneksi Storage S3 Sendiri (Bring Your Own Storage / BYOS)
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                Simpan seluruh unggahan media secara mandiri ke bucket AWS S3, Cloudflare R2, MinIO, atau Google Cloud Storage.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="storageEndpoint" className="text-xs font-semibold text-foreground">
-                    S3 Endpoint URL
-                  </Label>
-                  <Input
-                    id="storageEndpoint"
-                    placeholder="https://s3.ap-southeast-1.amazonaws.com"
-                    value={storageEndpoint}
-                    onChange={(e) => setStorageEndpoint(e.target.value)}
-                    className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="storageBucket" className="text-xs font-semibold text-foreground">
-                    Nama Bucket S3
-                  </Label>
-                  <Input
-                    id="storageBucket"
-                    placeholder="nama-bucket-media"
-                    value={storageBucket}
-                    onChange={(e) => setStorageBucket(e.target.value)}
-                    className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                  />
-                </div>
+              <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Object Storage</span>
+                <p className="text-xs font-bold text-foreground">Storage Bersama SaCMS</p>
+                <p className="text-[11px] text-muted-foreground">Kuota dihitung per workspace</p>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="storageAccessKey" className="text-xs font-semibold text-foreground">
-                    Access Key ID
-                  </Label>
-                  <Input
-                    id="storageAccessKey"
-                    placeholder="AKIA..."
-                    value={storageAccessKey}
-                    onChange={(e) => setStorageAccessKey(e.target.value)}
-                    className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="storageSecretKey" className="text-xs font-semibold text-foreground">
-                    Secret Access Key
-                  </Label>
-                  <Input
-                    id="storageSecretKey"
-                    type="password"
-                    placeholder="••••••••••••"
-                    value={storageSecretKey}
-                    onChange={(e) => setStorageSecretKey(e.target.value)}
-                    className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                  />
-                </div>
+              <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Isolasi Keamanan</span>
+                <p className="text-xs font-bold text-foreground">
+                  {isEnterpriseWorkspace ? "Physical & Logical Isolation" : "Tenant Logical Scoping"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">Enkripsi Data In-Transit &amp; At-Rest</p>
               </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="storagePublicUrl" className="text-xs font-semibold text-foreground">
-                  Public CDN Base URL
-                </Label>
-                <Input
-                  id="storagePublicUrl"
-                  placeholder="https://media.perusahaan.com"
-                  value={storagePublicUrl}
-                  onChange={(e) => setStoragePublicUrl(e.target.value)}
-                  className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
-                />
+              <div className="p-3.5 rounded-xl bg-background border border-border/80 space-y-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Alokasi Resource</span>
+                <p className="text-xs font-bold text-foreground">
+                  {isEnterpriseWorkspace ? "Dedicated Hardware" : "Shared Pool SaCMS"}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {isEnterpriseWorkspace ? "Zero Noisy Neighbor" : "Aplikasi dan API SaCMS bersama"}
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. STORAGE ADD-ON CARD */}
+        <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+          <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+            <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <HardDrive className="h-4 w-4 text-primary" />
+              Tambah Kapasitas Storage
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-0.5">
+              Butuh ruang lebih untuk media workspace ini? Tambah kapasitas langsung dari SaCMS, berlaku 1 tahun dan aktif seketika setelah pembayaran.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-3">
+            <p className="text-xs text-foreground">
+              Mulai dari <span className="font-bold">5 GB</span> hingga <span className="font-bold">1 TB</span>, sekali bayar untuk <span className="font-bold">1 tahun</span> &middot; bisa dibeli berkali-kali
+            </p>
+            {storageAddons.length > 0 ? (
+              <div className="space-y-2">
+                {storageAddons.map((addon) => {
+                  const renewPlanId = matchingTierId(addon.bytes)
+                  const renewHref = renewPlanId
+                    ? `/dashboard/${tenantSlug}/subscriptions/checkout?plan=${renewPlanId}&renew=${addon.id}`
+                    : `/dashboard/${tenantSlug}/subscriptions?tab=storage`
+                  return (
+                    <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                      <div>
+                        <p className="font-semibold text-foreground">+{Math.round(addon.bytes / 1024 ** 3)} GB</p>
+                        <p className="text-muted-foreground">
+                          Berlaku sampai{" "}
+                          {new Date(addon.expiresAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                      {addon.renewed ? (
+                        <span className="text-muted-foreground">Sudah diperpanjang</span>
+                      ) : (
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="rounded-xl h-8 text-xs font-bold shrink-0"
+                        >
+                          <Link href={renewHref}>Perpanjang</Link>
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })}
+                <Button asChild size="sm" className="rounded-xl h-8 text-xs font-bold">
+                  <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
+                    Beli Storage Lagi
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <Button asChild size="sm" variant="outline" className="rounded-xl h-8 text-xs font-bold">
+                <Link href={`/dashboard/${tenantSlug}/subscriptions?tab=storage`}>
+                  Beli Storage Tambahan
+                </Link>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

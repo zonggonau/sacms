@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
-import { db, PrismaClient } from "@/lib/database"
+import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
-import { Prisma } from "@prisma/client"
 import { isEnterpriseTenant } from "@/lib/license"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
@@ -94,9 +93,6 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         subscriptionStatus: sub?.status || null,
         daysRemaining,
         isEnterprise,
-        // Custom Infrastructure (owner-only)
-        databaseUrl: canSeeSecrets ? tenant.databaseUrl || "" : mask(tenant.databaseUrl || ""),
-        storageConfig: canSeeSecrets ? tenant.storageConfig || null : (tenant.storageConfig ? { configured: true } : null),
         // API settings with defaults
         apiKey: canSeeSecrets ? defaultApiKey : mask(defaultApiKey),
         apiVersion: settingsMap.apiVersion || "v1",
@@ -144,97 +140,25 @@ export const PUT = withStaffAuth(
       ipWhitelist,
       allowedIps,
       auditLogging,
-      databaseUrl,
       smtpHost,
       smtpPort,
       smtpUser,
       smtpPassword,
       fromEmail,
       fromName,
-      storageConfig,
       previewUrl,
     } = body
 
-    const normalizedNewDbUrl = (databaseUrl || "").trim()
-    const normalizedOldDbUrl = (tenant.databaseUrl || "").trim()
-    const isDbUrlChanging = databaseUrl !== undefined && normalizedNewDbUrl !== normalizedOldDbUrl
-    
-    const hasCustomStorage = storageConfig && typeof storageConfig === "object" && Boolean(storageConfig.bucket || storageConfig.endpoint)
-    const oldStorageConfig = tenant.storageConfig && typeof tenant.storageConfig === "object" ? tenant.storageConfig : null
-    const isStorageChanging = storageConfig !== undefined && JSON.stringify(storageConfig || null) !== JSON.stringify(oldStorageConfig)
-
-    // The workspace's own database/storage is a managed service: the SaCMS IT team connects and
-    // disconnects it (lib/billing/managed-infra.ts). Only a self-hosted instance with an enterprise
-    // license lets its own admins change it.
-    if (isDbUrlChanging || isStorageChanging) {
-      let allowed = session.user.role === "super_admin"
-      if (!allowed) {
-        const { getGlobalWorkspaceId } = await import("@/lib/settings")
-        allowed = await isEnterpriseTenant(await getGlobalWorkspaceId(), session.user.id)
-      }
-      if (!allowed) {
-        return NextResponse.json(
-          { error: "Database & storage sendiri disambungkan oleh tim IT SaCMS. Pesan layanannya di menu Langganan → Add-on." },
-          { status: 403 },
-        )
-      }
-    }
-
-    // Prove the new connection actually works BEFORE persisting anything —
-    // this is now self-service for the tenant owner (not just SaCMS IT
-    // staff via the manual console), so a typo here would otherwise
-    // silently break this tenant's own CMS the moment it's saved. Clearing
-    // a value back to empty (disconnecting) never needs this — only
-    // connecting to a new, non-empty value does.
-    if (isDbUrlChanging && normalizedNewDbUrl !== "") {
-      const testClient = new PrismaClient({ datasources: { db: { url: normalizedNewDbUrl } } })
-      try {
-        await testClient.$queryRaw`SELECT 1`
-      } catch {
-        return apiError("validation", {
-          message: "Gagal terhubung ke database yang Anda masukkan. Periksa kembali connection string (host, port, username, password, nama database).",
-        })
-      } finally {
-        await testClient.$disconnect().catch(() => {})
-      }
-    }
-
-    if (isStorageChanging && hasCustomStorage) {
-      const { endpoint, accessKey, secretKey, bucket } = storageConfig as Record<string, string>
-      if (!endpoint || !accessKey || !secretKey || !bucket) {
-        return apiError("validation", {
-          message: "Lengkapi semua field storage (endpoint, access key, secret key, bucket) sebelum menyimpan.",
-        })
-      }
-      try {
-        const { createS3Client } = await import("@/lib/s3-client")
-        const { HeadBucketCommand } = await import("@aws-sdk/client-s3")
-        const s3 = createS3Client(endpoint, accessKey, secretKey)
-        await s3.send(new HeadBucketCommand({ Bucket: bucket }))
-      } catch {
-        return apiError("validation", {
-          message: "Gagal terhubung ke storage (MinIO/S3) yang Anda masukkan. Periksa kembali endpoint, access key, secret key, dan nama bucket.",
-        })
-      }
-    }
-
-    // Update tenant basic info and custom infrastructure
+    // Update tenant basic info
     const tenantUpdateData: Record<string, any> = {}
     if (name !== undefined && name.trim() !== "") tenantUpdateData.name = name.trim()
     if (description !== undefined) tenantUpdateData.description = description || null
-    if (databaseUrl !== undefined) tenantUpdateData.databaseUrl = normalizedNewDbUrl === "" ? null : normalizedNewDbUrl
-    if (storageConfig !== undefined) tenantUpdateData.storageConfig = !hasCustomStorage ? Prisma.JsonNull : storageConfig
 
     if (Object.keys(tenantUpdateData).length > 0) {
       await db.tenant.update({
         where: { id: tenant.id },
         data: tenantUpdateData,
       })
-    }
-
-    if (isDbUrlChanging || isStorageChanging) {
-      const { activateManagedInfraIfConnected } = await import("@/lib/billing/managed-infra")
-      await activateManagedInfraIfConnected(tenant.id, Boolean(normalizedNewDbUrl || hasCustomStorage))
     }
 
     // Update settings in Setting model

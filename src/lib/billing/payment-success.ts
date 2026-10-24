@@ -191,19 +191,6 @@ export async function applyPaymentOutcome(
           }),
         ])
       }
-    } else if (orderId.startsWith("VPS")) {
-      // Unlike ADD, a VPS order can be account-scoped (sub.tenantId null —
-      // see the account-level purchase path in checkout/route.ts) as well
-      // as tenant-scoped, so this branch doesn't require sub.tenantId.
-      const { fulfillVpsOrder } = await import("./vps-fulfillment")
-      const billingCycle: "m" | "a" = raw.interval === "year" ? "a" : "m"
-      await fulfillVpsOrder({
-        ownerId: sub.userId,
-        tenantId: sub.tenantId ?? null,
-        orderId,
-        offeringId: raw.addonId || "",
-        billingCycle,
-      })
     }
   } else if (orderId.startsWith("DOM")) {
     const tenantId = raw.tenantId

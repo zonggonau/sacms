@@ -1,5 +1,5 @@
 import { db, Prisma } from "@/lib/database"
-import type { AccountPlan, WorkspacePlan, AiCreditPack, Addon, VpsOffering } from "@prisma/client"
+import type { AccountPlan, WorkspacePlan, AiCreditPack, Addon } from "@prisma/client"
 
 /**
  * Prisma's Json? columns don't accept a literal `null` in create/update
@@ -77,17 +77,6 @@ export async function getAddons(opts: ListOptions = {}): Promise<Addon[]> {
 
 export async function getAddon(slug: string): Promise<Addon | null> {
   return db.addon.findUnique({ where: { slug } })
-}
-
-export async function getVpsOfferings(opts: ListOptions = {}): Promise<VpsOffering[]> {
-  return db.vpsOffering.findMany({
-    where: opts.includeInactive ? {} : { isActive: true },
-    orderBy: { order: "asc" },
-  })
-}
-
-export async function getVpsOffering(slug: string): Promise<VpsOffering | null> {
-  return db.vpsOffering.findUnique({ where: { slug } })
 }
 
 /**

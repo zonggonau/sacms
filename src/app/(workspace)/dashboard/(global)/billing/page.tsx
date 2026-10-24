@@ -152,28 +152,6 @@ export default async function BillingPage() {
     console.error("Failed to fetch usage:", err)
   }
 
-  // 3b. Fetch sellable VPS offerings (account-shared infrastructure — a
-  // workspace buying its own dedicated VPS instead uses the Storage tab
-  // of its own /subscriptions page, not this account-level page).
-  let vpsOfferings: any[] = []
-  try {
-    const { getVpsOfferings } = await import("@/lib/pricing")
-    const offerings = await getVpsOfferings()
-    vpsOfferings = offerings.map(o => ({
-      id: o.slug,
-      name: o.name,
-      description: o.description,
-      osLabel: o.osLabel,
-      cpuCores: o.cpuCores,
-      memoryMb: o.memoryMb,
-      diskGb: o.diskGb,
-      priceMonthlyIdr: o.priceMonthlyIdr,
-      priceAnnualIdr: o.priceAnnualIdr,
-    }))
-  } catch (err) {
-    console.error("Failed to fetch VPS offerings:", err)
-  }
-
   // 3. Fetch Transaction History (first page — the client paginates further)
   let transactions: any[] = []
   let transactionsTotalPages = 1
@@ -196,7 +174,6 @@ export default async function BillingPage() {
       initialTransactions={transactions}
       initialTransactionsTotalPages={transactionsTotalPages}
       isAccountEnterpriseLicensed={isAccountEnterpriseLicensed}
-      initialVpsOfferings={vpsOfferings}
     />
   )
 }

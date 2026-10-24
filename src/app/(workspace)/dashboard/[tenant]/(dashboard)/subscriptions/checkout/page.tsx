@@ -183,13 +183,6 @@ export default function CheckoutPage() {
     }
     
     const isAiPack = plan.id?.startsWith("ai_pack_") || plan.type === "ai_plan"
-    // A VPS offering can be bought either tied to this one workspace
-    // (default — Storage tab of a specific tenant's subscriptions page)
-    // or as account-shared infrastructure (the account billing page sends
-    // ?scope=account through this same checkout page rather than its own,
-    // since it has no VPS catalog UI of its own).
-    const isVpsOffering = plan.type === "vps"
-    const isAccountScopedVps = isVpsOffering && searchParams.get("scope") === "account"
 
     setLoading(true)
     try {
@@ -198,9 +191,9 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          tenantId: (isAccount || isAiPack || isAccountScopedVps) ? null : (currentTenant?.id || tenantSlug),
+          tenantId: (isAccount || isAiPack) ? null : (currentTenant?.id || tenantSlug),
           interval: interval,
-          type: isAiPack ? "ai_credits" : (isAccount ? "account" : (isVpsOffering ? "vps" : "workspace")),
+          type: isAiPack ? "ai_credits" : (isAccount ? "account" : "workspace"),
           ...(renewsAddonId ? { renewsAddonId } : {}),
         }),
       })

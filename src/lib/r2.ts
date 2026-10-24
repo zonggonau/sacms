@@ -26,10 +26,12 @@ export interface StorageConfig {
 }
 
 // ─── Dedicated enterprise storage ────────────────────────────────────────
-// A tenant's own S3-compatible bucket, provisioned by SaCMS's own ops team
-// as part of the paid "Database & Storage" managed infra add-on (see
-// lib/billing/managed-infra.ts) — not something a tenant configures from
-// outside. Every other workspace uses the platform's own MinIO below.
+// tenant.storageConfig has no active writer anymore (kept only for
+// backward compatibility with any historical row) — the real dedicated
+// storage path for an Enterprise-licensed account is the owner-level
+// fallback below (auto-provisioned on license activation, see
+// getOwnerMasterInfra() in database.ts). Every other workspace uses the
+// platform's own MinIO below.
 
 async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig | null> {
   try {
@@ -61,8 +63,8 @@ async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig
 
 /**
  * Where a workspace's media goes:
- *   - its own dedicated bucket (`tenant.storageConfig`, the managed enterprise
- *     infra add-on) — keys `<tenantId>/<ext>/...`;
+ *   - its owning account's dedicated bucket, if Enterprise-licensed
+ *     (`getOwnerMasterInfra`) — keys `<tenantId>/<ext>/...`;
  *   - otherwise its own auto-provisioned bucket on the platform's MinIO
  *     (`sacms-tenant-<tenantId>`, see getTenantObjectStorage) — same key
  *     layout;

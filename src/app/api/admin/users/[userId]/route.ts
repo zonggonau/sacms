@@ -6,8 +6,8 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 
 /** Never return these straight from a Prisma `update()`/`findUnique()` call —
  *  password is a bcrypt hash, the other two are raw Enterprise DB/S3
- *  credentials (see src/app/api/auth/user/infrastructure/route.ts, which
- *  masks the exact same fields for the self-service version of this data). */
+ *  credentials auto-provisioned on license activation (see
+ *  src/app/api/user/license/activate/route.ts). */
 const SAFE_USER_SELECT = {
   id: true,
   email: true,

@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import {
   Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download, Cloud, Save, Sparkles,
-  Eye, EyeOff, Search, XCircle, Calendar, ArrowUpRight, FileText, Check, Copy, Building2, Server
+  Eye, EyeOff, Search, XCircle, Calendar, ArrowUpRight, FileText, Check, Copy, Building2
 } from "lucide-react"
 import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/actions/billing"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,7 +20,6 @@ import { cn } from "@/lib/utils"
 import { EnterpriseLicenseBanner } from "@/components/dashboard/enterprise-license-banner"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
 import { InvoiceDetailDialog, TransactionInvoiceItem } from "@/components/dashboard/invoice-detail-dialog"
-import { VpsStatusList } from "@/components/dashboard/vps-status-list"
 
 export default function BillingClient({
   initialAccountPlans,
@@ -30,7 +29,6 @@ export default function BillingClient({
   initialTransactions,
   initialTransactionsTotalPages,
   isAccountEnterpriseLicensed,
-  initialVpsOfferings
 }: {
   initialAccountPlans: any[]
   initialActiveWorkspacesCount: number
@@ -40,12 +38,10 @@ export default function BillingClient({
   initialTransactionsTotalPages?: number
   /** Account-level license (isEnterpriseTenant(userId) — see license.ts).
    *  When active, the yearly account-plan grid is hidden — see section 2
-   *  below. The "Database & Storage" infra override this account grants
-   *  now lives on its own page at /dashboard/infrastructure. */
+   *  below. Enterprise accounts get their own dedicated SaCMS-hosted
+   *  database automatically on license activation (see
+   *  src/app/api/user/license/activate/route.ts) — no self-service setup. */
   isAccountEnterpriseLicensed?: boolean
-  /** Sellable VPS catalog (VpsOffering rows) — bought here as account-shared
-   *  infrastructure, usable by every workspace this account owns. */
-  initialVpsOfferings?: any[]
 }) {
   const { data: session, status, update } = useSafeSession()
   const router = useRouter()
@@ -154,17 +150,14 @@ export default function BillingClient({
       return
     }
 
-    // SUB- (plan change), ADD- (addon), AIC- (AI credit pack), and VPS- all
+    // SUB- (plan change), ADD- (addon), and AIC- (AI credit pack) all
     // resume through the same tenant checkout page — it already resolves
     // any of these generically by id from /subscriptions/plans (see
     // checkout/page.tsx: isAiPack = plan.id?.startsWith("ai_pack_") ||
-    // plan.type === "ai_plan"; VPS offerings are included there too). An
-    // AI-credit subscription, or an account-scoped VPS purchase, is never
-    // tied to one tenant (checkout always creates those with tenantId:
-    // null), so any tenant the user owns works just to reach the checkout
-    // page from.
+    // plan.type === "ai_plan"). An AI-credit subscription is never tied to
+    // one tenant (checkout always creates those with tenantId: null), so
+    // any tenant the user owns works just to reach the checkout page from.
     const isAccountScopedOrder = tx.orderId.startsWith("AIC-") || tx.rawResponse?.type === "ai_credits"
-      || (tx.orderId.startsWith("VPS-") && !tx.subscription?.tenant)
     const tenantSlug = tx.subscription?.tenant?.slug
       || (isAccountScopedOrder ? (session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id) : null)
     if (!tenantSlug) {
@@ -221,20 +214,6 @@ export default function BillingClient({
     } finally {
       setUpdatingPlanId(null)
     }
-  }
-
-  const handleBuyVps = (offeringId: string) => {
-    // No account-level VPS catalog page of its own — reuses the tenant
-    // checkout page (any owned tenant works to reach it) with
-    // ?scope=account, which checkout/page.tsx reads to send tenantId: null
-    // so the resulting VpsInstance is account-scoped, not tied to that
-    // tenant (see checkout/page.tsx's isAccountScopedVps).
-    const tenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
-    if (!tenantSlug) {
-      toast({ variant: "destructive", title: "Tidak Dapat Melanjutkan", description: "Anda perlu memiliki minimal satu workspace untuk membeli VPS." })
-      return
-    }
-    router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${offeringId}&scope=account`)
   }
 
   if (status === "loading") {
@@ -463,53 +442,6 @@ export default function BillingClient({
           </section>
           )}
 
-          {/* ── 3. VPS (BIZNET GIO) — ACCOUNT-SHARED INFRASTRUCTURE ──
-              A VPS bought here is account-scoped (tenantId: null on its
-              VpsInstance row), meant as shared infrastructure every
-              workspace this account owns can use. A workspace that wants
-              its OWN dedicated VPS instead buys one from its own
-              Storage tab (/dashboard/[tenant]/subscriptions?tab=storage). */}
-          {initialVpsOfferings && initialVpsOfferings.length > 0 && (
-          <section className="space-y-3">
-            <div>
-              <h3 className="text-base font-bold tracking-tight text-foreground flex items-center gap-2">
-                <Server className="h-4 w-4 text-primary" /> VPS Database & Storage Sendiri
-              </h3>
-              <p className="text-xs text-muted-foreground">Infrastruktur database & storage bersama untuk seluruh workspace akun Anda — PostgreSQL & MinIO otomatis disiapkan dan dihubungkan setelah pembayaran berhasil.</p>
-            </div>
-
-            <VpsStatusList scope="account" />
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {initialVpsOfferings.map((offering) => (
-                <Card key={offering.id} className="border border-border/80 bg-card rounded-2xl shadow-xs flex flex-col">
-                  <CardHeader className="p-5 pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-bold">{offering.name}</CardTitle>
-                      <div className="w-8 h-8 rounded-lg border border-primary/20 bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                        <Server className="h-4 w-4" />
-                      </div>
-                    </div>
-                    <CardDescription className="text-xs">
-                      {offering.description || `${offering.cpuCores} vCPU · ${(offering.memoryMb / 1024).toFixed(1)} GB RAM · ${offering.diskGb} GB SSD · ${offering.osLabel}`}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-1 flex flex-col flex-1 justify-between gap-4">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-black text-foreground">
-                        {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(offering.priceMonthlyIdr)}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground font-semibold">/bulan</span>
-                    </div>
-                    <Button size="sm" className="w-full h-9 font-bold rounded-xl text-xs" onClick={() => handleBuyVps(offering.id)}>
-                      Sewa VPS Ini
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </section>
-          )}
         </TabsContent>
 
         <TabsContent value="history" className="mt-6 space-y-6">

@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic"
 
 /**
  * GET /api/cron/billing-reminders
- * Daily: expiry reminders for storage add-ons and managed database/storage services, and
- * expiry of unpaid managed services. Requires `Authorization: Bearer CRON_SECRET`.
+ * Daily: expiry reminders for storage add-ons. Requires
+ * `Authorization: Bearer CRON_SECRET`.
  */
 export async function GET(request: Request) {
   const unauthorized = authorizeCronRequest(request)

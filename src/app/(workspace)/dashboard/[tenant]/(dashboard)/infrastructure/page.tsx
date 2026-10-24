@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 import { HostingDeploymentsView } from "./hosting-deployments-view"
 import { DatabaseStorageView } from "./database-storage-view"
 import { EnvironmentView } from "./environment-view"
+import { checkEnterpriseModeAction } from "@/actions/billing"
 
 type TabKey = "hosting" | "domains" | "database" | "environment"
 
@@ -82,25 +83,23 @@ function InfrastructureShell() {
   const [telemetry, setTelemetry] = useState({
     hostingStatus: "Live di SaCMS Cloud",
     domainsCount: 1,
-    databaseType: "Database Terisolasi",
+    databaseType: "Database Bersama (Shared)",
     envCount: 0,
   })
 
   useEffect(() => {
     if (!tenantSlug) return
     Promise.all([
-      fetch(`/api/tenant/${tenantSlug}/settings`).then((r) => (r.ok ? r.json() : null)),
+      checkEnterpriseModeAction(tenantSlug).catch(() => false),
       fetch(`/api/tenant/${tenantSlug}/environment`).then((r) => (r.ok ? r.json() : null)),
       fetch(`/api/tenant/${tenantSlug}/infrastructure`).then((r) => (r.ok ? r.json() : null)),
     ])
-      .then(([settingsData, envData, infraData]) => {
-        const s = settingsData?.settings
-        const hasDb = Boolean(s?.databaseUrl)
+      .then(([isEnterpriseWorkspace, envData, infraData]) => {
         const envKeys = envData?.variables ? Object.keys(envData.variables).length : 0
         setTelemetry({
           hostingStatus: infraData?.deployment?.url ? "Live di SaCMS Cloud" : "Siap Dideploy",
           domainsCount: infraData?.domains?.length || 1,
-          databaseType: hasDb ? "Dedicated / BYODB" : "Database Bersama (Shared)",
+          databaseType: isEnterpriseWorkspace ? "Dedicated Enterprise" : "Database Bersama (Shared)",
           envCount: envKeys,
         })
       })

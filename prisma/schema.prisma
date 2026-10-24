@@ -149,11 +149,9 @@ model Tenant {
   oauthTokens                     OAuthToken[]
   supportTickets                  SupportTicket[]
   storageAddons                   StorageAddon[]
-  managedInfraService             ManagedInfraService?
   enterpriseStorageAllocation     EnterpriseStorageAllocation?
   appMembers                      Member[]
   memberRoles                     MemberRole[]
-  vpsInstances                    VpsInstance[]
 
   @@map("tenants")
 }
@@ -600,80 +598,6 @@ model Addon {
   updatedAt     DateTime @updatedAt
 
   @@map("addons")
-}
-
-/// Admin-curated, purchasable VPS tier — maps to one Biznet Gio NEO Lite
-/// product + OS image (see src/lib/biznetgio.ts), sold at an
-/// independently-set price (admin margin over Biznet Gio's own cost, which
-/// bills directly to SaCMS's own account at purchase time — see
-/// VpsInstance below). One fixed config per offering; no customer-facing
-/// OS/hostname picker.
-model VpsOffering {
-  id              String        @id @default(cuid())
-  slug            String        @unique
-  name            String
-  description     String?
-  biznetProductId String
-  biznetOsImageId String
-  osLabel         String
-  cpuCores        Int
-  memoryMb        Int
-  diskGb          Int
-  priceMonthlyIdr Float
-  priceAnnualIdr  Float?
-  features        Json?
-  isActive        Boolean       @default(true)
-  order           Int           @default(0)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  instances       VpsInstance[]
-
-  @@map("vps_offerings")
-}
-
-/// A purchased + (attempted) provisioned VPS. Scope is either account-wide
-/// (tenantId null — bought from /dashboard/billing, meant to serve as
-/// shared infrastructure for every workspace the owner has) or workspace-
-/// specific (tenantId set — bought from that one workspace's Billing tab).
-model VpsInstance {
-  id                   String      @id @default(cuid())
-  offeringId           String
-  offering             VpsOffering @relation(fields: [offeringId], references: [id])
-  /// Always set — the paying account.
-  ownerId              String
-  /// Set only for a workspace-scoped purchase.
-  tenantId             String?
-  tenant               Tenant?     @relation(fields: [tenantId], references: [id], onDelete: SetNull)
-  orderId              String      @unique
-  status               String      @default("provisioning") // provisioning | active | failed | terminated
-  billingCycle         String // "m" | "a" — mirrors Biznet Gio's own cycle codes
-  biznetAccountId      String?
-  biznetKeypairId      String?
-  hostname             String?
-  ipAddress            String?
-  rootUser             String?
-  /// Plain text, same as every other credential this codebase already
-  /// stores this way (e.g. User.masterStorageConfig.secretKey) — masked in
-  /// API responses, revealed on demand only.
-  rootPassword         String?
-  failureReason        String?
-  /// This VPS's whole purpose is to host this account's/workspace's own
-  /// PostgreSQL + MinIO (BYODB/BYOS) — auto-installed via SSH once the VM
-  /// has a real IP, then wired into Tenant.databaseUrl/storageConfig (a
-  /// tenant-scoped instance) or User.masterDatabaseUrl/masterStorageConfig
-  /// (an account-scoped one). pending | connecting | connected | skipped
-  /// (an existing DB/storage connection was already present — never
-  /// clobbered) | failed.
-  dbStorageStatus      String      @default("pending")
-  dbStorageError       String?
-  dbStorageConnectedAt DateTime?
-  nextDueAt            DateTime?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-
-  @@index([ownerId])
-  @@index([tenantId])
-  @@map("vps_instances")
 }
 
 model AuditLog {
@@ -1128,45 +1052,6 @@ model StorageAddon {
 
   @@index([tenantId, expiresAt])
   @@map("storage_addons")
-}
-
-/// Own database and/or storage for a workspace, set up and connected by the SaCMS IT team
-/// after the customer pays (lib/billing/managed-infra.ts). One per workspace.
-model ManagedInfraService {
-  id               String                @id @default(cuid())
-  tenantId         String                @unique
-  status           String                @default("awaiting_setup") // awaiting_setup | active | expired | cancelled
-  paidUntil        DateTime
-  requestedById    String?
-  /// Support ticket the IT team works the setup from.
-  ticketId         String?
-  activatedAt      DateTime?
-  expiredAt        DateTime?
-  reminder7dSentAt DateTime?
-  reminder1dSentAt DateTime?
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  tenant           Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  payments         ManagedInfraPayment[]
-
-  @@index([status, paidUntil])
-  @@map("managed_infra_services")
-}
-
-model ManagedInfraPayment {
-  id          String              @id @default(cuid())
-  serviceId   String
-  /// Payment order; unique so a payment is never applied twice.
-  orderId     String              @unique
-  kind        String // setup | monthly
-  amount      Int
-  periodStart DateTime
-  periodEnd   DateTime
-  createdAt   DateTime            @default(now())
-  service     ManagedInfraService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@index([serviceId])
-  @@map("managed_infra_payments")
 }
 
 // ─── Customer Support & IT Helpdesk ───────────────────────────────────
