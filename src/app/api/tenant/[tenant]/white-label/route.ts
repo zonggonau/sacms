@@ -5,16 +5,31 @@ import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 
-const whiteLabelSchema = z.object({
+// The logo/favicon upload button (settings page) saves whatever URL
+// POST /api/tenant/[tenant]/media returns, which is legitimately a
+// server-relative path like "/api/media/serve?key=..." whenever the
+// workspace's storage has no publicUrl configured (buildUrl() in
+// src/lib/r2.ts, same for the local-disk dev fallback) — z.url() alone
+// rejects that and silently fails every "Simpan Branding" after an
+// upload. Accept either a real absolute URL or a leading-slash path.
+export const imageUrlField = z
+  .string()
+  .refine((v) => /^https?:\/\//i.test(v) || v.startsWith("/"), {
+    message: "Must be an absolute URL or a server-relative path starting with /",
+  })
+  .optional()
+  .or(z.literal(""))
+
+export const whiteLabelSchema = z.object({
   brandName: z.string().min(1).max(100).optional(),
-  brandLogo: z.url().optional().or(z.literal("")),
+  brandLogo: imageUrlField,
   primaryColor: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #3B82F6)")
     .optional()
     .or(z.literal("")),
   customEmailSender: z.email().optional().or(z.literal("")),
-  faviconUrl: z.url().optional().or(z.literal("")),
+  faviconUrl: imageUrlField,
 })
 
 /** GET /api/tenant/[tenant]/white-label — branding + custom-domain state. */
