@@ -169,15 +169,20 @@ services:
   #
   # quay.io/minio/minio + quay.io/minio/mc now return 401 to EVERY pull,
   # anonymous or authenticated with a fresh token — confirmed live, not a
-  # deleted-tag issue. MinIO privatized those legacy repos and moved
-  # distribution to quay.io/minio/aistor/* (same product, "AIStor"
-  # rebrand), which still pulls anonymously — this is a widely reported
-  # breaking change (e.g. github.com/kossakovsky/selfhost-ai/issues/135),
-  # not specific to this deploy.
+  # deleted-tag issue. MinIO privatized those legacy repos. The official
+  # successor, quay.io/minio/aistor/minio, pulls fine but is MinIO's
+  # commercial product — confirmed live it refuses every S3 operation
+  # ("No valid license found, running in offline mode") with no license
+  # key, so it's not a drop-in free replacement. Using bitnamilegacy's
+  # frozen (unmaintained but genuinely open-source, no license wall)
+  # MinIO build instead — confirmed pullable anonymously. Healthcheck
+  # switched from `mc ready local` to the server's own built-in
+  # /minio/health/live HTTP endpoint, since bitnamilegacy's image isn't
+  # confirmed to bundle the mc CLI the official image did.
   minio:
     profiles:
       - storage
-    image: quay.io/minio/aistor/minio:latest
+    image: bitnamilegacy/minio:latest
     command: server /data --console-address ":9001"
     ports:
       - "127.0.0.1:9000:9000"
@@ -188,7 +193,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -198,7 +203,7 @@ services:
   minio-init:
     profiles:
       - storage
-    image: quay.io/minio/aistor/mc:latest
+    image: bitnamilegacy/minio-client:latest
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
