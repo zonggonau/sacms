@@ -263,11 +263,6 @@ jobs:
             docker compose run --rm app bun x prisma db push --skip-generate
             docker compose run --rm app bun run seed:permissions || true
             docker compose run --rm app bun run seed:pricing || true
-            # One-time fix: seed:pricing is create-only-if-missing, so it never
-            # retroactively corrected the WorkspacePlan features copy that was
-            # already seeded in production before the 2026-10-25 realism pass.
-            # Remove this line once confirmed applied (see commit message).
-            docker compose run --rm app bun run fix:pricing-features-20261025 || true
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans
