@@ -904,17 +904,17 @@ export default function AdminSettingsPage() {
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payment Webhook URL</Label>
                       <div className="flex gap-2">
-                        <Input 
-                          readOnly 
-                          value="https://developer.sacms.cloud/api/billing/midtrans/webhooks"
+                        <Input
+                          readOnly
+                          value="https://sacms.cloud/api/billing/midtrans/webhooks"
                           className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
                         />
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           className="h-9 rounded-xl text-xs"
                           onClick={() => {
-                            navigator.clipboard.writeText("https://developer.sacms.cloud/api/billing/midtrans/webhooks")
+                            navigator.clipboard.writeText("https://sacms.cloud/api/billing/midtrans/webhooks")
                             toast({ title: "Tersalin", description: "Webhook URL Midtrans berhasil disalin." })
                           }}
                         >
@@ -1161,7 +1161,7 @@ export default function AdminSettingsPage() {
                         <Input 
                           value={settings.siteUrl}
                           onChange={e => setSettings(prev => ({ ...prev, siteUrl: e.target.value }))}
-                          placeholder="https://developer.sacms.cloud"
+                          placeholder="https://sacms.cloud"
                           className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
                         />
                       </div>
