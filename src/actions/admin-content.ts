@@ -9,6 +9,15 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { isWorkflowStatus, type WorkflowStatus } from "@/lib/content-workflow-rules"
 import { parseSchemaFieldOptions, validateScheduledPublicationDate } from "./content-pipeline"
 
+// Every `where` clause below filters on `tenantId: null` to scope strictly to
+// global (sacms-global) content — NOT `tenantId: undefined`, which Prisma
+// treats as "no filter on this field at all" rather than "field is null".
+// With `undefined` these lookups could match (and deleteAdminEntryAction
+// could then delete) a real tenant's row on an id/slug collision, even
+// though every action here is super_admin-only. `tenantId: undefined` inside
+// a `create()`/`logAudit()` call is unrelated and fine as-is — there it just
+// means "omit this field", which already resolves to null.
+
 /**
  * Get all entries for a global content type with pagination and filtering
  */
@@ -21,7 +30,7 @@ export async function getAdminEntriesAction(
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
     const contentTypeRecord = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined },
+      where: { slug: contentTypeSlug, tenantId: null },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
     })
 
@@ -44,7 +53,7 @@ export async function getAdminEntriesAction(
 
     const where: Record<string, unknown> = {
       contentTypeId: contentType.id,
-      tenantId: undefined,
+      tenantId: null,
     }
     if (status) where.status = status
     if (locale) where.locale = locale
@@ -116,7 +125,7 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
     const contentTypeRecord = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined },
+      where: { slug: contentTypeSlug, tenantId: null },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
     })
 
@@ -135,13 +144,13 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
 
     if (!entryId) {
       const entry = await db.contentEntry.findFirst({
-        where: { contentTypeId: contentType.id, tenantId: undefined, locale },
+        where: { contentTypeId: contentType.id, tenantId: null, locale },
       })
       return { entry, contentType }
     }
 
     const baseEntry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: undefined },
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: null },
       include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
     })
 
@@ -157,7 +166,7 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
       isNewTranslation = false
     } else {
       entry = await db.contentEntry.findFirst({
-        where: { documentId, locale, tenantId: undefined },
+        where: { documentId, locale, tenantId: null },
         include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
       })
 
@@ -223,7 +232,7 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
       const newEntry = await tx.contentEntry.create({
         data: {
           contentTypeId: contentType.id,
-          tenantId: undefined,
+          tenantId: null,
           locale: targetLocale,
           data: data as any,
           status: status as any,
@@ -284,7 +293,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     }
 
     const contentType = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined },
+      where: { slug: contentTypeSlug, tenantId: null },
       include: { schemaFields: true },
     })
 
@@ -296,7 +305,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     }
 
     const baseEntry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: undefined },
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: null },
     })
     if (!baseEntry) return { error: "Entry not found" }
 
@@ -306,7 +315,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     if (baseEntry.locale === targetLocale) {
       existingLocaleEntry = baseEntry
     } else {
-      existingLocaleEntry = await db.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId: undefined } })
+      existingLocaleEntry = await db.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId: null } })
     }
 
     const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
@@ -366,7 +375,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
           data: {
             documentId,
             contentTypeId: baseEntry.contentTypeId,
-            tenantId: undefined,
+            tenantId: null,
             locale: targetLocale,
             data: data as any,
             status: status as any || "DRAFT",
@@ -437,12 +446,12 @@ export async function deleteAdminEntryAction(contentTypeSlug: string, entryId: s
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
     const contentType = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined }
+      where: { slug: contentTypeSlug, tenantId: null }
     })
 
     if (!contentType) return { error: "Content type not found" }
 
-    const entry = await db.contentEntry.findFirst({ where: { id: entryId, contentTypeId: contentType.id, tenantId: undefined } })
+    const entry = await db.contentEntry.findFirst({ where: { id: entryId, contentTypeId: contentType.id, tenantId: null } })
     if (!entry) return { error: "Entry not found" }
 
     await db.contentEntry.delete({ where: { id: entryId } })
@@ -471,13 +480,13 @@ export async function updateAdminContentEntryStatusAction(contentTypeSlug: strin
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
     const contentType = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined }
+      where: { slug: contentTypeSlug, tenantId: null }
     })
 
     if (!contentType) return { error: "Content type not found" }
 
     const existingEntry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: undefined }
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: null }
     })
 
     if (!existingEntry) return { error: "Entry not found" }

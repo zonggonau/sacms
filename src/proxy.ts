@@ -784,11 +784,28 @@ function applySecurityHeaders(response: NextResponse, pathname?: string) {
   )
 }
 
+// `origin.includes(rootDomain)` used to match the whole origin string as a
+// substring, so e.g. "https://sacms.cloud.attacker.com" or
+// "https://not-localhost-evil.com".includes("localhost") would both pass
+// and get Access-Control-Allow-Credentials:true. Parse the real hostname
+// and require an exact match or a proper dot-bounded subdomain instead.
+function isAllowedCorsOrigin(origin: string, rootDomain: string): boolean {
+  let hostname: string
+  try {
+    hostname = new URL(origin).hostname.toLowerCase()
+  } catch {
+    return false
+  }
+  if (hostname === rootDomain || hostname.endsWith(`.${rootDomain}`)) return true
+  if (hostname === "localhost" || hostname === "127.0.0.1") return true
+  return false
+}
+
 function applyCorsHeaders(response: NextResponse, request?: NextRequest) {
   const origin = request?.headers.get("origin")
   const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
 
-  if (origin && (origin.includes(rootDomain) || origin.includes("localhost"))) {
+  if (origin && isAllowedCorsOrigin(origin, rootDomain)) {
     response.headers.set("Access-Control-Allow-Origin", origin)
     response.headers.set("Access-Control-Allow-Credentials", "true")
   } else {

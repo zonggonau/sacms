@@ -156,8 +156,13 @@ export async function resolvePublicApiActor(
   const apiToken = await db.apiToken.findFirst({
     // MCP tokens are a separate credential system (see api/mcp/[[...transport]]/
     // route.ts) — excluded here so an MCP token never doubles as REST/GraphQL
-    // access, and vice versa.
-    where: { OR: [{ token: hashedToken }, { token }], type: { not: "mcp" } },
+    // access, and vice versa. Matches on the hash only — every creation path
+    // (api-token-registry.ts, api-keys.ts, tenant/api-tokens, admin/tenants,
+    // infrastructure/frontend-env.ts) hashes before persisting, so a raw-value
+    // match here was unreachable legacy defensive code; removed since a DB
+    // leak handing out a directly-usable bearer credential isn't a risk worth
+    // keeping around for a code path nothing writes to.
+    where: { token: hashedToken, type: { not: "mcp" } },
     select: { id: true, tenantId: true, type: true, expiresAt: true },
   })
   if (apiToken) {

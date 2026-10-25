@@ -222,6 +222,64 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
   })
 })
 
+describe("CORS origin check (applyCorsHeaders) — substring-match regression", () => {
+  // Real bug found 2026-10-25: origin.includes(rootDomain) matched the whole
+  // origin string as a substring, so an attacker-registered domain merely
+  // containing "sacms.cloud" or "localhost" anywhere in its name would get
+  // Access-Control-Allow-Credentials:true reflected back.
+  it("rejects an attacker domain that merely contains the root domain as a substring", async () => {
+    const req = new NextRequest("http://api.sacms.cloud/delvia/content/posts", {
+      headers: {
+        host: "api.sacms.cloud",
+        origin: "https://sacms.cloud.attacker.com",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("Access-Control-Allow-Origin")).not.toBe("https://sacms.cloud.attacker.com")
+    expect(res.headers.get("Access-Control-Allow-Credentials")).not.toBe("true")
+  })
+
+  it("rejects an attacker domain that merely contains \"localhost\" as a substring", async () => {
+    const req = new NextRequest("http://api.sacms.cloud/delvia/content/posts", {
+      headers: {
+        host: "api.sacms.cloud",
+        origin: "https://notlocalhost.evil.com",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("Access-Control-Allow-Origin")).not.toBe("https://notlocalhost.evil.com")
+    expect(res.headers.get("Access-Control-Allow-Credentials")).not.toBe("true")
+  })
+
+  it("still allows a real subdomain of the root domain", async () => {
+    const req = new NextRequest("http://api.sacms.cloud/delvia/content/posts", {
+      headers: {
+        host: "api.sacms.cloud",
+        origin: "https://cms.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("https://cms.sacms.cloud")
+    expect(res.headers.get("Access-Control-Allow-Credentials")).toBe("true")
+  })
+
+  it("still allows real localhost origins for local dev", async () => {
+    const req = new NextRequest("http://api.sacms.cloud/delvia/content/posts", {
+      headers: {
+        host: "api.sacms.cloud",
+        origin: "http://localhost:3000",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("Access-Control-Allow-Origin")).toBe("http://localhost:3000")
+    expect(res.headers.get("Access-Control-Allow-Credentials")).toBe("true")
+  })
+})
+
 describe("Portal URLs Generator Helper", () => {
   it("should generate correct URLs for admin, cms, and api portals", () => {
     const adminUrl = getPortalUrl("admin", "intanjaya", "/settings")

@@ -8,6 +8,9 @@ import { z } from "zod/v4"
 import { revalidatePath } from "next/cache"
 import { rateLimit } from "@/lib/rate-limit"
 
+// Matches SALT_ROUNDS in src/lib/auth.ts / src/lib/member-auth.ts (SEC-001).
+const SALT_ROUNDS = 12
+
 const updateProfileSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
@@ -76,7 +79,7 @@ export async function updateProfileAction(data: { name?: string; password?: stri
         }
       }
 
-      updateData.password = await bcrypt.hash(parsed.data.password, 10)
+      updateData.password = await bcrypt.hash(parsed.data.password, SALT_ROUNDS)
     }
 
     const updatedUser = await db.user.update({
