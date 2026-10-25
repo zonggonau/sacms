@@ -46,6 +46,7 @@
     "seed:global": "bun prisma/seed-global.ts",
     "seed:permissions": "bun scripts/seed-permissions.ts",
     "seed:pricing": "bun scripts/seed/seed-pricing-catalog.ts",
+    "fix:pricing-features-20261025": "bun scripts/seed/fix-pricing-features-2026-10-25.ts",
     "cron:publish": "bun scripts/scheduled-publish.ts",
     "qa": "bun scripts/qa-runner.ts",
     "cli": "bun scripts/cli.ts"
