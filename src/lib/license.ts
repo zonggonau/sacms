@@ -72,6 +72,33 @@ export interface LicenseResult {
   daysRemaining?: number
   status?: "active" | "expired" | "revoked" | "invalid"
   error?: string
+  /** True once `expiresAt` has passed but the 7-day grace window (FR-ENT-005)
+   *  hasn't ended yet — `valid` stays true through grace so the install keeps
+   *  working, but the UI should warn and `daysRemaining` is already 0. */
+  inGracePeriod?: boolean
+  /** Days left in the grace window before a hard lockout — only set once
+   *  the license has actually expired (inGracePeriod or fully locked out). */
+  graceDaysRemaining?: number
+}
+
+/** FR-ENT-005: an expired license keeps working for 7 days past `expiresAt`
+ *  before the self-hosted instance actually locks out (see
+ *  api/cron/license-check/route.ts, which reads `valid` to decide the
+ *  Redis lockout flag src/proxy.ts enforces). */
+export const LICENSE_GRACE_PERIOD_DAYS = 7
+const GRACE_PERIOD_MS = LICENSE_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
+
+/** Computes the grace-aware `valid`/`inGracePeriod`/`graceDaysRemaining`
+ *  trio for a license whose hard expiry is `expiresAt`. */
+function computeGraceStatus(expiresAt: Date, now: Date = new Date()) {
+  const graceEndsAt = new Date(expiresAt.getTime() + GRACE_PERIOD_MS)
+  const isExpired = now > expiresAt
+  const graceOver = now > graceEndsAt
+  return {
+    valid: !graceOver,
+    inGracePeriod: isExpired && !graceOver,
+    graceDaysRemaining: isExpired ? Math.max(0, Math.ceil((graceEndsAt.getTime() - now.getTime()) / 86400000)) : undefined,
+  }
 }
 
 // ─── LICENSE KEY GENERATION (Admin only) ─────────────────────────────
@@ -220,8 +247,24 @@ export async function getCachedLicense(tenantId: string): Promise<LicenseResult 
     })
     if (!cached) return null
 
+    // Revocation is immediate, no grace — unlike a plain expiry below.
+    if (cached.status === "revoked") {
+      return {
+        valid: false,
+        customerName: cached.customerName,
+        customerEmail: cached.customerEmail ?? undefined,
+        type: cached.type,
+        features: cached.features as string[],
+        expiresAt: cached.expiresAt,
+        issuedAt: cached.issuedAt,
+        daysRemaining: 0,
+        status: "revoked",
+      }
+    }
+
+    const grace = computeGraceStatus(cached.expiresAt)
     return {
-      valid: cached.status === "active" && cached.expiresAt > new Date(),
+      ...grace,
       customerName: cached.customerName,
       customerEmail: cached.customerEmail ?? undefined,
       type: cached.type,
@@ -297,10 +340,11 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
     return { valid: false, status: "invalid", error: error || "Invalid license key" }
   }
 
-  // Step 3: Check expiry
+  // Step 3: Check expiry (grace-aware — see computeGraceStatus/FR-ENT-005)
   if (isLicenseExpired(payload)) {
+    const grace = computeGraceStatus(new Date(payload.exp * 1000))
     return {
-      valid: false,
+      ...grace,
       customerName: payload.name,
       type: payload.type,
       features: payload.features,
@@ -311,7 +355,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
       issuedAt: new Date(payload.iat * 1000),
       daysRemaining: 0,
       status: "expired",
-      error: "License key has expired",
+      error: grace.valid ? "License key has expired — in grace period" : "License key has expired",
     }
   }
 

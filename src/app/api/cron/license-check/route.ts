@@ -38,7 +38,12 @@ export async function GET(request: Request) {
       await redis.set(
         "system:license-lockout",
         {
+          // `valid` already accounts for the 7-day grace period past
+          // expiresAt (FR-ENT-005, see computeGraceStatus in lib/license.ts)
+          // — this only actually locks once grace has run out too.
           locked: !result.valid,
+          inGracePeriod: result.inGracePeriod ?? false,
+          graceDaysRemaining: result.graceDaysRemaining,
           reason: result.error || result.status,
           expiresAt: result.expiresAt,
           checkedAt: new Date().toISOString(),
@@ -47,7 +52,7 @@ export async function GET(request: Request) {
       )
     }
 
-    return NextResponse.json({ locked: !result.valid, status: result.status })
+    return NextResponse.json({ locked: !result.valid, status: result.status, inGracePeriod: result.inGracePeriod ?? false })
   } catch (error) {
     console.error("Cron license-check error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

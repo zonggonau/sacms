@@ -5,6 +5,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { canTransition } from "@/lib/content-workflow"
 import { resolveContentData } from "@/lib/content-resolver"
 import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
+import { snapshotVersion } from "@/lib/content/entry-service"
 
 // Dynamically build GraphQL schema from content types and single types
 export async function buildDynamicTypeDefs(
@@ -329,7 +330,7 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
   }
 }
 
-async function resolveMutationCreate(
+export async function resolveMutationCreate(
   tenantId: string,
   slug: string,
   args: { data: any; locale?: string; status?: string },
@@ -393,6 +394,15 @@ async function resolveMutationCreate(
       data: { documentId: newEntry.id }
     })
 
+    await snapshotVersion(
+      tx as PrismaClient,
+      updated.id,
+      updated.data,
+      "created",
+      userId ?? null,
+      updated.publishedAt ?? null,
+    )
+
     return updated
   })
 
@@ -423,7 +433,7 @@ async function resolveMutationCreate(
   }
 }
 
-async function resolveMutationUpdate(
+export async function resolveMutationUpdate(
   tenantId: string,
   slug: string,
   args: { id: string; data: any },
@@ -465,13 +475,19 @@ async function resolveMutationUpdate(
     _db
   )
 
-  const updated = await _db.contentEntry.update({
-    where: { id: args.id },
-    data: { 
-      data: dataWithSlugs as any, 
-      updatedBy: userId,
-      updatedAt: new Date() 
-    },
+  const updated = await _db.$transaction(async (tx) => {
+    const result = await tx.contentEntry.update({
+      where: { id: args.id },
+      data: {
+        data: dataWithSlugs as any,
+        updatedBy: userId,
+        updatedAt: new Date()
+      },
+    })
+
+    await snapshotVersion(tx as PrismaClient, result.id, result.data, "updated", userId ?? null)
+
+    return result
   })
 
   logAudit({

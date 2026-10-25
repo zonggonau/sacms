@@ -201,7 +201,7 @@ function timestampsFor(status: WorkflowStatus, prevStatus: WorkflowStatus | null
   return out
 }
 
-async function snapshotVersion(
+export async function snapshotVersion(
   tx: PrismaClient,
   contentEntryId: string,
   data: unknown,

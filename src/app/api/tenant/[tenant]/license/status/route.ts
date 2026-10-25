@@ -64,6 +64,8 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
       issuedAt: license.issuedAt,
       daysRemaining: license.daysRemaining,
       totalDays,
+      inGracePeriod: license.inGracePeriod ?? false,
+      graceDaysRemaining: license.graceDaysRemaining,
     })
   } catch (err) {
     console.error("License status error:", err)

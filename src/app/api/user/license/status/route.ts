@@ -92,6 +92,8 @@ export async function GET() {
       issuedAt: license.issuedAt,
       daysRemaining: license.daysRemaining,
       totalDays,
+      inGracePeriod: license.inGracePeriod ?? false,
+      graceDaysRemaining: license.graceDaysRemaining,
     })
   } catch (err) {
     console.error("User license status error:", err)

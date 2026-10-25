@@ -41,6 +41,11 @@ interface EnterpriseLicenseInfo {
   totalDays?: number
   status?: string
   error?: string
+  /** FR-ENT-005: true for 7 days past expiresAt — the license still works,
+   *  but a renewal warning should show instead of the generic "Expired". */
+  inGracePeriod?: boolean
+  /** Days left before the grace window ends and the install actually locks. */
+  graceDaysRemaining?: number
 }
 
 function formatBytesGb(bytes: number): string {
@@ -215,8 +220,13 @@ export function EnterpriseLicenseBanner({
   }
 
   const daysRemaining = license.daysRemaining || 0
+  const isInGrace = license.inGracePeriod === true
   const isExpiring = daysRemaining < 30 && daysRemaining > 0
-  const isExpired = daysRemaining <= 0
+  // Grace period (FR-ENT-005): the license already passed expiresAt but is
+  // still valid/working for 7 days — shown as its own urgent-but-not-yet-
+  // locked state, distinct from the hard lockout once grace itself runs out.
+  const isLockedOut = daysRemaining <= 0 && !isInGrace
+  const isExpired = isLockedOut || isInGrace
   const progressPct = license.totalDays ? Math.round(((license.totalDays - daysRemaining) / license.totalDays) * 100) : 60
 
   return (
@@ -231,8 +241,8 @@ export function EnterpriseLicenseBanner({
               "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
               isExpired ? "bg-red-500/10" : isExpiring ? "bg-yellow-500/10" : "bg-green-500/10"
             )}>
-              {isExpired ? <ShieldAlert className="w-5 h-5 text-red-500" /> : 
-               isExpiring ? <ShieldAlert className="w-5 h-5 text-yellow-500" /> : 
+              {isExpired ? <ShieldAlert className="w-5 h-5 text-red-500" /> :
+               isExpiring ? <ShieldAlert className="w-5 h-5 text-yellow-500" /> :
                <ShieldCheck className="w-5 h-5 text-green-500" />}
             </div>
             <div>
@@ -241,8 +251,9 @@ export function EnterpriseLicenseBanner({
                   "text-xs font-bold",
                   isExpired ? "text-red-500" : isExpiring ? "text-yellow-500" : "text-green-500"
                 )}>
-                  {isExpired ? "License Expired" : 
-                   isExpiring ? `Expiring in ${daysRemaining} days` : 
+                  {isInGrace ? `License Expired — ${license.graceDaysRemaining ?? 0} days left before lockout` :
+                   isLockedOut ? "License Expired — Access Locked" :
+                   isExpiring ? `Expiring in ${daysRemaining} days` :
                    `Enterprise License — ${daysRemaining} days remaining`}
                 </span>
                 <Badge variant="secondary" className="text-[10px] uppercase font-bold">
@@ -261,7 +272,7 @@ export function EnterpriseLicenseBanner({
               )}
             </div>
           </div>
-          {isExpiring && (
+          {(isExpiring || isInGrace) && (
             <a href="mailto:support@sacms.cloud?subject=License%20Renewal">
               <Button size="sm">Renew License</Button>
             </a>
