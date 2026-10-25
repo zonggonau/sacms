@@ -183,6 +183,13 @@ services:
     profiles:
       - storage
     image: bitnamilegacy/minio:latest
+    # Bitnami's image drops to a non-root UID that can't write our plain
+    # /data bind (its own auto-chown only covers Bitnami's documented
+    # /bitnami/* paths) — confirmed live ("file access denied, drive may
+    # be faulty") even against a brand-new empty volume. This service is
+    # internal-only (127.0.0.1, reached only through Caddy), so running
+    # it as root to sidestep the permission mismatch is low-risk.
+    user: root
     command: server /data --console-address ":9001"
     ports:
       - "127.0.0.1:9000:9000"
