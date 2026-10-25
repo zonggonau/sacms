@@ -13,7 +13,7 @@ export const BRAND_CONFIG = {
 
 interface LogoProps {
   className?: string
-  iconSize?: "sm" | "md" | "lg"
+  iconSize?: "sm" | "md" | "lg" | "xl"
   /** "compact" (default): small icon image + separately-rendered "SaCMS"
    *  text — fits narrow sidebars/badges. "wide": the real combined
    *  icon+wordmark lockup artwork (public/assets/img/header-footer-*.png)
@@ -43,7 +43,7 @@ interface LogoProps {
 // Both variants' accent facets are drawn black or white in the source art,
 // so which one's picked follows the resolved theme the same way the
 // compact variant's text does via text-foreground.
-const ICON_PX = { sm: 24, md: 32, lg: 40 }
+const ICON_PX = { sm: 24, md: 32, lg: 40, xl: 64 }
 const WIDE_ASPECT = 1983 / 793
 
 export function Logo({
@@ -68,6 +68,7 @@ export function Logo({
     sm: "text-base sm:text-lg",
     md: "text-lg sm:text-xl",
     lg: "text-xl sm:text-2xl",
+    xl: "text-2xl sm:text-3xl",
   }
 
   const detailText = customDetail || BRAND_CONFIG.detail

@@ -261,7 +261,7 @@ export default function LoginPage() {
               {brand?.logo ? (
                 <img src={brand.logo} alt={brand.name} className="h-9 max-w-[180px] object-contain" />
               ) : (
-                <Logo iconSize="lg" showText={true} showDetail={!brand} useOrange={true} customName={brand?.name} />
+                <Logo iconSize="xl" variant="wide" useOrange={true} customName={brand?.name} />
               )}
             </Link>
             {!brand && (
