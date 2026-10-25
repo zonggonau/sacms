@@ -823,7 +823,7 @@ function AdminUsersContent() {
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted" aria-label="Menu aksi akun">
                               <MoreVertical className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>

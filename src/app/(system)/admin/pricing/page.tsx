@@ -305,10 +305,10 @@ function CategoryManager({ config, canEdit }: { config: CategoryConfig; canEdit:
                   ))}
                   {canEdit && (
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(item)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" aria-label={`Edit ${item.name}`} onClick={() => openEdit(item)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:text-red-700" onClick={() => handleDelete(item)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:text-red-700" aria-label={`Hapus ${item.name}`} onClick={() => handleDelete(item)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>

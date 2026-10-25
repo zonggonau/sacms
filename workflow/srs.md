@@ -160,11 +160,13 @@ flowchart LR
 
 | Plan | Content Types | Entries | Members | Storage | Locales | API Calls/month |
 |---|---:|---:|---:|---:|---:|---:|
-| Free | 3 | 500 | 1 | 100MB | 1 | 1,000 |
-| Starter | 5 | 5,000 | 3 | 1GB | 2 | 10,000 |
-| Pro | 10 | 10,000 | 10 | 5GB | 5 | 100,000 |
-| Enterprise | 20 | 20,000 | 20 | 10GB | 20 | 1,000,000 |
-| Custom | Override | Override | Override | Override | Override | Override |
+| Free | Unlimited | 500 | 1 | 100MB | 1 | 1,000 |
+| Starter | Unlimited | 5,000 | 3 | 1GB | 2 | 10,000 |
+| Pro | Unlimited | 10,000 | 10 | 5GB | 5 | 100,000 |
+| Enterprise | Unlimited | 20,000 | 20 | 10GB | 20 | 1,000,000 |
+| Custom | Unlimited | Override | Override | Override | Override | Override |
+
+> *Content Types* sengaja dibuat unlimited di semua paket (lihat `WorkspacePlan.maxContentTypes` di `prisma/schema.prisma` dan `src/lib/plan-enforcement.ts`) — keputusan produk, bukan keterbatasan teknis per-paket.
 
 **Rate Limiting (Edge):**
 - Free: 100 req/menit
@@ -341,7 +343,7 @@ stateDiagram-v2
 |---|---|
 | FR-WL-001 | Pro, Enterprise, Custom workspaces MAY configure branding |
 | FR-WL-002 | Hanya owner/admin MAY mutate branding atau domains |
-| FR-WL-003 | Tenant MAY memiliki max satu unique custom domain |
+| FR-WL-003 | Tenant MAY memiliki multiple unique custom domains, dibatasi kuota per plan (`max_custom_domains`, default 25; unlimited untuk self-hosted) — lihat §5.1 "Multiple Custom Domains per tenant" |
 | FR-WL-004 | Custom domain MUST pass DNS TXT verification sebelum routing diaktifkan |
 | FR-WL-005 | Custom-host requests MUST tetap melalui API token dan tenant checks |
 
@@ -355,13 +357,15 @@ stateDiagram-v2
 | FR-ENT-005 | Expired license MUST show warning banner dengan 7-day grace period |
 
 #### FR-16: Enterprise Infrastructure Overrides
+> **Revisi (2026-10):** self-service BYODB/BYOS (pengguna memasukkan connection string database/S3 miliknya sendiri) dihapus total. Satu-satunya mekanisme infrastruktur khusus sekarang bersifat *auto-provision-only*: saat Enterprise License diaktifkan, sistem otomatis membuat satu database PostgreSQL terkelola SaCMS (bukan eksternal) khusus untuk akun tersebut (`provisionEnterpriseDb()` di `src/app/api/user/license/activate/route.ts`), dipakai bersama oleh seluruh workspace akun itu via `getOwnerMasterInfra()`/`getTenantDb()` (`src/lib/database.ts`). Tidak ada lagi UI untuk memasukkan konfigurasi S3/Database kustom di level mana pun.
+
 | ID | Requirement |
 |---|---|
-| FR-INF-001 | Saat Enterprise License aktif, Account/Billing plan MUST memiliki tab pengaturan Infrastruktur |
-| FR-INF-002 | Pengaturan infrastruktur level Akun MAY menerima konfigurasi S3 dan Database kustom |
-| FR-INF-003 | Jika infrastruktur diset di level Akun, semua workspace yang dibuat di bawahnya MUST mewarisi setting tersebut |
-| FR-INF-004 | Setiap Workspace/Tenant plan MUST memiliki tab Infrastruktur terpisah |
-| FR-INF-005 | Workspace MAY melakukan *override* dengan Database dan S3 mandiri (berbeda dari Akun/Master) |
+| FR-INF-001 | Saat Enterprise License aktif, sistem MUST otomatis provisioning satu database PostgreSQL khusus (dedicated, terkelola SaCMS) untuk akun tersebut — tidak ada tab konfigurasi manual |
+| FR-INF-002 | *(Dihapus)* Tidak ada lagi jalur kode yang menerima konfigurasi S3/Database kustom dari pengguna, di level mana pun |
+| FR-INF-003 | Database khusus yang diprovisioning di level Akun MUST diwarisi oleh semua workspace yang dimiliki akun tersebut (via `getOwnerMasterInfra`) |
+| FR-INF-004 | *(Dihapus)* Tidak ada lagi tab Infrastruktur terpisah per Workspace untuk konfigurasi kustom |
+| FR-INF-005 | *(Dihapus)* Workspace tidak dapat melakukan override Database/S3 mandiri — hanya mewarisi database khusus akun (jika ada) atau memakai shared pool |
 | FR-INF-006 | Pengguna dengan *Account Plan* standar (non-Enterprise) MUST NOT memiliki akses ke fitur kustomisasi S3 maupun Database mandiri |
 
 ### 3.4 Non-Functional Requirements

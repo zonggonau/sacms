@@ -43,7 +43,7 @@ export default function AdminRbacRedirectPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" asChild className="h-8 w-8 rounded-xl border border-border/60">
-                <Link href="/admin/users">
+                <Link href="/admin/users" aria-label="Kembali ke daftar pengguna">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
