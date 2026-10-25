@@ -683,6 +683,24 @@ export async function proxy(request: NextRequest) {
         return response
       }
 
+      // ---- Auth pages: inject ?ws=<tenant> so the white-label branding
+      // (logo/favicon/name — see /api/public/[tenant]/brand, read by
+      // src/app/login/page.tsx) shows up automatically on the tenant's own
+      // custom domain, without a visitor ever needing to know or type the
+      // tenant's raw id/slug themselves. ----
+      const AUTH_PAGES = ["/login", "/register", "/forgot-password", "/reset-password"]
+      if (AUTH_PAGES.includes(pathname)) {
+        const authRewriteUrl = request.nextUrl.clone()
+        if (!authRewriteUrl.searchParams.has("ws")) {
+          authRewriteUrl.searchParams.set("ws", tenantSlug)
+        }
+        const response = NextResponse.rewrite(authRewriteUrl)
+        applySecurityHeaders(response)
+        response.headers.set("X-Tenant-Domain", host)
+        response.headers.set("X-Domain-Target", domainTarget)
+        return response
+      }
+
       // ---- For all other paths under a custom domain, rewrite transparently ----
       const rewriteUrl = request.nextUrl.clone()
       if (pathname.startsWith("/cms")) {

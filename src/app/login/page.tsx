@@ -50,7 +50,15 @@ export default function LoginPage() {
           faviconUrl: data.faviconUrl || null,
         })
         if (data.faviconUrl) {
-          const link = (document.querySelector("link[rel='icon']") as HTMLLinkElement) || document.createElement("link")
+          // The root layout renders 3 differently-sized <link rel="icon">
+          // tags plus a <link rel="shortcut icon"> (see metadata.icons in
+          // src/app/layout.tsx) — only swapping the first match left the
+          // others pointing at SaCMS's own default favicon, and browsers
+          // often pick one of THOSE instead, so the visible tab icon never
+          // actually changed. Remove every existing icon link and add one
+          // fresh one for the tenant's favicon instead of patching in place.
+          document.querySelectorAll("link[rel~='icon']").forEach((el) => el.remove())
+          const link = document.createElement("link")
           link.rel = "icon"
           link.href = data.faviconUrl
           document.head.appendChild(link)
