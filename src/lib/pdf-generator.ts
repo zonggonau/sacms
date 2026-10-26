@@ -175,7 +175,7 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   autoTable(doc, {
     startY: tableY,
-    head: [['#', 'Deskripsi Layanan', 'Qty', 'Harga Satuan', 'Jumlah']],
+    head: [['#', 'Nama Layanan', 'Qty', 'Harga Satuan', 'Jumlah']],
     body: [
       [
         '01',
@@ -301,7 +301,7 @@ export function generateInvoicePDF(data: InvoiceData) {
     'Dokumen ini dibuat secara otomatis oleh sistem SaCMS. Tidak memerlukan tanda tangan.',
     W / 2, H - 13, { align: 'center' }
   )
-  doc.text(`© ${new Date().getFullYear()} SaCMS, Inc. — www.sacms.com`, W / 2, H - 7, { align: 'center' })
+  doc.text(`© ${new Date().getFullYear()} SaCMS, Inc. — www.sacms.cloud`, W / 2, H - 7, { align: 'center' })
 
   doc.setFontSize(7.5)
   doc.text('Halaman 1 / 1', TR, H - 7, { align: 'right' })
