@@ -180,12 +180,15 @@ export default async function WorkspaceSelectionPage() {
       features: Array.isArray(p.features) ? p.features : []
     })).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
 
-    // One free workspace per account, ever (see User.freeWorkspaceUsed) —
-    // every workspace created from this "new workspace" flow is brand new
-    // by definition, so there's no "already on free, keep showing it"
-    // exception to make here like the per-tenant subscriptions page has.
-    const dbUser = await db.user.findUnique({ where: { id: session.user.id }, select: { freeWorkspaceUsed: true } })
-    if (dbUser?.freeWorkspaceUsed) {
+    // Free workspace tier only when BOTH hold: the account's own plan is
+    // itself "free" (a Starter/Pro/Business account never gets a free
+    // workspace, full stop), AND it hasn't used its one free workspace
+    // allowance yet (see User.freeWorkspaceUsed). Every workspace created
+    // from this "new workspace" flow is brand new by definition, so
+    // there's no "already on free, keep showing it" exception to make
+    // here like the per-tenant subscriptions page has.
+    const dbUser = await db.user.findUnique({ where: { id: session.user.id }, select: { plan: true, freeWorkspaceUsed: true } })
+    if (dbUser && (dbUser.plan !== "free" || dbUser.freeWorkspaceUsed)) {
       workspacePlans = workspacePlans.filter(p => p.plan_slug !== "free")
     }
 

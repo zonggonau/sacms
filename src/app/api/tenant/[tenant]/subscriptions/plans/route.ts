@@ -63,17 +63,19 @@ export async function GET(
       workspacePlans.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.price - b.price)
     }
 
-    // One free WORKSPACE per account, ever (see User.freeWorkspaceUsed) —
-    // once used, "free" stops being offered as a switch target for ANY
-    // workspace, except the one workspace that's already on it (always
-    // show a tenant its own current plan; it's disabled from re-selection
-    // client-side anyway via isCurrent).
+    // Free WORKSPACE tier only when BOTH hold for the owning account:
+    // its own plan is itself "free" (a Starter/Pro/Business account never
+    // gets a free workspace, full stop), AND it hasn't used its one free
+    // workspace allowance yet (see User.freeWorkspaceUsed) — except for
+    // the one workspace that's already on free (always show a tenant its
+    // own current plan; it's disabled from re-selection client-side
+    // anyway via isCurrent).
     if (!isAccount) {
       const tenantRow = await db.tenant.findFirst({ where: { OR: [{ id: tenant }, { slug: tenant }] }, select: { id: true, plan: true } })
       if (tenantRow && tenantRow.plan !== "free") {
         const owner = await db.tenantMember.findFirst({ where: { tenantId: tenantRow.id, role: "owner" }, select: { userId: true } })
-        const ownerUser = owner ? await db.user.findUnique({ where: { id: owner.userId }, select: { freeWorkspaceUsed: true } }) : null
-        if (ownerUser?.freeWorkspaceUsed) {
+        const ownerUser = owner ? await db.user.findUnique({ where: { id: owner.userId }, select: { plan: true, freeWorkspaceUsed: true } }) : null
+        if (ownerUser && (ownerUser.plan !== "free" || ownerUser.freeWorkspaceUsed)) {
           workspacePlans = workspacePlans.filter(p => p.id !== "free")
         }
       }
