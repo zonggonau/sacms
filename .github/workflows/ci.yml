@@ -136,7 +136,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 10m
-          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js,docker/cron/crontab,db/manual-migrations/*.sql"
+          source: "docker-compose.yml,Caddyfile,docker/cron/crontab,db/manual-migrations/*.sql"
           target: "/opt/sacms"
 
       - name: Execute Zero-Downtime Deployment & DB Migration

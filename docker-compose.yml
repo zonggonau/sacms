@@ -26,13 +26,25 @@ services:
     mem_limit: ${APP_MEM_LIMIT:-1g}
     cpus: ${APP_CPU_LIMIT:-1.5}
     volumes:
-      - ./scripts/healthcheck.js:/app/scripts/healthcheck.js:ro
       # Persist locally-stored media (used whenever R2/S3 isn't configured,
       # see lib/r2.ts's uploadToLocal) across redeploys/container
       # recreation — without this, every push that triggers a new container
       # wipes every previously uploaded file, since it only ever lived on
       # that one container's disk.
       - media_uploads:/app/public/upload
+    # scripts/healthcheck.js is baked into the image at build time
+    # (Dockerfile: `COPY scripts ./scripts`) — it used to ALSO be bind-
+    # mounted from the host here, which was pure redundancy with a real
+    # cost: every deploy's scp step replaces the host file with a new
+    # inode while THIS deploy's container is still running the old build,
+    # orphaning its view of the bind (shows as "(deleted)"). Docker's own
+    # healthcheck then fails forever until the container is recreated —
+    # and `docker compose up -d` hangs trying to gracefully stop a
+    # container Docker itself considers unhealthy, repeatedly timing out
+    # today's deploys at the SSH step's 30-minute limit. Confirmed live
+    # twice. Removing the bind mount removes the staleness entirely; the
+    # container always runs the healthcheck script baked into its own
+    # image, immune to host-side file changes after it starts.
     healthcheck:
       test: ["CMD", "bun", "scripts/healthcheck.js"]
       interval: 10s
