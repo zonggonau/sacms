@@ -803,13 +803,24 @@ function getUserEffectiveMax(
 /**
  * Validate that a workspace plan can be created by a user's account plan.
  * All account plans (including Free) can create any workspace tier.
- * Restrictions are enforced on the total workspace count of the account.
+ * Restrictions are enforced on the total workspace count of the account —
+ * except the Free WORKSPACE tier specifically, which is capped at one per
+ * account, ever, regardless of account plan (Starter/Pro/Business all
+ * only get the one free workspace too). See User.freeWorkspaceUsed.
  */
-export function validateWorkspacePlanBinding(
-  userPlanSlug: string,
+export async function validateWorkspacePlanBinding(
+  userId: string,
   workspacePlanSlug: string
-): { allowed: boolean; message: string } {
-  // All account plans are permitted to launch any workspace plan
+): Promise<{ allowed: boolean; message: string }> {
+  if (workspacePlanSlug.toLowerCase() === "free") {
+    const user = await db.user.findUnique({ where: { id: userId }, select: { freeWorkspaceUsed: true } })
+    if (user?.freeWorkspaceUsed) {
+      return {
+        allowed: false,
+        message: "Anda sudah pernah menggunakan paket Workspace Gratis. Setiap akun hanya dapat membuat satu workspace gratis — pilih paket berbayar untuk workspace baru.",
+      }
+    }
+  }
   return { allowed: true, message: "OK" }
 }
 

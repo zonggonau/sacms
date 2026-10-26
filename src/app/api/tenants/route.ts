@@ -121,8 +121,7 @@ export async function POST(request: NextRequest) {
 
     // Check workspace limit using centralized enforcement
     const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
-    const { getUserPlanConfig } = await import("@/lib/tenant-plan")
-    
+
     const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
     if (!workspaceEnforcement.allowed) {
       return NextResponse.json({ 
@@ -138,8 +137,7 @@ export async function POST(request: NextRequest) {
     const { name, description, plan = "free", aiPrompt, websiteType } = result.data
 
     // Validate workspace plan doesn't exceed user plan
-    const userPlan = await getUserPlanConfig(session.user.id)
-    const planBinding = validateWorkspacePlanBinding(userPlan.plan_slug, plan)
+    const planBinding = await validateWorkspacePlanBinding(session.user.id, plan)
     if (!planBinding.allowed) {
       return NextResponse.json({ error: planBinding.message }, { status: 403 })
     }
@@ -179,6 +177,10 @@ export async function POST(request: NextRequest) {
           currentPeriodEnd: plan === "free" ? null : trialEndDate,
         }
       })
+
+      if (plan === "free") {
+        await tx.user.update({ where: { id: session.user.id }, data: { freeWorkspaceUsed: true } })
+      }
 
       // Create default API key using ApiToken (new model)
       const plainToken = `cf_${randomBytes(32).toString("hex")}`

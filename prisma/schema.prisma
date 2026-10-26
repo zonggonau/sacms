@@ -22,6 +22,13 @@ model User {
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
   plan                String          @default("free")
+  // Lifetime flag, set once and never cleared — true the first time ANY
+  // workspace this user owns is created on (or switched back to) the Free
+  // workspace plan. Deliberately NOT derived from "does the user currently
+  // own a tenant with plan=free", since upgrading or deleting that
+  // workspace would silently reset the allowance. One free workspace per
+  // account, ever — see createTenantAction and subscription/cancel/route.ts.
+  freeWorkspaceUsed   Boolean         @default(false)
   aiCreditsUsed       Int             @default(0)
   aiCreditsExtra      Int             @default(0)
   masterDatabaseUrl   String?

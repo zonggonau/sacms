@@ -47,7 +47,7 @@ export async function createTenantForUser(
 
   const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = data
 
-  const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
+  const planBinding = await validateWorkspacePlanBinding(userId, plan)
   if (!planBinding.allowed) {
     return { error: planBinding.message }
   }
@@ -86,6 +86,10 @@ export async function createTenantForUser(
         currentPeriodEnd: plan === "free" ? null : trialEndDate,
       }
     })
+
+    if (plan === "free") {
+      await tx.user.update({ where: { id: userId }, data: { freeWorkspaceUsed: true } })
+    }
 
     if (addons && addons.length > 0) {
       for (const addonId of addons) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAccountPlans, getWorkspacePlans, getAddons, getAiCreditPacks } from "@/lib/pricing"
+import { db } from "@/lib/database"
 
 export const dynamic = "force-dynamic"
 
@@ -60,6 +61,22 @@ export async function GET(
       // error to notice. Confirmed live: exactly this happened for the new
       // Starter plan.
       workspacePlans.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.price - b.price)
+    }
+
+    // One free WORKSPACE per account, ever (see User.freeWorkspaceUsed) —
+    // once used, "free" stops being offered as a switch target for ANY
+    // workspace, except the one workspace that's already on it (always
+    // show a tenant its own current plan; it's disabled from re-selection
+    // client-side anyway via isCurrent).
+    if (!isAccount) {
+      const tenantRow = await db.tenant.findFirst({ where: { OR: [{ id: tenant }, { slug: tenant }] }, select: { id: true, plan: true } })
+      if (tenantRow && tenantRow.plan !== "free") {
+        const owner = await db.tenantMember.findFirst({ where: { tenantId: tenantRow.id, role: "owner" }, select: { userId: true } })
+        const ownerUser = owner ? await db.user.findUnique({ where: { id: owner.userId }, select: { freeWorkspaceUsed: true } }) : null
+        if (ownerUser?.freeWorkspaceUsed) {
+          workspacePlans = workspacePlans.filter(p => p.id !== "free")
+        }
+      }
     }
 
     // Fallback ONLY when database has 0 published entries
