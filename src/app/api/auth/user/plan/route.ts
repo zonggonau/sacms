@@ -77,6 +77,23 @@ export async function PUT(request: NextRequest) {
 
     // For downgrades, warn about potential workspace overflow
     if (!isUpgrade && targetLevel < currentLevel) {
+      // A paid, active billing period can't be downgraded mid-cycle —
+      // same rule /api/billing/checkout already enforces for downgrading
+      // to another PAID tier. This route is the ONLY path for downgrading
+      // to Free specifically (billing-client.tsx never sends "free"
+      // through checkout), so without this check here too, Free was the
+      // one downgrade target that bypassed the "wait for renewal" rule
+      // entirely — confirmed live.
+      const activeSubscription = await db.subscription.findFirst({
+        where: { userId: session.user.id, tenantId: null, status: "active" },
+      })
+      if (activeSubscription) {
+        return NextResponse.json({
+          error: `Paket "${user.plan}" Anda masih aktif dan sudah dibayar. Downgrade hanya bisa dilakukan saat masa perpanjangan (${activeSubscription.currentPeriodEnd ? new Date(activeSubscription.currentPeriodEnd).toLocaleDateString("id-ID") : "akhir periode saat ini"}).`,
+          currentPeriodEnd: activeSubscription.currentPeriodEnd,
+        }, { status: 403 })
+      }
+
       const targetConfig = USER_PLAN_LIMITS[canonicalSlug]
       const ownedWorkspaces = await db.tenantMember.count({
         where: {
