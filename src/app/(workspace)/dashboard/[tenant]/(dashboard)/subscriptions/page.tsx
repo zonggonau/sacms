@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { 
-  Check, Loader2, CreditCard, Clock, Calendar, 
+  Check, CreditCard, Clock, Calendar,
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
   HardDrive, Users, Database, Package, Shield, Bot, Sparkles,
@@ -68,8 +68,6 @@ export default function TenantSubscriptionsPage() {
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
   const [activeSection, setActiveSection] = useState<'plans' | 'storage' | 'addons' | 'ai-plans'>(initialSection)
-  const [cancellingSubscription, setCancellingSubscription] = useState(false)
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
   const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
 
@@ -154,30 +152,6 @@ export default function TenantSubscriptionsPage() {
       console.error("Billing fetch error:", err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleCancelSubscription = async () => {
-    if (!tenantSlug) return
-    setCancellingSubscription(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/subscription/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cancelAtPeriodEnd: true })
-      })
-      const data = await res.json()
-      if (res.ok) {
-        toast({ title: "Langganan Dibatalkan", description: data.message || "Langganan akan berakhir pada akhir periode penagihan." })
-        setShowCancelConfirm(false)
-        fetchBillingData()
-      } else {
-        toast({ variant: 'destructive', title: "Gagal Membatalkan", description: data.error })
-      }
-    } catch {
-      toast({ variant: 'destructive', title: "Terjadi Kesalahan", description: "Gagal membatalkan langganan" })
-    } finally {
-      setCancellingSubscription(false)
     }
   }
 
@@ -359,47 +333,21 @@ export default function TenantSubscriptionsPage() {
                       Bayar Sekarang
                     </Button>
                   ) : currentPlanSlug !== 'free' && subscription?.status === 'active' && !(subscription as any)?.cancelAtPeriodEnd ? (
-                    <div className="flex gap-2.5">
-                      <Button 
-                        variant="outline" 
-                        className="h-10 px-5 font-bold rounded-xl text-xs border-border shadow-xs"
-                        onClick={() => {
-                          const el = document.getElementById('billing-history')
-                          if (el) el.scrollIntoView({ behavior: 'smooth' })
-                        }}
-                      >
-                        Riwayat Tagihan
-                      </Button>
-                      {!showCancelConfirm ? (
-                        <Button
-                          variant="outline"
-                          className="h-10 px-5 font-bold rounded-xl text-xs border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive shadow-xs"
-                          onClick={() => setShowCancelConfirm(true)}
-                        >
-                          Batalkan
-                        </Button>
-                      ) : (
-                        <div className="flex items-center gap-2 border border-destructive/30 rounded-xl px-3 py-1.5 bg-destructive/10">
-                          <span className="text-xs font-bold text-destructive">Batalkan paket?</span>
-                          <Button
-                            size="sm"
-                            className="rounded-lg bg-destructive hover:bg-destructive/90 text-white h-7 px-3 font-bold text-xs shadow-none border-none"
-                            disabled={cancellingSubscription}
-                            onClick={handleCancelSubscription}
-                          >
-                            {cancellingSubscription ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ya'}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="rounded-lg h-7 px-2.5 font-bold text-xs"
-                            onClick={() => setShowCancelConfirm(false)}
-                          >
-                            Batal
-                          </Button>
-                        </div>
-                      )}
-                    </div>
+                    // A paid, active subscription has no self-service
+                    // cancel action — once billed and active, the only
+                    // option here is reviewing past invoices. Enforced
+                    // server-side too (see subscription/cancel/route.ts),
+                    // not just hidden client-side.
+                    <Button
+                      variant="outline"
+                      className="h-10 px-5 font-bold rounded-xl text-xs border-border shadow-xs"
+                      onClick={() => {
+                        const el = document.getElementById('billing-history')
+                        if (el) el.scrollIntoView({ behavior: 'smooth' })
+                      }}
+                    >
+                      Riwayat Tagihan
+                    </Button>
                   ) : (
                     <Button 
                       variant="outline" 

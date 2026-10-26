@@ -30,6 +30,14 @@ export const POST = withStaffAuth(
     if (subscription.plan === "free") {
       return apiError("validation", { message: "Cannot cancel free plan" })
     }
+    // A paid plan that's already billed and active has no self-service
+    // cancellation at all — not just hidden in the UI, rejected here too.
+    // Only "trialing" (not yet actually charged) can still be cancelled.
+    if (subscription.status === "active") {
+      return apiError("validation", {
+        message: "Langganan berbayar yang sudah aktif tidak dapat dibatalkan sendiri. Hubungi dukungan pelanggan jika Anda ingin menutup workspace ini.",
+      })
+    }
 
     // One free WORKSPACE per account, ever (see User.freeWorkspaceUsed) —
     // applies here too, not just at creation: cancelling a paid plan
@@ -88,7 +96,9 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
     status: subscription.status,
     cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
     currentPeriodEnd: subscription.currentPeriodEnd,
-    canCancel: subscription.plan !== "free",
+    // Matches the POST handler: a paid plan that's already billed and
+    // active has no self-service cancellation at all, only "trialing" does.
+    canCancel: subscription.plan !== "free" && subscription.status !== "active",
     cancelOptions: {
       cancelAtPeriodEnd: {
         description: "Cancel at end of billing period",
