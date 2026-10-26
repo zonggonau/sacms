@@ -201,6 +201,25 @@ jobs:
             fi
             docker rm -f sacms-redis sacms-postgres 2>/dev/null || true
 
+            # `docker compose run --rm app <cmd>` against the `app` service
+            # (which has `restart: unless-stopped`) can leave its one-off
+            # container running forever: the moment the command inside
+            # exits, the restart policy resurrects the container right as
+            # `--rm` tries to remove it, and `docker compose run`'s own
+            # wait-for-exit then hangs indefinitely waiting for a "stopped"
+            # state the policy never allows. Confirmed live: 10+ leaked,
+            # permanently "unhealthy" sacms-app-run-* containers going back
+            # 40 hours, one from nearly every deploy that got cancelled or
+            # timed out — this, not `docker compose up -d` itself, was the
+            # real recurring hang blamed on several other things today.
+            # Clean up any leftovers from a previous cancelled deploy before
+            # doing anything else, and the same helper runs again after
+            # every one-off `app` invocation below.
+            cleanup_leaked_app_run() {
+              docker ps -aq --filter "name=sacms-app-run-" | xargs -r docker rm -f >/dev/null 2>&1 || true
+            }
+            cleanup_leaked_app_run
+
             # Sync Caddy configuration with host systemd Caddy service
             if [ -f /opt/sacms/Caddyfile ] && [ -d /etc/caddy ]; then
               cp /opt/sacms/Caddyfile /etc/caddy/Caddyfile 2>/dev/null || true
@@ -274,9 +293,31 @@ jobs:
             # No --accept-data-loss: a destructive schema diff must be handled via a
             # reviewed idempotent SQL file in db/manual-migrations/ first (see README
             # there), not silently applied by an unattended deploy pipeline.
-            docker compose run --rm app bun x prisma db push --skip-generate
-            docker compose run --rm app bun run seed:permissions || true
-            docker compose run --rm app bun run seed:pricing || true
+            #
+            # Each call below is bounded by `timeout` and followed by the
+            # same leaked-container cleanup — db push/seed scripts finish in
+            # well under a second per the real logs ("Done in 414ms"), so
+            # 90s is pure safety margin for the work itself; a real failure
+            # still surfaces well inside that window. Exit 124 means
+            # `timeout` fired on the post-success restart-loop hang (the bug
+            # above), not that the command failed — only a NON-124 failure
+            # aborts the deploy for db push, and the two seed calls keep
+            # tolerating any failure exactly as before.
+            set +e
+            timeout 90 docker compose run --rm app bun x prisma db push --skip-generate
+            DB_PUSH_STATUS=$?
+            set -e
+            cleanup_leaked_app_run
+            if [ "$DB_PUSH_STATUS" -ne 0 ] && [ "$DB_PUSH_STATUS" -ne 124 ]; then
+              echo "❌ Prisma db push failed (exit $DB_PUSH_STATUS) — aborting deploy."
+              exit 1
+            fi
+            [ "$DB_PUSH_STATUS" -eq 124 ] && echo "⚠️ db push hung during container teardown after completing — continuing (see output above)."
+
+            timeout 90 docker compose run --rm app bun run seed:permissions || true
+            cleanup_leaked_app_run
+            timeout 90 docker compose run --rm app bun run seed:pricing || true
+            cleanup_leaked_app_run
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans
