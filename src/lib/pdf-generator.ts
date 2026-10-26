@@ -12,7 +12,13 @@ export interface InvoiceData {
   date: string
   customerName?: string
   customerEmail?: string
+  /** The real catalog name (WorkspacePlan/Addon/AiCreditPack.name from
+   *  /admin/pricing) — rendered bold as the item's primary line, e.g.
+   *  "SaCMS Cloud Pro", "Storage +5 GB / Tahun", "AI Booster". */
   planName?: string
+  /** Optional supporting context, rendered smaller directly under
+   *  `planName` — e.g. "Workspace Tshirt Papua". Ignored (folded into the
+   *  primary line instead) when `planName` isn't set. */
   description?: string
   paymentMethod?: string
 }
@@ -171,7 +177,14 @@ export function generateInvoicePDF(data: InvoiceData) {
      3. ITEMS TABLE — ruled lines, no filled header band
   ═══════════════════════════════════════════════════════════════════════ */
   const tableY = cardY + cardH + 10
-  const itemDesc = data.description || (data.planName ? `SaCMS — Paket ${data.planName}` : 'SaCMS — Pembayaran / Upgrade Layanan Cloud & AI')
+  // `planName` is the real catalog name (WorkspacePlan/Addon/AiCreditPack —
+  // whatever an admin set at /admin/pricing, e.g. "SaCMS Cloud Pro",
+  // "Storage +5 GB / Tahun", "AI Booster") — the bold, primary line a
+  // customer actually recognizes. `description` is optional supporting
+  // context (e.g. "Workspace Tshirt Papua") shown smaller underneath, never
+  // concatenated into one long truncating sentence.
+  const itemName = data.planName || data.description || 'Layanan SaCMS Cloud'
+  const itemSubline = data.planName && data.description ? data.description : undefined
 
   autoTable(doc, {
     startY: tableY,
@@ -179,7 +192,7 @@ export function generateInvoicePDF(data: InvoiceData) {
     body: [
       [
         '01',
-        itemDesc,
+        '', // rendered manually in didDrawCell below (two-tone name + subline)
         '1',
         fmt(subtotal),
         fmt(subtotal),
@@ -206,10 +219,27 @@ export function generateInvoicePDF(data: InvoiceData) {
     },
     columnStyles: {
       0: { cellWidth: 16, halign: 'center' },
-      1: { cellWidth: 78, overflow: 'ellipsize' },
+      1: { cellWidth: 78, overflow: 'ellipsize', minCellHeight: itemSubline ? 16 : 10 },
       2: { cellWidth: 18, halign: 'center' },
       3: { cellWidth: 36, halign: 'right' },
       4: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
+    },
+    didDrawCell: (hookData) => {
+      if (hookData.section !== 'body' || hookData.column.index !== 1) return
+      const { x, y, width, height } = hookData.cell
+      const padX = 4
+      const maxWidth = width - padX * 2
+      rgb(doc, BLACK, 'text')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9.5)
+      const nameY = itemSubline ? y + height / 2 - 1.5 : y + height / 2 + 1.5
+      doc.text(itemName, x + padX, nameY, { maxWidth })
+      if (itemSubline) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.5)
+        rgb(doc, C.slate, 'text')
+        doc.text(itemSubline, x + padX, nameY + 5, { maxWidth })
+      }
     },
     margin: { left: ML, right: W - MR },
   })

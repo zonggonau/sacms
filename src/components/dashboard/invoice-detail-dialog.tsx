@@ -116,6 +116,23 @@ export function InvoiceDetailDialog({
     }
   }
 
+  // PDF-only split of the same data: the catalog name on its own (bold,
+  // primary) plus optional short context underneath — never one long
+  // concatenated sentence that gets ellipsized mid-word in the table cell.
+  const pdfPlanName = invoice.purchasedLabel
+    || (invoice.orderId.startsWith("ACC-")
+      ? `Paket Akun SaaS (${(invoice.subscription?.plan || "Starter").replace(/^./, (c) => c.toUpperCase())})`
+      : invoice.orderId.startsWith("SUB-")
+      ? `Workspace Plan (${(invoice.subscription?.plan || "Pro").toUpperCase()})`
+      : invoice.rawResponse?.type === "ai_credits"
+      ? `${invoice.rawResponse.credits || "Booster"} AI Frontend Credits Pack`
+      : "Langganan Paket SaCMS Cloud")
+  const pdfSubline = invoice.orderId.startsWith("SUB-")
+    ? `Workspace ${invoice.subscription?.tenant?.name || "Workspace"}`
+    : invoice.orderId.startsWith("ACC-")
+    ? "Langganan Akun SaaS"
+    : undefined
+
   const handleCopyOrderId = () => {
     navigator.clipboard.writeText(invoice.orderId)
     setCopied(true)
@@ -135,7 +152,8 @@ export function InvoiceDetailDialog({
       }),
       customerName,
       customerEmail,
-      description: serviceName,
+      planName: pdfPlanName,
+      description: pdfSubline,
       paymentMethod: invoice.paymentType || invoice.paymentMethod || "Midtrans Gateway"
     })
     toast({ title: "Invoice Diunduh", description: `File PDF Invoice #${invoice.orderId} telah dibuat.` })

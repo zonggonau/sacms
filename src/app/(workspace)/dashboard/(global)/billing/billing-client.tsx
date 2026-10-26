@@ -619,14 +619,28 @@ export default function BillingClient({
                       // resolvePurchaseLabel), not from subscription.plan, so an
                       // addon/storage purchase shows its real name instead of
                       // always falling back to a generic subscription label.
-                      let itemTitle = tx.purchasedLabel || "Langganan Paket SaCMS Cloud"
-                      if (tx.orderId.startsWith("ACC-") && !tx.purchasedLabel) {
-                        const rawPlan = tx.subscription?.plan || "Starter"
-                        itemTitle = `Paket Akun SaaS (${rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)})`
-                      } else if (tx.orderId.startsWith("SUB-") && !tx.purchasedLabel) {
+                      // itemSubline is PDF-only supporting context (e.g. which
+                      // workspace) — only set when itemTitle is already the
+                      // clean catalog name, never duplicating it.
+                      let itemTitle = tx.purchasedLabel
+                      let itemSubline: string | undefined
+                      if (tx.orderId.startsWith("ACC-")) {
+                        if (!itemTitle) {
+                          const rawPlan = tx.subscription?.plan || "Starter"
+                          itemTitle = `Paket Akun SaaS (${rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)})`
+                        } else {
+                          itemSubline = "Langganan Akun SaaS"
+                        }
+                      } else if (tx.orderId.startsWith("SUB-")) {
                         const wsName = tx.subscription?.tenant?.name || "Workspace"
-                        const rawPlan = tx.subscription?.plan || "Pro"
-                        itemTitle = `Workspace ${wsName} (${rawPlan.toUpperCase()})`
+                        if (!itemTitle) {
+                          const rawPlan = tx.subscription?.plan || "Pro"
+                          itemTitle = `Workspace ${wsName} (${rawPlan.toUpperCase()})`
+                        } else {
+                          itemSubline = `Workspace ${wsName}`
+                        }
+                      } else if (!itemTitle) {
+                        itemTitle = "Langganan Paket SaCMS Cloud"
                       }
 
                       return (
@@ -738,7 +752,8 @@ export default function BillingClient({
                                   }),
                                   customerName: session?.user?.name || "Customer",
                                   customerEmail: session?.user?.email || "",
-                                  description: itemTitle,
+                                  planName: itemTitle,
+                                  description: itemSubline,
                                   paymentMethod: tx.paymentType || tx.paymentMethod || "Midtrans Gateway"
                                 })}
                               >

@@ -813,7 +813,8 @@ export default function TenantSubscriptionsPage() {
                                 status: inv.status,
                                 date: new Date(inv.createdAt).toLocaleDateString('id-ID'),
                                 customerName: currentTenant?.name || "Workspace",
-                                description: `Langganan Workspace ${currentTenant?.name || ""} (${inv.planLabel || inv.plan || "Pro"})`
+                                planName: inv.planLabel || inv.plan || "SaCMS Cloud Pro",
+                                description: currentTenant?.name ? `Workspace ${currentTenant.name}` : undefined
                               })}
                             >
                               <Download className="h-3.5 w-3.5" />
