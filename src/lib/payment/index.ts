@@ -30,15 +30,24 @@ if (forceMock) {
   console.warn("[payment] PAYMENT_PROVIDER=mock — using the mock payment provider (dev/test only).")
   registerPaymentProvider(new MockPaymentProvider("midtrans"))
   registerPaymentProvider(new MockPaymentProvider("mock"))
-} else if (hasMidtransCredential) {
+} else if (hasMidtransCredential || !isMockAllowed("midtrans", hasMidtransCredential)) {
+  // Register the real provider whenever an env credential is present, OR
+  // whenever the mock isn't allowed here at all (i.e. production) — even
+  // with no MIDTRANS_SERVER_KEY env var. MidtransProvider resolves its
+  // actual credential lazily and DB-aware via getResolvedMidtransConfig()
+  // inside each method call, not here at registration time, so it works
+  // correctly whether the key came from .env or only from the admin
+  // Settings UI (the normal way to set it). Gating registration itself on
+  // this env var alone left "midtrans" unregistered — and every checkout
+  // failing with "Payment provider not registered" — on any production
+  // deploy configured purely through /admin/settings, confirmed live.
   registerPaymentProvider(new MidtransProvider())
-} else if (isMockAllowed("midtrans", hasMidtransCredential)) {
+} else {
   // Registered under the SAME name ("midtrans") every call site already
   // asks for (directly, or via the PAYMENT_PROVIDER env default) — so no
-  // route needs its own mock-specific branch. Never reaches this branch
-  // in production (isMockAllowed returns false there), so a production
-  // deploy with no credential leaves "midtrans" unregistered and
-  // getPaymentProvider() throws loudly instead of taking fake payments.
+  // route needs its own mock-specific branch. Only reachable in dev/test
+  // with no env credential (isMockAllowed is false in production, so the
+  // branch above always wins there).
   console.warn(
     "[payment] MIDTRANS_SERVER_KEY not set — using the mock payment provider. " +
     "This is expected in development/test; it is never used in production."
