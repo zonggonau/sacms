@@ -105,6 +105,20 @@ jobs:
     # Settings > Environments with a required reviewer — the environment
     # name alone here does nothing without that protection rule configured.
     environment: ${{ github.ref == 'refs/heads/develop' && 'develop-deploy-approval' || 'production' }}
+    # `develop` and `master` share the one VPS, and nothing serialized this
+    # job before — every push kicked off a fully independent run, so two
+    # deploys could end up SSH'd into the same server at once, each running
+    # `docker compose` against the same project with no lock between them.
+    # Confirmed live: several deploys today "stopped" at the exact same
+    # point (right after seed:pricing, before `docker compose up -d`) for
+    # no single deterministic reason — consistent with two concurrent runs
+    # racing on the same Compose project rather than one repeatable bug.
+    # cancel-in-progress stays false: cancelling a deploy mid-script can
+    # leave the server half-migrated, so a queued run waits its turn
+    # instead of killing one that's already touching the containers.
+    concurrency:
+      group: production-deploy-164.68.116.79
+      cancel-in-progress: false
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
