@@ -136,10 +136,18 @@ export function WorkspaceCreationDialog({
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Filter rencana paket standar: HANYA Standar, Pro, dan Business
+  // Every admin-defined workspace tier from /admin/pricing, in whatever
+  // order the caller already sorted them (page.tsx sorts by price
+  // ascending) — "enterprise" is excluded since that's a dedicated-DB
+  // license grant, not a pickable tier here (see isEnterpriseLicensed
+  // branch below for that case). A fixed free/pro/business lookup here
+  // used to silently drop any OTHER tier (confirmed live: the new Starter
+  // plan never appeared in this dialog even though the real catalog
+  // already had it) and backfill missing ones with stale hardcoded
+  // prices that no longer matched the real catalog at all.
   const standardPlans = useMemo(() => {
     // Enterprise-licensed account: show exactly the one plan the server
-    // already prepared, not the normal 3-tier backfill below.
+    // already prepared, not the normal tier list below.
     if (isEnterpriseLicensed) {
       return workspacePlans.length > 0 ? workspacePlans : [{
         id: "enterprise-license",
@@ -154,88 +162,28 @@ export function WorkspaceCreationDialog({
 
     const cleanPlans = workspacePlans.filter(p => {
       const s = `${p.plan_slug || ""} ${p.id || ""} ${p.name || ""}`.toLowerCase()
-      return !s.includes("vps") && !s.includes("vds") && !s.includes("storage")
+      return !s.includes("vps") && !s.includes("vds") && !s.includes("storage") && !s.includes("enterprise")
     })
 
-    let standar = cleanPlans.find(p => p.plan_slug === "free" || p.plan_slug === "standar" || p.id === "free")
-    let pro = cleanPlans.find(p => p.plan_slug === "pro")
-    let business = cleanPlans.find(p => p.plan_slug === "business")
+    if (cleanPlans.length > 0) return cleanPlans
 
-    if (!standar) {
-      standar = {
-        id: "free",
-        plan_slug: "free",
-        name: "Standar",
-        desc: "Paket dasar terjangkau untuk memulai proyek CMS profesional Anda.",
-        priceAmount: 250000,
-        yearlyPrice: 1500000,
-        max_content_types: 999999,
-        max_content_entries: 500,
-        max_team_members: 1,
-        max_storage: 100,
-        features: [
-          "Unlimited Content Schemas",
-          "500 Entri Konten",
-          "1 Anggota Tim",
-          "100 MB Object Storage",
-          "1.000 API Calls / bulan"
-        ]
-      }
-    } else {
-      standar = { ...standar, name: "Standar" }
-    }
-
-    if (!pro) {
-      pro = {
-        id: "pro",
-        plan_slug: "pro",
-        name: "Pro",
-        desc: "Paket lengkap all-inclusive untuk bisnis, media, dan startup modern.",
-        priceAmount: 500000,
-        yearlyPrice: 3000000,
-        max_content_types: 999999,
-        max_content_entries: 10000,
-        max_team_members: 10,
-        max_storage: 5120,
-        features: [
-          "10.000 Entri Konten",
-          "10 Anggota Tim & RBAC",
-          "5 GB Cloud Storage Media",
-          "100.000 API Requests / bulan",
-          "Gratis 1 Custom Domain (.com/.id)",
-          "SSL HTTPS Otomatis"
-        ]
-      }
-    } else {
-      pro = { ...pro, name: "Pro" }
-    }
-
-    if (!business) {
-      business = {
-        id: "business",
-        plan_slug: "business",
-        name: "Business",
-        desc: "Platform CMS andalan untuk korporasi, portal media nasional, dan traffic tinggi.",
-        priceAmount: 830000,
-        yearlyPrice: 5000000,
-        max_content_types: 999999,
-        max_content_entries: 50000,
-        max_team_members: 25,
-        max_storage: 10240,
-        features: [
-          "50.000 Entri Konten",
-          "25 Anggota Tim",
-          "10 GB Cloud Storage Media",
-          "1.000.000 API Requests / bulan",
-          "Custom SMTP & Extended Audit Log",
-          "24/7 Prioritas Support & SLA 99.9%"
-        ]
-      }
-    } else {
-      business = { ...business, name: "Business" }
-    }
-
-    return [standar, pro, business]
+    // Defensive fallback only for a completely empty/misconfigured
+    // catalog (should never happen once /admin/pricing is seeded) — a
+    // single generic tier, not fabricated per-plan prices that would
+    // drift from reality.
+    return [{
+      id: "free",
+      plan_slug: "free",
+      name: "Free",
+      desc: "Paket dasar gratis untuk memulai proyek CMS Anda.",
+      priceAmount: 0,
+      yearlyPrice: 0,
+      max_content_types: 999999,
+      max_content_entries: 500,
+      max_team_members: 1,
+      max_storage: 100,
+      features: ["Unlimited Content Schemas", "500 Entri Konten", "1 Anggota Tim", "100 MB Object Storage"],
+    }]
   }, [workspacePlans, isEnterpriseLicensed])
 
   const defaultPlanSlug = standardPlans[0]?.plan_slug || standardPlans[0]?.id || "free"
@@ -384,10 +332,10 @@ export function WorkspaceCreationDialog({
                   title={isEnterpriseLicensed ? "Paket Workspace" : "Pilih Paket Cloud"}
                   description={isEnterpriseLicensed
                     ? "Workspace ini otomatis memakai Lisensi Enterprise akun Anda — tidak perlu memilih paket."
-                    : "Pilih salah satu dari 3 paket Cloud bawaan (Standar, Pro, Business). Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat."}
+                    : `Pilih salah satu dari ${standardPlans.length} paket Cloud bawaan. Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat.`}
                 />
 
-                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : "grid-cols-1 sm:grid-cols-3")}>
+                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}>
                     {standardPlans.map((plan) => {
                       const planSlug = plan.plan_slug || plan.id
                       const isSelected = newWorkspace.plan === planSlug

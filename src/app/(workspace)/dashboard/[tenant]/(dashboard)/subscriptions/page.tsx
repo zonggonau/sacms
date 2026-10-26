@@ -264,18 +264,16 @@ export default function TenantSubscriptionsPage() {
   const currentPlanSlug = subscription?.plan || 'free'
   const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
-  // Hanya paket workspace standar, pro, dan bisnis (status database dedicated untuk workspace Enterprise ada di tab Infrastructure > Database & Storage)
-  const WORKSPACE_TIERS = ['free', 'pro', 'business']
+  // Every admin-defined workspace tier (free/starter/pro/business/...)
+  // EXCEPT "enterprise" — that one's dedicated-DB provisioning lives in
+  // Infrastructure > Database & Storage, not this checkout grid. A fixed
+  // allow-list here used to silently drop any new tier an admin added
+  // (confirmed live: the new Starter plan never appeared, even though
+  // the API already returned it) — excluding by name instead of
+  // including by name means a future tier shows up by construction.
   const mainPlans = plans
-    .filter(p => {
-      if (p.type !== "workspace") return false
-      const id = (p.id || '').toLowerCase()
-      return WORKSPACE_TIERS.includes(id)
-    })
-    .sort((a, b) => {
-      const order: Record<string, number> = { free: 1, pro: 2, business: 3 }
-      return (order[a.id] || 99) - (order[b.id] || 99)
-    })
+    .filter(p => p.type === "workspace" && (p.id || '').toLowerCase() !== 'enterprise')
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.price - b.price)
   // Storage-related add-ons (extra storage top-up) get their own tab
   // instead of sitting in the generic add-on grid, mirroring the
   // Infrastructure page's "Database & Storage" grouping.
@@ -550,10 +548,10 @@ export default function TenantSubscriptionsPage() {
               {/* Header Title & Description on Top */}
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Paket Langganan Workspace</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket langganan workspace Anda: Standar, Pro, atau Bisnis.</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket langganan workspace Anda: Free, Starter, Pro, atau Business.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {mainPlans.map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10
