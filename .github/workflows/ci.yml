@@ -294,29 +294,37 @@ jobs:
             # reviewed idempotent SQL file in db/manual-migrations/ first (see README
             # there), not silently applied by an unattended deploy pipeline.
             #
-            # Each call below is bounded by `timeout` and followed by the
-            # same leaked-container cleanup — db push/seed scripts finish in
-            # well under a second per the real logs ("Done in 414ms"), so
-            # 90s is pure safety margin for the work itself; a real failure
-            # still surfaces well inside that window. Exit 124 means
-            # `timeout` fired on the post-success restart-loop hang (the bug
-            # above), not that the command failed — only a NON-124 failure
-            # aborts the deploy for db push, and the two seed calls keep
-            # tolerating any failure exactly as before.
+            # Each call below is bounded by `timeout -k 10 90` and followed
+            # by the same leaked-container cleanup — db push/seed scripts
+            # finish in well under a second per the real logs ("Done in
+            # 414ms"), so 90s is pure safety margin for the work itself; a
+            # real failure still surfaces well inside that window. Plain
+            # `timeout 90` (no -k) isn't enough on its own: it only SENDS
+            # SIGTERM at the deadline and then waits for the child to
+            # actually exit — if `docker compose run` doesn't honour SIGTERM
+            # while blocked on the restart-loop hang above, `timeout` itself
+            # hangs right along with it, reproducing the exact same bug.
+            # `-k 10` forces a SIGKILL 10s later if SIGTERM didn't work,
+            # which the kernel can't fail to act on. Exit 124 (SIGTERM) or
+            # 137 (SIGKILL via -k) both mean "timeout fired on the
+            # post-success teardown hang", not that the command failed —
+            # only some OTHER exit code aborts the deploy for db push, and
+            # the two seed calls keep tolerating any failure exactly as
+            # before.
             set +e
-            timeout 90 docker compose run --rm app bun x prisma db push --skip-generate
+            timeout -k 10 90 docker compose run --rm app bun x prisma db push --skip-generate
             DB_PUSH_STATUS=$?
             set -e
             cleanup_leaked_app_run
-            if [ "$DB_PUSH_STATUS" -ne 0 ] && [ "$DB_PUSH_STATUS" -ne 124 ]; then
+            if [ "$DB_PUSH_STATUS" -ne 0 ] && [ "$DB_PUSH_STATUS" -ne 124 ] && [ "$DB_PUSH_STATUS" -ne 137 ]; then
               echo "❌ Prisma db push failed (exit $DB_PUSH_STATUS) — aborting deploy."
               exit 1
             fi
-            [ "$DB_PUSH_STATUS" -eq 124 ] && echo "⚠️ db push hung during container teardown after completing — continuing (see output above)."
+            [ "$DB_PUSH_STATUS" -eq 124 -o "$DB_PUSH_STATUS" -eq 137 ] && echo "⚠️ db push hung during container teardown after completing — continuing (see output above)."
 
-            timeout 90 docker compose run --rm app bun run seed:permissions || true
+            timeout -k 10 90 docker compose run --rm app bun run seed:permissions || true
             cleanup_leaked_app_run
-            timeout 90 docker compose run --rm app bun run seed:pricing || true
+            timeout -k 10 90 docker compose run --rm app bun run seed:pricing || true
             cleanup_leaked_app_run
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
