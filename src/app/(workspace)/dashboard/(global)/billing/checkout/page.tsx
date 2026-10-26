@@ -14,7 +14,7 @@ import Link from "next/link"
 import { getAccountPricingAction } from "@/actions/billing"
 
 function CheckoutContent() {
-  const { data: session, status } = useSafeSession()
+  const { data: session, status, update } = useSafeSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -114,15 +114,25 @@ function CheckoutContent() {
         if (snap && typeof snap.pay === "function") {
           try {
             snap.pay(data.token, {
-              onSuccess: () => {
+              onSuccess: async () => {
                 setCheckoutLoading(false)
                 toast({ title: "Pembayaran Berhasil!", description: "Akun Anda telah berhasil di-upgrade." })
+                // The NextAuth session's `plan` field is a JWT claim set at
+                // login — router.refresh() alone only re-fetches server
+                // component data, never the session itself, so the billing
+                // page's "Aktif" badge (session?.user?.plan === plan.id)
+                // kept showing the OLD plan even after a successful
+                // payment already updated User.plan in the DB. Same fix
+                // handleCheckStatus below already applies for a manually
+                // re-checked pending order.
+                await update?.()
                 router.push("/dashboard/billing")
                 router.refresh()
               },
-              onPending: () => {
+              onPending: async () => {
                 setCheckoutLoading(false)
                 toast({ title: "Menunggu Pembayaran", description: "Silakan selesaikan transaksi pembayaran Anda." })
+                await update?.()
                 router.push("/dashboard/billing")
                 router.refresh()
               },

@@ -204,6 +204,7 @@ export default function BillingClient({
         })
         if (res.ok) {
           toast({ title: "Paket Akun Diperbarui", description: "Akun Anda kini berada pada paket Gratis." })
+          await update?.()
           router.refresh()
         }
       } else {
