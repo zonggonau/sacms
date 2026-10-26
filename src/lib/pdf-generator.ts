@@ -1,6 +1,9 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-import { SACMS_ICON_BLACK_PNG_BASE64, SACMS_ICON_WHITE_PNG_BASE64 } from "./brand-assets"
+import { SACMS_ICON_WHITE_PNG_BASE64, SACMS_WORDMARK_BLACK_PNG_BASE64 } from "./brand-assets"
+
+// public/assets/img/header-footer-black-email.png is 271x96px
+const WORDMARK_ASPECT = 271 / 96
 
 export interface InvoiceData {
   orderId: string
@@ -76,13 +79,10 @@ export function generateInvoicePDF(data: InvoiceData) {
   /* ═══════════════════════════════════════════════════════════════════════
      1. HEADER — plain, no filled band
   ═══════════════════════════════════════════════════════════════════════ */
-  doc.addImage(SACMS_ICON_BLACK_PNG_BASE64, 'PNG', ML, 10, 9, 9)
+  const wordmarkH = 10
+  doc.addImage(SACMS_WORDMARK_BLACK_PNG_BASE64, 'PNG', ML, 9, wordmarkH * WORDMARK_ASPECT, wordmarkH)
 
   rgb(doc, BLACK, 'text')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
-  doc.text('SaCMS', ML + 11, 20)
-
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   rgb(doc, C.slate, 'text')
