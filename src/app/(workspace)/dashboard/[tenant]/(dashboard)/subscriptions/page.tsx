@@ -41,6 +41,22 @@ interface Invoice {
   planLabel?: string
 }
 
+/** Full, static Tailwind class strings per count (Tailwind's JIT scanner
+ *  needs the literal class name present in source — a template string
+ *  built from a variable count wouldn't be picked up). A fixed 4-column
+ *  grid left a blank 4th slot whenever the owning account hides the Free
+ *  tier (3 plans instead of 4 — see /api/tenant/[tenant]/subscriptions/plans)
+ *  — confirmed live — so the column count now tracks however many plans
+ *  are actually being shown, filling the grid's full width either way. */
+function planGridCols(count: number): string {
+  switch (count) {
+    case 1: return "grid-cols-1"
+    case 2: return "grid-cols-1 sm:grid-cols-2"
+    case 3: return "grid-cols-1 sm:grid-cols-3"
+    default: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+  }
+}
+
 export default function TenantSubscriptionsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -499,7 +515,7 @@ export default function TenantSubscriptionsPage() {
                 <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket langganan workspace Anda: Free, Starter, Pro, atau Business.</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className={cn("grid gap-5", planGridCols(mainPlans.length))}>
                 {mainPlans.map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10

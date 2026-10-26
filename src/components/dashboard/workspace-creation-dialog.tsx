@@ -83,6 +83,22 @@ function getTierAccent(planSlug: string) {
   return TIER_ACCENT[planSlug] || { icon: Sparkles }
 }
 
+/** Full, static Tailwind class strings per count (Tailwind's JIT scanner
+ *  needs the literal class name present in source — a template string
+ *  built from a variable count wouldn't be picked up). A fixed 4-column
+ *  grid left a blank 4th slot whenever a paid account hides the Free
+ *  tier (3 plans instead of 4) — confirmed live — so the column count now
+ *  tracks however many plans are actually being shown, filling the
+ *  modal's full width either way. */
+function planGridCols(count: number): string {
+  switch (count) {
+    case 1: return "grid-cols-1"
+    case 2: return "grid-cols-1 sm:grid-cols-2"
+    case 3: return "grid-cols-1 sm:grid-cols-3"
+    default: return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+  }
+}
+
 /** The three guaranteed numeric limit rows shown on every plan card. */
 function planLimitRows(plan: WorkspacePlan): { icon: LucideIcon; label: string }[] {
   const rows: { icon: LucideIcon; label: string }[] = []
@@ -335,7 +351,7 @@ export function WorkspaceCreationDialog({
                     : `Pilih salah satu dari ${standardPlans.length} paket Cloud bawaan. Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat.`}
                 />
 
-                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4")}>
+                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : planGridCols(standardPlans.length))}>
                     {standardPlans.map((plan) => {
                       const planSlug = plan.plan_slug || plan.id
                       const isSelected = newWorkspace.plan === planSlug
