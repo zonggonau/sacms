@@ -48,7 +48,7 @@ vi.mock("@/lib/database", () => ({
 
 const { resolveToken, hasScope, authenticateRequest } = await import("../../src/app/api/mcp/[[...transport]]/route")
 
-function makeTenant(overrides: Partial<{ status: string; hostingStatus: string | null }> = {}) {
+function makeTenant(overrides: Partial<{ status: string; hostingStatus: string | null; plan: string }> = {}) {
   return {
     id: "tenant-1",
     slug: "acme",
@@ -105,6 +105,40 @@ describe("MCP route — resolveToken", () => {
     expect(auth!.paymentError).toBeUndefined()
   })
 
+  it("allows general MCP access for a Free-plan tenant but excludes it from the hosting-plan gate", async () => {
+    // Free tier's own Subscription row is created with status "active"
+    // (see actions/tenant.ts) — isPaid (general MCP access) is correctly
+    // true for it, same as every other plan in good standing, but
+    // isHostingPlanPaid (gates deploy_to_sacms & co.) must be false since
+    // Free never pays for Vercel hosting. Confirmed live this was NOT the
+    // case before: isPaid alone used to gate the hosting tools too, and a
+    // Free tenant's always-"active" subscription made it pass.
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
+      id: "tok-1",
+      tenantId: "tenant-1",
+      permissions: ["read", "write"],
+      tenant: makeTenant({ status: "active", plan: "free" }),
+    } as any)
+    vi.mocked(db.subscription.findFirst).mockResolvedValue({ id: "sub-1", status: "active" } as any)
+
+    const auth = await resolveToken("sacms_valid")
+    expect(auth!.isPaid).toBe(true)
+    expect(auth!.isHostingPlanPaid).toBe(false)
+  })
+
+  it("grants the hosting-plan gate to a Starter-plan tenant", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
+      id: "tok-1",
+      tenantId: "tenant-1",
+      permissions: ["read", "write"],
+      tenant: makeTenant({ status: "active", plan: "starter" }),
+    } as any)
+    vi.mocked(db.subscription.findFirst).mockResolvedValue({ id: "sub-1", status: "active" } as any)
+
+    const auth = await resolveToken("sacms_valid")
+    expect(auth!.isHostingPlanPaid).toBe(true)
+  })
+
   it("treats hostingStatus 'active' as paid even without a Subscription row", async () => {
     vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "tok-1",
@@ -146,7 +180,7 @@ describe("MCP route — resolveToken", () => {
 })
 
 describe("MCP route — hasScope", () => {
-  const base = { tenantId: "t1", tenantSlug: "acme", tenantName: "Acme", plan: "pro", isPaid: true }
+  const base = { tenantId: "t1", tenantSlug: "acme", tenantName: "Acme", plan: "pro", isPaid: true, isHostingPlanPaid: true }
 
   it("grants every scope to a super admin regardless of its permissions array", () => {
     const auth = { ...base, permissions: [], isSuperAdmin: true }

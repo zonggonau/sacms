@@ -39,6 +39,7 @@ import {
   queryContentForTenant,
   listComponentsForTenant,
 } from "@/lib/cms-introspection"
+import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -49,6 +50,11 @@ interface AuthContext {
   permissions: string[]
   plan: string
   isPaid: boolean
+  /** Narrower than `isPaid` — true only on an actual paid plan tier (or
+   *  active hosting payment), excludes Free. Gates the Vercel-hosting
+   *  tools specifically; `isPaid` gates general MCP access and is
+   *  deliberately true for Free tier too. */
+  isHostingPlanPaid: boolean
   isSuperAdmin?: boolean
   paymentError?: string
 }
@@ -98,6 +104,13 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
   if (!tenantData) return null
 
   // ─── Payment Status & Active Subscription Check ────────────────────────────
+  // This `isPaid`/`paymentError` pair gates the WHOLE MCP connection (see
+  // handleMcpRequest below) — it's an account-good-standing check, not a
+  // plan-tier check, so a Free-plan tenant (its own Subscription row is
+  // created with status "active" — see actions/tenant.ts) correctly passes
+  // it: Free tier is intentionally free, not delinquent, and MCP's
+  // schema/content tools are available to every plan. Only a genuinely
+  // lapsed/cancelled subscription should trip this.
   const activeSubscription = await db.subscription.findFirst({
     where: {
       tenantId: tenantData.id,
@@ -105,13 +118,22 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
     }
   })
 
-  // Verify whether tenant is PAID or has active hosting
   const isPaid = (tenantData.status === "active" && !!activeSubscription) || tenantData.hostingStatus === "active"
   let paymentError: string | undefined = undefined
 
   if (!isPaid) {
     paymentError = `❌ Payment Required: Akses MCP dinonaktifkan untuk workspace '${tenantData.slug}'. Status langganan Anda belum aktif/dibayar (status: ${activeSubscription?.status || "unpaid"}). Silakan aktifkan pembayaran melalui dashboard workspace.`
   }
+
+  // Separate, narrower check for the Vercel-hosting tools specifically
+  // (deploy_to_sacms, configure_deployment_domain, add_deployment_env,
+  // make_deployment_public) — these must exclude Free tier, unlike the
+  // general `isPaid` above. Confirmed live: `isPaid` above was always true
+  // for Free tenants too, so the 4 individual `if (!auth.isPaid)` checks
+  // inside those tool handlers never actually blocked anyone — this plan-
+  // slug check (same helper the dashboard's own deploy route already
+  // gates on) is the real fix.
+  const isHostingPlanPaid = isTenantPlanPaid(tenantData.plan) || tenantData.hostingStatus === "active"
 
   return {
     tenantId: tenantData.id,
@@ -120,6 +142,7 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
     permissions,
     plan: tenantData.plan,
     isPaid,
+    isHostingPlanPaid,
     isSuperAdmin: false,
     paymentError,
   }
@@ -2180,7 +2203,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        if (!auth.isPaid) {
+        if (!auth.isHostingPlanPaid) {
           return {
             content: [{
               type: "text" as const,
@@ -2343,7 +2366,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        if (!auth.isPaid) {
+        if (!auth.isHostingPlanPaid) {
           return {
             content: [{
               type: "text" as const,
@@ -2442,7 +2465,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         // workspace whose subscription had lapsed since its last real
         // deploy still rewrite production env vars (including secrets) on
         // the project that deploy created.
-        if (!auth.isPaid) {
+        if (!auth.isHostingPlanPaid) {
           return {
             content: [{
               type: "text" as const,
@@ -2527,7 +2550,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        if (!auth.isPaid) {
+        if (!auth.isHostingPlanPaid) {
           return {
             content: [{
               type: "text" as const,
