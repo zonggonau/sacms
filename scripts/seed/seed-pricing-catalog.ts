@@ -105,6 +105,30 @@ async function seedWorkspacePlans() {
       order: 0,
     },
     {
+      slug: "starter",
+      name: "SaCMS Cloud Starter",
+      description: "Jembatan untuk freelancer & UMKM yang sudah kelebihan kuota Free, belum butuh kolaborasi tim penuh.",
+      price: 99000,
+      yearlyPrice: 592000,
+      maxContentTypes: 999999,
+      maxContentEntries: 2000,
+      maxTeamMembers: 3,
+      maxStorageMb: 1024,
+      maxLocales: 2,
+      maxApiCalls: 10000,
+      fairUseBandwidthGb: 10,
+      features: [
+        "2.000 Entri Konten & Unlimited Schemas",
+        "3 Anggota Tim",
+        "1 GB Cloud Storage",
+        "10.000 API Calls / bulan",
+        "2 Bahasa (Locale) Konten",
+        "REST & GraphQL API",
+        "Email Support",
+      ],
+      order: 1,
+    },
+    {
       slug: "pro",
       name: "SaCMS Cloud Pro",
       description: "Paket lengkap all-inclusive untuk bisnis, media, dan startup modern (Tanpa Biaya Tersembunyi).",
@@ -127,7 +151,7 @@ async function seedWorkspacePlans() {
         "Webhook & Integrasi Eksternal",
         "Prioritas Support",
       ],
-      order: 1,
+      order: 2,
     },
     {
       slug: "business",
@@ -153,7 +177,7 @@ async function seedWorkspacePlans() {
         "Audit Log Aktivitas Lengkap",
         "Prioritas Support",
       ],
-      order: 2,
+      order: 3,
     },
   ]
 
