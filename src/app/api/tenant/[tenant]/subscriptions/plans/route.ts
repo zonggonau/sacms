@@ -47,18 +47,19 @@ export async function GET(
         maxStorage: p.maxStorageMb,
         maxLocales: p.maxLocales,
         auditLogRetention: 0,
-        supportLevel: p.slug === "enterprise" ? "Prioritas & SLA" : p.slug === "pro" ? "Prioritas" : "Email"
+        supportLevel: p.slug === "enterprise" ? "Prioritas & SLA" : p.slug === "pro" ? "Prioritas" : "Email",
+        order: p.order,
       }))
     }
 
     if (workspacePlans.length > 0) {
-      const PLAN_ORDER: Record<string, number> = {
-        free: 1,
-        pro: 2,
-        business: 3,
-        enterprise: 3,
-      }
-      workspacePlans.sort((a, b) => (PLAN_ORDER[a.id] || 99) - (PLAN_ORDER[b.id] || 99) || a.price - b.price)
+      // Sort by the admin-editable `order` column (same field /admin/pricing
+      // itself uses) instead of a hardcoded slug map — a hardcoded list
+      // silently pushes any new tier (e.g. "starter", added between Free
+      // and Pro) to the very end instead of its intended position, with no
+      // error to notice. Confirmed live: exactly this happened for the new
+      // Starter plan.
+      workspacePlans.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || a.price - b.price)
     }
 
     // Fallback ONLY when database has 0 published entries
