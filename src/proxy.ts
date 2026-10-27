@@ -497,23 +497,43 @@ export async function proxy(request: NextRequest) {
 
   // 4. Dynamic Owner / Workspace Subdomain Routing (*.sacms.cloud)
   if (dynamicSubdomain) {
-    // Static assets & Auth passthrough
+    // Static assets & NextAuth internals — plain passthrough.
     if (
       pathname.startsWith("/_next/") ||
       pathname.startsWith("/favicon") ||
       pathname.startsWith("/robots") ||
       pathname.startsWith("/sitemap") ||
-      pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/login") ||
-      pathname.startsWith("/register")
+      pathname.startsWith("/api/auth")
     ) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
       return response
     }
 
-    // A. Owner Account Subdomain (e.g. u8f9c1d2e3b4a5f6.sacms.cloud)
+    // A. Owner Account Subdomain (e.g. u8f9c1d2e3b4a5f6.sacms.cloud) — an
+    // account-level portal, not a tenant, so it's excluded from the
+    // tenant-branded auth-pages rewrite just below.
     const isOwnerFormat = dynamicSubdomain.startsWith("u") && dynamicSubdomain.length >= 8
+
+    // Auth pages: inject ?ws=<tenant> so the white-label branding (logo/
+    // favicon/name — see /api/public/[tenant]/brand, read by
+    // src/app/login/page.tsx) shows up here too, same as a custom domain
+    // already gets below. Without this, visiting a tenant's own
+    // {slug}.sacms.cloud/login silently showed the generic, unbranded
+    // login — confirmed live.
+    const DYNAMIC_SUBDOMAIN_AUTH_PAGES = ["/login", "/register", "/forgot-password", "/reset-password"]
+    if (!isOwnerFormat && DYNAMIC_SUBDOMAIN_AUTH_PAGES.includes(pathname)) {
+      const authRewriteUrl = request.nextUrl.clone()
+      if (!authRewriteUrl.searchParams.has("ws")) {
+        authRewriteUrl.searchParams.set("ws", dynamicSubdomain)
+      }
+      const response = NextResponse.rewrite(authRewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "workspace")
+      response.headers.set("X-Tenant-Slug", dynamicSubdomain)
+      return response
+    }
+
     if (isOwnerFormat) {
       const rewriteUrl = request.nextUrl.clone()
       if (!hasAuthCookie) {

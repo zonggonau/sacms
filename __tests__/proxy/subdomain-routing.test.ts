@@ -144,6 +144,35 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Tenant-Slug")).toBe("klinik")
   })
 
+  it("should inject ?ws=<slug> when visiting a direct workspace subdomain's /login, so its white-label branding shows", async () => {
+    const req = new NextRequest("http://klinik.sacms.cloud/login", {
+      headers: {
+        host: "klinik.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    const rewrite = res.headers.get("x-middleware-rewrite") || ""
+    expect(rewrite).toContain("/login")
+    expect(rewrite).toContain("ws=klinik")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
+    expect(res.headers.get("X-Tenant-Slug")).toBe("klinik")
+  })
+
+  it("does not inject ?ws= on an owner-account subdomain's /login — that's account-level, not a tenant", async () => {
+    const req = new NextRequest("http://u8f9c1d2e3b4a5f6.sacms.cloud/login", {
+      headers: {
+        host: "u8f9c1d2e3b4a5f6.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    const rewrite = res.headers.get("x-middleware-rewrite") || ""
+    expect(rewrite).toContain("/login")
+    expect(rewrite).not.toContain("ws=")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("owner")
+  })
+
   it("should rewrite direct workspace subdomain admin route klinik.sacms.cloud/admin to /dashboard/klinik", async () => {
     const req = new NextRequest("http://klinik.sacms.cloud/admin", {
       headers: {
