@@ -76,3 +76,42 @@ describe("Custom domain → white-label auth pages (proxy.ts)", () => {
     expect(res.headers.get("x-middleware-rewrite")).toBeNull()
   })
 })
+
+// Bug fixed 2026-10-28: the custom domain's blanket "/api/* -> public
+// content API" rewrite didn't exclude /api/auth/*, so NextAuth's own
+// callback/error/session routes got silently rewritten to
+// /api/public/<tenant>/auth/... (not a real route, 404) — login was
+// completely broken on any connected custom domain. Confirmed live by a
+// user report: https://<their-domain>/api/auth/error -> 404.
+describe("Custom domain → NextAuth's own /api/auth/* routes pass through untouched (proxy.ts)", () => {
+  beforeEach(() => mockGet.mockClear())
+
+  it("does not rewrite /api/auth/error to the public content API", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/api/auth/error", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
+  it("does not rewrite /api/auth/callback/credentials to the public content API", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/api/auth/callback/credentials", {
+      headers: { host: "admin.theirdomain.com" },
+      method: "POST",
+    })
+    const res = await proxy(req)
+
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
+  it("still rewrites a real content API path to the public API (regression guard)", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/api/content/posts", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    const rewrite = res.headers.get("x-middleware-rewrite")
+    expect(rewrite).toContain("/api/public/acme-corp/content/posts")
+  })
+})

@@ -648,7 +648,13 @@ export async function proxy(request: NextRequest) {
 
     if (tenantSlug) {
       // ---- API passthrough: always rewrite /api/* to public API ----
-      if (pathname.startsWith("/api/") || pathname.startsWith("/graphql")) {
+      // EXCEPT /api/auth/* — NextAuth's own callback/signin/error/session
+      // routes, handled by src/app/api/auth/[...nextauth]/route.ts, not a
+      // tenant content endpoint. Without this exclusion every login
+      // attempt on a custom domain got silently rewritten to
+      // /api/public/<tenant>/auth/... (not a real route — 404), breaking
+      // login entirely. Confirmed live.
+      if ((pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) || pathname.startsWith("/graphql")) {
         let restPath = pathname
         const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
         if (vMatch) {
@@ -668,12 +674,14 @@ export async function proxy(request: NextRequest) {
         return response
       }
 
-      // ---- Static/Next.js internal assets: pass through unchanged ----
+      // ---- Static/Next.js internals & NextAuth's own routes: pass
+      // through unchanged (see the /api/auth exclusion above) ----
       if (
         pathname.startsWith("/_next/") ||
         pathname.startsWith("/favicon") ||
         pathname.startsWith("/robots") ||
-        pathname.startsWith("/sitemap")
+        pathname.startsWith("/sitemap") ||
+        pathname.startsWith("/api/auth")
       ) {
         const response = NextResponse.next()
         applySecurityHeaders(response)
