@@ -443,7 +443,15 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                         <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                         <span className="truncate">{item.title}</span>
                         {item.badge && (
-                          <Badge variant="secondary" className="ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold bg-primary/20 text-primary">{item.badge}</Badge>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold",
+                              active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/20 text-primary"
+                            )}
+                          >
+                            {item.badge}
+                          </Badge>
                         )}
                       </div>
                     </Link>
