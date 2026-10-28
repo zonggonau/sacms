@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/database"
-import { withStaffAuth } from "@/lib/api/route-helpers"
+import { db, isOwnerEligibleForByoInfra, invalidateOwnerMasterInfraCache } from "@/lib/database"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { z } from "zod"
 
 /**
  * GET /api/tenant/[tenant]/infrastructure
@@ -16,7 +17,7 @@ import { withStaffAuth } from "@/lib/api/route-helpers"
 export const GET = withStaffAuth(async (_req, _context, { access }) => {
   const tenant = await db.tenant.findUnique({
     where: { id: access.tenantId },
-    select: { databaseUrl: true, storageConfig: true },
+    select: { databaseUrl: true, storageConfig: true, useOwnerInfra: true },
   })
 
   let isCustomDbConfigured = !!tenant?.databaseUrl
@@ -28,5 +29,66 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     isCustomStorageConfigured = isCustomStorageConfigured || !!master.storageConfig
   }
 
-  return NextResponse.json({ isCustomDbConfigured, isCustomStorageConfigured })
+  // Whether the OWNER has BYODB/BYOS configured at all, independent of
+  // this tenant's own useOwnerInfra switch — so the UI knows whether to
+  // offer the switch, even when it's currently off (and getOwnerMasterInfra
+  // above would otherwise report nothing configured).
+  const owner = await db.tenantMember.findFirst({ where: { tenantId: access.tenantId, role: "owner" }, select: { userId: true } })
+  let ownerHasInfraConfigured = false
+  if (owner) {
+    const ownerUser = await db.user.findUnique({ where: { id: owner.userId }, select: { masterDatabaseUrl: true, masterStorageConfig: true } })
+    const sc = ownerUser?.masterStorageConfig as { endpoint?: string; accessKey?: string; secretKey?: string; bucket?: string } | null
+    const hasStorage = !!(sc && sc.endpoint && sc.accessKey && sc.secretKey && sc.bucket)
+    ownerHasInfraConfigured = !!ownerUser?.masterDatabaseUrl || hasStorage
+  }
+
+  return NextResponse.json({
+    isCustomDbConfigured,
+    isCustomStorageConfigured,
+    useOwnerInfra: tenant?.useOwnerInfra ?? true,
+    ownerHasInfraConfigured,
+  })
 })
+
+const PatchSchema = z.object({ useOwnerInfra: z.boolean() })
+
+/**
+ * PATCH /api/tenant/[tenant]/infrastructure
+ *
+ * Owner-only per-workspace switch — see Tenant.useOwnerInfra and
+ * getOwnerMasterInfra() in src/lib/database.ts. Turning it ON requires the
+ * owner to actually have BYODB/BYOS configured already (set at
+ * /dashboard/infrastructure); turning it OFF (back to SaCMS's own
+ * dedicated DB / Enterprise storage pool) is always allowed.
+ */
+export const PATCH = withStaffAuth(
+  async (request, _context, { access }) => {
+    const body = await readJson(request, PatchSchema)
+    if (!body.ok) return body.response
+
+    if (body.data.useOwnerInfra) {
+      const owner = await db.tenantMember.findFirst({ where: { tenantId: access.tenantId, role: "owner" }, select: { userId: true } })
+      const ownerId = owner?.userId ?? access.userId
+      const eligible = await isOwnerEligibleForByoInfra(ownerId)
+      const user = await db.user.findUnique({ where: { id: ownerId }, select: { masterDatabaseUrl: true, masterStorageConfig: true } })
+      const sc = user?.masterStorageConfig as { endpoint?: string; accessKey?: string; secretKey?: string; bucket?: string } | null
+      const hasStorage = !!(sc && sc.endpoint && sc.accessKey && sc.secretKey && sc.bucket)
+      const hasConfiguredInfra = !!user?.masterDatabaseUrl || hasStorage
+
+      if (!eligible || !hasConfiguredInfra) {
+        return apiError("validation", {
+          message: "Anda belum mengatur database/storage sendiri di halaman Infrastruktur.",
+        })
+      }
+    }
+
+    await db.tenant.update({
+      where: { id: access.tenantId },
+      data: { useOwnerInfra: body.data.useOwnerInfra },
+    })
+    await invalidateOwnerMasterInfraCache(access.userId)
+
+    return NextResponse.json({ useOwnerInfra: body.data.useOwnerInfra })
+  },
+  { minRole: "owner" },
+)

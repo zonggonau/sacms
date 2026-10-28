@@ -576,7 +576,19 @@ export function WorkspaceManager({
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-[11px] text-muted-foreground font-mono">{tenant.slug}.sacms.cloud</p>
+                            <button
+                              type="button"
+                              onClick={(e) => handleCopySlug(tenant.slug, e)}
+                              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground font-mono transition-colors"
+                              title="Klik untuk salin domain"
+                            >
+                              <span>{tenant.slug}.sacms.cloud</span>
+                              {copiedSlug === tenant.slug ? (
+                                <Check className="h-3 w-3 text-emerald-500" />
+                              ) : (
+                                <Copy className="h-2.5 w-2.5 opacity-60" />
+                              )}
+                            </button>
                           </div>
                         </div>
                       </TableCell>

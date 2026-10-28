@@ -363,6 +363,16 @@ export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMaster
 
   let result: OwnerMasterInfra = { databaseUrl: null, storageConfig: null }
   try {
+    // Per-workspace opt-out — see Tenant.useOwnerInfra. An owner with
+    // BYODB/BYOS configured can still keep individual workspaces on
+    // SaCMS's own dedicated DB / Enterprise storage pool instead of
+    // forcing every owned tenant onto their own infra automatically.
+    const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { useOwnerInfra: true } })
+    if (tenant?.useOwnerInfra === false) {
+      ownerMasterInfraCache.set(tenantId, { ...result, expiresAt: Date.now() + MASTER_INFRA_CACHE_MS })
+      return result
+    }
+
     const owner = await db.tenantMember.findFirst({ where: { tenantId, role: 'owner' }, select: { userId: true } })
     if (owner) {
       const allowed = await isOwnerEligibleForByoInfra(owner.userId)

@@ -8,11 +8,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
   Activity,
   CheckCircle2,
   RefreshCw,
   HardDrive,
+  Server,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -76,6 +80,51 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   }, [tenantSlug, session])
 
   const matchingTierId = (bytes: number) => storageTiers.find((t) => t.amountUnits === bytes)?.id
+
+  // Owner-only per-workspace switch: use the owner's own BYODB/BYOS, or
+  // stay on SaCMS's dedicated DB / Enterprise storage pool. Only rendered
+  // when the owner actually has infra configured (see
+  // GET /api/tenant/[tenant]/infrastructure's ownerHasInfraConfigured).
+  const tenantMembership = (session?.user as any)?.tenants?.find((t: any) => t.slug === tenantSlug || t.id === tenantSlug)
+  const isOwner = tenantMembership?.role === "owner"
+  const [ownerHasInfraConfigured, setOwnerHasInfraConfigured] = useState(false)
+  const [useOwnerInfra, setUseOwnerInfra] = useState(true)
+  const [switchingInfra, setSwitchingInfra] = useState(false)
+
+  useEffect(() => {
+    if (!tenantSlug || !session?.user || !isOwner) return
+    fetch(`/api/tenant/${tenantSlug}/infrastructure`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data) return
+        setOwnerHasInfraConfigured(!!data.ownerHasInfraConfigured)
+        setUseOwnerInfra(data.useOwnerInfra !== false)
+      })
+      .catch(() => {})
+  }, [tenantSlug, session, isOwner])
+
+  const handleToggleOwnerInfra = async (next: boolean) => {
+    setSwitchingInfra(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ useOwnerInfra: next }),
+      })
+      const body = await res.json()
+      if (res.ok) {
+        setUseOwnerInfra(next)
+        setIsEnterpriseWorkspace(await checkEnterpriseModeAction(tenantSlug).catch(() => false))
+        toast.success(next ? "Workspace ini kini memakai server Anda sendiri." : "Workspace ini kini memakai SaCMS kembali.")
+      } else {
+        toast.error(body.error || "Gagal mengubah sumber infrastruktur")
+      }
+    } catch {
+      toast.error("Terjadi kesalahan")
+    } finally {
+      setSwitchingInfra(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -188,6 +237,35 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
             </div>
           </CardContent>
         </Card>
+
+        {/* 1b. OWNER-ONLY SWITCH: own infra vs SaCMS-managed */}
+        {isOwner && ownerHasInfraConfigured && (
+          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+            <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Server className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-foreground">Sumber Infrastruktur Workspace Ini</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md">
+                    Anda sudah mengatur database/storage sendiri di halaman Infrastruktur. Pilih apakah workspace ini memakainya, atau tetap memakai SaCMS (database/storage khusus Enterprise Anda tidak hilang, hanya tidak dipakai workspace ini).
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <Label htmlFor="use-owner-infra" className="text-[11px] font-semibold text-muted-foreground">
+                  {useOwnerInfra ? "Server Sendiri" : "SaCMS"}
+                </Label>
+                {switchingInfra ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <Switch id="use-owner-infra" checked={useOwnerInfra} onCheckedChange={handleToggleOwnerInfra} />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 2. STORAGE ADD-ON CARD */}
         <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">

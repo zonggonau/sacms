@@ -140,6 +140,9 @@ export function EnterpriseLicenseBanner({
         setShowActivate(false)
         setLicenseKeyInput("")
         toast({ title: "Lisensi Berhasil Diaktifkan", description: "Mode Enterprise kini telah aktif." })
+        if (data.provisioningWarning) {
+          toast({ title: "Perhatian", description: data.provisioningWarning, variant: "destructive" })
+        }
         await fetchStatus()
       } else {
         toast({ title: "Aktivasi Gagal", description: data.error || "Kunci lisensi tidak valid", variant: "destructive" })

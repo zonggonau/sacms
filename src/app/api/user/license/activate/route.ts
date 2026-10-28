@@ -122,10 +122,16 @@ export async function POST(request: NextRequest) {
 
   // 5. Enterprise accounts get their own dedicated database automatically —
   // every workspace this owner has (now or later) falls back to it via
-  // getOwnerMasterInfra() in src/lib/database.ts (User.masterDatabaseUrl).
-  // This is the only writer of that field — there is no self-service
-  // connect-your-own-database flow. Never blocks activation itself: a
-  // provisioning failure here just leaves the account on the shared DB.
+  // getOwnerMasterInfra() in src/lib/database.ts (User.masterDatabaseUrl),
+  // unless the owner later sets up their own BYODB/BYOS at
+  // /dashboard/infrastructure instead (which overwrites this field — see
+  // PUT /api/user/infrastructure). Never blocks activation itself: a
+  // provisioning failure here just leaves the account on the shared DB —
+  // but it's surfaced below as `provisioningWarning` instead of only being
+  // logged server-side, so the owner isn't left thinking it silently
+  // succeeded (confirmed live: the Infrastruktur page's Database tab just
+  // looked empty with no explanation).
+  let provisioningWarning: string | undefined
   if (payload.type === "enterprise") {
     const existingInfra = await db.user.findUnique({
       where: { id: session.user.id },
@@ -146,6 +152,14 @@ export async function POST(request: NextRequest) {
         })
       } catch (err) {
         console.error("[License] Auto-provisioning a dedicated database failed — account stays on the shared DB:", err)
+        logAudit({
+          userId: session.user.id,
+          action: AuditAction.SETTINGS_UPDATED,
+          entity: "UserMasterInfraProvisioningFailed",
+          data: { error: err instanceof Error ? err.message : String(err) },
+        })
+        provisioningWarning =
+          "Lisensi aktif, tapi database khusus gagal dibuat otomatis — workspace Anda tetap berjalan di database bersama SaCMS untuk saat ini. Coba lagi nanti atau hubungi support."
       }
     }
   }
@@ -160,5 +174,6 @@ export async function POST(request: NextRequest) {
     maxWorkspaces,
     expiresAt: new Date(payload.exp * 1000),
     daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
+    ...(provisioningWarning ? { provisioningWarning } : {}),
   })
 }

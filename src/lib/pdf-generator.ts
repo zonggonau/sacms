@@ -1,6 +1,6 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
-import { SACMS_ICON_WHITE_PNG_BASE64, SACMS_WORDMARK_BLACK_PNG_BASE64 } from "./brand-assets"
+import { SACMS_ICON_BLACK_PNG_BASE64, SACMS_ICON_WHITE_PNG_BASE64, SACMS_WORDMARK_BLACK_PNG_BASE64 } from "./brand-assets"
 
 // public/assets/img/header-footer-black-email.png is 271x96px
 const WORDMARK_ASPECT = 271 / 96
@@ -57,17 +57,17 @@ export function generateInvoicePDF(data: InvoiceData) {
   const total    = data.amount
   const subtotal = Math.round(total / 1.11)
   const ppn      = total - subtotal
-  const fmt      = (n: number) => `Rp\u00A0${n.toLocaleString('id-ID')}`   // non-breaking space
+  const fmt      = (n: number) => `Rp ${n.toLocaleString('id-ID')}`   // non-breaking space
 
   const st = (data.status || '').toLowerCase()
   const isPaid = st === 'success' || st === 'settlement' || st === 'paid'
   const isPending = st === 'pending' || st === 'draft' || st === 'unpaid'
   const isCancelled = st === 'cancel' || st === 'cancelled' || st === 'expire' || st === 'expired' || st === 'deny' || st === 'failed'
 
-  const statusLabel = isPaid 
-    ? 'LUNAS (PAID)' 
-    : isPending 
-    ? 'MENUNGGU (PENDING)' 
+  const statusLabel = isPaid
+    ? 'LUNAS (PAID)'
+    : isPending
+    ? 'MENUNGGU (PENDING)'
     : 'DIBATALKAN (CANCEL)'
 
   const statusColor = isPaid ? C.green : isPending ? C.amber : C.red
@@ -419,29 +419,29 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
   const agreementNo = `${refCode}/PKS-SACMS/${ROMAN_MONTH[issuedDate.getMonth()]}/${issuedDate.getFullYear()}`
   const partyTwoName = data.organization || data.customerName
 
-  /* ═══ 0. COVER PAGE ═══ */
-  rgb(doc, C.navy, 'fill')
+  /* ═══ 0. COVER PAGE — white ground, blue/navy text ═══ */
+  rgb(doc, C.white, 'fill')
   doc.rect(0, 0, W, H, 'F')
   rgb(doc, C.blue, 'fill')
   doc.rect(0, 0, W, 4, 'F')
   doc.rect(0, H - 4, W, 4, 'F')
 
-  doc.addImage(SACMS_ICON_WHITE_PNG_BASE64, 'PNG', W / 2 - 8, 26, 16, 16)
+  doc.addImage(SACMS_ICON_BLACK_PNG_BASE64, 'PNG', W / 2 - 8, 26, 16, 16)
 
-  rgb(doc, C.white, 'text')
+  rgb(doc, C.blue, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(28)
   doc.text('SaCMS', W / 2, 52, { align: 'center' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(180, 190, 210)
+  rgb(doc, C.slate, 'text')
   doc.text('Enterprise Headless CMS', W / 2, 60, { align: 'center' })
 
-  doc.setDrawColor(255, 255, 255)
+  rgb(doc, C.blue, 'draw')
   doc.setLineWidth(0.3)
   doc.line(W / 2 - 28, 70, W / 2 + 28, 70)
 
-  rgb(doc, C.white, 'text')
+  rgb(doc, C.blue, 'text')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(23)
   doc.text('PERJANJIAN KERJA SAMA', W / 2, 112, { align: 'center' })
@@ -450,41 +450,43 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(180, 190, 210)
+  rgb(doc, C.slate, 'text')
   doc.text(`Nomor: ${agreementNo}`, W / 2, 142, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  rgb(doc, C.white, 'text')
+  rgb(doc, C.dark, 'text')
   doc.text('ANTARA', W / 2, 168, { align: 'center' })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
+  rgb(doc, C.blue, 'text')
   doc.text('SaCMS, Inc.', W / 2, 181, { align: 'center' })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.setTextColor(180, 190, 210)
+  rgb(doc, C.slate, 'text')
   doc.text('("PIHAK PERTAMA")', W / 2, 187, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(11)
-  rgb(doc, C.white, 'text')
+  rgb(doc, C.dark, 'text')
   doc.text('DAN', W / 2, 200, { align: 'center' })
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
+  rgb(doc, C.blue, 'text')
   doc.text(partyTwoName, W / 2, 213, { align: 'center', maxWidth: W - 60 })
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
-  doc.setTextColor(180, 190, 210)
+  rgb(doc, C.slate, 'text')
   doc.text('("PIHAK KEDUA")', W / 2, 222, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10)
-  doc.setTextColor(200, 210, 225)
+  rgb(doc, C.dark, 'text')
   doc.text(`Nabire, ${formatIdDate(issuedDate)}`, W / 2, H - 34, { align: 'center' })
   doc.setFontSize(8)
-  doc.setTextColor(150, 165, 190)
+  rgb(doc, C.slate, 'text')
   doc.text(
     'Dokumen ini adalah draf dasar — tinjau bersama tim legal kedua pihak sebelum ditandatangani secara resmi.',
     W / 2, H - 20, { align: 'center', maxWidth: W - 60 }
@@ -832,5 +834,435 @@ export function generateLicenseContractPDF(data: LicenseContractData) {
 
   const safeName = partyTwoName.replace(/[^a-z0-9]+/gi, '_')
   doc.save(`Kontrak_Lisensi_${safeName}_${refCode}.pdf`)
+  return doc
+}
+
+// ─── Proposal ("Penawaran") document ────────────────────────────────────────
+
+export interface ProposalPdfItem {
+  name: string
+  description?: string
+  priceIdr: number
+}
+
+export interface ProposalPdfData {
+  institutionName: string
+  institutionType?: string
+  contactName?: string
+  contactEmail?: string
+  contactPhone?: string
+  proposalNumber: string
+  date: string | Date
+  items: ProposalPdfItem[]
+  notes?: string
+  validUntil?: string | Date
+  /** Who signs off on SaCMS's side — falls back to "Tim SaCMS" when unset. */
+  preparedByName?: string
+  /** Live demo website URL (e.g. a Vercel preview) SaCMS's team already
+   *  built for this prospect — shown as plain text under the QR code. */
+  demoUrl?: string
+  /** The QR code encoding `demoUrl`, as a PNG data URL — generate this with
+   *  the `qrcode` package BEFORE calling this function (QR generation is
+   *  async; jsPDF's addImage needs the data synchronously). Ignored if
+   *  `demoUrl` isn't set. */
+  demoQrDataUrl?: string
+  /** Comma-separated list of concrete website page/section names tailored
+   *  to this institution (e.g. "Home, Layanan, Poli Gigi, Dokter Kami,
+   *  Kontak") — optionally AI-suggested, staff-editable. Rendered as its
+   *  own section so the customer immediately sees what the site will
+   *  contain. ADDITIVE to the fixed package items above, never replaces
+   *  them. */
+  pageFeaturesText?: string
+}
+
+const PROPOSAL_TERMS = [
+  'Penawaran ini berlaku selama 30 (tiga puluh) hari kalender sejak tanggal diterbitkan, kecuali ditentukan lain pada tanggal berlaku di atas.',
+  'Harga yang tercantum bersifat estimasi awal dan dapat disesuaikan berdasarkan kebutuhan teknis final yang disepakati kedua pihak.',
+  'Syarat pembayaran, jadwal implementasi, dan ketentuan layanan lebih lanjut akan dituangkan dalam perjanjian kerja sama terpisah.',
+]
+
+/**
+ * A sales proposal document for an outside institution — a formal
+ * letter-style business document (salutation → opening → offer table →
+ * terms → closing → signature), distinct from generateInvoicePDF (a
+ * transactional receipt) and generateLicenseContractPDF (the signed
+ * agreement itself, sent only after a deal is won). Shares this file's
+ * palette/helpers but reads as a proposal being pitched, not a bill.
+ */
+export function generateProposalPDF(data: ProposalPdfData) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+
+  const W = 210
+  const H = 297
+  const ML = 15
+  const MR = 195
+  const TR = 190
+  const BLACK: [number, number, number] = [0, 0, 0]
+  const fmt = (n: number) => `Rp ${n.toLocaleString('id-ID')}`
+  const FOOTER_Y = 278
+
+  const total = data.items.reduce((sum, item) => sum + item.priceIdr, 0)
+  const preparedBy = data.preparedByName?.trim() || 'Tim SaCMS'
+
+  /** Draws the footer + page label on the CURRENT page. */
+  function footer(pageLabel: string) {
+    doc.setDrawColor(C.border[0], C.border[1], C.border[2])
+    doc.setLineWidth(0.2)
+    doc.line(ML, FOOTER_Y, MR, FOOTER_Y)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    rgb(doc, C.slate, 'text')
+    doc.text('SaCMS  ·  admin@sacms.cloud  ·  sacms.cloud', ML, FOOTER_Y + 5)
+    doc.text(pageLabel, MR, FOOTER_Y + 5, { align: 'right' })
+  }
+
+  /** Closes the current page's footer and starts a fresh one when the next
+   *  block of `needed` mm wouldn't fit before FOOTER_Y. */
+  function ensureSpace(cursorY: number, needed: number): number {
+    if (cursorY + needed <= FOOTER_Y) return cursorY
+    footer('Bersambung ke halaman berikutnya')
+    doc.addPage()
+    return 20
+  }
+
+  /* ═══ 0. COVER PAGE — white ground, blue/navy text (same treatment as
+     generateLicenseContractPDF), scaled down to a single focused page
+     (no "ANTARA/PIHAK" framing, since a proposal isn't a signed
+     agreement yet). The letter content below starts fresh on page 2. ═══ */
+  rgb(doc, C.white, 'fill')
+  doc.rect(0, 0, W, H, 'F')
+  rgb(doc, C.blue, 'fill')
+  doc.rect(0, 0, W, 4, 'F')
+  doc.rect(0, H - 4, W, 4, 'F')
+
+  doc.addImage(SACMS_ICON_BLACK_PNG_BASE64, 'PNG', W / 2 - 9, 64, 18, 18)
+
+  rgb(doc, C.blue, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(26)
+  doc.text('SaCMS', W / 2, 94, { align: 'center' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  rgb(doc, C.slate, 'text')
+  doc.text('Enterprise Headless CMS', W / 2, 101, { align: 'center' })
+
+  rgb(doc, C.blue, 'draw')
+  doc.setLineWidth(0.3)
+  doc.line(W / 2 - 28, 111, W / 2 + 28, 111)
+
+  rgb(doc, C.blue, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(26)
+  doc.text('PENAWARAN', W / 2, 142, { align: 'center' })
+  doc.setFontSize(15)
+  doc.text('KERJA SAMA', W / 2, 153, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  rgb(doc, C.slate, 'text')
+  doc.text(`Nomor: ${data.proposalNumber}`, W / 2, 166, { align: 'center' })
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(11)
+  rgb(doc, C.dark, 'text')
+  doc.text('Dipersiapkan khusus untuk', W / 2, 190, { align: 'center' })
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  rgb(doc, C.blue, 'text')
+  doc.text(data.institutionName, W / 2, 200, { align: 'center', maxWidth: W - 50 })
+  if (data.institutionType) {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    rgb(doc, C.slate, 'text')
+    doc.text(data.institutionType, W / 2, 207, { align: 'center' })
+  }
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  rgb(doc, C.dark, 'text')
+  doc.text(formatIdDate(data.date), W / 2, H - 34, { align: 'center' })
+  doc.setFontSize(8)
+  rgb(doc, C.slate, 'text')
+  doc.text(
+    'Dokumen ini bersifat rahasia dan hanya diperuntukkan bagi pihak yang dituju.',
+    W / 2, H - 20, { align: 'center', maxWidth: W - 60 }
+  )
+
+  doc.addPage()
+
+  /* ═══ 1. LETTERHEAD ═══ */
+  const wordmarkH = 10
+  doc.addImage(SACMS_WORDMARK_BLACK_PNG_BASE64, 'PNG', ML, 9, wordmarkH * WORDMARK_ASPECT, wordmarkH)
+  rgb(doc, C.slate, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.text('Enterprise Headless CMS  ·  admin@sacms.cloud  ·  sacms.cloud', ML, 27)
+
+  rgb(doc, C.blue, 'text')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(22)
+  doc.text('PENAWARAN', TR, 19, { align: 'right' })
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  rgb(doc, C.slate, 'text')
+  doc.text(`No. ${data.proposalNumber}`, TR, 25.5, { align: 'right' })
+
+  rgb(doc, BLACK, 'draw')
+  doc.setLineWidth(0.7)
+  doc.line(ML, 32, MR, 32)
+  rgb(doc, C.blue, 'draw')
+  doc.setLineWidth(0.7)
+  doc.line(ML, 32, ML + 28, 32)
+
+  /* ═══ 2. SALUTATION — letter-style, not a boxed meta card ═══ */
+  let y = 42
+  rgb(doc, C.slate, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  doc.text(formatIdDate(data.date), MR, y, { align: 'right' })
+  doc.text(`No. ${data.proposalNumber}`, MR, y + 5, { align: 'right' })
+  if (data.validUntil) {
+    doc.text(`Berlaku hingga ${formatIdDate(data.validUntil)}`, MR, y + 10, { align: 'right' })
+  }
+
+  rgb(doc, BLACK, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9.5)
+  doc.text('Kepada Yth.', ML, y)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(11)
+  doc.text(data.institutionName, ML, y + 6, { maxWidth: 110 })
+  y += 11
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  rgb(doc, C.slate, 'text')
+  if (data.contactName) {
+    doc.text(`u.p. ${data.contactName}`, ML, y)
+    y += 5
+  }
+  if (data.institutionType) {
+    doc.text(data.institutionType, ML, y)
+    y += 5
+  }
+  if (data.contactEmail || data.contactPhone) {
+    doc.text([data.contactEmail, data.contactPhone].filter(Boolean).join('  ·  '), ML, y)
+    y += 5
+  }
+  y += 6
+
+  /* ═══ 3. OPENING ═══ */
+  rgb(doc, BLACK, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9.5)
+  doc.text('Dengan hormat,', ML, y)
+  y += 6
+
+  const opening = doc.splitTextToSize(
+    `Sehubungan dengan kebutuhan ${data.institutionName} akan solusi pengelolaan konten digital yang andal dan mudah dikembangkan, kami dari SaCMS dengan ini mengajukan penawaran kerja sama sebagai berikut.`,
+    MR - ML
+  )
+  doc.text(opening, ML, y)
+  y += opening.length * 4.6 + 6
+
+  /* ═══ 4. OFFER TABLE ═══ */
+  y = ensureSpace(y, 20)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  rgb(doc, BLACK, 'text')
+  doc.text('Rincian Penawaran', ML, y)
+  y += 4
+
+  autoTable(doc, {
+    startY: y,
+    head: [['#', 'Layanan / Penawaran', 'Harga']],
+    body: data.items.map((item, i) => [String(i + 1).padStart(2, '0'), item.name, fmt(item.priceIdr)]),
+    theme: 'plain',
+    margin: { bottom: 30 },
+    headStyles: {
+      fillColor: [245, 247, 250],
+      textColor: BLACK,
+      fontStyle: 'bold',
+      fontSize: 9,
+      cellPadding: { top: 5, bottom: 5, left: 4, right: 4 },
+      lineColor: BLACK,
+      lineWidth: { bottom: 0.5 },
+    },
+    bodyStyles: {
+      fontSize: 9,
+      textColor: BLACK,
+      cellPadding: { top: 6, bottom: 6, left: 4, right: 4 },
+      lineColor: C.border,
+      lineWidth: 0.2,
+      overflow: 'visible',
+    },
+    columnStyles: {
+      0: { cellWidth: 14, halign: 'center' },
+      1: { cellWidth: 130 },
+      2: { cellWidth: 36, halign: 'right', fontStyle: 'bold' },
+    },
+    didDrawCell: (hookData) => {
+      if (hookData.section !== 'body' || hookData.column.index !== 1) return
+      const item = data.items[hookData.row.index]
+      if (!item?.description) return
+      const { x, y: cellY, width, height } = hookData.cell
+      rgb(doc, C.slate, 'text')
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.text(item.description, x + 4, cellY + height - 3, { maxWidth: width - 8 })
+    },
+  })
+
+  y = ((doc as any).lastAutoTable?.finalY ?? y + 20) + 6
+
+  /* ═══ 5. TOTAL ═══ */
+  y = ensureSpace(y, 16)
+  const boxW = (MR - ML - 6) / 2
+  rgb(doc, C.blue, 'draw')
+  doc.setLineWidth(0.4)
+  doc.rect(ML + boxW + 6, y, boxW, 14)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9)
+  rgb(doc, C.slate, 'text')
+  doc.text('TOTAL PENAWARAN', ML + boxW + 10, y + 6)
+  doc.setFontSize(12)
+  rgb(doc, BLACK, 'text')
+  doc.text(fmt(total), MR - 4, y + 10.5, { align: 'right' })
+  y += 22
+
+  /* ═══ 5a. HALAMAN & FITUR WEBSITE — concrete, institution-specific page/
+     section names (e.g. "Home, Layanan, Poli Gigi, Dokter Kami, Kontak"),
+     optionally AI-suggested. Shown as its own clearly-labelled section,
+     additive to (never replacing) the fixed package item above, so the
+     customer immediately understands what the site will contain. ═══ */
+  const pageFeatures = (data.pageFeaturesText || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (pageFeatures.length > 0) {
+    y = ensureSpace(y, 16)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    rgb(doc, BLACK, 'text')
+    doc.text('Halaman & Fitur Website', ML, y)
+    y += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    rgb(doc, C.slate, 'text')
+    const introLines = doc.splitTextToSize(
+      `Gambaran halaman dan fitur yang akan dibuat untuk website ${data.institutionName}:`,
+      MR - ML
+    )
+    y = ensureSpace(y, introLines.length * 4.4 + 3)
+    doc.text(introLines, ML, y)
+    y += introLines.length * 4.4 + 3
+
+    const pagesLine = pageFeatures.join('   •   ')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    rgb(doc, C.blue, 'text')
+    const pageLines = doc.splitTextToSize(pagesLine, MR - ML)
+    y = ensureSpace(y, pageLines.length * 5 + 2)
+    doc.text(pageLines, ML, y)
+    y += pageLines.length * 5 + 8
+  }
+
+  /* ═══ 5b. DEMO PREVIEW (QR CODE) — only when a demo site is ready ═══ */
+  if (data.demoQrDataUrl && data.demoUrl) {
+    const qrBoxH = 32
+    const qrSize = 26
+    y = ensureSpace(y, qrBoxH + 6)
+    rgb(doc, C.blue, 'draw')
+    doc.setLineWidth(0.3)
+    doc.rect(ML, y, MR - ML, qrBoxH)
+    doc.addImage(data.demoQrDataUrl, 'PNG', ML + 4, y + (qrBoxH - qrSize) / 2, qrSize, qrSize)
+
+    const textX = ML + 4 + qrSize + 8
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    rgb(doc, BLACK, 'text')
+    doc.text('Pratinjau Website Anda', textX, y + 11)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    rgb(doc, C.slate, 'text')
+    const previewLines = doc.splitTextToSize(
+      `Website ${data.institutionName} sudah kami siapkan. Pindai kode QR di samping untuk melihatnya langsung.`,
+      MR - textX - 4
+    )
+    doc.text(previewLines, textX, y + 17)
+    doc.setFont('helvetica', 'bold')
+    rgb(doc, C.blue, 'text')
+    doc.text(data.demoUrl, textX, y + 17 + previewLines.length * 4.2 + 3, { maxWidth: MR - textX - 4 })
+
+    y += qrBoxH + 8
+  }
+
+  /* ═══ 6. TERMS ═══ */
+  y = ensureSpace(y, 10 + PROPOSAL_TERMS.length * 9)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  rgb(doc, BLACK, 'text')
+  doc.text('Ketentuan Umum', ML, y)
+  y += 6
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8.5)
+  rgb(doc, C.slate, 'text')
+  PROPOSAL_TERMS.forEach((term, i) => {
+    const lines = doc.splitTextToSize(term, MR - ML - 6)
+    y = ensureSpace(y, lines.length * 4.4 + 2)
+    doc.text(`${i + 1}.`, ML, y)
+    doc.text(lines, ML + 6, y)
+    y += lines.length * 4.4 + 2
+  })
+  y += 4
+
+  if (data.notes) {
+    y = ensureSpace(y, 14)
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    rgb(doc, BLACK, 'text')
+    doc.text('Catatan Tambahan', ML, y)
+    y += 5
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8.5)
+    rgb(doc, C.slate, 'text')
+    const notesLines = doc.splitTextToSize(data.notes, MR - ML)
+    y = ensureSpace(y, notesLines.length * 4.4)
+    doc.text(notesLines, ML, y)
+    y += notesLines.length * 4.4 + 6
+  }
+
+  /* ═══ 7. CLOSING + SIGNATURE ═══ */
+  y = ensureSpace(y, 50)
+  rgb(doc, BLACK, 'text')
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9.5)
+  const closing = doc.splitTextToSize(
+    `Besar harapan kami dapat menjalin kerja sama yang baik dengan ${data.institutionName}. Atas perhatian dan kerja samanya, kami ucapkan terima kasih.`,
+    MR - ML
+  )
+  doc.text(closing, ML, y)
+  y += closing.length * 4.6 + 10
+
+  doc.text('Hormat kami,', ML, y)
+  y += 22
+  rgb(doc, BLACK, 'draw')
+  doc.setLineWidth(0.3)
+  doc.line(ML, y, ML + 55, y)
+  y += 5
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  doc.text(preparedBy, ML, y)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  rgb(doc, C.slate, 'text')
+  doc.text('SaCMS — Enterprise Headless CMS', ML, y + 4.5)
+
+  // -1 excludes the cover page from the count — content pages are numbered
+  // starting at 1, matching generateLicenseContractPDF's convention.
+  footer(`Halaman ${doc.getNumberOfPages() - 1}`)
+
+  const safeName = data.institutionName.replace(/[^a-z0-9]+/gi, '_')
+  doc.save(`Penawaran_${safeName}_${data.proposalNumber}.pdf`)
   return doc
 }

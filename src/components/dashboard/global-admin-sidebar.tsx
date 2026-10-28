@@ -27,6 +27,7 @@ import {
   Webhook,
   Headphones,
   Tag,
+  Handshake,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -58,6 +59,12 @@ const adminNavSections: NavSection[] = [
       { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
       { title: "Pricing & Plans", href: "/admin/pricing", icon: Tag },
+    ],
+  },
+  {
+    label: "PENJUALAN",
+    items: [
+      { title: "Penawaran", href: "/admin/proposals", icon: Handshake },
     ],
   },
   {

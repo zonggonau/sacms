@@ -40,6 +40,9 @@ model User {
   ownedTenants        Tenant[]        @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
+  proposalsAssigned   Proposal[]      @relation("ProposalAssignee")
+  proposalsCreated    Proposal[]      @relation("ProposalCreator")
+  proposalActivities  ProposalActivity[]
 
   @@map("users")
 }
@@ -131,6 +134,12 @@ model Tenant {
   /// set = finalized/locked). Only enforced on dashboard-facing schema
   /// mutations — see src/lib/schema-lock.ts for why MCP bypasses this.
   schemaFinalizedAt               DateTime?
+  /// Whether this workspace inherits its owner's "Infrastruktur Sendiri"
+  /// (BYODB/BYOS, set at /dashboard/infrastructure) — see
+  /// getOwnerMasterInfra() in src/lib/database.ts. Default true preserves
+  /// automatic inheritance; an owner can flip individual workspaces to
+  /// false to keep them on SaCMS's dedicated DB / Enterprise storage pool.
+  useOwnerInfra                   Boolean                       @default(true)
   apiKeys                         ApiKey[]
   apiRequests                     ApiRequest[]
   apiTokens                       ApiToken[]
@@ -1097,6 +1106,68 @@ model SupportMessage {
 
   @@index([ticketId])
   @@map("support_messages")
+}
+
+// ─── Sales Pipeline: Penawaran (institutional proposals/offers) ────
+
+model Proposal {
+  id              String    @id @default(cuid())
+  institutionName String
+  /// Free text, not a fixed enum — "UMKM", "Sekolah", "Pemerintah",
+  /// "Perusahaan", or anything else the sales staff types.
+  institutionType String?
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  /// Pipeline stage — see PROPOSAL_STAGES in src/lib/proposal-stages.ts.
+  stage           String    @default("draft") // draft | sent | negotiation | won | lost
+  estimatedValueIdr Int?
+  notes           String?   @db.Text
+  lostReason      String?
+  /// Short, sellable feature list shown as the offer item's description on
+  /// the proposal PDF (e.g. "Pendaftaran Online, Rekam Medis Digital, ...").
+  /// Staff-editable; optionally AI-suggested based on institutionName/Type
+  /// via POST /api/admin/proposals/suggest-features. Falls back to a plain
+  /// generic description when unset.
+  featuresText    String?   @db.Text
+  /// Live preview URL of a demo website the SaCMS team already built for
+  /// this prospect (e.g. a Vercel preview deployment, before any custom
+  /// domain) — embedded as a QR code on the generated proposal PDF so the
+  /// prospect can scan it and see the actual site. Only for sites SaCMS
+  /// itself built; the underlying workspace is handed over to the
+  /// prospect's own account once the deal closes.
+  demoUrl         String?
+  assignedToId    String?
+  createdById     String?
+  closedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  assignedTo User?              @relation("ProposalAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  User?              @relation("ProposalCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  activities ProposalActivity[]
+
+  @@index([stage])
+  @@index([assignedToId])
+  @@map("proposals")
+}
+
+model ProposalActivity {
+  id         String   @id @default(cuid())
+  proposalId String
+  authorId   String?
+  /// "note" | "status_change" | "call" | "email" | "meeting"
+  type       String
+  message    String?  @db.Text
+  fromStage  String?
+  toStage    String?
+  createdAt  DateTime @default(now())
+
+  proposal Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  author   User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([proposalId])
+  @@map("proposal_activities")
 }
 
 // ─── Multi-Tenant End-User Members & Headless Auth ──────────────────

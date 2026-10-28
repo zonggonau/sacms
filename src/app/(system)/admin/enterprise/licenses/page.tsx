@@ -137,7 +137,6 @@ export default function EnterpriseLicensesPage() {
   const [editingQuotaFor, setEditingQuotaFor] = useState<License | null>(null)
   const [storageGbInput, setStorageGbInput] = useState("")
   const [aiCreditsInput, setAiCreditsInput] = useState("")
-  const [maxInstancesInput, setMaxInstancesInput] = useState("1")
   const [maxWorkspacesInput, setMaxWorkspacesInput] = useState("")
   const [priceIdrInput, setPriceIdrInput] = useState("")
   const [savingQuota, setSavingQuota] = useState(false)
@@ -327,7 +326,6 @@ export default function EnterpriseLicensesPage() {
     setEditingQuotaFor(lic)
     setStorageGbInput(lic.storageGb ? String(lic.storageGb) : "")
     setAiCreditsInput(lic.aiCredits ? String(lic.aiCredits) : "")
-    setMaxInstancesInput(String(lic.maxInstances || 1))
     setMaxWorkspacesInput(lic.maxWorkspaces ? String(lic.maxWorkspaces) : "")
     setPriceIdrInput(lic.priceIdr != null ? String(lic.priceIdr) : "")
   }
@@ -336,7 +334,6 @@ export default function EnterpriseLicensesPage() {
     if (!editingQuotaFor) return
     const gb = storageGbInput.trim() === "" ? null : Number(storageGbInput)
     const credits = aiCreditsInput.trim() === "" ? null : Number(aiCreditsInput)
-    const maxInstances = maxInstancesInput.trim() === "" ? 1 : Number(maxInstancesInput)
     const maxWorkspaces = maxWorkspacesInput.trim() === "" ? null : Number(maxWorkspacesInput)
     const priceIdr = priceIdrInput.trim() === "" ? null : Number(priceIdrInput)
     if (gb !== null && (!Number.isInteger(gb) || gb <= 0)) {
@@ -345,10 +342,6 @@ export default function EnterpriseLicensesPage() {
     }
     if (credits !== null && (!Number.isInteger(credits) || credits <= 0)) {
       toast({ title: "Nilai tidak valid", description: "Masukkan jumlah AI credits berupa bilangan positif, atau kosongkan.", variant: "destructive" })
-      return
-    }
-    if (!Number.isInteger(maxInstances) || maxInstances <= 0) {
-      toast({ title: "Nilai tidak valid", description: "Maks. akun aktivasi harus bilangan positif (minimal 1).", variant: "destructive" })
       return
     }
     if (maxWorkspaces !== null && (!Number.isInteger(maxWorkspaces) || maxWorkspaces <= 0)) {
@@ -364,7 +357,8 @@ export default function EnterpriseLicensesPage() {
       const res = await fetch(`/api/admin/license/${editingQuotaFor.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storageGb: gb, aiCredits: credits, maxInstances, maxWorkspaces, priceIdr }),
+        // maxInstances is always 1 — a license is used by exactly one account.
+        body: JSON.stringify({ storageGb: gb, aiCredits: credits, maxInstances: 1, maxWorkspaces, priceIdr }),
       })
       if (res.ok) {
         toast({
@@ -938,21 +932,6 @@ export default function EnterpriseLicensesPage() {
                     className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
                   />
                   <p className="text-[10px] text-muted-foreground">Berlaku selama masa aktif lisensi. Habis = pelanggan berlangganan lagi.</p>
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="maxInstancesEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Akun Aktivasi</Label>
-                  <Input
-                    id="maxInstancesEdit"
-                    type="number"
-                    min={1}
-                    value={maxInstancesInput}
-                    onChange={(e) => setMaxInstancesInput(e.target.value)}
-                    placeholder="1"
-                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                  />
-                  <p className="text-[10px] text-muted-foreground">
-                    Saat ini dipakai oleh {editingQuotaFor?.activationCount ?? 0} akun. Akun baru ditolak setelah kuota ini penuh.
-                  </p>
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="maxWorkspacesEdit" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Workspace</Label>
