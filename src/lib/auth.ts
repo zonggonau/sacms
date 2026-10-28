@@ -371,6 +371,36 @@ export const authOptions: NextAuthOptions = {
   },
 }
 
+// A browser rejects a Set-Cookie whose Domain doesn't match (or isn't a
+// parent of) the host that served the response — it doesn't fall back to a
+// host-only cookie, it drops the cookie entirely. COOKIE_DOMAIN above
+// (`.sacms.cloud`) only works for the platform's own subdomains. A tenant's
+// external custom domain (e.g. admin.bangparjo.shop) needs a host-only
+// cookie instead, or the session cookie silently never gets stored — login
+// appears to succeed (NextAuth's callback redirects fine) but every
+// subsequent request looks unauthenticated, bouncing straight back to
+// /login. Only the route handler that actually issues Set-Cookie
+// (src/app/api/auth/[...nextauth]/route.ts) needs this; every
+// getServerSession(authOptions)/getToken() call elsewhere only READS
+// incoming cookies, which doesn't depend on the Domain attribute at all.
+export function getAuthOptionsForHost(isPlatform: boolean): NextAuthOptions {
+  if (isPlatform) return authOptions
+  return {
+    ...authOptions,
+    cookies: {
+      ...authOptions.cookies,
+      sessionToken: {
+        name: authOptions.cookies!.sessionToken!.name!,
+        options: { ...authOptions.cookies!.sessionToken!.options, domain: undefined },
+      },
+      callbackUrl: {
+        name: authOptions.cookies!.callbackUrl!.name!,
+        options: { ...authOptions.cookies!.callbackUrl!.options, domain: undefined },
+      },
+    },
+  }
+}
+
 declare module "next-auth" {
   interface User {
     role: string

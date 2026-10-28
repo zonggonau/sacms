@@ -28,7 +28,7 @@ function fallbackOrigin(): string {
     : "http://localhost:3000"
 }
 
-function isPlatformHost(host: string): boolean {
+export function isPlatformHost(host: string): boolean {
   const h = host.toLowerCase().split(":")[0]
   if (h === "localhost" || h.endsWith(".localhost") || h === "127.0.0.1") return true
   return h === ROOT_DOMAIN || h.endsWith(`.${ROOT_DOMAIN}`)
