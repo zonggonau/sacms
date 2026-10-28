@@ -669,8 +669,22 @@ export async function proxy(request: NextRequest) {
   if (host && host !== APP_HOST && platformSubdomain !== "developer" && !host.includes("localhost")) {
     const redis = getRedis()
     if (redis) {
-      const rawValue = await redis.get<string>(`domain:${host}`)
-      if (rawValue) {
+      // The Upstash REST client auto-deserializes a JSON-parseable stored
+      // value, so this can come back as the already-parsed
+      // {slug, target} object, not the raw string the <string> generic
+      // implies. JSON.parse(anObject) doesn't throw — it stringifies the
+      // object to "[object Object]" first (JSON.parse calls ToString on
+      // its argument) and THEN fails to parse that, so the old code's
+      // catch block ran and set tenantSlug to the raw object itself,
+      // which later stringified as literally "[object Object]" in every
+      // path/URL it was interpolated into (confirmed live via a redirect
+      // whose address bar showed /dashboard/[object%20Object]/cms).
+      const rawValue = await redis.get<unknown>(`domain:${host}`)
+      if (rawValue && typeof rawValue === "object") {
+        const parsed = rawValue as { slug?: string; target?: string }
+        tenantSlug = parsed.slug || null
+        domainTarget = parsed.target || "cms"
+      } else if (typeof rawValue === "string") {
         try {
           const parsed = JSON.parse(rawValue)
           tenantSlug = parsed.slug || null

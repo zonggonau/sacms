@@ -12,6 +12,13 @@ const mockGet = vi.fn((key: string) => {
   if (key === "domain:admin.theirdomain.com") {
     return Promise.resolve(JSON.stringify({ slug: "acme-corp", target: "cms" }))
   }
+  // The real @upstash/redis client auto-deserializes a JSON-parseable
+  // stored value into an object, not the raw string a JSON.stringify
+  // write would suggest — see the 2026-10-28 fix below. This host
+  // exercises that real shape instead of the plain-string shape above.
+  if (key === "domain:objectshape.theirdomain.com") {
+    return Promise.resolve({ slug: "acme-corp", target: "cms" })
+  }
   return Promise.resolve(undefined)
 })
 
@@ -184,5 +191,31 @@ describe("Custom domain → bare /dashboard redirects to the bound tenant (proxy
     expect(res.status).not.toBe(307)
     const rewrite = res.headers.get("x-middleware-rewrite")
     expect(rewrite).toContain("/dashboard/acme-corp/cms/content")
+  })
+})
+
+// Bug fixed 2026-10-28: @upstash/redis auto-deserializes a JSON-parseable
+// stored value, so a real domain:<host> lookup can come back as the
+// already-parsed {slug, target} OBJECT, not a string. The old code always
+// called JSON.parse(rawValue) first, which doesn't throw on an object —
+// it stringifies it to the literal text "[object Object]" and THEN fails
+// to parse THAT, landing in the catch block with tenantSlug set to the
+// raw object itself. Every later template-string interpolation of
+// tenantSlug then produced the literal text "[object Object]" — confirmed
+// live via a redirect whose address bar showed
+// /dashboard/[object%20Object]/cms.
+describe("Custom domain → Redis value may already be a parsed object (proxy.ts)", () => {
+  beforeEach(() => mockGet.mockClear())
+
+  it("resolves the real tenant slug, not the literal text '[object Object]'", async () => {
+    const req = new NextRequest("http://objectshape.theirdomain.com/dashboard", {
+      headers: { host: "objectshape.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    const location = res.headers.get("location")
+    expect(location).toContain("/dashboard/acme-corp/cms")
+    expect(location).not.toContain("%5Bobject")
   })
 })
