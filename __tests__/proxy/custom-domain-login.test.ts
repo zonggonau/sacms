@@ -115,3 +115,74 @@ describe("Custom domain → NextAuth's own /api/auth/* routes pass through untou
     expect(rewrite).toContain("/api/public/acme-corp/content/posts")
   })
 })
+
+// Bug fixed 2026-10-28: the custom domain's blanket "/api/* -> public
+// content API" rewrite also hijacked INTERNAL app API calls the dashboard
+// itself makes (e.g. /api/tenant/[tenant]/white-label/domain), so any
+// client-side fetch made from a /dashboard/* page accessed via a custom
+// domain silently 404'd. Confirmed live: the Infrastruktur > Domains tab
+// came back empty on a custom domain while the same tenant's domains
+// showed fine on the main platform domain.
+describe("Custom domain → internal app API namespaces pass through untouched (proxy.ts)", () => {
+  beforeEach(() => mockGet.mockClear())
+
+  it("does not rewrite /api/tenant/* (the dashboard's own management API)", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/api/tenant/acme-corp/white-label/domain", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+  })
+
+  it("does not rewrite /api/admin/* or /api/billing/*", async () => {
+    for (const path of ["/api/admin/pricing", "/api/billing/checkout"]) {
+      const req = new NextRequest(`http://admin.theirdomain.com${path}`, {
+        headers: { host: "admin.theirdomain.com" },
+      })
+      const res = await proxy(req)
+      expect(res.headers.get("x-middleware-rewrite"), `expected ${path} to pass through`).toBeNull()
+    }
+  })
+})
+
+// Bug fixed 2026-10-28: a custom domain is bound to exactly one tenant, but
+// the bare /dashboard path (or another tenant's dashboard path) passed
+// straight through to the generic multi-workspace picker page instead of
+// being bound to this domain's own tenant — confirmed live: deleting the
+// tenant id from the URL briefly showed the workspace list before a
+// client-side redirect sent it back to /cms.
+describe("Custom domain → bare /dashboard redirects to the bound tenant (proxy.ts)", () => {
+  beforeEach(() => mockGet.mockClear())
+
+  it("redirects bare /dashboard to this domain's own tenant cms", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/dashboard", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/dashboard/acme-corp/cms")
+  })
+
+  it("redirects a DIFFERENT tenant's dashboard path back to this domain's own tenant", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/dashboard/some-other-tenant/cms", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/dashboard/acme-corp/cms")
+  })
+
+  it("passes through this domain's own tenant dashboard path unchanged", async () => {
+    const req = new NextRequest("http://admin.theirdomain.com/dashboard/acme-corp/cms/content", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).not.toBe(307)
+    const rewrite = res.headers.get("x-middleware-rewrite")
+    expect(rewrite).toContain("/dashboard/acme-corp/cms/content")
+  })
+})

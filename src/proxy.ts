@@ -31,6 +31,27 @@ function isSkippablePath(pathname: string): boolean {
   )
 }
 
+// Internal app API namespaces — the dashboard/admin UI's own management
+// endpoints (member list, domains, billing, etc.), never a tenant content
+// shortcut. A custom domain or built-in subdomain must pass these through
+// untouched even while serving /dashboard/* pages, exactly like the main
+// platform domain does — otherwise every client-side fetch('/api/tenant/...')
+// made from a dashboard page gets silently hijacked into the public content
+// API below and 404s (confirmed live: the Infrastruktur > Domains tab came
+// back empty on a custom domain because its fetch to
+// /api/tenant/[tenant]/white-label/domain was rewritten to
+// /api/public/<tenant>/tenant/[tenant]/white-label/domain, a route that
+// doesn't exist).
+const INTERNAL_API_NAMESPACES = new Set([
+  "admin", "ai", "auth", "billing", "categories", "cron", "debug", "docs",
+  "domain", "enterprise", "geoip", "health", "mcp", "media", "public",
+  "statuses", "support", "tenant", "tenants", "test", "user",
+])
+function isInternalApiPath(pathname: string): boolean {
+  const match = pathname.match(/^\/api\/([^/]+)/)
+  return !match || INTERNAL_API_NAMESPACES.has(match[1])
+}
+
 let inMemoryFirstUserDone = false
 
 export async function proxy(request: NextRequest) {
@@ -561,7 +582,7 @@ export async function proxy(request: NextRequest) {
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
     } else if (pathname.startsWith("/media") || pathname.startsWith("/single-types")) {
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
-    } else if (pathname.startsWith("/api/public/") || pathname.startsWith("/api/tenant/")) {
+    } else if (pathname.startsWith("/api/") && isInternalApiPath(pathname)) {
       rewriteUrl.pathname = pathname
     } else if (pathname.startsWith("/api/")) {
       rewriteUrl.pathname = `/api/public/${dynamicSubdomain}${pathname.replace(/^\/api/, "")}`
@@ -569,7 +590,23 @@ export async function proxy(request: NextRequest) {
       rewriteUrl.pathname = `/api/public/${dynamicSubdomain}/graphql`
     } else if (pathname.startsWith("/cms")) {
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname}`
-    } else if (pathname.startsWith("/dashboard")) {
+    } else if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+      // This subdomain is bound to exactly one tenant — the bare
+      // multi-workspace picker (and any OTHER tenant's dashboard path)
+      // must never render here. Bounce straight back to this subdomain's
+      // own tenant, server-side, before any page component runs. Fixes a
+      // real bug: deleting the tenant id from the URL briefly flashed the
+      // generic workspace list before it client-redirected back to cms.
+      const pathTenant = pathname.split("/")[2] || null
+      if (pathTenant !== dynamicSubdomain) {
+        const target = request.nextUrl.clone()
+        target.pathname = `/dashboard/${dynamicSubdomain}/cms`
+        const response = NextResponse.redirect(target)
+        applySecurityHeaders(response, pathname)
+        response.headers.set("X-Subdomain-Portal", "workspace")
+        response.headers.set("X-Tenant-Slug", dynamicSubdomain)
+        return response
+      }
       rewriteUrl.pathname = pathname
     } else {
       // Default: CMS route group
@@ -647,14 +684,13 @@ export async function proxy(request: NextRequest) {
     }
 
     if (tenantSlug) {
-      // ---- API passthrough: always rewrite /api/* to public API ----
-      // EXCEPT /api/auth/* — NextAuth's own callback/signin/error/session
-      // routes, handled by src/app/api/auth/[...nextauth]/route.ts, not a
-      // tenant content endpoint. Without this exclusion every login
-      // attempt on a custom domain got silently rewritten to
-      // /api/public/<tenant>/auth/... (not a real route — 404), breaking
-      // login entirely. Confirmed live.
-      if ((pathname.startsWith("/api/") && !pathname.startsWith("/api/auth")) || pathname.startsWith("/graphql")) {
+      // ---- API passthrough: rewrite unrecognized /api/* shortcuts
+      // (content/single/brand/users/... — what a tenant's OWN public
+      // frontend might call via a relative path) to the public content
+      // API. EXCEPT any recognized internal app namespace (/api/auth,
+      // /api/tenant, /api/admin, etc. — see isInternalApiPath), which must
+      // behave exactly like the main platform domain. ----
+      if ((pathname.startsWith("/api/") && !isInternalApiPath(pathname)) || pathname.startsWith("/graphql")) {
         let restPath = pathname
         const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
         if (vMatch) {
@@ -674,14 +710,14 @@ export async function proxy(request: NextRequest) {
         return response
       }
 
-      // ---- Static/Next.js internals & NextAuth's own routes: pass
-      // through unchanged (see the /api/auth exclusion above) ----
+      // ---- Static/Next.js internals & internal app API namespaces: pass
+      // through unchanged (see isInternalApiPath above) ----
       if (
         pathname.startsWith("/_next/") ||
         pathname.startsWith("/favicon") ||
         pathname.startsWith("/robots") ||
         pathname.startsWith("/sitemap") ||
-        pathname.startsWith("/api/auth")
+        (pathname.startsWith("/api/") && isInternalApiPath(pathname))
       ) {
         const response = NextResponse.next()
         applySecurityHeaders(response)
@@ -733,7 +769,33 @@ export async function proxy(request: NextRequest) {
       const rewriteUrl = request.nextUrl.clone()
       if (pathname.startsWith("/cms")) {
         rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname}`
-      } else if (pathname.startsWith("/dashboard")) {
+      } else if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+        // A custom domain is bound to exactly one tenant — the bare
+        // multi-workspace picker (and any OTHER tenant's dashboard path)
+        // must never render here. Bounce straight back to this domain's
+        // own tenant, server-side, before any page component runs. Fixes
+        // a real bug: deleting the tenant id from the URL briefly flashed
+        // the generic workspace list before it client-redirected to cms.
+        const pathTenant = pathname.split("/")[2] || null
+        if (pathTenant !== tenantSlug) {
+          const target = request.nextUrl.clone()
+          switch (domainTarget) {
+            case "workspace":
+              target.pathname = `/dashboard/${tenantSlug}`
+              break
+            case "api":
+              target.pathname = `/api/public/${tenantSlug}/content`
+              break
+            case "cms":
+            default:
+              target.pathname = `/dashboard/${tenantSlug}/cms`
+              break
+          }
+          const response = NextResponse.redirect(target)
+          applySecurityHeaders(response)
+          response.headers.set("X-Tenant-Domain", host)
+          return response
+        }
         rewriteUrl.pathname = pathname
       } else {
         const response = NextResponse.next()
