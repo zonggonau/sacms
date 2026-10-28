@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { Metadata } from "next"
-import { db } from "@/lib/database"
+import { db, isOwnerEligibleForByoInfra } from "@/lib/database"
 
 export const metadata: Metadata = {
   title: "Dashboard | SaCMS",
@@ -19,6 +19,12 @@ export default async function GlobalDashboardLayout({
   if (!session?.user) {
     redirect("/login")
   }
+
+  // "Infrastruktur" (BYODB/BYOS) nav item only shows for an owner who can
+  // actually use it — Enterprise/Agency plan or an active enterprise
+  // license (see isOwnerEligibleForByoInfra). The page itself still blocks
+  // writes server-side for a direct URL visit either way.
+  const canUseByoInfra = await isOwnerEligibleForByoInfra(session.user.id).catch(() => false)
 
   // Fetch brand name from footer content entry
   let brandName = ""
@@ -37,7 +43,7 @@ export default async function GlobalDashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <GlobalSidebar session={session} brandName={brandName} />
+      <GlobalSidebar session={session} brandName={brandName} canUseByoInfra={canUseByoInfra} />
       <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
         <main className="flex-1 p-4 pt-16 md:p-10 w-full">
           {children}

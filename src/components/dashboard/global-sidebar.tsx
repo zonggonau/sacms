@@ -33,9 +33,13 @@ interface GlobalSidebarProps {
   isEnterpriseMode?: boolean
   session?: any
   brandName?: string
+  /** Shows "Infrastruktur" (BYODB/BYOS) only for an Enterprise/Agency owner
+   *  — see isOwnerEligibleForByoInfra in src/lib/database.ts, checked
+   *  server-side in the layout that renders this sidebar. */
+  canUseByoInfra?: boolean
 }
 
-export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSidebarProps = {}) {
+export function GlobalSidebar({ isEnterpriseMode, session, brandName, canUseByoInfra }: GlobalSidebarProps = {}) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -49,9 +53,13 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
-    { title: "Infrastruktur", href: "/dashboard/infrastructure", icon: Server },
-    { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
+
+  if (canUseByoInfra) {
+    navItems.push({ title: "Infrastruktur", href: "/dashboard/infrastructure", icon: Server })
+  }
+
+  navItems.push({ title: "API & Dokumentasi", href: "/docs", icon: BookOpen })
 
   // Add SaaS admin panel for super_admin
   if (session?.user?.role === "super_admin") {
