@@ -32,6 +32,7 @@ import {
 import { generateInvoicePDF, InvoiceData } from "@/lib/pdf-generator"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 
 export interface TransactionInvoiceItem {
   id: string
@@ -134,7 +135,7 @@ export function InvoiceDetailDialog({
     : undefined
 
   const handleCopyOrderId = () => {
-    navigator.clipboard.writeText(invoice.orderId)
+    copyToClipboard(invoice.orderId)
     setCopied(true)
     toast({ title: "Order ID Disalin", description: invoice.orderId })
     setTimeout(() => setCopied(false), 2000)

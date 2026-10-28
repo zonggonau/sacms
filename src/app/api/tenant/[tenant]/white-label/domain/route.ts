@@ -39,7 +39,8 @@ const setDomainSchema = z.object({
       /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
       "Format nama domain tidak valid"
     ),
-  target: z.enum(["cms", "workspace", "api"]).optional().default("cms"),
+  // "api" removed as a selectable portal target — see hosting-deployments-view.tsx.
+  target: z.enum(["cms", "workspace"]).optional().default("cms"),
 })
 
 const verifyOrDeleteSchema = z.object({
@@ -53,7 +54,7 @@ const setPrimarySchema = z.object({
 
 const updateTargetSchema = z.object({
   customDomain: z.string().min(3),
-  target: z.enum(["cms", "workspace", "api"]),
+  target: z.enum(["cms", "workspace"]),
 })
 
 /**

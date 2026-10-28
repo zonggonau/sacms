@@ -14,6 +14,14 @@ import { parseSchemaFieldOptions } from "./content-pipeline"
 import { validateContentEntry } from "@/lib/content-validations"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 
+// Halaman Statis (Single Types) content is meant to be entered by the
+// workspace owner/admin, not regular members — unlike normal Content Types,
+// there's no per-role RBAC permission for this, so it's gated directly on
+// the tenant role.
+function isStaticPageManager(role: string): boolean {
+  return role === "owner" || role === "admin"
+}
+
 export async function getSingleTypesAction(tenantSlug: string) {
   try {
     const session = await getServerSession(authOptions)
@@ -21,6 +29,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
+    if (!isStaticPageManager(access.role)) return { error: "Forbidden" }
 
     const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
     const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
@@ -94,6 +103,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
+    if (!isStaticPageManager(access.role)) return { error: "Forbidden" }
 
     const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
     const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
@@ -389,6 +399,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
+    if (!isStaticPageManager(access.role)) return { error: "Forbidden" }
 
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden" }

@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
+import { copyToClipboard } from "@/lib/clipboard"
 import Link from "next/link"
 
 interface ApiSnippetDialogProps {
@@ -98,7 +99,7 @@ curl -X GET "${apiUrl}?page=1&limit=10" \\
   -H "Accept: application/json"`
 
   const handleCopy = (code: string, tabName: string) => {
-    navigator.clipboard.writeText(code)
+    copyToClipboard(code)
     setCopiedTab(tabName)
     toast({ title: "Tersalin", description: `Kode ${tabName} telah disalin ke clipboard.` })
     setTimeout(() => setCopiedTab(null), 2000)

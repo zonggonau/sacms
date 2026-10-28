@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/hooks/use-toast"
+import { copyToClipboard } from "@/lib/clipboard"
 
 interface DocumentTemplateFieldProps {
   field: any
@@ -55,7 +56,7 @@ export function DocumentTemplateField({
     }))
 
   const handleCopyTag = (tag: string) => {
-    navigator.clipboard.writeText(tag)
+    copyToClipboard(tag)
     setCopiedKey(tag)
     toast({
       title: "Tag Disalin",

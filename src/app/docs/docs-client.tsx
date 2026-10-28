@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
+import { copyToClipboard } from "@/lib/clipboard"
 import {
   Plug,
   Terminal,
@@ -764,7 +765,7 @@ function CopyButton({ text, className = "" }: { text: string; className?: string
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      copyToClipboard(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {

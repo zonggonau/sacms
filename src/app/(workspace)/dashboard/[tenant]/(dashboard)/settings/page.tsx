@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -1017,7 +1018,7 @@ export default function TenantSettingsPage() {
                             className="h-7 w-7 shrink-0 rounded-lg"
                             onClick={() => {
                               const url = `${window.location.origin}/login?ws=${tenantSlug}`
-                              navigator.clipboard.writeText(url)
+                              copyToClipboard(url)
                               toast.success("Tautan login disalin")
                             }}
                           >

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useTransition, Suspense } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -410,7 +411,7 @@ function ApiExplorerContent() {
 
   const handleCopyResponse = () => {
     if (!response) return
-    navigator.clipboard.writeText(JSON.stringify(response, null, 2))
+    copyToClipboard(JSON.stringify(response, null, 2))
     setCopiedResponse(true)
     setTimeout(() => setCopiedResponse(false), 2000)
     toast({ title: "Tersalin!", description: "Respon JSON disalin ke clipboard." })
@@ -981,7 +982,7 @@ function ApiExplorerContent() {
                     variant="ghost"
                     size="sm"
                     onClick={() => {
-                      navigator.clipboard.writeText(generateCurlSnippet())
+                      copyToClipboard(generateCurlSnippet())
                       setCopiedSnippet(true)
                       setTimeout(() => setCopiedSnippet(false), 2000)
                       toast({ title: "cURL Tersalin!" })

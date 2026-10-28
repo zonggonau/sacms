@@ -20,6 +20,7 @@ import {
   Sparkles, Camera, Trash2, Upload, CheckCircle2, Copy, Check, Lock
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { copyToClipboard } from "@/lib/clipboard"
 import { updateProfileAction } from "@/actions/profile"
 
 interface ProfileModalProps {
@@ -61,7 +62,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
 
   const handleCopyId = () => {
     if (!userId) return
-    navigator.clipboard.writeText(userId)
+    copyToClipboard(userId)
     setCopiedId(true)
     toast({ title: "User ID Tersalin", description: "ID akun Anda berhasil disalin ke clipboard." })
     setTimeout(() => setCopiedId(false), 2000)

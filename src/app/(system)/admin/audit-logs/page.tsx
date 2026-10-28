@@ -27,6 +27,7 @@ import { JsonViewer } from "@/components/ui/json-viewer"
 import { useToast } from "@/hooks/use-toast"
 import { IpBadge } from "@/components/dashboard/ip-badge"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 
 interface AuditLog {
   id: string
@@ -103,7 +104,7 @@ export default function AdminAuditLogsPage() {
 
   const handleCopyJson = () => {
     if (!selectedLog?.data) return
-    navigator.clipboard.writeText(JSON.stringify(selectedLog.data, null, 2))
+    copyToClipboard(JSON.stringify(selectedLog.data, null, 2))
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

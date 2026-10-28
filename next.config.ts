@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
+    "sacms.test",
+    "*.sacms.test",
     "sacms.cloud",
     "*.sacms.cloud",
     "developer.sacms.cloud",

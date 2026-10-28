@@ -17,6 +17,7 @@ import {
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { getSingleTypesAction } from "@/actions/single-types"
+import { isPlatformStaff } from "@/lib/platform-roles"
 
 interface SingleType {
   id: string
@@ -29,7 +30,7 @@ interface SingleType {
 }
 
 export default function CMSSingleTypesPage() {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
   const tenantSlug = params?.tenant as string
@@ -37,6 +38,22 @@ export default function CMSSingleTypesPage() {
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+
+  // Halaman Statis is meant to be entered by the owner/admin only — a
+  // regular member reaching this URL directly gets bounced back to the CMS
+  // home instead of seeing the list. The server actions enforce the same
+  // rule independently (see isStaticPageManager in actions/single-types.ts).
+  const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
+  const effectiveRole = isPlatformStaff(session?.user?.role)
+    ? "owner"
+    : (tenantMembership?.role || "viewer")
+  const canManageStaticPages = effectiveRole === "owner" || effectiveRole === "admin"
+
+  useEffect(() => {
+    if (status === "authenticated" && !canManageStaticPages) {
+      router.replace(`/dashboard/${tenantSlug}/cms`)
+    }
+  }, [status, canManageStaticPages, router, tenantSlug])
 
   const fetchSingleTypes = async () => {
     if (!tenantSlug) return

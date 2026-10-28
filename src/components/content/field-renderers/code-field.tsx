@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -61,7 +62,7 @@ export function CodeField({
 
   const handleCopy = () => {
     if (!parsedValue.code) return
-    navigator.clipboard.writeText(parsedValue.code)
+    copyToClipboard(parsedValue.code)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

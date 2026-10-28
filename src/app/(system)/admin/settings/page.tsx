@@ -25,6 +25,7 @@ import {
   Cpu, Zap, Globe, Layers, Key, CheckCircle2, Sliders, Terminal, ExternalLink
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { copyToClipboard } from "@/lib/clipboard"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { v4 as uuidv4 } from "uuid"
@@ -914,7 +915,7 @@ export default function AdminSettingsPage() {
                           size="sm"
                           className="h-9 rounded-xl text-xs"
                           onClick={() => {
-                            navigator.clipboard.writeText("https://sacms.cloud/api/billing/midtrans/webhooks")
+                            copyToClipboard("https://sacms.cloud/api/billing/midtrans/webhooks")
                             toast({ title: "Tersalin", description: "Webhook URL Midtrans berhasil disalin." })
                           }}
                         >
@@ -1059,7 +1060,7 @@ export default function AdminSettingsPage() {
                             size="icon" 
                             className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground rounded-xl"
                             onClick={() => {
-                              navigator.clipboard.writeText(settings.globalTenantId)
+                              copyToClipboard(settings.globalTenantId)
                               setCopied(true)
                               setTimeout(() => setCopied(false), 1500)
                               toast({ title: "Tersalin", description: "ID Workspace berhasil disalin" })

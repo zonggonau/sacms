@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +22,7 @@ export function SdkTab({ tenantSlug }: SdkTabProps) {
 
   const handleCopy = async (text: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(text)
+      copyToClipboard(text)
       setCopiedBlock(id)
       setTimeout(() => setCopiedBlock(null), 2000)
       toast({ title: "Tersalin!", description: "Kode berhasil disalin ke clipboard." })

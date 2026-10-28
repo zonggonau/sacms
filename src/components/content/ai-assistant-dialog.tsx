@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { copyToClipboard } from "@/lib/clipboard"
 
 interface AIAssistantDialogProps {
   tenantSlug: string
@@ -155,7 +156,7 @@ export function AIAssistantDialog({
   }
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(result)
+    copyToClipboard(result)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

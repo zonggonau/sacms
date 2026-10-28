@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -140,7 +141,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], initialMcpTok
   const handleCopy = async (text: string, label: string = "Teks", id?: string) => {
     if (!text) return
     try {
-      await navigator.clipboard.writeText(text)
+      copyToClipboard(text)
       if (id) {
         setCopiedId(id)
         setTimeout(() => setCopiedId(null), 2000)

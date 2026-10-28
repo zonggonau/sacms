@@ -77,6 +77,22 @@ export default function CMSSingleTypeDetailPage() {
   const [locale, setLocale] = useState<string>("id")
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "id", name: "Bahasa Indonesia" }])
 
+  // Halaman Statis is meant to be entered by the owner/admin only — a
+  // regular member reaching this URL directly gets bounced back to the CMS
+  // home instead of seeing the editor. The server actions enforce the same
+  // rule independently (see isStaticPageManager in actions/single-types.ts).
+  const tenantMembershipForGate = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
+  const gateRole = isPlatformStaff(session?.user?.role)
+    ? "owner"
+    : (tenantMembershipForGate?.role || "viewer")
+  const canManageStaticPages = gateRole === "owner" || gateRole === "admin"
+
+  useEffect(() => {
+    if (status === "authenticated" && !canManageStaticPages) {
+      router.replace(`/dashboard/${tenantSlug}/cms`)
+    }
+  }, [status, canManageStaticPages, router, tenantSlug])
+
   const fetchData = useCallback(async () => {
     if (!tenantSlug || !singleTypeSlug) return
     setLoading(true)

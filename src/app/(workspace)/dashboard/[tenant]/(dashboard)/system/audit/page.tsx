@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -140,7 +141,7 @@ export default function TenantAuditLogsPage() {
       ? JSON.stringify(JSON.parse(selectedLog.data), null, 2)
       : JSON.stringify(selectedLog.data, null, 2)
     
-    navigator.clipboard.writeText(jsonStr)
+    copyToClipboard(jsonStr)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

@@ -101,6 +101,12 @@ const CONTRIBUTOR: Permission[] = [
   PERMISSIONS.CONTENT_UPDATE_OWN,
   PERMISSIONS.CONTENT_DELETE_OWN,
   PERMISSIONS.CONTENT_TYPE_READ,
+  // Without this, a contributor can create/edit content but can't open the
+  // Media Library picker to attach an existing image to a Media field —
+  // even "viewer" (read-only, can't create content at all) had media.read.
+  // Still no upload/delete here — picking from existing assets only; adding
+  // new media stays an author-and-up capability.
+  PERMISSIONS.MEDIA_READ,
 ]
 
 const READ_ONLY: Permission[] = [PERMISSIONS.CONTENT_READ, PERMISSIONS.MEDIA_READ, PERMISSIONS.CONTENT_TYPE_READ]

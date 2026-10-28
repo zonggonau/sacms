@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip"
 import { isPrivateIp, getCountryFlagEmoji, GeoIpResult } from "@/lib/geoip"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Copy, Check, Globe } from "lucide-react"
 
 // Client-side cache to prevent redundant requests across components
@@ -118,7 +119,7 @@ export function IpBadge({
 
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(ip)
+    copyToClipboard(ip)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }

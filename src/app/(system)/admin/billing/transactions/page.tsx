@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { cn, formatRupiah } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 
 interface Transaction {
   id: string
@@ -388,7 +389,7 @@ export default function AdminTransactionsPage() {
                     size="sm" 
                     className="h-6 text-[10px] text-muted-foreground hover:text-foreground px-1.5"
                     onClick={() => {
-                      navigator.clipboard.writeText(JSON.stringify(selectedTx, null, 2))
+                      copyToClipboard(JSON.stringify(selectedTx, null, 2))
                       setCopied(true)
                       setTimeout(() => setCopied(false), 1500)
                     }}

@@ -38,6 +38,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 import { deleteTenantAction } from "@/actions/tenant"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
@@ -146,7 +147,7 @@ export function WorkspaceManager({
 
   const handleCopySlug = (slug: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    navigator.clipboard.writeText(`${slug}.sacms.cloud`)
+    copyToClipboard(`${slug}.sacms.cloud`)
     setCopiedSlug(slug)
     toast({ title: "Tersalin", description: `URL ${slug}.sacms.cloud disalin ke clipboard.` })
     setTimeout(() => setCopiedSlug(null), 2000)

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -205,7 +206,7 @@ export default function TenantDashboardClient({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(currentTenant.vercelDeploymentUrl!)
+                  copyToClipboard(currentTenant.vercelDeploymentUrl!)
                   toast.success("Subdomain disalin ke clipboard!")
                 }}
                 className="rounded-xl h-8 px-3 text-xs font-semibold border-border/80"

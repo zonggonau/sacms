@@ -62,6 +62,7 @@ import {
   FileText,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 import { generateLicenseContractPDF } from "@/lib/pdf-generator"
 
 // ─── Paket Lisensi Enterprise (bundel tetap, 1 tahun) ──────────────────────
@@ -183,7 +184,7 @@ export default function EnterpriseLicensesPage() {
 
   const handleCopyKey = async (key: string) => {
     try {
-      await navigator.clipboard.writeText(key)
+      copyToClipboard(key)
       setCopiedKey(true)
       toast({
         title: "Tersalin!",

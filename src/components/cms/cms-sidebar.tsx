@@ -153,7 +153,10 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
             )}
           </div>
 
-          {/* Single Pages */}
+          {/* Single Pages — content is entered by the workspace owner/admin
+              only (see isStaticPageManager in actions/single-types.ts), so
+              regular members don't see this section at all. */}
+          {canGoBack && (
           <div className="space-y-1">
             <div className="flex items-center justify-between px-3 mb-1.5">
               <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Halaman Statis</p>
@@ -213,6 +216,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               </div>
             )}
           </div>
+          )}
 
         </div>
       </div>

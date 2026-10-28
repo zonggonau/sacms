@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -422,7 +423,7 @@ export function MCPDashboardClient({
   const handleCopy = async (text: string, label: string) => {
     if (!text) return
     try {
-      await navigator.clipboard.writeText(text)
+      copyToClipboard(text)
       toast({
         title: "Disalin!",
         description: `${label} berhasil disalin ke clipboard`,

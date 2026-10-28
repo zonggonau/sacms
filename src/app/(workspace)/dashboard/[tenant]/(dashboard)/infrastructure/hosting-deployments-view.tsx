@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -74,8 +75,15 @@ interface PingMetrics {
   checkedAt: string
 }
 
-type DomainTarget = "cms" | "workspace" | "api"
+type DomainTarget = "cms" | "workspace"
 
+// "api" (Headless API Gateway) used to be a third destination here, but a
+// custom domain only ever needs to land a human on CMS or the Workspace Hub
+// — which page they see after login already follows their role (CMS roles
+// go straight to /cms, owner/admin go straight to the workspace), so a
+// dedicated "api" portal target was redundant. Removed per product
+// decision; the REST/GraphQL API itself is unaffected (still reachable at
+// /api/public/... regardless of a domain's portal target).
 const DOMAIN_TARGETS: { value: DomainTarget; label: string; desc: string; icon: React.ReactNode; example: string }[] = [
   {
     value: "cms",
@@ -90,13 +98,6 @@ const DOMAIN_TARGETS: { value: DomainTarget; label: string; desc: string; icon: 
     desc: "Langsung masuk ke dashboard workspace",
     icon: <LayoutDashboard className="h-3.5 w-3.5" />,
     example: "portal.domain.com → /workspace",
-  },
-  {
-    value: "api",
-    label: "Headless API Gateway",
-    desc: "Expose REST & GraphQL API publik tenant",
-    icon: <Zap className="h-3.5 w-3.5" />,
-    example: "api.domain.com → /api",
   },
 ]
 
@@ -261,7 +262,7 @@ export function HostingDeploymentsView({
   }, [vercelDeployment?.url, pingMetrics, isPinging, runHealthPing])
 
   const copyText = (text: string, id: string) => {
-    navigator.clipboard.writeText(text)
+    copyToClipboard(text)
     setCopiedId(id)
     setTimeout(() => setCopiedId(null), 2000)
     toast.success("Tersalin ke clipboard!")

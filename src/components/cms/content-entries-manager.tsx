@@ -54,6 +54,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
+import { copyToClipboard } from "@/lib/clipboard"
 import {
   bulkContentAction,
   deleteEntryAction,
@@ -1773,7 +1774,7 @@ export function ContentEntriesManager({
                                   <DropdownMenuItem
                                     className="text-xs font-medium rounded-lg cursor-pointer gap-2 py-1.5"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(JSON.stringify(entry.data, null, 2))
+                                      copyToClipboard(JSON.stringify(entry.data, null, 2))
                                       toast({ title: "JSON Disalin ke Clipboard" })
                                     }}
                                   >
