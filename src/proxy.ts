@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getRedis } from "@/lib/redis"
 import { getClientIp, isLoopbackIp } from "@/lib/client-ip"
+import { parseDomainInfo } from "@/lib/domain-parser"
+import { db } from "@/lib/database"
 
 // The canonical hostname of this app (without https://)
 const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
@@ -698,6 +700,36 @@ export async function proxy(request: NextRequest) {
     }
 
     if (tenantSlug) {
+      // ---- Apex custom domain (e.g. bangparjo.shop, no subdomain label) ->
+      // the tenant's deployed frontend website (Infrastruktur > Hosting),
+      // not the CMS/Workspace portal. A SUBDOMAIN of a registered domain
+      // (e.g. admin.bangparjo.shop, portal.bangparjo.shop) keeps the
+      // existing cms/workspace behavior below — that distinction is what the
+      // user actually asked for: apex = frontend, subdomain = dashboard.
+      // Falls through to the normal cms/workspace routing below if the
+      // tenant hasn't deployed a frontend yet, so an apex domain registered
+      // before any deploy doesn't dead-end.
+      if (parseDomainInfo(host).isApex) {
+        const tenantRecord = await db.tenant.findFirst({
+          where: { OR: [{ id: tenantSlug }, { slug: tenantSlug }] },
+          select: { vercelDeploymentUrl: true },
+        }).catch(() => null)
+
+        if (tenantRecord?.vercelDeploymentUrl) {
+          const frontendOrigin = tenantRecord.vercelDeploymentUrl.startsWith("http")
+            ? tenantRecord.vercelDeploymentUrl
+            : `https://${tenantRecord.vercelDeploymentUrl}`
+          const proxyUrl = new URL(frontendOrigin)
+          proxyUrl.pathname = pathname
+          proxyUrl.search = request.nextUrl.search
+          const response = NextResponse.rewrite(proxyUrl)
+          applySecurityHeaders(response)
+          response.headers.set("X-Tenant-Domain", host)
+          response.headers.set("X-Domain-Target", "frontend")
+          return response
+        }
+      }
+
       // ---- API passthrough: rewrite unrecognized /api/* shortcuts
       // (content/single/brand/users/... — what a tenant's OWN public
       // frontend might call via a relative path) to the public content

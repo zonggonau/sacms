@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
+import { db } from "@/lib/database"
+
+vi.mock("@/lib/database", () => ({
+  db: { tenant: { findFirst: vi.fn() } },
+}))
 
 // Feature added 2026-10-25: a tenant's own verified custom domain (e.g.
 // admin.theirdomain.com) previously fell through to the generic, unbranded
@@ -18,6 +23,11 @@ const mockGet = vi.fn((key: string) => {
   // exercises that real shape instead of the plain-string shape above.
   if (key === "domain:objectshape.theirdomain.com") {
     return Promise.resolve({ slug: "acme-corp", target: "cms" })
+  }
+  // Apex (root, no subdomain label) registered domain — exercises the
+  // apex-goes-to-the-deployed-frontend behavior below.
+  if (key === "domain:bangparjo.shop") {
+    return Promise.resolve(JSON.stringify({ slug: "acme-corp", target: "cms" }))
   }
   return Promise.resolve(undefined)
 })
@@ -217,5 +227,53 @@ describe("Custom domain → Redis value may already be a parsed object (proxy.ts
     const location = res.headers.get("location")
     expect(location).toContain("/dashboard/acme-corp/cms")
     expect(location).not.toContain("%5Bobject")
+  })
+})
+
+// Feature added 2026-10-28: an APEX custom domain (no subdomain label, e.g.
+// bangparjo.shop) is meant for the tenant's deployed frontend website
+// (Infrastruktur > Hosting), not the CMS/Workspace portal — a SUBDOMAIN of a
+// registered domain (admin.bangparjo.shop) keeps going to cms/workspace as
+// before. Detected purely from the domain's shape via parseDomainInfo(), no
+// new admin-facing toggle.
+describe("Custom domain → apex domain proxies to the deployed frontend (proxy.ts)", () => {
+  beforeEach(() => {
+    mockGet.mockClear()
+    vi.mocked(db.tenant.findFirst).mockReset()
+  })
+
+  it("rewrites an apex custom domain straight to the tenant's deployed frontend", async () => {
+    vi.mocked(db.tenant.findFirst).mockResolvedValue({ vercelDeploymentUrl: "https://acme-corp.sacms.app" } as any)
+    const req = new NextRequest("http://bangparjo.shop/koleksi/promo?page=2", {
+      headers: { host: "bangparjo.shop" },
+    })
+    const res = await proxy(req)
+
+    const rewrite = res.headers.get("x-middleware-rewrite")
+    expect(rewrite).toContain("acme-corp.sacms.app/koleksi/promo")
+    expect(rewrite).toContain("page=2")
+  })
+
+  it("falls back to the normal cms/workspace routing if the apex domain's tenant hasn't deployed a frontend yet", async () => {
+    vi.mocked(db.tenant.findFirst).mockResolvedValue(null)
+    const req = new NextRequest("http://bangparjo.shop/dashboard", {
+      headers: { host: "bangparjo.shop" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/dashboard/acme-corp/cms")
+  })
+
+  it("does not proxy a registered SUBDOMAIN to the frontend even when a deployment exists", async () => {
+    vi.mocked(db.tenant.findFirst).mockResolvedValue({ vercelDeploymentUrl: "https://acme-corp.sacms.app" } as any)
+    const req = new NextRequest("http://admin.theirdomain.com/login", {
+      headers: { host: "admin.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    const rewrite = res.headers.get("x-middleware-rewrite")
+    expect(rewrite).toContain("ws=acme-corp")
+    expect(rewrite).not.toContain("sacms.app")
   })
 })

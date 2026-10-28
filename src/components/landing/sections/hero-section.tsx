@@ -4,8 +4,34 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { HeroData } from "../types"
 import { useSession } from "next-auth/react"
-import { LayoutDashboard, Database, Shield, Zap, CreditCard, Sparkles } from "lucide-react"
+import {
+  LayoutDashboard, Shield, Sparkles, Bot, Github, Workflow,
+  Rocket, MousePointer2, Wind, Terminal, MessageSquare, Hand,
+  FlaskConical, Sprout, Braces, LayoutTemplate
+} from "lucide-react"
 import { sanitizeHtml } from "@/lib/sanitize-html"
+
+// Every AI IDE/agent SaCMS's MCP server is advertised as working with
+// across the marketing site (see src/app/docs/page.tsx's metadata and
+// src/app/docs/docs-client.tsx's PLATFORMS setup guides) — no raster brand
+// logos are vendored in this repo, so each gets a themed lucide icon
+// instead of a real logo image.
+const AI_DEV_TOOLS = [
+  { icon: Rocket, label: "Antigravity", color: "text-amber-500" },
+  { icon: Github, label: "VS Code + Copilot", color: "text-foreground" },
+  { icon: MousePointer2, label: "Cursor", color: "text-violet-500" },
+  { icon: Wind, label: "Windsurf", color: "text-sky-500" },
+  { icon: Sparkles, label: "Claude", color: "text-orange-500" },
+  { icon: Terminal, label: "Cline", color: "text-emerald-500" },
+  { icon: MessageSquare, label: "ChatGPT", color: "text-green-500" },
+  { icon: Hand, label: "Manus", color: "text-rose-500" },
+  { icon: FlaskConical, label: "Google AI Studio", color: "text-red-500" },
+  { icon: Sprout, label: "Emergent", color: "text-lime-500" },
+  { icon: Braces, label: "Qoder", color: "text-indigo-500" },
+  { icon: LayoutTemplate, label: "v0.dev", color: "text-muted-foreground" },
+  { icon: Workflow, label: "Model Context Protocol", color: "text-blue-500" },
+  { icon: Bot, label: "AI Agent Apa Pun", color: "text-primary" },
+] as const
 
 function HighlightedHeadline({ text }: { text: string }) {
   const words = (text || "").split(" ")
@@ -80,23 +106,31 @@ export function HeroSection({ data }: { data: HeroData | null }) {
           </Link>
         </div>
 
-        {/* Tech Trust Badges / Quick Highlights */}
-        <div className="pt-8 border-t border-border/40 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-700 delay-700 fill-mode-both">
-          <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-            <Database className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span className="truncate">PostgreSQL 17 Appliance</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-            <Zap className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-            <span className="truncate">SaCMS Custom DNS</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-            <span className="truncate">AI Schema Generator</span>
-          </div>
-          <div className="flex items-center justify-center gap-2 p-2.5 rounded-2xl bg-card/40 border border-border/50 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
-            <CreditCard className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span className="truncate">Midtrans QRIS Billing</span>
+        {/* Frontend dev happens in your own AI IDE/agent via MCP — no
+            in-dashboard site builder (see src/lib/mcp — removed 2026-10-20).
+            This row used to advertise backend infra (DB/DNS/billing); it now
+            leads with what actually differentiates frontend development on
+            SaCMS: bring your own AI coding agent. Runs as an infinite
+            marquee (duplicated once for a seamless loop) since there are
+            more tools than comfortably fit a static row. */}
+        <div className="pt-8 border-t border-border/40 space-y-4 animate-in fade-in slide-in-from-bottom-12 duration-700 delay-700 fill-mode-both">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground/70">
+            Kembangkan Frontend dengan AI Agent &amp; IDE Favorit Anda
+          </p>
+          <div className="relative w-full overflow-hidden">
+            <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+            <div className="flex w-max gap-4 animate-marquee">
+              {[...AI_DEV_TOOLS, ...AI_DEV_TOOLS].map((tool, i) => (
+                <div
+                  key={`${tool.label}-${i}`}
+                  className="flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-card/40 border border-border/50 text-sm font-bold text-foreground backdrop-blur-sm shrink-0"
+                >
+                  <tool.icon className={`w-6 h-6 shrink-0 ${tool.color}`} />
+                  <span className="whitespace-nowrap">{tool.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

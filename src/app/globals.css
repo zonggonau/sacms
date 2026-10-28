@@ -135,6 +135,20 @@
   100% { transform: translateX(-100%); }
 }
 
+.animate-marquee {
+  animation: marquee 45s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
 /* Center all containers */
 .container {
   width: 100%;

@@ -339,6 +339,22 @@ interface OwnerMasterInfraCacheEntry extends OwnerMasterInfra {
 const MASTER_INFRA_CACHE_MS = 60_000
 const ownerMasterInfraCache = new Map<string, OwnerMasterInfraCacheEntry>()
 
+/**
+ * BYODB/BYOS (the owner's own Postgres/MinIO, set via the
+ * /api/user/infrastructure settings modal) is restricted to Enterprise and
+ * Agency plan owners — re-checked live, same reasoning as the license
+ * re-validation above, so a downgrade stops being honored immediately
+ * rather than only at the next save.
+ */
+export async function isOwnerEligibleForByoInfra(ownerId: string): Promise<boolean> {
+  const user = await db.user.findUnique({ where: { id: ownerId }, select: { plan: true } })
+  if (user?.plan === 'enterprise' || user?.plan === 'agency') return true
+  const { isEnterpriseTenant } = await import('./license')
+  const { getGlobalWorkspaceId } = await import('./settings')
+  const globalId = await getGlobalWorkspaceId()
+  return isEnterpriseTenant(globalId, ownerId)
+}
+
 export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMasterInfra> {
   const cached = ownerMasterInfraCache.get(tenantId)
   if (cached && cached.expiresAt > Date.now()) {
@@ -349,16 +365,13 @@ export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMaster
   try {
     const owner = await db.tenantMember.findFirst({ where: { tenantId, role: 'owner' }, select: { userId: true } })
     if (owner) {
-      const user = await db.user.findUnique({
-        where: { id: owner.userId },
-        select: { plan: true, masterDatabaseUrl: true, masterStorageConfig: true },
-      })
-      if (user) {
-        const { isEnterpriseTenant } = await import('./license')
-        const { getGlobalWorkspaceId } = await import('./settings')
-        const globalId = await getGlobalWorkspaceId()
-        const allowed = user.plan === 'enterprise' || (await isEnterpriseTenant(globalId, owner.userId))
-        if (allowed) {
+      const allowed = await isOwnerEligibleForByoInfra(owner.userId)
+      if (allowed) {
+        const user = await db.user.findUnique({
+          where: { id: owner.userId },
+          select: { masterDatabaseUrl: true, masterStorageConfig: true },
+        })
+        if (user) {
           const sc = user.masterStorageConfig as any
           const hasStorage = sc && sc.endpoint && sc.accessKey && sc.secretKey && sc.bucket
           result = {

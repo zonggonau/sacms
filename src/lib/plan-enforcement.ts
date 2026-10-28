@@ -45,9 +45,19 @@ export interface EnforcementResult {
 // ==================== STORAGE QUOTA ====================
 
 const MB = 1024 * 1024
+const GB = 1024 * MB
 
 /** `max` reported for a workspace whose storage is not metered. */
 export const UNLIMITED_STORAGE_BYTES = Number.MAX_SAFE_INTEGER
+
+/**
+ * Per-workspace storage default when the owner uses their own VPS/MinIO
+ * (BYOS) instead of SaCMS's shared pool or an Enterprise license grant.
+ * There's no fixed total to divide here — each workspace independently
+ * starts at this figure and the owner can raise it per workspace with no
+ * cross-workspace ceiling (see getOwnerFlatStorageAllocation below).
+ */
+export const DEFAULT_WORKSPACE_STORAGE_GB = 5
 
 export interface StorageQuota {
   /** Original files plus their generated thumbnail/medium versions. */
@@ -174,6 +184,34 @@ export async function getWorkspaceStorageAllocation(
 }
 
 /**
+ * Per-workspace storage slice for an owner using their own VPS/MinIO (BYOS)
+ * rather than an Enterprise license pool. Reuses the same
+ * EnterpriseStorageAllocation row shape ({ownerId, tenantId, allocatedGb})
+ * as the pool-split mechanism above, but with no pool/remainder math — an
+ * owner's own disk has no SaCMS-tracked total, so every workspace is
+ * independent: an explicit row wins, otherwise DEFAULT_WORKSPACE_STORAGE_GB.
+ */
+/** Whether this owner has their own MinIO/S3 (BYOS) configured — see getOwnerMasterInfra() in database.ts. */
+export async function hasOwnerByos(ownerId: string): Promise<boolean> {
+  const user = await db.user.findUnique({ where: { id: ownerId }, select: { masterStorageConfig: true } })
+  const sc = user?.masterStorageConfig as any
+  return Boolean(sc && sc.endpoint && sc.accessKey && sc.secretKey && sc.bucket)
+}
+
+export async function getOwnerFlatStorageAllocation(
+  ownerId: string,
+  tenantId: string
+): Promise<WorkspaceStorageSlice> {
+  const row = await db.enterpriseStorageAllocation.findFirst({
+    where: { ownerId, tenantId },
+    select: { allocatedGb: true },
+  })
+  return row
+    ? { allocatedBytes: row.allocatedGb * GB, isExplicit: true }
+    : { allocatedBytes: DEFAULT_WORKSPACE_STORAGE_GB * GB, isExplicit: false }
+}
+
+/**
  * This user's own account-level enterprise license, if it grants a bounded
  * AI credit pool (admin sets this per-license — not every enterprise
  * license needs one). Deliberately NOT unlimited, unlike the instance-wide
@@ -255,14 +293,23 @@ export async function getStorageQuota(tenantId: string): Promise<StorageQuota> {
     const ownerId = await getTenantOwnerId(tenantId)
     if (ownerId) {
       // Owner's own master BYOS (set once at /dashboard, see
-      // getOwnerMasterInfra() in database.ts) — unmetered, same as
-      // tenant.storageConfig being set directly, and checked ahead of the
-      // bounded license storage pool below since it's the owner's own
-      // infra, not a capped grant.
+      // getOwnerMasterInfra() in database.ts) — checked ahead of the bounded
+      // Enterprise license pool below since it's the owner's own infra, not
+      // a capped grant. Previously fully unmetered (limitBytes: null); now
+      // gets the same flat default-5GB-per-workspace allocation as the
+      // Enterprise pool branch, just without a cross-workspace ceiling
+      // (there's no SaCMS-tracked total for an owner's own disk).
       const { getOwnerMasterInfra } = await import('./database')
       const master = await getOwnerMasterInfra(tenantId)
       if (master.storageConfig) {
-        return { usedBytes, limitBytes: null, planBytes, addonBytes, planSlug: planConfig.plan_slug }
+        const slice = await getOwnerFlatStorageAllocation(ownerId, tenantId)
+        return {
+          usedBytes,
+          limitBytes: slice.allocatedBytes + addonBytes,
+          planBytes: slice.allocatedBytes,
+          addonBytes,
+          planSlug: planConfig.plan_slug,
+        }
       }
 
       const ownerLicense = await getOwnerStorageLicense(ownerId)

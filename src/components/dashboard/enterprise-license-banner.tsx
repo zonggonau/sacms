@@ -326,7 +326,9 @@ export function EnterpriseLicenseBanner({
           )
         })()}
 
-        {scope === "user" && license.storageLimitBytes != null && <StorageAllocationSection />}
+        {/* Moved to the dedicated /dashboard/infrastructure page's Storage
+            tab per product decision 2026-10-28 — no longer duplicated here
+            or on /dashboard/billing. */}
 
         {license.aiCredits != null && license.aiCreditsUsed != null && (() => {
           const creditPct = license.aiCredits > 0
@@ -387,6 +389,8 @@ interface StorageAllocationWorkspace {
 
 interface StorageAllocationResponse {
   licensed: boolean
+  /** "enterprise" = bounded license pool; "byos" = owner's own VPS/MinIO, no pool ceiling. */
+  poolMode?: "enterprise" | "byos"
   poolLimitBytes?: number
   poolUsedBytes?: number
   overAllocated?: boolean
@@ -402,7 +406,7 @@ interface StorageAllocationResponse {
  * endpoint does an N-tenant fan-out this banner's cheap default load
  * shouldn't pay for on every dashboard mount.
  */
-function StorageAllocationSection() {
+export function StorageAllocationSection() {
   const { toast } = useToast()
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -475,7 +479,7 @@ function StorageAllocationSection() {
   }
 
   return (
-    <div className="mt-4 pt-4 border-t border-border/60">
+    <div>
       <button
         type="button"
         onClick={handleExpand}

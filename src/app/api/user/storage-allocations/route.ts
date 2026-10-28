@@ -17,6 +17,8 @@ import {
   getOwnerStorageLicense,
   getOwnerStorageAllocationPlan,
   getOwnerPooledStorageUsedBytes,
+  getOwnerFlatStorageAllocation,
+  hasOwnerByos,
   getStorageQuota,
 } from "@/lib/plan-enforcement"
 
@@ -28,12 +30,14 @@ export async function GET() {
   const ownerId = session.user.id
 
   const ownerLicense = await getOwnerStorageLicense(ownerId)
-  if (!ownerLicense.licensed) {
+  const byos = ownerLicense.licensed ? false : await hasOwnerByos(ownerId)
+  if (!ownerLicense.licensed && !byos) {
     return NextResponse.json({ licensed: false })
   }
+  const poolMode: "enterprise" | "byos" = ownerLicense.licensed ? "enterprise" : "byos"
 
   const [plan, poolUsedBytes, ownedMemberships] = await Promise.all([
-    getOwnerStorageAllocationPlan(ownerId, ownerLicense.limitBytes),
+    poolMode === "enterprise" ? getOwnerStorageAllocationPlan(ownerId, ownerLicense.limitBytes) : null,
     getOwnerPooledStorageUsedBytes(ownerId),
     db.tenantMember.findMany({
       where: { userId: ownerId, role: "owner" },
@@ -44,7 +48,9 @@ export async function GET() {
   const workspaces = await Promise.all(
     ownedMemberships.map(async ({ tenant }) => {
       const quota = await getStorageQuota(tenant.id)
-      const slice = plan.get(tenant.id) ?? { allocatedBytes: 0, isExplicit: false }
+      const slice = plan
+        ? plan.get(tenant.id) ?? { allocatedBytes: 0, isExplicit: false }
+        : await getOwnerFlatStorageAllocation(ownerId, tenant.id)
       return {
         tenantId: tenant.id,
         name: tenant.name,
@@ -64,9 +70,12 @@ export async function GET() {
 
   return NextResponse.json({
     licensed: true,
-    poolLimitBytes: ownerLicense.limitBytes,
+    poolMode,
+    // No fixed total to report or overflow-check against for an owner's
+    // own VPS/MinIO — every workspace's allocation is independent there.
+    poolLimitBytes: poolMode === "enterprise" ? ownerLicense.limitBytes : null,
     poolUsedBytes,
-    overAllocated: explicitTotalBytes > ownerLicense.limitBytes,
+    overAllocated: poolMode === "enterprise" && explicitTotalBytes > ownerLicense.limitBytes,
     workspaces,
   })
 }

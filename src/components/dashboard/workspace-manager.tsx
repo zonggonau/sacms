@@ -63,7 +63,7 @@ interface Tenant {
   /** This workspace's own slice of its owner's pooled Enterprise storage
    *  grant (see getStorageQuota()'s enterprise branch) — only set for
    *  enterprise-licensed tenants; null/undefined otherwise. Read-only here;
-   *  manage the split from EnterpriseLicenseBanner's allocation section. */
+   *  manage the split from the /dashboard/infrastructure page's Storage tab. */
   storageUsedBytes?: number | null
   storageLimitBytes?: number | null
 }

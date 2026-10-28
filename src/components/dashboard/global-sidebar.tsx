@@ -8,8 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   LayoutDashboard,
   CreditCard,
-  Layers,
-  LayoutTemplate,
+  Server,
   LogOut,
   Menu,
   X,
@@ -50,6 +49,7 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
+    { title: "Infrastruktur", href: "/dashboard/infrastructure", icon: Server },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
 

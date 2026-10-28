@@ -11,7 +11,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { apiError } from "@/lib/api/route-helpers"
-import { getOwnerStorageLicense } from "@/lib/plan-enforcement"
+import { getOwnerStorageLicense, hasOwnerByos } from "@/lib/plan-enforcement"
 
 export const dynamic = "force-dynamic"
 
@@ -29,8 +29,9 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ ten
   const { tenantId } = await context.params
 
   const ownerLicense = await getOwnerStorageLicense(ownerId)
-  if (!ownerLicense.licensed) {
-    return apiError("forbidden", { message: "Akun ini tidak memiliki lisensi Enterprise dengan kuota storage." })
+  const byos = ownerLicense.licensed ? false : await hasOwnerByos(ownerId)
+  if (!ownerLicense.licensed && !byos) {
+    return apiError("forbidden", { message: "Akun ini tidak memiliki lisensi Enterprise atau storage sendiri (MinIO) yang terhubung." })
   }
 
   if (!(await requireOwnedTenant(ownerId, tenantId))) {
@@ -43,24 +44,29 @@ export async function PUT(request: NextRequest, context: { params: Promise<{ ten
     return apiError("validation", { message: "allocatedGb harus berupa bilangan bulat lebih dari 0." })
   }
 
-  // Sum invariant: this workspace's new explicit figure plus every OTHER
-  // explicit figure must not exceed the pool. Checked live against the
-  // license's current size, not a stored invariant — a later license
-  // downgrade is allowed to put existing rows over this (see
-  // getOwnerStorageAllocationPlan's clamp-at-0 remainder), it just blocks
-  // this write from making an over-allocation worse.
-  const otherExplicit = await db.enterpriseStorageAllocation.findMany({
-    where: { ownerId, tenantId: { not: tenantId } },
-    select: { allocatedGb: true },
-  })
-  const otherExplicitBytes = otherExplicit.reduce((sum, r) => sum + r.allocatedGb * GB, 0)
-  const requestedBytes = allocatedGb * GB
-
-  if (otherExplicitBytes + requestedBytes > ownerLicense.limitBytes) {
-    const remainingGb = Math.max(0, Math.floor((ownerLicense.limitBytes - otherExplicitBytes) / GB))
-    return apiError("validation", {
-      message: `Alokasi ini melebihi sisa kuota lisensi. Sisa yang tersedia untuk workspace ini: ${remainingGb} GB.`,
+  // Sum invariant only applies to the bounded Enterprise license pool — an
+  // owner's own VPS/MinIO has no SaCMS-tracked total, so every workspace's
+  // allocation there is independent (see getOwnerFlatStorageAllocation).
+  if (ownerLicense.licensed) {
+    // This workspace's new explicit figure plus every OTHER explicit figure
+    // must not exceed the pool. Checked live against the license's current
+    // size, not a stored invariant — a later license downgrade is allowed to
+    // put existing rows over this (see getOwnerStorageAllocationPlan's
+    // clamp-at-0 remainder), it just blocks this write from making an
+    // over-allocation worse.
+    const otherExplicit = await db.enterpriseStorageAllocation.findMany({
+      where: { ownerId, tenantId: { not: tenantId } },
+      select: { allocatedGb: true },
     })
+    const otherExplicitBytes = otherExplicit.reduce((sum, r) => sum + r.allocatedGb * GB, 0)
+    const requestedBytes = allocatedGb * GB
+
+    if (otherExplicitBytes + requestedBytes > ownerLicense.limitBytes) {
+      const remainingGb = Math.max(0, Math.floor((ownerLicense.limitBytes - otherExplicitBytes) / GB))
+      return apiError("validation", {
+        message: `Alokasi ini melebihi sisa kuota lisensi. Sisa yang tersedia untuk workspace ini: ${remainingGb} GB.`,
+      })
+    }
   }
 
   await db.enterpriseStorageAllocation.upsert({
