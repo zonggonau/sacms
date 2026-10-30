@@ -81,7 +81,7 @@ export default function AdminCustomDomainsPage() {
   const [domainToDelete, setDomainToDelete] = useState<CustomDomainItem | null>(null)
   const [dnsGuideDomain, setDnsGuideDomain] = useState<CustomDomainItem | null>(null)
 
-  const isAdmin = session?.user?.role === "super_admin" || session?.user?.role === "admin"
+  const isAdmin = session?.user?.role === "super_admin"
 
   useEffect(() => {
     if (status === "unauthenticated") {

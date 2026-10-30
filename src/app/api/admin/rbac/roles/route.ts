@@ -121,7 +121,6 @@ export const GET = withAdminAuth(
 
     return NextResponse.json({ roles: rolesWithPermissions })
   },
-  { allowRoles: ["admin"] },
 )
 
 // POST /api/admin/rbac/roles - assign a nav permission to a platform role
@@ -170,5 +169,4 @@ export const POST = withAdminAuth(
 
     return NextResponse.json({ rolePermission: rp })
   },
-  { allowRoles: ["admin"] },
 )

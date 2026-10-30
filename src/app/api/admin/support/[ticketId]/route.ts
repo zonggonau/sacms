@@ -51,7 +51,7 @@ export const GET = withAdminAuth(
 
     return NextResponse.json({ ticket })
   },
-  { allowRoles: ["admin"] },
+  { allowRoles: ["employee"] },
 )
 
 /** POST — staff reply to a ticket. */
@@ -99,7 +99,7 @@ export const POST = withAdminAuth(
 
     return NextResponse.json({ success: true, message: newMessage })
   },
-  { allowRoles: ["admin"] },
+  { allowRoles: ["employee"] },
 )
 
 /** PATCH — update ticket status/priority from the admin dashboard. */
@@ -119,5 +119,5 @@ export const PATCH = withAdminAuth(
     const updated = await db.supportTicket.update({ where: { id: ticket.id }, data: updateData })
     return NextResponse.json({ success: true, ticket: updated })
   },
-  { allowRoles: ["admin"] },
+  { allowRoles: ["employee"] },
 )

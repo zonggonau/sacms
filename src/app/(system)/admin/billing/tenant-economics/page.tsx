@@ -45,7 +45,7 @@ export default function TenantEconomicsPage() {
   }
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin" || session?.user?.role === "admin") {
+    if (session?.user?.role === "super_admin" || session?.user?.role === "finance") {
       fetchReports()
     }
   }, [session?.user?.id, session?.user?.role])
@@ -96,7 +96,7 @@ export default function TenantEconomicsPage() {
     )
   }
 
-  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "finance") {
     router.push("/dashboard")
     return null
   }

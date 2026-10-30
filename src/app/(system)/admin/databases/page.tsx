@@ -37,7 +37,7 @@ export default function AdminDatabasesPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  const isAdmin = session?.user?.role === "super_admin" || session?.user?.role === "admin"
+  const isAdmin = session?.user?.role === "super_admin"
 
   useEffect(() => {
     if (status === "unauthenticated") {

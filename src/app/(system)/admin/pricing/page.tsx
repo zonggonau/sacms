@@ -396,12 +396,13 @@ export default function AdminPricingPage() {
     )
   }
 
-  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+  const role = session?.user?.role
+  if (role !== "super_admin" && role !== "employee" && role !== "finance") {
     router.push("/dashboard")
     return null
   }
 
-  const canEdit = session?.user?.role === "super_admin"
+  const canEdit = role === "super_admin" || role === "finance"
 
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-6xl mx-auto space-y-6">
@@ -409,7 +410,7 @@ export default function AdminPricingPage() {
         <h1 className="text-xl font-black text-foreground">Pricing &amp; Plans</h1>
         <p className="text-xs text-muted-foreground mt-1">
           Kelola harga akun, workspace, paket kredit AI, dan addon secara langsung — sumber kebenaran tunggal yang dipakai checkout, halaman harga publik, dan dashboard.
-          {!canEdit && " Role Anda (admin) hanya bisa melihat — perubahan hanya bisa dilakukan super_admin."}
+          {!canEdit && " Role Anda (Staf Internal) hanya bisa melihat — perubahan harga hanya bisa dilakukan Bendahara atau Super Admin."}
         </p>
       </div>
 

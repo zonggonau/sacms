@@ -7,7 +7,7 @@ import { toFeaturesJson } from "@/lib/pricing"
 export const GET = withAdminAuth(async () => {
   const plans = await db.workspacePlan.findMany({ orderBy: { order: "asc" } })
   return NextResponse.json({ plans })
-}, { allowRoles: ["admin"] })
+}, { allowRoles: ["employee", "finance"] })
 
 export const POST = withAdminAuth(async (request) => {
   const parsed = await readJson(request, workspacePlanSchema)
@@ -18,4 +18,4 @@ export const POST = withAdminAuth(async (request) => {
 
   const plan = await db.workspacePlan.create({ data: { ...parsed.data, features: toFeaturesJson(parsed.data.features) } })
   return NextResponse.json({ plan }, { status: 201 })
-})
+}, { allowRoles: ["finance"] })

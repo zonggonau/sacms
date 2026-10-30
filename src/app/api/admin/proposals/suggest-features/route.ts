@@ -17,7 +17,7 @@ import { NextResponse } from "next/server"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 import { z } from "zod"
 
-const ALLOW_ROLES = ["admin", "employee", "karyawan"]
+const ALLOW_ROLES = ["employee"]
 
 const SuggestSchema = z.object({
   institutionName: z.string().trim().min(1).max(255),

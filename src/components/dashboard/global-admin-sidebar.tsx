@@ -103,7 +103,6 @@ export function GlobalAdminSidebar() {
   const { data: session } = useSession()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const [permittedPaths, setPermittedPaths] = useState<string[] | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [unreadSupportCount, setUnreadSupportCount] = useState(0)
 
@@ -122,24 +121,6 @@ export function GlobalAdminSidebar() {
     }
     fetchUnread()
     const interval = setInterval(fetchUnread, 8000)
-
-    // Fetch dynamic permissions
-    const fetchPerms = async () => {
-      if (userId) {
-        try {
-          const res = await fetch('/api/user/permissions')
-          if (res.ok) {
-            const data = await res.json()
-            setPermittedPaths(data.permissions)
-          } else {
-            setPermittedPaths([])
-          }
-        } catch (e) {
-          setPermittedPaths([])
-        }
-      }
-    }
-    fetchPerms()
 
     return () => clearInterval(interval)
   }, [userId])
@@ -170,29 +151,25 @@ export function GlobalAdminSidebar() {
       })
     }))
 
-    if (!role || role === "super_admin" || (permittedPaths && permittedPaths.includes("*"))) return sectionsWithBadges
+    if (!role || role === "super_admin") return sectionsWithBadges
 
-    if (role === "admin") {
-      // Monitoring and Audit Logs 403/hang for a plain admin (their backing
-      // APIs are super_admin-only) — drop them instead of linking to a dead end.
-      return sectionsWithBadges
-        .map((section) => ({
-          ...section,
-          items: section.items.filter((item) => !item.superAdminOnly),
-        }))
-        .filter((section) => section.items.length > 0)
+    // Staf Internal ("employee") and Bendahara ("finance") are narrow
+    // /admin/* roles — allow-list their exact pages rather than relying on
+    // the generic superAdminOnly flag (which only hides the super-admin-
+    // exclusive pages, not the ones scoped to the OTHER narrow role).
+    // Mirrors the real API gates in each route's `allowRoles`.
+    const NARROW_ROLE_PATHS: Record<string, string[]> = {
+      employee: ["/admin/support", "/admin/pricing", "/admin/proposals"],
+      finance: ["/admin/billing", "/admin/pricing"],
     }
-
-    if (!permittedPaths) return [] // Loading state
+    const allowedPaths = NARROW_ROLE_PATHS[role]
+    if (!allowedPaths) return [] // Unrecognized/retired role — nothing to show
 
     return sectionsWithBadges
-      .map((section) => {
-        const items = section.items.filter((item) => {
-          // Check if the user has a permission name that matches the item.href or a wildcard that covers it
-          return permittedPaths.some(p => item.href === p || item.href.startsWith(p + '/'))
-        })
-        return { ...section, items }
-      })
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => allowedPaths.includes(item.href)),
+      }))
       .filter((section) => section.items.length > 0)
   }
 

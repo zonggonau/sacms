@@ -91,7 +91,7 @@ export default function AdminTransactionsPage() {
   }, [status, router])
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin" || session?.user?.role === "admin") fetchTransactions(1)
+    if (session?.user?.role === "super_admin" || session?.user?.role === "finance") fetchTransactions(1)
   }, [session, statusFilter])
 
   const exportCSV = () => {
@@ -163,7 +163,7 @@ export default function AdminTransactionsPage() {
     )
   }
 
-  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "finance") {
     router.push("/dashboard")
     return null
   }

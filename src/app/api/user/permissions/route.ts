@@ -13,7 +13,7 @@ export async function GET() {
     const roleSlug = session.user.role
 
     // If super_admin, return a special flag or wildcard
-    if (roleSlug === "super_admin" || roleSlug === "admin") {
+    if (roleSlug === "super_admin") {
       return NextResponse.json({ permissions: ["*"] })
     }
 

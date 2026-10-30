@@ -25,7 +25,7 @@ const jsonReq = (body: unknown) =>
 describe("PATCH /api/admin/proposals/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockSession.mockResolvedValue({ user: { id: "staff1", role: "admin" } } as any)
+    mockSession.mockResolvedValue({ user: { id: "staff1", role: "employee" } } as any)
   })
 
   it("rejects an invalid stage value", async () => {

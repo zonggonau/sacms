@@ -2,9 +2,9 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withAdminAuth } from "@/lib/api/route-helpers"
 
-// allowRoles: ["admin"] — matches every other admin billing page (overview,
-// laba-rugi, margin-keuntungan, tenant-economics), which this route was the
-// one outlier stricter than for no apparent reason.
+// allowRoles: ["finance"] — matches every other admin billing page (overview,
+// laba-rugi, margin-keuntungan, tenant-economics). Billing/financial reports
+// are Bendahara's domain now that the platform "admin" role is retired.
 export const GET = withAdminAuth(async (request) => {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
@@ -65,4 +65,4 @@ export const GET = withAdminAuth(async (request) => {
       transactions,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     })
-}, { allowRoles: ["admin"] })
+}, { allowRoles: ["finance"] })

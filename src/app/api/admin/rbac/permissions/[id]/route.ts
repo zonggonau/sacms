@@ -21,7 +21,6 @@ export const PATCH = withAdminAuth(
     const permission = await db.permission.update({ where: { id }, data })
     return NextResponse.json({ permission })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const DELETE = withAdminAuth(
@@ -31,5 +30,4 @@ export const DELETE = withAdminAuth(
     await db.permission.delete({ where: { id } })
     return NextResponse.json({ success: true })
   },
-  { allowRoles: ["admin"] },
 )

@@ -12,7 +12,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { isValidStage, TERMINAL_STAGES } from "@/lib/proposal-stages"
 import { z } from "zod"
 
-const ALLOW_ROLES = ["admin", "employee", "karyawan"]
+const ALLOW_ROLES = ["employee"]
 
 export const GET = withAdminAuth(
   async (_request, context) => {

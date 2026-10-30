@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
 /** Platform roles allowed into the admin portal. */
-const ADMIN_PORTAL_ROLES = ["super_admin", "admin", "employee", "karyawan"]
+const ADMIN_PORTAL_ROLES = ["super_admin", "employee", "finance"]
 
 export default async function AdminLayout({
   children,

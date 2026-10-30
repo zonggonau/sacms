@@ -45,7 +45,6 @@ export const GET = withAdminAuth(
       pendingCount,
     })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const POST = withAdminAuth(
@@ -117,7 +116,6 @@ export const POST = withAdminAuth(
     }
     return apiError("validation", { message: "Invalid action" })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const DELETE = withAdminAuth(
@@ -148,5 +146,4 @@ export const DELETE = withAdminAuth(
 
     return NextResponse.json({ success: true })
   },
-  { allowRoles: ["admin"] },
 )

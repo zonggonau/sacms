@@ -82,5 +82,5 @@ export const GET = withAdminAuth(
       },
     })
   },
-  { allowRoles: ["admin"] },
+  { allowRoles: ["employee"] },
 )

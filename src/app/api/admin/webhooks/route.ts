@@ -103,7 +103,6 @@ export const GET = withAdminAuth(
       }
     })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const POST = withAdminAuth(
@@ -162,5 +161,4 @@ export const POST = withAdminAuth(
 
     return apiError("validation", { message: "Invalid action" })
   },
-  { allowRoles: ["admin"] },
 )

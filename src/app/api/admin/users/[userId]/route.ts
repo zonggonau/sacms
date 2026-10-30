@@ -21,7 +21,7 @@ const SAFE_USER_SELECT = {
 /** Roles a platform admin may assign. `super_admin` and `developer`
  *  (cross-tenant platform staff — see lib/platform-roles.ts) are added
  *  only for a super_admin actor. */
-const ADMIN_ASSIGNABLE_ROLES = ["owner", "user", "admin", "employee", "karyawan"] as const
+const ADMIN_ASSIGNABLE_ROLES = ["owner", "user", "employee", "finance"] as const
 const ALL_ASSIGNABLE_ROLES = [...ADMIN_ASSIGNABLE_ROLES, "super_admin", "developer"] as const
 
 const updateUserSchema = z.object({
@@ -54,7 +54,6 @@ export const GET = withAdminAuth(
     if (!user) return apiError("not_found", { message: "User not found" })
     return NextResponse.json({ user })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const PATCH = withAdminAuth(
@@ -124,7 +123,6 @@ export const PATCH = withAdminAuth(
 
     return NextResponse.json({ user })
   },
-  { allowRoles: ["admin"] },
 )
 
 export const DELETE = withAdminAuth(

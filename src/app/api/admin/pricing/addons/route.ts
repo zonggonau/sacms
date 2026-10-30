@@ -15,7 +15,7 @@ function serializeAddon(addon: any) {
 export const GET = withAdminAuth(async () => {
   const addons = await db.addon.findMany({ orderBy: { order: "asc" } })
   return NextResponse.json({ addons: addons.map(serializeAddon) })
-}, { allowRoles: ["admin"] })
+}, { allowRoles: ["employee", "finance"] })
 
 export const POST = withAdminAuth(async (request) => {
   const parsed = await readJson(request, addonSchema)
@@ -33,4 +33,4 @@ export const POST = withAdminAuth(async (request) => {
     },
   })
   return NextResponse.json({ addon: serializeAddon(addon) }, { status: 201 })
-})
+}, { allowRoles: ["finance"] })

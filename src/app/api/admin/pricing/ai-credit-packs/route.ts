@@ -7,7 +7,7 @@ import { toFeaturesJson } from "@/lib/pricing"
 export const GET = withAdminAuth(async () => {
   const packs = await db.aiCreditPack.findMany({ orderBy: { order: "asc" } })
   return NextResponse.json({ packs })
-}, { allowRoles: ["admin"] })
+}, { allowRoles: ["employee", "finance"] })
 
 export const POST = withAdminAuth(async (request) => {
   const parsed = await readJson(request, aiCreditPackSchema)
@@ -18,4 +18,4 @@ export const POST = withAdminAuth(async (request) => {
 
   const pack = await db.aiCreditPack.create({ data: { ...parsed.data, features: toFeaturesJson(parsed.data.features) } })
   return NextResponse.json({ pack }, { status: 201 })
-})
+}, { allowRoles: ["finance"] })

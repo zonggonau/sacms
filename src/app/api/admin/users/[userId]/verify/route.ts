@@ -131,5 +131,4 @@ export const POST = withAdminAuth(
       }, { status: 500 })
     }
   },
-  { allowRoles: ["admin"] },
 )

@@ -33,7 +33,7 @@ export const PATCH = withAdminAuth(async (request, context) => {
     },
   })
   return NextResponse.json({ addon: serializeAddon(addon) })
-})
+}, { allowRoles: ["finance"] })
 
 export const DELETE = withAdminAuth(async (_request, context) => {
   const { id } = await context.params
@@ -42,4 +42,4 @@ export const DELETE = withAdminAuth(async (_request, context) => {
 
   await db.addon.delete({ where: { id } })
   return NextResponse.json({ success: true })
-})
+}, { allowRoles: ["finance"] })

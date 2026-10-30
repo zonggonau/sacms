@@ -10,17 +10,16 @@ const overrideSchema = z.object({
   note: z.string().max(500).nullable().optional(),
 })
 
-// GET/POST/DELETE used to call withAdminAuth with no options, defaulting to
-// super_admin-only (route-helpers.ts) — every sibling route on this same
-// page (users/route.ts, [userId]/route.ts, verify/route.ts) passes
-// allowRoles: ["admin"]. The "Kustomisasi Kuota" action is shown to any
-// admin (page.tsx's isAdmin gate), so a plain admin clicking it always
-// 403'd with no indication why the dialog looked empty/broken.
+// GET/POST/DELETE call withAdminAuth with no options, defaulting to
+// super_admin-only (route-helpers.ts) — this matches every sibling route on
+// this same page (users/route.ts, [userId]/route.ts, verify/route.ts),
+// which is now super_admin-only end to end since the "admin" platform role
+// was retired and /admin/users' own page-level gate narrowed to super_admin.
 export const GET = withAdminAuth(async (_request, context) => {
   const { userId } = await context.params
   const override = await db.customPlanOverride.findUnique({ where: { userId } })
   return NextResponse.json({ override })
-}, { allowRoles: ["admin"] })
+})
 
 export const POST = withAdminAuth(async (request, context, { session }) => {
   const { userId } = await context.params
@@ -45,7 +44,7 @@ export const POST = withAdminAuth(async (request, context, { session }) => {
   })
 
   return NextResponse.json({ override })
-}, { allowRoles: ["admin"] })
+})
 
 export const DELETE = withAdminAuth(async (_request, context, { session }) => {
   const { userId } = await context.params
@@ -60,4 +59,4 @@ export const DELETE = withAdminAuth(async (_request, context, { session }) => {
   })
 
   return NextResponse.json({ success: true })
-}, { allowRoles: ["admin"] })
+})

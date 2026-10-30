@@ -18,13 +18,19 @@ export const GET = withAdminAuth(
     // earlier provisioning fix gave the registering user only an "admin"
     // TenantMember row (a super_admin service account held "owner"
     // instead), so restricting this to `role: "owner"` silently hid every
-    // one of them. `admin` is included below for that reason, not to
-    // widen this into a general team-member directory — someone merely
-    // invited as "author"/"contributor" into someone else's workspace
-    // still won't match.
+    // one of them. The `admin` TenantMember role is included below for
+    // that reason, not to widen this into a general team-member directory
+    // — someone merely invited as "author"/"contributor" into someone
+    // else's workspace still won't match.
+    //
+    // The platform `role: "admin"` value is also kept in the User-role
+    // branch even though it's a retired role nothing can be newly assigned
+    // (see ADMIN_CREATABLE_ROLES below) — any account still holding it
+    // must stay visible here so a super_admin can find and manually
+    // reassign it to employee/finance/super_admin/developer.
     const ownerFilter = {
       OR: [
-        { role: { in: ["super_admin", "owner", "admin", "developer", "user"] } },
+        { role: { in: ["super_admin", "owner", "admin", "employee", "finance", "developer", "user"] } },
         { tenants: { some: { role: { in: ["owner", "admin"] } } } },
         { tenants: { none: {} } },
       ],
@@ -70,12 +76,14 @@ export const GET = withAdminAuth(
       stats: { superAdminCount, accountOwnerCount, withWorkspaceCount },
     })
   },
-  { allowRoles: ["admin"] },
 )
 
 /** Roles a plain platform admin may create. `super_admin` and `developer`
- *  (cross-tenant platform staff — see lib/platform-roles.ts) are super_admin-only. */
-const ADMIN_CREATABLE_ROLES = new Set(["owner", "user", "admin", "employee", "karyawan"])
+ *  (cross-tenant platform staff — see lib/platform-roles.ts) are super_admin-only.
+ *  (In practice this route is now super_admin-only end to end — see the
+ *  removed `allowRoles` above — so the `!isSuperAdmin` branch below is inert,
+ *  kept only so this still fails safe if that gate is ever relaxed again.) */
+const ADMIN_CREATABLE_ROLES = new Set(["owner", "user", "employee", "finance"])
 
 // POST /api/admin/users - create a user
 export const POST = withAdminAuth(
@@ -120,5 +128,4 @@ export const POST = withAdminAuth(
 
     return NextResponse.json({ user })
   },
-  { allowRoles: ["admin"] },
 )

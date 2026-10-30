@@ -46,7 +46,7 @@ export default function MarginKeuntunganPage() {
   }
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin" || session?.user?.role === "admin") {
+    if (session?.user?.role === "super_admin" || session?.user?.role === "finance") {
       fetchReports()
     }
   }, [session?.user?.id, session?.user?.role])
@@ -95,7 +95,7 @@ export default function MarginKeuntunganPage() {
     )
   }
 
-  if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
+  if (session?.user?.role !== "super_admin" && session?.user?.role !== "finance") {
     router.push("/dashboard")
     return null
   }

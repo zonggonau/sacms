@@ -120,7 +120,7 @@ export default function AdminWebhooksPage() {
   const [retryingId, setRetryingId] = useState<string | null>(null)
   const [inspectItem, setInspectItem] = useState<{ title: string; data: any } | null>(null)
 
-  const isAdmin = session?.user?.role === "super_admin" || session?.user?.role === "admin"
+  const isAdmin = session?.user?.role === "super_admin"
 
   useEffect(() => {
     if (status === "unauthenticated") {

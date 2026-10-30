@@ -76,15 +76,19 @@ interface User {
  * account (created from this admin page). "developer" is a SaCMS team
  * account that can enter any workspace to help users or build its own —
  * same cross-tenant access as super_admin, but no /admin/* access (see
- * lib/platform-roles.ts); only a super_admin can grant it.
- * "admin"/"super_admin" are platform staff with /admin/* access.
+ * lib/platform-roles.ts); only a super_admin can grant it. "employee"
+ * (Staf Internal) and "finance" (Bendahara) are narrow /admin/* roles —
+ * see lib/platform-roles.ts for exactly what each can reach.
+ * "admin"/"karyawan" are retired — no longer assignable, kept here only so
+ * any account still holding one of these legacy values renders a
+ * recognizable badge instead of falling through to "ACCOUNT OWNER".
  */
 function getRoleBadge(role: string): { label: string; className: string } {
   switch (role) {
     case "super_admin":
       return { label: "SUPER ADMIN", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" }
     case "admin":
-      return { label: "PLATFORM ADMIN", className: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" }
+      return { label: "ADMIN (NONAKTIF — PINDAHKAN PERAN)", className: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" }
     case "developer":
       return { label: "DEVELOPER", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" }
     case "user":
@@ -92,6 +96,8 @@ function getRoleBadge(role: string): { label: string; className: string } {
     case "employee":
     case "karyawan":
       return { label: "STAF INTERNAL", className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" }
+    case "finance":
+      return { label: "BENDAHARA", className: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20" }
     default:
       return { label: "ACCOUNT OWNER", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" }
   }
@@ -112,7 +118,9 @@ function AdminUsersContent() {
   }, [tabParam])
   
   const isSuperAdmin = session?.user?.role === "super_admin"
-  const isAdmin = isSuperAdmin || session?.user?.role === "admin"
+  // User/RBAC management (this whole page) is super_admin-only — neither
+  // Staf Internal nor Bendahara manage platform accounts or permissions.
+  const isAdmin = isSuperAdmin
 
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -601,9 +609,8 @@ function AdminUsersContent() {
                         <SelectContent className="rounded-xl border-border bg-card">
                           <SelectItem value="owner" className="text-xs rounded-lg font-medium">Account Owner (Pemilik Workspace)</SelectItem>
                           <SelectItem value="user" className="text-xs rounded-lg font-medium">User (Akun Registrasi Mandiri)</SelectItem>
-                          <SelectItem value="admin" className="text-xs rounded-lg font-medium">Platform Admin</SelectItem>
-                          <SelectItem value="employee" className="text-xs rounded-lg font-medium">Staf Internal (Employee)</SelectItem>
-                          <SelectItem value="karyawan" className="text-xs rounded-lg font-medium">Staf Internal (Karyawan)</SelectItem>
+                          <SelectItem value="employee" className="text-xs rounded-lg font-medium">Staf Internal (Support, Pricing, Penawaran)</SelectItem>
+                          <SelectItem value="finance" className="text-xs rounded-lg font-medium">Bendahara (Billing &amp; Plans)</SelectItem>
                           {isSuperAdmin && (
                             <>
                               <SelectItem value="developer" className="text-xs rounded-lg font-medium">Developer (Tim SaCMS — Semua Workspace)</SelectItem>
@@ -956,9 +963,8 @@ function AdminUsersContent() {
                   <SelectContent className="rounded-xl border-border bg-card">
                     <SelectItem value="owner" className="text-xs rounded-lg">Account Owner</SelectItem>
                     <SelectItem value="user" className="text-xs rounded-lg">User (Akun Registrasi Mandiri)</SelectItem>
-                    <SelectItem value="admin" className="text-xs rounded-lg">Platform Admin</SelectItem>
-                    <SelectItem value="employee" className="text-xs rounded-lg">Staf Internal (Employee)</SelectItem>
-                    <SelectItem value="karyawan" className="text-xs rounded-lg">Staf Internal (Karyawan)</SelectItem>
+                    <SelectItem value="employee" className="text-xs rounded-lg">Staf Internal (Support, Pricing, Penawaran)</SelectItem>
+                    <SelectItem value="finance" className="text-xs rounded-lg">Bendahara (Billing &amp; Plans)</SelectItem>
                     {isSuperAdmin && (
                       <>
                         <SelectItem value="developer" className="text-xs rounded-lg">Developer (Tim SaCMS — Semua Workspace)</SelectItem>

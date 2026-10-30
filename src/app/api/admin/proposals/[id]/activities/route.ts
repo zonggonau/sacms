@@ -9,7 +9,7 @@ import { db } from "@/lib/database"
 import { withAdminAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { z } from "zod"
 
-const ALLOW_ROLES = ["admin", "employee", "karyawan"]
+const ALLOW_ROLES = ["employee"]
 
 const ActivitySchema = z.object({
   type: z.enum(["note", "call", "email", "meeting"]),

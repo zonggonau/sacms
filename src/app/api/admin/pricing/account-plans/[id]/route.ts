@@ -19,7 +19,7 @@ export const PATCH = withAdminAuth(async (request, context) => {
 
   const plan = await db.accountPlan.update({ where: { id }, data: { ...parsed.data, features: toFeaturesJson(parsed.data.features) } })
   return NextResponse.json({ plan })
-})
+}, { allowRoles: ["finance"] })
 
 export const DELETE = withAdminAuth(async (_request, context) => {
   const { id } = await context.params
@@ -28,4 +28,4 @@ export const DELETE = withAdminAuth(async (_request, context) => {
 
   await db.accountPlan.delete({ where: { id } })
   return NextResponse.json({ success: true })
-})
+}, { allowRoles: ["finance"] })

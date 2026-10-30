@@ -44,7 +44,6 @@ export const GET = withAdminAuth(
 
     return NextResponse.json({ permissions })
   },
-  { allowRoles: ["admin"] },
 )
 
 // POST /api/admin/rbac/permissions - create a permission
@@ -62,5 +61,4 @@ export const POST = withAdminAuth(
     })
     return NextResponse.json({ permission })
   },
-  { allowRoles: ["admin"] },
 )

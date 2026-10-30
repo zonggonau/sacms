@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (!isCronCall) {
       const session = await getServerSession(authOptions)
-      if (!session?.user || !["super_admin", "admin"].includes(session.user.role)) {
+      if (!session?.user || !["super_admin", "finance"].includes(session.user.role)) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       }
     }
@@ -211,9 +211,7 @@ export async function POST(request: NextRequest) {
  * GET /api/admin/billing/generate-invoices
  * Preview what invoices will be generated (for testing)
  */
-// allowRoles: ["admin"] — matches every other admin billing page/route;
-// this was narrower (super_admin only) than the admin-allowed page it
-// previews data for, with no apparent reason.
+// allowRoles: ["finance"] — matches every other admin billing page/route.
 export const GET = withAdminAuth(async () => {
     // Get all active subscriptions
     const activeSubscriptions = await db.subscription.findMany({
@@ -277,4 +275,4 @@ export const GET = withAdminAuth(async () => {
       preview,
       timestamp: now.toISOString(),
     })
-}, { allowRoles: ["admin"] })
+}, { allowRoles: ["finance"] })

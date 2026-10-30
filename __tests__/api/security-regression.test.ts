@@ -63,13 +63,13 @@ describe("P0-4  /api/admin/users/[userId] PATCH", () => {
   it("a super_admin promoting another user to a normal role works", async () => {
     mockSession.mockResolvedValue({ user: { id: "sa-1", role: "super_admin" } } as any)
     vi.mocked(db.user.findUnique).mockResolvedValue({ id: "u", role: "user" } as any)
-    vi.mocked(db.user.update).mockResolvedValue({ id: "u", role: "admin" } as any)
+    vi.mocked(db.user.update).mockResolvedValue({ id: "u", role: "employee" } as any)
 
     const { PATCH } = await import("@/app/api/admin/users/[userId]/route")
-    const res = await PATCH(jsonReq({ role: "admin" }), ctx({ userId: "u" }) as any)
+    const res = await PATCH(jsonReq({ role: "employee" }), ctx({ userId: "u" }) as any)
     expect(res.status).toBe(200)
     expect(db.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ role: "admin" }) }),
+      expect.objectContaining({ data: expect.objectContaining({ role: "employee" }) }),
     )
   })
 })

@@ -8,5 +8,5 @@ import { withAdminAuth } from "@/lib/api/route-helpers"
  */
 export const GET = withAdminAuth(
   async () => NextResponse.json(await calculateLiveFinancialReports()),
-  { allowRoles: ["admin"] },
+  { allowRoles: ["finance"] },
 )

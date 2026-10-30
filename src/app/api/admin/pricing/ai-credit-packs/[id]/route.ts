@@ -19,7 +19,7 @@ export const PATCH = withAdminAuth(async (request, context) => {
 
   const pack = await db.aiCreditPack.update({ where: { id }, data: { ...parsed.data, features: toFeaturesJson(parsed.data.features) } })
   return NextResponse.json({ pack })
-})
+}, { allowRoles: ["finance"] })
 
 export const DELETE = withAdminAuth(async (_request, context) => {
   const { id } = await context.params
@@ -28,4 +28,4 @@ export const DELETE = withAdminAuth(async (_request, context) => {
 
   await db.aiCreditPack.delete({ where: { id } })
   return NextResponse.json({ success: true })
-})
+}, { allowRoles: ["finance"] })
