@@ -36,6 +36,24 @@ media.sacms.cloud {
 	reverse_proxy 127.0.0.1:9000
 }
 
+# ── Non-SaCMS projects sharing this server ───────────────────────────────────
+# These are standalone apps deployed directly on this VPS, outside SaCMS's own
+# tenant/custom-domain system — NOT customer workspaces, so they must be listed
+# here explicitly (with their own automatic HTTPS) or they fall into the
+# generic `https://`/`:80` catch-all below and get silently proxied to the
+# SaCMS app instead (what broke mikaday.store after a SaCMS deploy overwrote
+# this file with no block for it — see docker container "sacms-nocode-app",
+# host port 3005).
+mikaday.store, www.mikaday.store {
+	reverse_proxy 127.0.0.1:3005
+}
+
+# Roundcube webmail (docker container "roundcube", host port 8085) — same
+# "missing block gets swallowed by the catch-all" issue as mikaday.store above.
+webmail.sacms.cloud {
+	reverse_proxy 127.0.0.1:8085
+}
+
 # ── On-Demand TLS for ALL Tenant Custom Domains & Subdomains ─────────────────
 https:// {
 	tls {
