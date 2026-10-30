@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Paket & Harga SaCMS — Transparan & Terukur untuk Semua Skala"
   const description =
-    "Daftar paket harga SaCMS: Free Starter, Pro Workspace, Dedicated Database Workspace, dan Enterprise License. Pembayaran otomatis QRIS, Bank Transfer via Midtrans."
+    "Daftar paket harga SaCMS: Free Forever, Starter, Pro, Business Workspace, dan Enterprise License. Pembayaran otomatis QRIS, Bank Transfer via Midtrans."
 
   return {
     title: { absolute: title },

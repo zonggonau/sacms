@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Fitur Lengkap SaCMS — Arsitektur Headless CMS Multi-Tenant Modern"
   const description =
-    "Eksplorasi fitur komprehensif SaCMS: database terisolasi per workspace, integrasi AI Assistant dari IDE, custom domain untuk brand Anda, GraphQL API fleksibel, Multi-Reviewer Workflow, dan billing otomatis."
+    "Eksplorasi fitur komprehensif SaCMS: isolasi data per-tenant dengan opsi Dedicated Database untuk Business & Enterprise, integrasi AI IDE lewat MCP, custom domain untuk brand Anda, GraphQL API fleksibel, Multi-Reviewer Workflow, dan billing otomatis."
 
   return {
     title: { absolute: title },

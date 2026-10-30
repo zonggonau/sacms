@@ -180,7 +180,7 @@ const SEED_DATA: Record<string, any> = {
   "sacms-landing-page": {
     hero_badge: "",
     hero_title: "Build smarter. Manage easier. Scale faster.",
-    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan database terisolasi per workspace, integrasi AI Assistant dari IDE, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
+    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan isolasi data per-tenant (plus opsi Dedicated Database untuk Business & Enterprise), integrasi AI IDE lewat MCP, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
     hero_cta_primary: "Coba Gratis Sekarang",
     hero_cta_secondary: "Dokumentasi API",
     hero_image: "",
@@ -235,21 +235,21 @@ const SEED_DATA: Record<string, any> = {
     ],
 
     testimonials: [
-      { 
-        name: "Zonggonau Cristoper", 
-        role: "Solo Developer", 
-        company: "Indie Hacker", 
-        content: "Dulu saya harus setup droplet baru tiap kali ada klien web company profile. Sekarang semua masuk ke SaCMS, hemat biaya server 80%!", 
-        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper", 
-        rating: 5 
+      {
+        name: "Raka Pratama",
+        role: "Solo Developer",
+        company: "Indie Hacker",
+        content: "Dulu saya harus setup droplet baru tiap kali ada klien web company profile. Sekarang semua masuk ke SaCMS, hemat biaya server 80%!",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=RakaPratama",
+        rating: 5
       },
-      { 
-        name: "Januar Fonda", 
-        role: "Tech Lead", 
-        company: "Digital Agency", 
-        content: "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.", 
-        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar", 
-        rating: 5 
+      {
+        name: "Dewi Lestari",
+        role: "Tech Lead",
+        company: "Digital Agency",
+        content: "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.",
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=DewiLestari",
+        rating: 5
       },
       { 
         name: "Budi Santoso", 
@@ -263,9 +263,9 @@ const SEED_DATA: Record<string, any> = {
 
     sectors: [
       { icon: "Building2", label: "Digital Agency & Software House", desc: "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah." },
-      { icon: "Landmark", label: "Pemerintah & BUMN", desc: "Keamanan database terisolasi, kedaulatan data lokal, dan kepatuhan audit sistem." },
+      { icon: "Landmark", label: "Pemerintah & BUMN", desc: "Opsi Dedicated Database, kedaulatan data lokal, dan kepatuhan audit sistem." },
       { icon: "ShoppingBag", label: "E-Commerce & Startup", desc: "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern." },
-      { icon: "Code2", label: "Solo Builders & Developers", desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant." },
+      { icon: "Code2", label: "Solo Builders & Developers", desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan deploy 1-command lewat MCP dari AI IDE favorit Anda." },
     ],
 
     local_pride: {
