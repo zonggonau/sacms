@@ -12,6 +12,14 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Activity,
   CheckCircle2,
   RefreshCw,
@@ -24,6 +32,7 @@ import {
   PlugZap,
   XCircle,
   Lock,
+  AlertTriangle,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -291,6 +300,36 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
     }
   }
 
+  // Safety gate for turning "Sumber Infrastruktur Workspace Ini" ON: the
+  // user must have already clicked "Tes Koneksi" and gotten success for
+  // BOTH the database and storage fields in the BYODB card below (editing
+  // either field resets its result to "idle", so a stale pass doesn't
+  // count), then type an exact confirmation phrase — so a careless click
+  // can never silently move this workspace onto someone else's server.
+  // Turning it OFF (back to SaCMS) stays unconditional, same as before.
+  const CONFIRM_PHRASE = "GUNAKAN SERVER SENDIRI"
+  const bothTenantTestsPassed = tenantDbTestResult.status === "success" && tenantStorageTestResult.status === "success"
+  const [confirmSwitchOpen, setConfirmSwitchOpen] = useState(false)
+  const [confirmPhraseInput, setConfirmPhraseInput] = useState("")
+
+  const handleSwitchChange = (next: boolean) => {
+    if (!next) {
+      handleToggleOwnerInfra(false)
+      return
+    }
+    if (!bothTenantTestsPassed) {
+      toast.error("Tes Koneksi Database dan Storage pada card di bawah harus sukses terlebih dahulu sebelum mengaktifkan ini.")
+      return
+    }
+    setConfirmPhraseInput("")
+    setConfirmSwitchOpen(true)
+  }
+
+  const handleConfirmSwitchOn = () => {
+    setConfirmSwitchOpen(false)
+    handleToggleOwnerInfra(true)
+  }
+
   if (loading) {
     return (
       <div className="space-y-6 animate-in fade-in duration-300">
@@ -421,6 +460,11 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                       Workspace ini memakai database sendiri langsung (di bawah) — switch ini tidak berpengaruh selama database sendiri tersebut aktif.
                     </p>
                   )}
+                  {!useOwnerInfra && !bothTenantTestsPassed && (
+                    <p className="text-[11px] text-muted-foreground mt-1.5 max-w-md italic">
+                      Tes Koneksi Database &amp; Storage pada card di bawah harus sukses dulu sebelum switch ini bisa diaktifkan.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2.5 shrink-0">
@@ -430,12 +474,54 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                 {switchingInfra ? (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 ) : (
-                  <Switch id="use-owner-infra" checked={useOwnerInfra} onCheckedChange={handleToggleOwnerInfra} />
+                  <Switch id="use-owner-infra" checked={useOwnerInfra} onCheckedChange={handleSwitchChange} />
                 )}
               </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Typed-confirmation dialog — required before turning "Sumber Infrastruktur
+            Workspace Ini" ON, so a careless click can't move this workspace onto
+            someone else's server without a deliberate, explicit acknowledgment. */}
+        <Dialog open={confirmSwitchOpen} onOpenChange={setConfirmSwitchOpen}>
+          <DialogContent className="rounded-2xl border border-border bg-card">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Konfirmasi Penggunaan Server Sendiri
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Workspace ini akan beralih memakai database &amp; storage server Anda sendiri, bukan infrastruktur SaCMS. Untuk melanjutkan, ketik persis kalimat berikut:
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="text-xs font-mono font-bold text-center p-2.5 rounded-lg bg-muted/50 border border-border/70 select-all">
+                {CONFIRM_PHRASE}
+              </p>
+              <Input
+                value={confirmPhraseInput}
+                onChange={(e) => setConfirmPhraseInput(e.target.value)}
+                placeholder="Ketik konfirmasi di sini"
+                className="text-xs"
+                autoFocus
+              />
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setConfirmSwitchOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                size="sm"
+                className="text-xs font-bold"
+                onClick={handleConfirmSwitchOn}
+                disabled={confirmPhraseInput.trim() !== CONFIRM_PHRASE}
+              >
+                Aktifkan Server Sendiri
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* 1b. WORKSPACE-PLAN-GATED BYODB/BYOS: this tenant's own direct database/storage */}
         {isOwner && (
