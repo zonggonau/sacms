@@ -97,6 +97,22 @@ const adminNavSections: NavSection[] = [
   },
 ]
 
+/** Platform role → the label shown under the profile name in this sidebar's
+ *  footer. Kept in sync with getRoleBadge() in admin/users/page.tsx. */
+function roleLabel(role: string | undefined): string {
+  switch (role) {
+    case "super_admin":
+      return "Super Admin"
+    case "employee":
+    case "karyawan":
+      return "Staf Internal"
+    case "finance":
+      return "Bendahara"
+    default:
+      return "Admin"
+  }
+}
+
 export function GlobalAdminSidebar() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
@@ -247,7 +263,7 @@ export function GlobalAdminSidebar() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">{session?.user?.name || "Admin Profile"}</p>
-              <p className="text-xs text-muted-foreground truncate">Super Admin</p>
+              <p className="text-xs text-muted-foreground truncate">{roleLabel(session?.user?.role)}</p>
             </div>
           </button>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
