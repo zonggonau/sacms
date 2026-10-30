@@ -192,12 +192,15 @@ jobs:
             sed -i 's|@localhost:5432|@postgres:5432|g' /opt/sacms/.env 2>/dev/null || true
             sed -i 's|redis://localhost:6379|redis://redis:6379|g' /opt/sacms/.env 2>/dev/null || true
 
-            # Clean up obsolete PM2 processes to ensure port 3000 is always dedicated to Docker
+            # Clean up obsolete PM2 processes to ensure port 3000 is always dedicated to Docker.
+            # Only remove the specific stale "sacms-dev" process — never `pm2 kill`, which
+            # tears down the WHOLE PM2 daemon and any other unrelated apps it manages on this
+            # shared VPS (e.g. the standalone "mikaday" project), with no automatic recovery
+            # since the pm2-startup systemd unit only resurrects once at boot, not on crash.
             if command -v pm2 &> /dev/null; then
               pm2 stop sacms-dev 2>/dev/null || true
               pm2 delete sacms-dev 2>/dev/null || true
               pm2 save --force 2>/dev/null || true
-              pm2 kill 2>/dev/null || true
             fi
             docker rm -f sacms-redis sacms-postgres 2>/dev/null || true
 
