@@ -42,10 +42,12 @@ media.sacms.cloud {
 # here explicitly (with their own automatic HTTPS) or they fall into the
 # generic `https://`/`:80` catch-all below and get silently proxied to the
 # SaCMS app instead (what broke mikaday.store after a SaCMS deploy overwrote
-# this file with no block for it — see docker container "sacms-nocode-app",
-# host port 3005).
+# this file with no block for it). MIKADAY is a separate Next.js storefront at
+# /opt/mikaday, run via PM2 ("mikaday" process, see /opt/mikaday/ecosystem.config.cjs)
+# on 127.0.0.1:3010 — NOT the unrelated "sacms-nocode-app" Docker container
+# (leftover from the removed AI Site feature, being decommissioned).
 mikaday.store, www.mikaday.store {
-	reverse_proxy 127.0.0.1:3005
+	reverse_proxy 127.0.0.1:3010
 }
 
 # Roundcube webmail (docker container "roundcube", host port 8085) — same
