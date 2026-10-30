@@ -61,13 +61,21 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName, canUseByoI
 
   navItems.push({ title: "API & Dokumentasi", href: "/docs", icon: BookOpen })
 
-  // Add SaaS admin panel for super_admin
-  if (session?.user?.role === "super_admin") {
-    navItems.push({
-      title: "Super Admin Panel",
-      href: "/admin",
-      icon: Shield,
-    })
+  // Add a link into the admin portal for every platform staff role — each
+  // points at that role's own entry page since /admin itself (the
+  // dashboard home) redirects anyone but a super_admin straight back out
+  // (see src/app/(system)/admin/page.tsx), and employee/finance only have
+  // a handful of allowed pages under /admin/* to begin with (see
+  // NARROW_ROLE_PATHS in global-admin-sidebar.tsx). "developer" is
+  // deliberately excluded — cross-tenant workspace access, but zero
+  // /admin/* access, by design (src/lib/platform-roles.ts).
+  const platformRole = session?.user?.role
+  if (platformRole === "super_admin") {
+    navItems.push({ title: "Super Admin Panel", href: "/admin", icon: Shield })
+  } else if (platformRole === "employee") {
+    navItems.push({ title: "Panel Staf Internal", href: "/admin/support", icon: Shield })
+  } else if (platformRole === "finance") {
+    navItems.push({ title: "Panel Bendahara", href: "/admin/billing", icon: Shield })
   }
 
   const isActive = (item: NavItem) => {
