@@ -111,7 +111,19 @@ export default async function WorkspaceSelectionPage() {
       storageLimitBytes = quota.limitBytes
     }
 
-    if (!enterprise) {
+    // Also skip this for any tenant whose own `plan` column already says
+    // "enterprise" — even if the deeper license check above came back
+    // false (e.g. no LICENSE_KEY configured locally, an expired/revoked
+    // license, or a tenant marked enterprise without ever being issued a
+    // real license). Confirmed live: such a tenant still carries a leftover
+    // regular-plan trial `Subscription` row from before it became
+    // enterprise, whose long-past `currentPeriodEnd` made this branch mark
+    // it `isExpired` — showing a contradictory "Masa Percobaan Berakhir"
+    // badge right next to the "ENTERPRISE" plan badge. An enterprise-plan
+    // tenant is never gated by a regular subscription's trial period, so
+    // this card must never show that generic trial-expiry state regardless
+    // of why the license check failed.
+    if (!enterprise && t.plan !== "enterprise") {
       if (t.status === "suspended") {
         isExpired = true
       } else if (sub?.currentPeriodEnd) {

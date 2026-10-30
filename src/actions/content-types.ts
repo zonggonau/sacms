@@ -190,7 +190,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
       console.error("Zod validation error in createContentTypeAction:", result.error)
       return { error: result.error.issues[0]?.message ?? "Validation failed" }
     }
-    const { name, slug, description, showInCms, docxTemplateUrl, fields } = result.data
+    const { name, slug, description, showInCms, docxTemplateUrl, fields, groupId } = result.data
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
     const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
@@ -199,13 +199,18 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
     const tenantDb = await getTenantDb(tenantSlug)
 
     const existingContentType = await tenantDb.contentType.findFirst({
-      where: { 
+      where: {
         tenantId: access.tenantId,
         slug: slug
       },
     })
 
     if (existingContentType) return { error: "A content type with this slug already exists" }
+
+    if (groupId) {
+      const group = await tenantDb.contentTypeGroup.findFirst({ where: { id: groupId, tenantId: access.tenantId } })
+      if (!group) return { error: "Grup tidak ditemukan" }
+    }
 
     const contentType = await tenantDb.contentType.create({
       data: {
@@ -215,6 +220,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
         description,
         showInCms: showInCms ?? true,
         docxTemplateUrl,
+        groupId: groupId ?? null,
         isPublished: true,
         schemaFields: {
           create: fields
@@ -269,7 +275,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const result = updateContentTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
-    const { name, description, showInCms, docxTemplateUrl, fields } = result.data
+    const { name, description, showInCms, docxTemplateUrl, fields, groupId } = result.data
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -289,6 +295,11 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
       return { error: "Cross-tenant content types cannot be modified by tenant admins" }
     }
 
+    if (groupId) {
+      const group = await tenantDb.contentTypeGroup.findFirst({ where: { id: groupId, tenantId: access.tenantId } })
+      if (!group) return { error: "Grup tidak ditemukan" }
+    }
+
     const updatedContentType = await tenantDb.$transaction(async (tx) => {
       await tx.schemaField.deleteMany({
         where: { contentTypeId: id }
@@ -301,6 +312,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
           description,
           showInCms: showInCms !== undefined ? showInCms : (existingContentType as any).showInCms ?? true,
           docxTemplateUrl: docxTemplateUrl !== undefined ? docxTemplateUrl : existingContentType.docxTemplateUrl,
+          groupId: groupId !== undefined ? groupId : existingContentType.groupId,
           schemaFields: {
             create: fields?.map((field: any, index: number) => ({
               name: field.name,

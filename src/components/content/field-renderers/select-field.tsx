@@ -37,38 +37,52 @@ export function SelectField({
   jsonPath,
   tenantSlug,
 }: SelectFieldProps) {
-  const initialNormalized = useMemo(() => normalizeSelectOptions(options), [options])
-  const [dynamicOptions, setDynamicOptions] = useState<SelectOption[]>(initialNormalized)
+  // Memoized, not stateful — a caller that re-creates `options` as a new
+  // array/object literal every render (e.g. `component-field.tsx`'s
+  // `renderInnerField`, which does `let selectOptions = field.options ?
+  // normalizeSelectOptions(field.options) : []`) must never feed that
+  // instability into a `useEffect`+`setState` pair, or the effect re-fires
+  // every render and queues a state update every time — an infinite
+  // re-render loop ("Maximum update depth exceeded") regardless of whether
+  // the normalized *contents* actually changed. `useMemo` alone recomputes
+  // the derived value safely without ever calling setState.
+  const staticOptions = useMemo(() => normalizeSelectOptions(options), [options])
+  // Only for the async jsonPath-fetch case — kept as separate state so a
+  // fetch failure/absence can fall back to `staticOptions` below, without
+  // re-deriving (and so re-triggering) off the unstable `options` reference.
+  const [fetchedOptions, setFetchedOptions] = useState<SelectOption[] | null>(null)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!jsonPath || !tenantSlug) {
-      setDynamicOptions(normalizeSelectOptions(options))
+      setFetchedOptions(null)
       return
     }
 
+    let active = true
     const fetchOptions = async () => {
       setLoading(true)
       try {
         const response = await fetch(jsonPath)
         if (response.ok) {
           const data = await response.json()
-          setDynamicOptions(normalizeSelectOptions(data))
-        } else {
-          setDynamicOptions(normalizeSelectOptions(options))
+          if (active) setFetchedOptions(normalizeSelectOptions(data))
+        } else if (active) {
+          setFetchedOptions(null)
         }
       } catch (error) {
         console.error("Error fetching options:", error)
-        setDynamicOptions(normalizeSelectOptions(options))
+        if (active) setFetchedOptions(null)
       } finally {
-        setLoading(false)
+        if (active) setLoading(false)
       }
     }
 
     fetchOptions()
-  }, [jsonPath, tenantSlug, options])
+    return () => { active = false }
+  }, [jsonPath, tenantSlug])
 
-  const safeOptions = Array.isArray(dynamicOptions) ? dynamicOptions : normalizeSelectOptions(dynamicOptions)
+  const safeOptions = fetchedOptions ?? staticOptions
 
   return (
     <div className="space-y-2">

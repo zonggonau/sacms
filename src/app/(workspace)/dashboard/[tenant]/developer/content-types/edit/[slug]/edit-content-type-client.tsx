@@ -45,6 +45,10 @@ import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { getContentTypeBySlugAction, updateContentTypeAction, getContentTypesAction } from "@/actions/content-types"
+import { getContentTypeGroupsAction } from "@/actions/content-type-groups"
+import { buildGroupTree, flattenGroupTreeForSelect, type FlatContentTypeGroup } from "@/lib/content-type-groups"
+
+const NO_GROUP = "__no_group__"
 
 interface ContentType {
   id: string
@@ -53,6 +57,7 @@ interface ContentType {
   description: string | null
   docxTemplateUrl: string | null
   showInCms?: boolean
+  groupId?: string | null
   isPublished: boolean
   isGlobal: boolean
   fields: Field[]
@@ -199,6 +204,8 @@ export default function EditContentTypeClient({
   const [description, setDescription] = useState(initialContentType?.description || "")
   const [showInCms, setShowInCms] = useState(initialContentType?.showInCms ?? true)
   const [docxTemplateUrl, setDocxTemplateUrl] = useState(initialContentType?.docxTemplateUrl || "")
+  const [groupId, setGroupId] = useState(initialContentType?.groupId || NO_GROUP)
+  const [groups, setGroups] = useState<FlatContentTypeGroup[]>([])
   const [fields, setFields] = useState<Field[]>(initialFields || [])
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
@@ -216,6 +223,12 @@ export default function EditContentTypeClient({
       } catch (err) {}
     }
     loadContentTypes()
+  }, [tenantSlug])
+
+  useEffect(() => {
+    getContentTypeGroupsAction(tenantSlug).then((res) => {
+      if (!("error" in res)) setGroups(res.groups)
+    })
   }, [tenantSlug])
 
   const sensors = useSensors(
@@ -371,6 +384,7 @@ export default function EditContentTypeClient({
         description: description || undefined,
         docxTemplateUrl: docxTemplateUrl || undefined,
         showInCms,
+        groupId: groupId === NO_GROUP ? null : groupId,
         fields: fields.map((f, i) => ({
           name: f.name,
           slug: f.slug,
@@ -473,11 +487,24 @@ export default function EditContentTypeClient({
                       <Label className="text-xs font-semibold cursor-pointer text-foreground" htmlFor="showInCmsEdit">Tampilkan di CMS</Label>
                       <p className="text-[11px] text-muted-foreground">Munculkan di menu studio konten /cms</p>
                     </div>
-                    <Switch 
+                    <Switch
                       id="showInCmsEdit"
-                      checked={showInCms} 
-                      onCheckedChange={setShowInCms} 
+                      checked={showInCms}
+                      onCheckedChange={setShowInCms}
                     />
+                  </div>
+                  <div className="space-y-1.5 pt-3 border-t border-border/60">
+                    <Label className="text-xs font-semibold text-foreground">Grup</Label>
+                    <Select value={groupId} onValueChange={setGroupId}>
+                      <SelectTrigger className="h-9 text-xs w-full bg-background border-border/80 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_GROUP} className="text-xs">Tanpa Grup</SelectItem>
+                        {flattenGroupTreeForSelect(buildGroupTree(groups)).map((g) => (
+                          <SelectItem key={g.id} value={g.id} className="text-xs">{g.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">Tampilkan koleksi ini di dalam dropdown grup pada sidebar CMS</p>
                   </div>
                 </CardContent>
               </Card>

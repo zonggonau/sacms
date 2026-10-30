@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
-import { db, isOwnerEligibleForByoInfra, invalidateOwnerMasterInfraCache } from "@/lib/database"
+import { db, isOwnerEligibleForByoInfra, isWorkspaceEligibleForByoInfra, invalidateOwnerMasterInfraCache } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { MinioConfigSchema, isValidPostgresUrl } from "@/lib/byo-infra-validation"
 import { z } from "zod"
+
+const MASK = "••••••••"
 
 /**
  * GET /api/tenant/[tenant]/infrastructure
@@ -42,11 +45,23 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     ownerHasInfraConfigured = !!ownerUser?.masterDatabaseUrl || hasStorage
   }
 
+  // Second, independent BYODB/BYOS gate — driven by this WORKSPACE's own
+  // plan (Tenant.plan === "business") or its owner's Enterprise License,
+  // not the owner's account plan — see isWorkspaceEligibleForByoInfra in
+  // src/lib/database.ts.
+  const workspaceEligibleForByoInfra = await isWorkspaceEligibleForByoInfra(access.tenantId)
+  const tenantSc = tenant?.storageConfig as { endpoint?: string; accessKey?: string; secretKey?: string; bucket?: string } | null
+
   return NextResponse.json({
     isCustomDbConfigured,
     isCustomStorageConfigured,
     useOwnerInfra: tenant?.useOwnerInfra ?? true,
     ownerHasInfraConfigured,
+    workspaceEligibleForByoInfra,
+    tenantDatabaseUrl: tenant?.databaseUrl ? MASK : "",
+    tenantStorageConfig: tenantSc
+      ? { endpoint: tenantSc.endpoint || "", accessKey: tenantSc.accessKey || "", secretKey: tenantSc.secretKey ? MASK : "", bucket: tenantSc.bucket || "" }
+      : null,
   })
 })
 
@@ -89,6 +104,76 @@ export const PATCH = withStaffAuth(
     await invalidateOwnerMasterInfraCache(access.userId)
 
     return NextResponse.json({ useOwnerInfra: body.data.useOwnerInfra })
+  },
+  { minRole: "owner" },
+)
+
+const PutByoSchema = z.object({
+  databaseUrl: z.string().max(2000).nullable().optional(),
+  storageConfig: MinioConfigSchema.nullable().optional(),
+})
+
+/**
+ * PUT /api/tenant/[tenant]/infrastructure
+ *
+ * This WORKSPACE's own direct database/storage override (Tenant.databaseUrl
+ * / storageConfig) — distinct from the account-level BYODB/BYOS set via
+ * /api/user/infrastructure. Unlocked by isWorkspaceEligibleForByoInfra
+ * (workspace plan "business"/"enterprise", or the owner's Enterprise
+ * License) rather than the owner's account plan. Clearing to null is
+ * always allowed (same "don't strand a stale value from a past downgrade"
+ * reasoning as the account-level route); setting a new value requires
+ * eligibility. No cache to invalidate here — getTenantDb() checks
+ * tenant.databaseUrl before ever calling getOwnerMasterInfra(), so this
+ * takes effect on the very next read.
+ */
+export const PUT = withStaffAuth(
+  async (request, _context, { access }) => {
+    const body = await readJson(request, PutByoSchema)
+    if (!body.ok) return body.response
+    const { databaseUrl, storageConfig } = body.data
+
+    const existing = await db.tenant.findUnique({ where: { id: access.tenantId }, select: { storageConfig: true } })
+    const data: { databaseUrl?: string | null; storageConfig?: any } = {}
+
+    if (databaseUrl !== undefined) {
+      if (databaseUrl === MASK) {
+        // leave the stored value alone
+      } else if (databaseUrl === null || databaseUrl === "") {
+        data.databaseUrl = null
+      } else {
+        if (!(await isWorkspaceEligibleForByoInfra(access.tenantId))) {
+          return apiError("forbidden", { message: "Database sendiri hanya tersedia untuk workspace plan Business atau lisensi Enterprise." })
+        }
+        if (!isValidPostgresUrl(databaseUrl)) {
+          return apiError("validation", { message: "URL database harus dimulai dengan postgres:// atau postgresql://" })
+        }
+        data.databaseUrl = databaseUrl
+      }
+    }
+
+    if (storageConfig !== undefined) {
+      if (storageConfig === null) {
+        data.storageConfig = null
+      } else {
+        if (!(await isWorkspaceEligibleForByoInfra(access.tenantId))) {
+          return apiError("forbidden", { message: "Storage sendiri hanya tersedia untuk workspace plan Business atau lisensi Enterprise." })
+        }
+        const sc = { ...storageConfig }
+        if (sc.secretKey === MASK) {
+          const existingSc = existing?.storageConfig as { secretKey?: string } | null
+          if (!existingSc?.secretKey) return apiError("validation", { message: "Secret Key MinIO wajib diisi." })
+          sc.secretKey = existingSc.secretKey
+        }
+        data.storageConfig = sc
+      }
+    }
+
+    if (Object.keys(data).length > 0) {
+      await db.tenant.update({ where: { id: access.tenantId }, data })
+    }
+
+    return NextResponse.json({ success: true })
   },
   { minRole: "owner" },
 )

@@ -21,6 +21,7 @@ export const createContentTypeSchema = z.object({
   showInCms: z.boolean().optional().default(true),
   docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
+  groupId: z.string().optional().nullable(),
 })
 
 export const updateContentTypeSchema = z.object({
@@ -31,6 +32,7 @@ export const updateContentTypeSchema = z.object({
   isPublished: z.boolean().optional(),
   docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
+  groupId: z.string().optional().nullable(),
 }).passthrough()
 
 // Component

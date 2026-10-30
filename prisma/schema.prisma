@@ -147,6 +147,7 @@ model Tenant {
   components                      Component[]
   contentEntries                  ContentEntry[]
   contentTypes                    ContentType[]
+  contentTypeGroups               ContentTypeGroup[]
   media                           Media[]
   mediaFolders                    MediaFolder[]
   settings                        Setting[]
@@ -224,15 +225,47 @@ model ContentType {
   // type. Plain tag, no FK (cleanup is explicit in the template delete
   // route), kept out of the normal list actions via `draftTemplateId: null`.
   draftTemplateId String?
+  // Optional sidebar grouping — see ContentTypeGroup. groupOrder positions
+  // this content type among siblings sharing the same groupId (ignored
+  // while groupId is null; ungrouped items keep their existing
+  // `updatedAt desc` ordering instead).
+  groupId         String?
+  groupOrder      Int                           @default(0)
   entries         ContentEntry[]
   schemaFields    SchemaField[]
   tenant          Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  group           ContentTypeGroup?             @relation(fields: [groupId], references: [id], onDelete: SetNull)
   tenants         TenantContentTypeAssignment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@index([draftTemplateId])
+  @@index([groupId])
   @@map("content_types")
+}
+
+/// A named, optionally-nested (up to 3 levels, enforced in
+/// src/actions/content-type-groups.ts) folder for organizing a tenant's
+/// Content Types in the CMS sidebar — e.g. a group "Artikel" containing the
+/// "Artikel" and "Kategori Artikel" content types. Deleting a group cascades
+/// to its child groups, but only orphans (SetNull) any ContentType.groupId
+/// that pointed to it — content types themselves are never deleted.
+model ContentTypeGroup {
+  id           String             @id @default(cuid())
+  tenantId     String
+  name         String
+  parentId     String?
+  order        Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent       ContentTypeGroup?  @relation("ContentTypeGroupHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children     ContentTypeGroup[] @relation("ContentTypeGroupHierarchy")
+  contentTypes ContentType[]
+
+  @@index([tenantId])
+  @@index([parentId])
+  @@map("content_type_groups")
 }
 
 model SchemaField {

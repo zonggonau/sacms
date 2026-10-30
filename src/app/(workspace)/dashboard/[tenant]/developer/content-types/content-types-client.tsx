@@ -4,7 +4,8 @@ import { useState, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import {
   Plus, MoreVertical, Edit, Trash2, FileText, Database,
-  Globe, Layout, Loader2, Search, CheckCircle2, AlertCircle, Sparkles
+  Globe, Layout, Loader2, Search, CheckCircle2, AlertCircle, Sparkles,
+  FolderTree, FolderInput
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -33,9 +34,21 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 
 import { deleteContentTypeAction } from "@/actions/content-types"
+import { getContentTypeGroupsAction, assignContentTypeToGroupAction } from "@/actions/content-type-groups"
+import { buildGroupTree, flattenGroupTreeForSelect, type FlatContentTypeGroup } from "@/lib/content-type-groups"
+import { ContentTypeGroupManagerDialog } from "@/components/developer/content-type-group-manager-dialog"
+
+const UNGROUPED = "__ungrouped__"
 
 interface ContentType {
   id: string
@@ -46,6 +59,7 @@ interface ContentType {
   isGlobal: boolean
   fields: any[]
   entryCount: number
+  groupId?: string | null
 }
 
 interface ContentTypesClientProps {
@@ -54,15 +68,49 @@ interface ContentTypesClientProps {
   limit?: number
   current?: number
   isGlobalTenant?: boolean
+  canManageGroups?: boolean
 }
 
-export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false }: ContentTypesClientProps) {
+export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false, canManageGroups = false }: ContentTypesClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
 
   const [searchQuery, setSearchQuery] = useState("")
 
+  const [groupManagerOpen, setGroupManagerOpen] = useState(false)
+  const [groups, setGroups] = useState<FlatContentTypeGroup[]>([])
+  const [assignGroupDialog, setAssignGroupDialog] = useState<{ open: boolean; contentType: ContentType | null; groupId: string }>({
+    open: false,
+    contentType: null,
+    groupId: UNGROUPED,
+  })
+
+  const loadGroups = () => {
+    getContentTypeGroupsAction(tenantSlug).then((res) => {
+      if (!("error" in res)) setGroups(res.groups)
+    })
+  }
+
+  const handleOpenAssignGroup = (ct: ContentType) => {
+    loadGroups()
+    setAssignGroupDialog({ open: true, contentType: ct, groupId: ct.groupId || UNGROUPED })
+  }
+
+  const handleAssignGroup = () => {
+    if (!assignGroupDialog.contentType) return
+    const targetGroupId = assignGroupDialog.groupId === UNGROUPED ? null : assignGroupDialog.groupId
+    startTransition(async () => {
+      const res = await assignContentTypeToGroupAction(tenantSlug, assignGroupDialog.contentType!.id, targetGroupId)
+      if ("error" in res) {
+        toast({ variant: "destructive", title: "Gagal Memindahkan Grup", description: res.error })
+      } else {
+        toast({ title: "Berhasil", description: "Koleksi dipindahkan ke grup." })
+        setAssignGroupDialog({ open: false, contentType: null, groupId: UNGROUPED })
+        router.refresh()
+      }
+    })
+  }
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; contentType: ContentType | null }>({
     open: false,
@@ -131,6 +179,18 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                 <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
                 <span>Buka CMS Studio</span>
               </Button>
+
+              {canManageGroups && (
+                <Button
+                  variant="outline"
+                  className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted shadow-xs transition-all flex items-center gap-1.5"
+                  onClick={() => setGroupManagerOpen(true)}
+                  title="Kelola grup untuk mengelompokkan koleksi di sidebar CMS"
+                >
+                  <FolderTree className="h-3.5 w-3.5" />
+                  <span>Kelola Grup</span>
+                </Button>
+              )}
 
               <Button
                 className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all"
@@ -291,6 +351,11 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                                   <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
                                     <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
                                   </DropdownMenuItem>
+                                  {canManageGroups && (
+                                    <DropdownMenuItem onClick={() => handleOpenAssignGroup(ct)} className="text-xs cursor-pointer rounded-lg">
+                                      <FolderInput className="mr-2 h-3.5 w-3.5" /> Pindahkan ke Grup
+                                    </DropdownMenuItem>
+                                  )}
                                   {(!ct.isGlobal || isGlobalTenant) && (
                                     <>
                                       <DropdownMenuSeparator />
@@ -371,6 +436,48 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={assignGroupDialog.open} onOpenChange={(open) => !open && setAssignGroupDialog({ open: false, contentType: null, groupId: UNGROUPED })}>
+        <DialogContent className="rounded-2xl border border-border bg-card max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">
+              <FolderInput className="h-4 w-4" /> Pindahkan ke Grup
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Pilih grup untuk "{assignGroupDialog.contentType?.name}".
+            </DialogDescription>
+          </DialogHeader>
+
+          <Select value={assignGroupDialog.groupId} onValueChange={(v) => setAssignGroupDialog((prev) => ({ ...prev, groupId: v }))}>
+            <SelectTrigger className="h-9 text-xs w-full"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={UNGROUPED} className="text-xs">Tanpa Grup</SelectItem>
+              {flattenGroupTreeForSelect(buildGroupTree(groups)).map((g) => (
+                <SelectItem key={g.id} value={g.id} className="text-xs">{g.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" className="rounded-xl text-xs" onClick={() => setAssignGroupDialog({ open: false, contentType: null, groupId: UNGROUPED })} disabled={isPending}>
+              Batal
+            </Button>
+            <Button className="rounded-xl text-xs font-bold" onClick={handleAssignGroup} disabled={isPending}>
+              {isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+              Simpan
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {canManageGroups && (
+        <ContentTypeGroupManagerDialog
+          open={groupManagerOpen}
+          onOpenChange={setGroupManagerOpen}
+          tenantSlug={tenantSlug}
+          onChanged={() => router.refresh()}
+        />
+      )}
     </div>
   )
 }

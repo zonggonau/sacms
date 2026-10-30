@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   LayoutDashboard,
-  Database,
   ImageIcon,
   Moon,
   Sun,
@@ -14,7 +13,6 @@ import {
   Menu,
   X,
   Layers,
-  ChevronRight,
   PenTool,
   FileText,
   Clock,
@@ -34,16 +32,19 @@ import { usePathname } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
+import { buildGroupTree, pruneEmptyGroups, type FlatContentTypeGroup } from "@/lib/content-type-groups"
+import { GroupNode, ContentTypeRow, type SidebarContentType } from "@/components/cms/cms-sidebar-group-node"
 
 interface CMSSidebarProps {
   tenantId: string
-  contentTypes?: { id: string; name: string; slug: string }[]
+  contentTypes?: SidebarContentType[]
+  contentTypeGroups?: FlatContentTypeGroup[]
   singleTypes?: { id: string; name: string; slug: string }[]
   user?: { name?: string | null; email?: string | null; image?: string | null }
   userRole?: string
 }
 
-export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user, userRole }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId, contentTypes = [], contentTypeGroups = [], singleTypes = [], user, userRole }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
@@ -52,6 +53,16 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
 
   const href = (path: string) => `/dashboard/${tenantId}/cms${path}`
   const canGoBack = userRole === "owner" || userRole === "admin" || userRole === "super_admin"
+
+  const ungroupedContentTypes = contentTypes.filter((ct) => !ct.groupId)
+  const contentTypesByGroup = new Map<string, SidebarContentType[]>()
+  for (const ct of contentTypes) {
+    if (!ct.groupId) continue
+    const list = contentTypesByGroup.get(ct.groupId) || []
+    list.push(ct)
+    contentTypesByGroup.set(ct.groupId, list)
+  }
+  const groupTree = pruneEmptyGroups(buildGroupTree(contentTypeGroups), (groupId) => (contentTypesByGroup.get(groupId)?.length || 0) > 0)
 
   useEffect(() => {
     setMounted(true)
@@ -109,46 +120,24 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                 </Link>
               )}
             </div>
-            {contentTypes.length === 0 ? (
+            {contentTypes.length === 0 && groupTree.length === 0 ? (
               <p className="px-3 text-xs text-muted-foreground/60 italic">Belum ada skema</p>
             ) : (
-              <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
-              {contentTypes.map(ct => {
-                const active = pathname.startsWith(href(`/content/${ct.slug}`))
-                return (
-                  <div key={ct.id} className="relative group">
-                    <Link href={href(`/content/${ct.slug}`)}>
-                      <div className={cn(
-                        "flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-all rounded-xl",
-                        active
-                          ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                      )}>
-                        <Database className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                        <span className="truncate flex-1 pr-6">{ct.name}</span>
-                        {!canGoBack && (
-                          <ChevronRight className={cn("h-3 w-3 transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-100")} />
-                        )}
-                      </div>
-                    </Link>
-                    {canGoBack && (
-                      <Link
-                        href={`/dashboard/${tenantId}/developer/content-types/edit/${ct.slug}`}
-                        title={`Edit Skema ${ct.name}`}
-                        className={cn(
-                          "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
-                          active
-                            ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/20"
-                            : "text-muted-foreground hover:text-primary hover:bg-muted"
-                        )}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Settings className="h-3.5 w-3.5" />
-                      </Link>
-                    )}
-                  </div>
-                )
-              })}
+              <div className={cn("space-y-1", canGoBack && "max-h-64 overflow-y-auto pr-1")}>
+                {ungroupedContentTypes.map(ct => (
+                  <ContentTypeRow key={ct.id} ct={ct} tenantId={tenantId} pathname={pathname} canGoBack={canGoBack} href={href} />
+                ))}
+                {groupTree.map(group => (
+                  <GroupNode
+                    key={group.id}
+                    group={group}
+                    contentTypesByGroup={contentTypesByGroup}
+                    tenantId={tenantId}
+                    pathname={pathname}
+                    canGoBack={canGoBack}
+                    href={href}
+                  />
+                ))}
               </div>
             )}
           </div>

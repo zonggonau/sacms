@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Activity,
   CheckCircle2,
@@ -17,9 +18,19 @@ import {
   HardDrive,
   Server,
   Loader2,
+  Database,
+  Save,
+  Trash2,
+  PlugZap,
+  XCircle,
+  Lock,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
+
+const MASK = "••••••••"
+type TestResult = { status: "idle" | "success" | "error"; message?: string }
 
 export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const { data: session, status: authStatus } = useSession()
@@ -91,6 +102,24 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
   const [useOwnerInfra, setUseOwnerInfra] = useState(true)
   const [switchingInfra, setSwitchingInfra] = useState(false)
 
+  // Workspace-plan-gated BYODB/BYOS for THIS tenant directly (Tenant.databaseUrl
+  // / storageConfig) — distinct from the owner's account-level BYODB above.
+  // Unlocked by Tenant.plan "business"/"enterprise" or the owner's Enterprise
+  // License (isWorkspaceEligibleForByoInfra in src/lib/database.ts), not the
+  // owner's account plan.
+  const [workspaceEligible, setWorkspaceEligible] = useState(false)
+  const [tenantDbUrl, setTenantDbUrl] = useState("")
+  const [tenantEndpoint, setTenantEndpoint] = useState("")
+  const [tenantAccessKey, setTenantAccessKey] = useState("")
+  const [tenantSecretKey, setTenantSecretKey] = useState("")
+  const [tenantBucket, setTenantBucket] = useState("")
+  const [savingTenantDb, setSavingTenantDb] = useState(false)
+  const [savingTenantStorage, setSavingTenantStorage] = useState(false)
+  const [testingTenantDb, setTestingTenantDb] = useState(false)
+  const [testingTenantStorage, setTestingTenantStorage] = useState(false)
+  const [tenantDbTestResult, setTenantDbTestResult] = useState<TestResult>({ status: "idle" })
+  const [tenantStorageTestResult, setTenantStorageTestResult] = useState<TestResult>({ status: "idle" })
+
   useEffect(() => {
     if (!tenantSlug || !session?.user || !isOwner) return
     fetch(`/api/tenant/${tenantSlug}/infrastructure`)
@@ -99,9 +128,145 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
         if (!data) return
         setOwnerHasInfraConfigured(!!data.ownerHasInfraConfigured)
         setUseOwnerInfra(data.useOwnerInfra !== false)
+        setWorkspaceEligible(!!data.workspaceEligibleForByoInfra)
+        setTenantDbUrl(data.tenantDatabaseUrl || "")
+        if (data.tenantStorageConfig) {
+          setTenantEndpoint(data.tenantStorageConfig.endpoint || "")
+          setTenantAccessKey(data.tenantStorageConfig.accessKey || "")
+          setTenantSecretKey(data.tenantStorageConfig.secretKey || "")
+          setTenantBucket(data.tenantStorageConfig.bucket || "")
+        }
       })
       .catch(() => {})
   }, [tenantSlug, session, isOwner])
+
+  const saveTenantDbUrl = async (value: string | null) => {
+    setSavingTenantDb(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ databaseUrl: value }),
+      })
+      const body = await res.json()
+      if (res.ok) {
+        setTenantDbUrl(value || "")
+        setTenantDbTestResult({ status: "idle" })
+        toast.success(value ? "URL database workspace berhasil disimpan." : "Database sendiri dihapus — workspace kembali ke sumber infrastruktur lain.")
+      } else {
+        toast.error(body.error || "Gagal menyimpan URL database.")
+      }
+    } catch {
+      toast.error("Gagal menyimpan URL database.")
+    } finally {
+      setSavingTenantDb(false)
+    }
+  }
+
+  const saveTenantStorageConfig = async (
+    value: { endpoint: string; accessKey: string; secretKey: string; bucket: string } | null
+  ) => {
+    setSavingTenantStorage(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storageConfig: value }),
+      })
+      const body = await res.json()
+      if (res.ok) {
+        if (!value) {
+          setTenantEndpoint("")
+          setTenantAccessKey("")
+          setTenantSecretKey("")
+          setTenantBucket("")
+        }
+        setTenantStorageTestResult({ status: "idle" })
+        toast.success(value ? "Konfigurasi storage workspace berhasil disimpan." : "Storage sendiri dihapus — workspace kembali ke sumber infrastruktur lain.")
+      } else {
+        toast.error(body.error || "Gagal menyimpan konfigurasi storage.")
+      }
+    } catch {
+      toast.error("Gagal menyimpan konfigurasi storage.")
+    } finally {
+      setSavingTenantStorage(false)
+    }
+  }
+
+  const handleSaveTenantDb = () => {
+    const trimmed = tenantDbUrl.trim()
+    saveTenantDbUrl(trimmed === "" ? null : trimmed)
+  }
+
+  const handleSaveTenantStorage = () => {
+    if (!tenantEndpoint.trim() || !tenantAccessKey.trim() || !tenantSecretKey.trim() || !tenantBucket.trim()) {
+      toast.error("Isi Endpoint, Access Key, Secret Key, dan Bucket.")
+      return
+    }
+    saveTenantStorageConfig({ endpoint: tenantEndpoint.trim(), accessKey: tenantAccessKey.trim(), secretKey: tenantSecretKey, bucket: tenantBucket.trim() })
+  }
+
+  const handleTestTenantDb = async () => {
+    if (!tenantDbUrl.trim() || tenantDbUrl === MASK) return
+    setTestingTenantDb(true)
+    setTenantDbTestResult({ status: "idle" })
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure/test-connection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "database", url: tenantDbUrl.trim() }),
+      })
+      const body = await res.json()
+      setTenantDbTestResult({ status: res.ok && body.success ? "success" : "error", message: body.message || body.error })
+    } catch {
+      setTenantDbTestResult({ status: "error", message: "Gagal menghubungi server untuk tes koneksi." })
+    } finally {
+      setTestingTenantDb(false)
+    }
+  }
+
+  const handleTestTenantStorage = async () => {
+    if (!tenantEndpoint.trim() || !tenantAccessKey.trim() || !tenantSecretKey.trim() || !tenantBucket.trim()) {
+      toast.error("Isi Endpoint, Access Key, Secret Key, dan Bucket sebelum tes koneksi.")
+      return
+    }
+    setTestingTenantStorage(true)
+    setTenantStorageTestResult({ status: "idle" })
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure/test-connection`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "storage",
+          config: { endpoint: tenantEndpoint.trim(), accessKey: tenantAccessKey.trim(), secretKey: tenantSecretKey, bucket: tenantBucket.trim() },
+        }),
+      })
+      const body = await res.json()
+      setTenantStorageTestResult({ status: res.ok && body.success ? "success" : "error", message: body.message || body.error })
+    } catch {
+      setTenantStorageTestResult({ status: "error", message: "Gagal menghubungi server untuk tes koneksi." })
+    } finally {
+      setTestingTenantStorage(false)
+    }
+  }
+
+  const TenantTestResultBadge = ({ result }: { result: TestResult }) => {
+    if (result.status === "idle") return null
+    const ok = result.status === "success"
+    return (
+      <div
+        className={cn(
+          "flex items-start gap-2 rounded-xl border px-3 py-2.5 text-xs",
+          ok
+            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+            : "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400"
+        )}
+      >
+        {ok ? <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0" /> : <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />}
+        <span>{result.message || (ok ? "Koneksi berhasil." : "Koneksi gagal.")}</span>
+      </div>
+    )
+  }
 
   const handleToggleOwnerInfra = async (next: boolean) => {
     setSwitchingInfra(true)
@@ -238,7 +403,7 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
           </CardContent>
         </Card>
 
-        {/* 1b. OWNER-ONLY SWITCH: own infra vs SaCMS-managed */}
+        {/* 1a. OWNER-ONLY SWITCH: own infra vs SaCMS-managed */}
         {isOwner && ownerHasInfraConfigured && (
           <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
             <CardContent className="p-5 flex items-center justify-between gap-4 flex-wrap">
@@ -251,6 +416,11 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                   <p className="text-[11px] text-muted-foreground mt-0.5 max-w-md">
                     Anda sudah mengatur database/storage sendiri di halaman Infrastruktur. Pilih apakah workspace ini memakainya, atau tetap memakai SaCMS (database/storage khusus Enterprise Anda tidak hilang, hanya tidak dipakai workspace ini).
                   </p>
+                  {tenantDbUrl && (
+                    <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1.5 max-w-md">
+                      Workspace ini memakai database sendiri langsung (di bawah) — switch ini tidak berpengaruh selama database sendiri tersebut aktif.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2.5 shrink-0">
@@ -263,6 +433,115 @@ export function DatabaseStorageView({ tenantSlug }: { tenantSlug: string }) {
                   <Switch id="use-owner-infra" checked={useOwnerInfra} onCheckedChange={handleToggleOwnerInfra} />
                 )}
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 1b. WORKSPACE-PLAN-GATED BYODB/BYOS: this tenant's own direct database/storage */}
+        {isOwner && (
+          <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+              <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <Database className="h-4 w-4 text-primary" />
+                Database &amp; Storage Sendiri Workspace Ini
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                Hubungkan PostgreSQL dan storage MinIO/S3 milik Anda sendiri (VPS/server sendiri) khusus untuk workspace ini.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5 space-y-5">
+              {!workspaceEligible ? (
+                <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-3 text-xs text-amber-700 dark:text-amber-400">
+                  <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    Fitur ini tersedia untuk workspace dengan paket <strong>Business</strong> atau akun dengan <strong>lisensi Enterprise</strong>.{" "}
+                    <Link href={`/dashboard/${tenantSlug}/subscriptions`} className="underline font-semibold">
+                      Upgrade paket workspace
+                    </Link>{" "}
+                    untuk membuka fitur ini.
+                  </span>
+                </div>
+              ) : (
+                <>
+                  {/* Database */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold">URL Database PostgreSQL</Label>
+                    <Input
+                      type="text"
+                      placeholder="postgresql://user:password@host:5432/dbname"
+                      value={tenantDbUrl}
+                      onChange={(e) => {
+                        setTenantDbUrl(e.target.value)
+                        setTenantDbTestResult({ status: "idle" })
+                      }}
+                      className="font-mono text-xs"
+                      disabled={savingTenantDb || testingTenantDb}
+                    />
+                    <TenantTestResultBadge result={tenantDbTestResult} />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => saveTenantDbUrl(null)} disabled={savingTenantDb || tenantDbUrl === ""}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Hapus
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleTestTenantDb} disabled={testingTenantDb || !tenantDbUrl.trim() || tenantDbUrl === MASK}>
+                        {testingTenantDb ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5 mr-1.5" />}
+                        Tes Koneksi
+                      </Button>
+                      <Button size="sm" onClick={handleSaveTenantDb} disabled={savingTenantDb || tenantDbUrl === MASK}>
+                        {savingTenantDb ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Simpan
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Storage */}
+                  <div className="space-y-2 pt-4 border-t border-border/60">
+                    <Label className="text-xs font-bold">Storage MinIO/S3</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5 col-span-2">
+                        <Label className="text-[11px] font-semibold text-muted-foreground">Endpoint MinIO</Label>
+                        <Input
+                          placeholder="https://minio.domain-anda.com"
+                          value={tenantEndpoint}
+                          onChange={(e) => {
+                            setTenantEndpoint(e.target.value)
+                            setTenantStorageTestResult({ status: "idle" })
+                          }}
+                          className="text-xs"
+                          disabled={savingTenantStorage || testingTenantStorage}
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold text-muted-foreground">Access Key</Label>
+                        <Input value={tenantAccessKey} onChange={(e) => setTenantAccessKey(e.target.value)} className="text-xs" disabled={savingTenantStorage || testingTenantStorage} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-semibold text-muted-foreground">Secret Key</Label>
+                        <Input type="password" value={tenantSecretKey} onChange={(e) => setTenantSecretKey(e.target.value)} className="text-xs" disabled={savingTenantStorage || testingTenantStorage} />
+                      </div>
+                      <div className="space-y-1.5 col-span-2">
+                        <Label className="text-[11px] font-semibold text-muted-foreground">Nama Bucket</Label>
+                        <Input value={tenantBucket} onChange={(e) => setTenantBucket(e.target.value)} className="text-xs" disabled={savingTenantStorage || testingTenantStorage} />
+                      </div>
+                    </div>
+                    <TenantTestResultBadge result={tenantStorageTestResult} />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => saveTenantStorageConfig(null)} disabled={savingTenantStorage || !tenantEndpoint}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Hapus
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={handleTestTenantStorage} disabled={testingTenantStorage}>
+                        {testingTenantStorage ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <PlugZap className="h-3.5 w-3.5 mr-1.5" />}
+                        Tes Koneksi
+                      </Button>
+                      <Button size="sm" onClick={handleSaveTenantStorage} disabled={savingTenantStorage}>
+                        {savingTenantStorage ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Simpan
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

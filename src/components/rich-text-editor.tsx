@@ -211,7 +211,21 @@ export function RichTextEditor({
         ref={quillRef}
         theme="snow"
         value={value || ""}
-        onChange={onChange}
+        // react-quill calls onChange with (content, delta, source, editor) —
+        // `source` is "user" for a real keystroke, but "api"/"silent" when
+        // Quill itself re-applies content (e.g. normalizing an externally-set
+        // `value` prop on mount/update, or the Yjs CRDT binding above pasting
+        // initial content). Forwarding every call unfiltered — as this did —
+        // means Quill's own normalization echoes back through `onChange`,
+        // which re-renders this field with the "normalized" value, which
+        // Quill normalizes again, forever: exactly the "Maximum update depth
+        // exceeded" loop reported when editing a Component's richText/
+        // textarea field (confirmed live on the "Landing Page" single type,
+        // e.g. its About Us / WhatsApp Config components). Only forward a
+        // real user edit.
+        onChange={(content: string, _delta: unknown, source: string) => {
+          if (source === "user") onChange(content)
+        }}
         placeholder={placeholder}
         modules={simple ? simpleModules : fullModules}
         formats={simple ? simpleFormats : fullFormats}

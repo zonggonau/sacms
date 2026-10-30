@@ -5,6 +5,7 @@ import { enforcePlanLimit } from "@/lib/plan-enforcement"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isWorkspaceAdmin } from "@/lib/rbac/staff"
 
 export default async function ContentTypesPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params
@@ -42,12 +43,13 @@ export default async function ContentTypesPage({ params }: { params: Promise<{ t
   }))
 
   return (
-    <ContentTypesClient 
-      initialContentTypes={initialContentTypes as any} 
-      tenantSlug={tenant} 
+    <ContentTypesClient
+      initialContentTypes={initialContentTypes as any}
+      tenantSlug={tenant}
       limit={maxLimit}
       current={currentUsageCount}
       isGlobalTenant={access?.isGlobal}
+      canManageGroups={!!access && isWorkspaceAdmin(access.role)}
     />
   )
 }

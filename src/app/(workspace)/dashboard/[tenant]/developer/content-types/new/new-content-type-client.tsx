@@ -46,6 +46,10 @@ import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { createContentTypeAction, getContentTypesAction } from "@/actions/content-types"
+import { getContentTypeGroupsAction } from "@/actions/content-type-groups"
+import { buildGroupTree, flattenGroupTreeForSelect, type FlatContentTypeGroup } from "@/lib/content-type-groups"
+
+const NO_GROUP = "__no_group__"
 
 export default function NewContentTypeClient({
   tenantSlug,
@@ -62,6 +66,8 @@ export default function NewContentTypeClient({
   const [showInCms, setShowInCms] = useState(true)
   const [docxTemplateUrl, setDocxTemplateUrl] = useState("")
   const [fields, setFields] = useState<Field[]>([])
+  const [groupId, setGroupId] = useState(NO_GROUP)
+  const [groups, setGroups] = useState<FlatContentTypeGroup[]>([])
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
@@ -91,6 +97,12 @@ export default function NewContentTypeClient({
       } catch (err) {}
     }
     loadContentTypes()
+  }, [tenantSlug])
+
+  useEffect(() => {
+    getContentTypeGroupsAction(tenantSlug).then((res) => {
+      if (!("error" in res)) setGroups(res.groups)
+    })
   }, [tenantSlug])
 
   const generateFieldSlug = (value: string) => {
@@ -234,6 +246,7 @@ export default function NewContentTypeClient({
         description,
         showInCms,
         docxTemplateUrl: docxTemplateUrl || null,
+        groupId: groupId === NO_GROUP ? null : groupId,
         fields: fields.map((f, index) => ({
           name: f.name,
           slug: f.slug,
@@ -325,11 +338,24 @@ export default function NewContentTypeClient({
                       <Label className="text-xs font-semibold cursor-pointer text-foreground" htmlFor="showInCmsNew">Tampilkan di CMS</Label>
                       <p className="text-[11px] text-muted-foreground">Munculkan di menu studio konten /cms</p>
                     </div>
-                    <Switch 
+                    <Switch
                       id="showInCmsNew"
-                      checked={showInCms} 
-                      onCheckedChange={setShowInCms} 
+                      checked={showInCms}
+                      onCheckedChange={setShowInCms}
                     />
+                  </div>
+                  <div className="space-y-1.5 pt-3 border-t border-border/60">
+                    <Label className="text-xs font-semibold text-foreground">Grup</Label>
+                    <Select value={groupId} onValueChange={setGroupId}>
+                      <SelectTrigger className="h-9 text-xs w-full bg-background border-border/80 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_GROUP} className="text-xs">Tanpa Grup</SelectItem>
+                        {flattenGroupTreeForSelect(buildGroupTree(groups)).map((g) => (
+                          <SelectItem key={g.id} value={g.id} className="text-xs">{g.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">Tampilkan koleksi ini di dalam dropdown grup pada sidebar CMS</p>
                   </div>
                 </CardContent>
               </Card>

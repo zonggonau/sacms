@@ -355,6 +355,29 @@ export async function isOwnerEligibleForByoInfra(ownerId: string): Promise<boole
   return isEnterpriseTenant(globalId, ownerId)
 }
 
+const WORKSPACE_BYO_PLANS = new Set(["business", "bisnis", "enterprise"])
+
+/**
+ * A second, independent BYODB/BYOS gate — this one driven by the WORKSPACE's
+ * own plan (Tenant.plan), not its owner's account plan, since one account
+ * can own workspaces on different plans. Deliberately narrower than
+ * isOwnerEligibleForByoInfra's license fallback: it requires an actual
+ * valid Enterprise License (isEnterpriseTenant), not just
+ * User.plan === 'enterprise'/'agency' on its own — confirmed with the user.
+ * Live DB check, no caching (same reasoning as isOwnerEligibleForByoInfra —
+ * this is only called on the infrequent settings-page GET/PUT path).
+ */
+export async function isWorkspaceEligibleForByoInfra(tenantId: string): Promise<boolean> {
+  const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { plan: true, ownerId: true } })
+  if (!tenant) return false
+  if (WORKSPACE_BYO_PLANS.has((tenant.plan || "").trim().toLowerCase())) return true
+  if (!tenant.ownerId) return false
+  const { isEnterpriseTenant } = await import('./license')
+  const { getGlobalWorkspaceId } = await import('./settings')
+  const globalId = await getGlobalWorkspaceId()
+  return isEnterpriseTenant(globalId, tenant.ownerId)
+}
+
 export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMasterInfra> {
   const cached = ownerMasterInfraCache.get(tenantId)
   if (cached && cached.expiresAt > Date.now()) {

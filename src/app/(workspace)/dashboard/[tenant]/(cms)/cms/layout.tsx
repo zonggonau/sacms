@@ -93,52 +93,59 @@ export default async function CMSLayout({
 
   // Fetch content types directly in Server Component
   const tenantDb = await getTenantDb(tenantId)
-  const availableContentTypes = await tenantDb.contentType.findMany({
-    where: {
-      showInCms: true,
-      OR: [
-        { tenantId: tenantId },
-        {
-          tenants: {
-            some: {
-              tenantId: tenantId,
-              enabled: true
+  const [availableContentTypes, availableSingleTypes, contentTypeGroups] = await Promise.all([
+    tenantDb.contentType.findMany({
+      where: {
+        showInCms: true,
+        OR: [
+          { tenantId: tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: tenantId,
+                enabled: true
+              }
             }
-          }
-        },
-        ...(access.isGlobal ? [{ tenantId: null }] : [])
-      ]
-    },
-    select: { id: true, name: true, slug: true },
-    orderBy: { updatedAt: "desc" },
-  })
-
-  const availableSingleTypes = await tenantDb.singleType.findMany({
-    where: {
-      showInCms: true,
-      OR: [
-        { tenantId: tenantId },
-        {
-          tenants: {
-            some: {
-              tenantId: tenantId,
-              enabled: true
+          },
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
+        ]
+      },
+      select: { id: true, name: true, slug: true, groupId: true, groupOrder: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    tenantDb.singleType.findMany({
+      where: {
+        showInCms: true,
+        OR: [
+          { tenantId: tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: tenantId,
+                enabled: true
+              }
             }
-          }
-        },
-        ...(access.isGlobal ? [{ tenantId: null }] : [])
-      ]
-    },
-    select: { id: true, name: true, slug: true },
-    orderBy: { updatedAt: "desc" },
-  })
+          },
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
+        ]
+      },
+      select: { id: true, name: true, slug: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    tenantDb.contentTypeGroup.findMany({
+      where: { tenantId },
+      select: { id: true, name: true, parentId: true, order: true },
+      orderBy: { order: "asc" },
+    }),
+  ])
 
   return (
     <div className="flex min-h-screen">
-      <CMSSidebar 
-        tenantId={tenantId} 
-        contentTypes={availableContentTypes} 
-        singleTypes={availableSingleTypes} 
+      <CMSSidebar
+        tenantId={tenantId}
+        contentTypes={availableContentTypes}
+        contentTypeGroups={contentTypeGroups}
+        singleTypes={availableSingleTypes}
         user={session.user}
         userRole={access.role}
       />
