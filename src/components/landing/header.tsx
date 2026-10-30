@@ -58,8 +58,14 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                 it falls the Logo component back to a compact icon+text
                 render instead of the real header-footer lockup image,
                 which is what the navbar should always show, same as the
-                footer right below it. */}
-            <Logo iconSize="md" variant="wide" wideColor="black" showText={true} useOrange={true} />
+                footer right below it. wideColor also intentionally left
+                at its "auto" default (not pinned to "black") so the logo
+                switches to header-footer-white.png in dark mode — this
+                header's own background follows the theme too (bg-
+                background/80 when scrolled, transparent-over-page
+                otherwise), so a black-only lockup goes low-contrast in
+                dark mode. */}
+            <Logo iconSize="md" variant="wide" showText={true} useOrange={true} />
           </Link>
         </div>
 
