@@ -8,6 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Loader2, Crown, Eye, EyeOff, CheckCircle2, Mail, RefreshCw } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
@@ -28,6 +37,7 @@ export default function RegisterPage() {
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const [termsModalOpen, setTermsModalOpen] = useState(false)
   const { data: session, status } = useSession()
 
   
@@ -344,16 +354,97 @@ export default function RegisterPage() {
               </div>
 
               <div className="flex items-center space-x-2.5 pt-2">
-                <Checkbox 
-                  id="terms" 
-                  checked={formData.agreeTerms} 
-                  onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })} 
-                  className="border-border/50 rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary w-4 h-4" 
+                <Checkbox
+                  id="terms"
+                  checked={formData.agreeTerms}
+                  onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })}
+                  className="border-border/50 rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary w-4 h-4"
                 />
+                {/* "Syarat & Ketentuan Layanan" is a sibling button, not nested
+                    inside the label — nesting it would make clicking the terms
+                    text also forward-click the checkbox (native <label>
+                    behavior), ticking it without the user ever reading
+                    anything. It only opens the modal below; agreeing happens
+                    via the checkbox itself or the modal's own "Saya Setuju". */}
                 <Label htmlFor="terms" className="text-xs font-medium text-muted-foreground cursor-pointer select-none">
-                  Saya menyetujui <span className="text-primary font-bold">Syarat & Ketentuan Layanan</span>
+                  Saya menyetujui{" "}
                 </Label>
+                <button
+                  type="button"
+                  onClick={() => setTermsModalOpen(true)}
+                  className="text-xs font-bold text-primary hover:underline cursor-pointer -ml-1.5"
+                >
+                  Syarat & Ketentuan Layanan
+                </button>
               </div>
+
+              <Dialog open={termsModalOpen} onOpenChange={setTermsModalOpen}>
+                <DialogContent className="max-w-lg rounded-2xl border-border/80 shadow-xl bg-card">
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-bold">Syarat & Ketentuan Layanan SaCMS</DialogTitle>
+                    <DialogDescription className="text-xs">
+                      Mohon baca sebelum melanjutkan pendaftaran.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="h-80 pr-4">
+                    <div className="space-y-3 text-xs text-muted-foreground leading-relaxed">
+                      <p>
+                        Dengan mendaftar dan menggunakan SaCMS ("Layanan"), Anda menyetujui ketentuan berikut.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">1. Akun.</strong> Anda bertanggung jawab menjaga
+                        kerahasiaan kata sandi akun Anda dan atas seluruh aktivitas yang terjadi di bawah akun
+                        tersebut. Segera laporkan kepada kami bila terjadi penggunaan tidak sah.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">2. Penggunaan Layanan.</strong> Anda setuju tidak
+                        menggunakan Layanan untuk tujuan yang melanggar hukum, menyebarkan konten ilegal, atau
+                        mengganggu operasional dan keamanan sistem SaCMS maupun pengguna lain.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">3. Konten Anda.</strong> Anda tetap pemilik penuh atas
+                        seluruh konten yang Anda unggah atau buat di workspace Anda. SaCMS hanya memproses dan
+                        menyimpan konten tersebut untuk menjalankan Layanan sesuai paket yang Anda pilih.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">4. Pembayaran & Paket.</strong> Paket berbayar
+                        ditagih sesuai siklus langganan yang berlaku. Penurunan/penghentian paket diatur melalui
+                        halaman Billing & Subscriptions di dashboard Anda.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">5. Batasan Tanggung Jawab.</strong> Layanan disediakan
+                        "sebagaimana adanya". Sepanjang diizinkan oleh hukum yang berlaku, SaCMS tidak bertanggung
+                        jawab atas kerugian tidak langsung yang timbul dari penggunaan Layanan.
+                      </p>
+                      <p>
+                        <strong className="text-foreground">6. Perubahan Ketentuan.</strong> Kami dapat memperbarui
+                        ketentuan ini dari waktu ke waktu. Perubahan material akan diberitahukan melalui email atau
+                        notifikasi dalam dashboard.
+                      </p>
+                    </div>
+                  </ScrollArea>
+                  <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setTermsModalOpen(false)}
+                      className="rounded-xl text-xs font-bold h-9"
+                    >
+                      Tutup
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, agreeTerms: true }))
+                        setTermsModalOpen(false)
+                      }}
+                      className="rounded-xl text-xs font-bold h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      Saya Setuju
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               <Button 
                 type="submit" 
