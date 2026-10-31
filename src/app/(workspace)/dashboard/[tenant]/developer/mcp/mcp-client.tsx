@@ -19,6 +19,11 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { recallMcpTokenPlain } from "@/lib/mcp-token-storage"
+import {
+  createGlobalSchemaMcpTokenAction,
+  regenerateGlobalSchemaMcpTokenAction,
+  deleteGlobalSchemaMcpTokenAction,
+} from "@/actions/mcp-tokens"
 
 interface MCPDashboardClientProps {
   tenantSlug: string
@@ -28,6 +33,10 @@ interface MCPDashboardClientProps {
   subscriptionStatus?: string
   /** The tenant's MCP token row, if one exists — never its plaintext (see src/lib/mcp-token-storage.ts). */
   activeMcpToken?: { id: string; name: string } | null
+  /** True only when viewing the SaCMS Global workspace's own Developer > MCP page. */
+  isGlobal?: boolean
+  /** The SaCMS Global "Schema Template" MCP token row, if one exists — never its plaintext. */
+  activeGlobalSchemaToken?: { id: string; name: string } | null
 }
 
 // ─── Config generators per platform ──────────────────────────────────────────
@@ -394,15 +403,80 @@ export function MCPDashboardClient({
   isPaid = false,
   subscriptionStatus = "inactive",
   activeMcpToken = null,
+  isGlobal = false,
+  activeGlobalSchemaToken = null,
 }: MCPDashboardClientProps) {
   const { toast } = useToast()
 
   // Protocol MCP Base URL
   const [mcpUrl, setMcpUrl] = useState("")
+  const [globalSchemaMcpUrl, setGlobalSchemaMcpUrl] = useState("")
   useEffect(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
     setMcpUrl(`${origin}/api/mcp`)
+    setGlobalSchemaMcpUrl(`${origin}/api/mcp/global-schema`)
   }, [])
+
+  // ─── SaCMS Global "Schema Template" MCP token — fully self-contained
+  // here (unlike the regular mcp_ token above, which is created on the
+  // separate /developer/api-keys page): create/regenerate/revoke all
+  // happen inline, and the plaintext only ever lives in this component's
+  // own state for the current page view, never sessionStorage.
+  const [globalSchemaToken, setGlobalSchemaToken] = useState(activeGlobalSchemaToken)
+  const [globalSchemaPlainToken, setGlobalSchemaPlainToken] = useState("")
+  const [gsNameInput, setGsNameInput] = useState("Schema Template Generator")
+  const [gsBusy, setGsBusy] = useState(false)
+  const [gsCopied, setGsCopied] = useState(false)
+
+  const handleCreateGlobalSchemaToken = async () => {
+    setGsBusy(true)
+    try {
+      const res = await createGlobalSchemaMcpTokenAction(tenantSlug, { name: gsNameInput.trim() || "Schema Template Generator" })
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal membuat token" })
+        return
+      }
+      setGlobalSchemaToken(res.token)
+      setGlobalSchemaPlainToken(res.plainToken)
+      toast({ title: "Token dibuat", description: "Simpan nilainya sekarang — tidak akan ditampilkan lagi." })
+    } finally {
+      setGsBusy(false)
+    }
+  }
+
+  const handleRegenerateGlobalSchemaToken = async () => {
+    if (!globalSchemaToken) return
+    setGsBusy(true)
+    try {
+      const res = await regenerateGlobalSchemaMcpTokenAction(tenantSlug, globalSchemaToken.id)
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal generate ulang token" })
+        return
+      }
+      setGlobalSchemaToken(res.token)
+      setGlobalSchemaPlainToken(res.plainToken)
+      toast({ title: "Token di-generate ulang", description: "Nilai lama tidak berlaku lagi — simpan nilai baru ini sekarang." })
+    } finally {
+      setGsBusy(false)
+    }
+  }
+
+  const handleDeleteGlobalSchemaToken = async () => {
+    if (!globalSchemaToken) return
+    setGsBusy(true)
+    try {
+      const res = await deleteGlobalSchemaMcpTokenAction(tenantSlug, globalSchemaToken.id)
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal menghapus token" })
+        return
+      }
+      setGlobalSchemaToken(null)
+      setGlobalSchemaPlainToken("")
+      toast({ title: "Token dihapus" })
+    } finally {
+      setGsBusy(false)
+    }
+  }
 
   // Token itself is created/regenerated/deleted from /developer/api-keys'
   // "MCP Token" tab. The server only ever stores a hash of it, so the
@@ -680,6 +754,109 @@ export function MCPDashboardClient({
               )}
             </div>
           </Card>
+
+          {/* SaCMS Global — Schema Template MCP (visible only on the Global workspace) */}
+          {isGlobal && (
+            <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-4">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground">MCP Server Khusus: Schema Template SaCMS Global</p>
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+                      Internal Only
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 max-w-2xl">
+                    Server MCP terpisah, hanya untuk membuat/mengubah Schema Template (blueprint CMS untuk jenis
+                    website tertentu) yang bisa dipakai semua workspace — tidak bisa mengakses konten atau
+                    pengaturan workspace manapun. Token-nya (<code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">mcpglobal_...</code>)
+                    terpisah total dari token MCP biasa di atas.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input value={globalSchemaMcpUrl} readOnly className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground" />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => handleCopy(globalSchemaMcpUrl, "URL MCP Schema Template")}
+                  className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin URL
+                </Button>
+              </div>
+
+              {!globalSchemaToken ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={gsNameInput}
+                    onChange={(e) => setGsNameInput(e.target.value)}
+                    placeholder="Nama token"
+                    className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 max-w-xs"
+                  />
+                  <Button
+                    onClick={handleCreateGlobalSchemaToken}
+                    disabled={gsBusy}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs"
+                  >
+                    <Key className="mr-1.5 h-3.5 w-3.5" /> Buat Token Schema Template
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <Input
+                      value={globalSchemaPlainToken || "••••••••••••••••••••••• (nilai lama, tidak ditampilkan lagi)"}
+                      readOnly
+                      className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground flex-1"
+                    />
+                    {globalSchemaPlainToken && (
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        title="Salin token"
+                        onClick={() => {
+                          handleCopy(globalSchemaPlainToken, "Token Schema Template MCP")
+                          setGsCopied(true)
+                          setTimeout(() => setGsCopied(false), 2000)
+                        }}
+                        className="h-9 w-9 rounded-xl shrink-0"
+                      >
+                        {gsCopied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={gsBusy}
+                      onClick={handleRegenerateGlobalSchemaToken}
+                      className="font-bold rounded-xl h-9 px-3 text-xs shadow-xs border-border/80 shrink-0"
+                    >
+                      Generate Ulang
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={gsBusy}
+                      onClick={handleDeleteGlobalSchemaToken}
+                      className="font-bold rounded-xl h-9 px-3 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    >
+                      Hapus
+                    </Button>
+                  </div>
+                  {!globalSchemaPlainToken && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Token "{globalSchemaToken.name}" sudah dibuat, tapi nilai aslinya hanya ditampilkan sekali saat dibuat/generate ulang.
+                    </p>
+                  )}
+                </div>
+              )}
+            </Card>
+          )}
 
           {/* Platform Setup Guides */}
           <div className="space-y-4">

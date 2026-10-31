@@ -21,7 +21,7 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
   // src/lib/mcp-token-storage.ts) plus tenant/subscription status to
   // render the config/setup guides. The plaintext itself is never stored
   // server-side (only its SHA-256 hash), so it can't be fetched here.
-  const [tenant, subscription, mcpToken] = await Promise.all([
+  const [tenant, subscription, mcpToken, globalSchemaToken] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
@@ -35,6 +35,15 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       select: { id: true, name: true },
       orderBy: { createdAt: "asc" },
     }),
+    // Only the SaCMS Global workspace ever has one of these — see
+    // src/app/api/mcp/global-schema and src/actions/mcp-tokens.ts.
+    access.isGlobal
+      ? db.apiToken.findFirst({
+          where: { tenantId: tenantSummary.id, type: "mcp-global-schema" },
+          select: { id: true, name: true },
+          orderBy: { createdAt: "asc" },
+        })
+      : Promise.resolve(null),
   ])
 
   const currentStatus = tenant?.status ?? "active"
@@ -52,6 +61,8 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       isPaid={isPaid}
       subscriptionStatus={subscription?.status || "inactive"}
       activeMcpToken={mcpToken ? { id: mcpToken.id, name: mcpToken.name } : null}
+      isGlobal={access.isGlobal}
+      activeGlobalSchemaToken={globalSchemaToken ? { id: globalSchemaToken.id, name: globalSchemaToken.name } : null}
     />
   )
 }
