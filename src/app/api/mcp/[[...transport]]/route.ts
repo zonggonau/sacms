@@ -2055,10 +2055,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 6. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
 7. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
 8. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
+9. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
 
 ## Phase 4 — Ship it
-9. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
-10. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\` for extra env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+10. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
+11. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
@@ -2530,6 +2531,42 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       },
     )
 
+    // ── list_deployment_env ──────────────────────────────────────────────────
+    server.registerTool(
+      "list_deployment_env",
+      {
+        title: "List Deployment Environment Variables",
+        description:
+          "List the environment variable KEY NAMES already configured for this workspace's deployment — " +
+          "both system vars (auto-injected on every deploy, e.g. the SaCMS API connection vars) and custom " +
+          "vars set via add_deployment_env or the dashboard's Environment tab. Returns NAMES ONLY, never " +
+          "values — secrets are injected directly into the deployed app's own process.env at runtime and " +
+          "never pass through this tool or this conversation. Call this BEFORE writing code that needs a " +
+          "third-party API key (e.g. PRINTFUL_API_KEY) to check whether it's already configured, instead of " +
+          "guessing a name or asking the user to paste the secret into chat — if it's already set, just " +
+          "reference process.env.<KEY> in the generated code.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const { SYSTEM_ENV_VARS, getTenantCustomEnvVarList } = await import("@/lib/infrastructure/frontend-env")
+        const customVars = auth.tenantId ? await getTenantCustomEnvVarList(auth.tenantId) : []
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              systemVars: SYSTEM_ENV_VARS.map((v) => ({ key: v.key, note: v.note })),
+              customVars: customVars.map((v) => ({ key: v.key })),
+            }, null, 2),
+          }],
+        }
+      },
+    )
+
     // ── make_deployment_public ───────────────────────────────────────────────
     server.registerTool(
       "make_deployment_public",
@@ -2598,7 +2635,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.4.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.5.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
