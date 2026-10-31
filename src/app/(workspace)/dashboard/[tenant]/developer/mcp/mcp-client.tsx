@@ -382,6 +382,8 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "get_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment.", inputs: ["deploymentId"] },
   { name: "configure_deployment_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project deployment, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
   { name: "add_deployment_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project deployment workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
+  { name: "list_deployment_env", category: "hosting", description: "Mendaftar NAMA environment variable yang sudah tersimpan (variabel sistem + variabel kustom) — tanpa pernah mengembalikan nilainya. Dipanggil AI sebelum menulis kode yang butuh API key pihak ketiga, supaya cukup mereferensikan process.env.<KEY> tanpa pernah melihat nilai aslinya.", inputs: [] },
+  { name: "call_external_api", category: "hosting", description: "Memanggil API pihak ketiga apa pun (Printful, payment gateway, dll) memakai secret yang sudah tersimpan di tab Environment — tulis {{NAMA_ENV}} di header/query/body, SaCMS yang menggantinya dengan nilai asli di server lalu mengembalikan responsnya. Nilai secret tidak pernah masuk ke percakapan AI; respons yang mengandung nilai tersebut otomatis disensor.", inputs: ["url", "method?", "headers?", "query?", "body?"] },
   { name: "make_deployment_public", category: "hosting", description: "Nonaktifkan proteksi deployment pada project workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login.", inputs: ["projectId?"] },
 ]
 
@@ -1054,6 +1056,32 @@ export function MCPDashboardClient({
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Buatkan form autentikasi Next.js (app/login/page.tsx & app/register/page.tsx) yang memanggil endpoint Headless Auth SaCMS (/api/public/{tenantSlug}/auth/login dan /register), menyimpan Access Token JWT di cookie, dan mengambil profil member dari /api/public/{tenantSlug}/auth/me.
+                  </pre>
+                </Card>
+
+                {/* Recipe 7: Third-Party API Integration via Stored Env */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20 text-[10px] font-bold">
+                        Integrasi Pihak Ketiga
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">7. Panggil API Pihak Ketiga Pakai Env Tersimpan</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Cek dulu dengan list_deployment_env apakah PRINTFUL_API_KEY sudah tersimpan di workspace ini. Kalau sudah, gunakan call_external_api untuk mengambil daftar produk dari Printful (https://api.printful.com/store/products, header Authorization: Bearer {{PRINTFUL_API_KEY}}), lalu bangun halaman katalog produk dari data aslinya.", "Prompt Integrasi API Pihak Ketiga")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    AI mengambil data nyata dari API pihak ketiga (Printful, payment gateway, dll) memakai secret yang sudah tersimpan — nilai aslinya tidak pernah masuk ke percakapan AI.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Cek dulu dengan list_deployment_env apakah PRINTFUL_API_KEY sudah tersimpan di workspace ini. Kalau sudah, gunakan call_external_api untuk mengambil daftar produk dari Printful (https://api.printful.com/store/products, header Authorization: Bearer {"{{PRINTFUL_API_KEY}}"}), lalu bangun halaman katalog produk dari data aslinya.
                   </pre>
                 </Card>
 
