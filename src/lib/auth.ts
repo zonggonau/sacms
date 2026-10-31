@@ -101,6 +101,16 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    // Tightened per explicit request: session cookie/JWT now expires after
+    // 1 day of inactivity instead of NextAuth's 30-day default. updateAge
+    // re-signs (slides) it forward on activity at most once per hour, so an
+    // actively-used session doesn't drop mid-work, but a genuinely idle one
+    // is gone within a day.
+    maxAge: 24 * 60 * 60,
+    updateAge: 60 * 60,
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60,
   },
   pages: {
     signIn: "/login",
