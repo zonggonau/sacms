@@ -55,17 +55,22 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
 
   const token = await db.apiToken.findFirst({
     where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
-    select: { id: true, tenantId: true },
+    select: { id: true, tenantId: true, tenant: { select: { id: true, slug: true } } },
   })
-  if (!token) return null
+  if (!token?.tenant) return null
 
   // Defense in depth: this token type is only ever minted for the
   // configured Global tenant (see createGlobalSchemaMcpTokenAction), but
   // re-verify at request time in case that setting is ever repointed —
   // this server must never authorize against a non-Global tenant.
+  // `globalTenantId` may be configured as either the tenant's real id OR
+  // its slug (see isGlobal in src/lib/tenant-access.ts, which this must
+  // match) — comparing only against `token.tenantId` (always the real id)
+  // wrongly rejected every token whenever the setting held the slug
+  // instead, which is exactly how the Global tenant was provisioned here.
   const { getGlobalWorkspaceId } = await import("@/lib/settings")
   const globalId = await getGlobalWorkspaceId()
-  if (token.tenantId !== globalId) return null
+  if (token.tenant.id !== globalId && token.tenant.slug !== globalId) return null
 
   db.apiToken
     .updateMany({
