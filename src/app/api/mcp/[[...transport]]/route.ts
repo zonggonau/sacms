@@ -2056,10 +2056,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 7. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
 8. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
 9. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
+10. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
 ## Phase 4 — Ship it
-10. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
-11. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+11. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
+12. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
@@ -2567,6 +2568,117 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       },
     )
 
+    // ── call_external_api ────────────────────────────────────────────────────
+    server.registerTool(
+      "call_external_api",
+      {
+        title: "Call a Third-Party API Using a Stored Env Var",
+        description:
+          "Call ANY third-party API (Printful, a payment gateway, a maps provider, etc.) using a secret " +
+          "already stored on this workspace's Environment tab — WITHOUT ever exposing that secret's value " +
+          "to you or this conversation. Write {{ENV_KEY}} anywhere a secret belongs (a header value, a query " +
+          "param, or the body) — e.g. headers: { \"Authorization\": \"Bearer {{PRINTFUL_API_KEY}}\" } — and " +
+          "SaCMS substitutes the real value server-side right before the request goes out, then returns the " +
+          "response to you. Use this instead of asking the user for a raw API key, and instead of generating " +
+          "code that tries to call the third-party API directly from your own sandbox (it has no access to " +
+          "this workspace's secrets — only SaCMS's own deployed runtime and this tool do). Call " +
+          "list_deployment_env first if you're not sure which {{KEY}} names are available. The response body " +
+          "is truncated at 20,000 characters and any stored secret value that appears in it is redacted.",
+        inputSchema: {
+          url: z.string().url().describe("Full URL of the third-party API endpoint. Supports {{ENV_KEY}} substitution."),
+          method: z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]).default("GET"),
+          headers: z.record(z.string(), z.string()).optional().describe("Header name -> value. Supports {{ENV_KEY}} substitution in values."),
+          query: z.record(z.string(), z.string()).optional().describe("Query string params to append to the URL. Supports {{ENV_KEY}} substitution in values."),
+          body: z.string().optional().describe("Raw request body (e.g. a JSON string). Supports {{ENV_KEY}} substitution."),
+        },
+      },
+      async ({ url, method, headers, query, body }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const { getTenantCustomEnvVars } = await import("@/lib/infrastructure/frontend-env")
+        const envMap = auth.tenantId ? await getTenantCustomEnvVars(auth.tenantId) : {}
+
+        const missing = new Set<string>()
+        const secretsUsed = new Set<string>()
+        const substitute = (input: string): string =>
+          input.replace(/\{\{([A-Z_][A-Z0-9_]*)\}\}/g, (_match, key: string) => {
+            if (!(key in envMap)) {
+              missing.add(key)
+              return ""
+            }
+            secretsUsed.add(envMap[key])
+            return envMap[key]
+          })
+
+        let targetUrl: URL
+        try {
+          targetUrl = new URL(substitute(url))
+        } catch {
+          return { content: [{ type: "text" as const, text: "❌ URL tidak valid." }], isError: true }
+        }
+        if (query) {
+          for (const [k, v] of Object.entries(query)) targetUrl.searchParams.set(k, substitute(v))
+        }
+        const resolvedHeaders: Record<string, string> = {}
+        if (headers) {
+          for (const [k, v] of Object.entries(headers)) resolvedHeaders[k] = substitute(v)
+        }
+        const resolvedBody = body !== undefined ? substitute(body) : undefined
+
+        if (missing.size > 0) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Env var tidak ditemukan: ${[...missing].join(", ")}. Panggil list_deployment_env untuk cek nama yang tersedia, atau simpan dulu lewat add_deployment_env / tab Environment di dashboard.`,
+            }],
+            isError: true,
+          }
+        }
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 15000)
+        try {
+          const res = await safeFetch(targetUrl.toString(), {
+            method,
+            headers: resolvedHeaders,
+            body: method === "GET" ? undefined : resolvedBody,
+            signal: controller.signal,
+          })
+
+          let text = await res.text()
+          // Defense in depth: strip any resolved secret value that made it
+          // into the response (e.g. an API that echoes back its own auth
+          // header in an error message) before this ever reaches the agent.
+          for (const secret of secretsUsed) {
+            if (secret) text = text.split(secret).join("[REDACTED]")
+          }
+          const TRUNCATE_AT = 20000
+          const truncated = text.length > TRUNCATE_AT
+          if (truncated) text = `${text.slice(0, TRUNCATE_AT)}\n…(dipotong, total ${text.length} karakter)`
+
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                status: res.status,
+                statusText: res.statusText,
+                contentType: res.headers.get("content-type") || null,
+                body: text,
+                truncated,
+              }, null, 2),
+            }],
+          }
+        } catch (err: any) {
+          const message = err?.name === "AbortError" ? "Request timeout setelah 15 detik" : (err?.message || "Request gagal")
+          return { content: [{ type: "text" as const, text: `❌ Gagal memanggil API eksternal: ${message}` }], isError: true }
+        } finally {
+          clearTimeout(timeoutId)
+        }
+      },
+    )
+
     // ── make_deployment_public ───────────────────────────────────────────────
     server.registerTool(
       "make_deployment_public",
@@ -2635,7 +2747,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.5.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.6.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
