@@ -17,6 +17,11 @@ interface SchemaFieldInput {
   unique?: boolean
   relationSlug?: string
   componentSlug?: string
+  /** Generic per-type extras — select/multiselect's { choices: [...] },
+   *  currency's { currencyCode }, etc. `componentSlug` above is really
+   *  just `options.componentSlug` under an older, narrower convenience
+   *  name; both directions below reconcile the two. */
+  options?: Record<string, unknown>
 }
 
 interface SchemaModelInput {
@@ -32,17 +37,21 @@ export interface SchemaBlob {
   components?: SchemaModelInput[]
 }
 
-function fieldsToCreateInput(fields: SchemaFieldInput[] | undefined) {
-  return (fields || []).map((f, i) => ({
-    name: f.name,
-    slug: f.slug,
-    type: f.type,
-    required: !!f.required,
-    unique: !!f.unique,
-    order: i,
-    relationSlug: f.type === "relation" ? f.relationSlug : null,
-    options: f.type === "component" ? { componentSlug: f.componentSlug } : undefined,
-  }))
+export function fieldsToCreateInput(fields: SchemaFieldInput[] | undefined) {
+  return (fields || []).map((f, i) => {
+    const options: Record<string, unknown> | undefined =
+      f.options ?? (f.type === "component" && f.componentSlug ? { componentSlug: f.componentSlug } : undefined)
+    return {
+      name: f.name,
+      slug: f.slug,
+      type: f.type,
+      required: !!f.required,
+      unique: !!f.unique,
+      order: i,
+      relationSlug: f.type === "relation" ? f.relationSlug : null,
+      options: options as any,
+    }
+  })
 }
 
 /**
@@ -126,7 +135,7 @@ export async function materializeSchemaIntoTenant(
   }, { timeout: 20000 })
 }
 
-function formatFields(fields: { name: string; slug: string; type: string; required: boolean; unique: boolean; relationSlug: string | null; options: unknown }[]) {
+export function formatFields(fields: { name: string; slug: string; type: string; required: boolean; unique: boolean; relationSlug: string | null; options: unknown }[]) {
   return fields.map((f) => {
     const fieldData: SchemaFieldInput = {
       name: f.name,
@@ -136,8 +145,11 @@ function formatFields(fields: { name: string; slug: string; type: string; requir
       unique: f.unique,
     }
     if (f.relationSlug) fieldData.relationSlug = f.relationSlug
-    const opts = f.options as { componentSlug?: string } | null | undefined
-    if (opts?.componentSlug) fieldData.componentSlug = opts.componentSlug
+    const opts = f.options as Record<string, unknown> | null | undefined
+    if (opts && Object.keys(opts).length > 0) {
+      fieldData.options = opts
+      if (typeof opts.componentSlug === "string") fieldData.componentSlug = opts.componentSlug
+    }
     return fieldData
   })
 }

@@ -172,7 +172,13 @@ const handler = createMcpHandler(
           description: z.string().max(500).optional(),
           schema: schemaTemplateBundleSchema.describe(
             "{ contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
-            "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug? }], dummyData?: [...] }",
+            "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }], dummyData?: [...] }. " +
+            "Field type choice matters: a FIXED, SMALL set of choices (e.g. status: draft/published/archived, " +
+            "or a category picked from a short known list) is type 'select' (or 'multiselect' for more than one) " +
+            "with options: { choices: [{ label, value }, ...] } — never a plain 'text' field for this, and never " +
+            "leave options empty/omitted for a select/multiselect field. An OPEN-ENDED or GROWING set of records " +
+            "managed separately (e.g. authors, products, other content entries) is type 'relation' with " +
+            "relationSlug pointing at that other model's slug instead, not a select.",
           ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
@@ -222,7 +228,11 @@ const handler = createMcpHandler(
           category: z.string().min(1).max(100).optional(),
           icon: z.string().max(10).optional(),
           description: z.string().max(500).optional(),
-          schema: schemaTemplateBundleSchema.optional().describe("Full replacement for contentTypes/singleTypes/components"),
+          schema: schemaTemplateBundleSchema.optional().describe(
+            "Full replacement for contentTypes/singleTypes/components. Same select-vs-relation rule as " +
+            "create_schema_template: fixed/small choice sets are type 'select'/'multiselect' with " +
+            "options: { choices: [{ label, value }] }, never a bare text field with empty options.",
+          ),
           published: z.boolean().optional(),
         },
       },
@@ -284,7 +294,10 @@ const handler = createMcpHandler(
       "access to any tenant's own content, deployment, or settings; for that, connect to a workspace's own " +
       "MCP server at /api/mcp instead. Call list_schema_templates before creating a new one, to avoid a " +
       "near-duplicate. A template's `schema` field uses the exact same shape as the per-workspace server's " +
-      "get_full_schema output.",
+      "get_full_schema output. When a field represents a fixed/small set of choices (status, category, etc.), " +
+      "always use type 'select'/'multiselect' with options: { choices: [{ label, value }, ...] } — never a " +
+      "plain 'text' field with empty options; use 'relation' + relationSlug instead only for an open-ended or " +
+      "separately-managed set of records.",
   },
 )
 

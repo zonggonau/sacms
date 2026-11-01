@@ -18,6 +18,13 @@ export const schemaTemplateFieldSchema = z.object({
   unique: z.boolean().optional(),
   relationSlug: z.string().optional(),
   componentSlug: z.string().optional(),
+  // Generic per-type extras — the field this whole module was missing:
+  // `select`/`multiselect` need { choices: [{label, value}, ...] } to be
+  // anything but a plain text input once materialized into a real
+  // ContentType/SingleType/Component (see schema-template-sync.ts). Also
+  // carries other field-specific extras (e.g. currency's currencyCode),
+  // same generic bag SchemaField.options already uses everywhere else.
+  options: z.record(z.string(), z.any()).optional(),
 })
 
 export const schemaTemplateModelSchema = z.object({

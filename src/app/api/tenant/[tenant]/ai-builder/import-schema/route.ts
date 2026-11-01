@@ -35,6 +35,13 @@ const importFieldSchema = z.object({
   unique: z.boolean().optional(),
   relationSlug: z.string().trim().min(1).max(100).regex(SLUG_RE).optional(),
   componentSlug: z.string().trim().min(1).max(100).regex(SLUG_RE).optional(),
+  // Was missing entirely — zod strips unknown keys by default, so a
+  // select/multiselect field's { choices: [...] } (or any other
+  // per-type extra, e.g. currency's currencyCode) silently vanished
+  // before ever reaching materializeSchemaIntoTenant, landing as a
+  // plain text-equivalent field with no options every time a template
+  // was applied via "Pakai Template" or a raw AI-plan import.
+  options: z.record(z.string(), z.any()).optional(),
 })
 
 const importModelSchema = z.object({
