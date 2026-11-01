@@ -41,6 +41,16 @@ import {
   listComponentsForTenant,
 } from "@/lib/cms-introspection"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
+import { buildGroupTree } from "@/lib/content-type-groups"
+import {
+  listContentTypeGroups,
+  createContentTypeGroup,
+  renameContentTypeGroup,
+  reparentContentTypeGroup,
+  reorderContentTypeGroups,
+  deleteContentTypeGroup,
+  assignContentTypeToGroup,
+} from "@/lib/content-type-group-service"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -752,6 +762,176 @@ const handler = createMcpHandler(
           }]
         }
       }
+    )
+
+    // ── Content Type Groups (sidebar folders for Content Types) ─────────────
+    // Mirrors the "Kelola Group" dialog on /developer/content-types exactly
+    // — up to 3 levels deep, Content Types only (Single Types have no
+    // grouping concept in SaCMS at all, don't invent one). Business logic
+    // (depth cap, cycle prevention) lives in content-type-group-service.ts,
+    // shared with the dashboard's own Server Actions — not reimplemented
+    // here, so the two can never drift apart.
+
+    server.registerTool(
+      "list_content_type_groups",
+      {
+        title: "List Content Type Groups",
+        description: "List this workspace's Content Type groups (sidebar folders) as a nested tree, up to 3 levels deep. Groups organize Content Types only — Single Types have no grouping concept in SaCMS.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const { groups } = await listContentTypeGroups(tenantDb, auth.tenantId)
+        const tree = buildGroupTree(groups)
+        return { content: [{ type: "text" as const, text: JSON.stringify(tree, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "create_content_type_group",
+      {
+        title: "Create Content Type Group",
+        description: "Create a new Content Type group (sidebar folder). Omit parentId for a top-level group, or pass an existing group's id to nest it — nesting is capped at 3 levels total.",
+        inputSchema: {
+          name: z.string().min(1).describe("Group display name, e.g. 'Marketing', 'E-Commerce'"),
+          parentId: z.string().optional().describe("Existing group id to nest this one under. Omit for top-level."),
+        },
+      },
+      async ({ name, parentId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await createContentTypeGroup(tenantDb, auth.tenantId, { name, parentId: parentId ?? null })
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return { content: [{ type: "text" as const, text: JSON.stringify(result.group, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "rename_content_type_group",
+      {
+        title: "Rename Content Type Group",
+        description: "Rename an existing Content Type group.",
+        inputSchema: {
+          id: z.string().describe("Group id"),
+          name: z.string().min(1).describe("New name"),
+        },
+      },
+      async ({ id, name }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await renameContentTypeGroup(tenantDb, auth.tenantId, id, name)
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return { content: [{ type: "text" as const, text: JSON.stringify(result.group, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "reparent_content_type_group",
+      {
+        title: "Move Content Type Group",
+        description: "Move a group under a different parent (or to top-level by omitting newParentId). Rejected if it would exceed the 3-level cap, move a group into its own descendant, or into itself.",
+        inputSchema: {
+          id: z.string().describe("Group id to move"),
+          newParentId: z.string().optional().describe("New parent group id. Omit to move to top-level."),
+        },
+      },
+      async ({ id, newParentId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await reparentContentTypeGroup(tenantDb, auth.tenantId, id, newParentId ?? null)
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return { content: [{ type: "text" as const, text: JSON.stringify(result.group, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "reorder_content_type_groups",
+      {
+        title: "Reorder Content Type Groups",
+        description: "Set the display order of sibling groups (groups sharing the same parent). Pass EVERY sibling's id in orderedIds, in the desired order — a partial list is rejected.",
+        inputSchema: {
+          parentId: z.string().optional().describe("Parent group id whose children are being reordered. Omit for top-level groups."),
+          orderedIds: z.array(z.string()).min(1).describe("All sibling group ids, in the desired display order."),
+        },
+      },
+      async ({ parentId, orderedIds }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await reorderContentTypeGroups(tenantDb, auth.tenantId, parentId ?? null, orderedIds)
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return { content: [{ type: "text" as const, text: "✅ Urutan grup diperbarui." }] }
+      },
+    )
+
+    server.registerTool(
+      "delete_content_type_group",
+      {
+        title: "Delete Content Type Group",
+        description: "Permanently delete a group AND all its descendant subgroups. Content Types inside the deleted subtree are NOT deleted — they just lose their group assignment (groupId set to null) and fall back to the ungrouped section.",
+        inputSchema: {
+          id: z.string().describe("Group id to delete"),
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "delete")) return permissionDenied("delete")
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await deleteContentTypeGroup(tenantDb, auth.tenantId, id)
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return {
+          content: [{
+            type: "text" as const,
+            text: `✅ Grup dihapus (termasuk ${result.descendantGroupCount} subgrup). ${result.orphanedContentTypeCount} Content Type kehilangan grupnya dan pindah ke bagian tanpa grup.`,
+          }],
+        }
+      },
+    )
+
+    server.registerTool(
+      "assign_content_type_to_group",
+      {
+        title: "Assign Content Type to Group",
+        description: "Put a Content Type into a group, move it to a different group, or ungroup it (omit groupId / pass null).",
+        inputSchema: {
+          contentTypeId: z.string().describe("Content Type id"),
+          groupId: z.string().nullable().optional().describe("Target group id. Pass null (or omit) to ungroup."),
+        },
+      },
+      async ({ contentTypeId, groupId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        // Same "is THIS workspace the Global one" check tenant-access.ts's
+        // isGlobal uses (id OR slug) — only Global's own workspace may
+        // re-group a shared/global Content Type (tenantId: null).
+        const { getGlobalWorkspaceId } = await import("@/lib/settings")
+        const globalId = await getGlobalWorkspaceId()
+        const isGlobalActor = auth.tenantId === globalId || auth.tenantSlug === globalId
+
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const result = await assignContentTypeToGroup(tenantDb, auth.tenantId, contentTypeId, groupId ?? null, isGlobalActor)
+        if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        return { content: [{ type: "text" as const, text: JSON.stringify(result.contentType, null, 2) }] }
+      },
     )
 
     // =========================================================================
@@ -2033,21 +2213,22 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
 2. Call \`list_field_types\` BEFORE picking a field type or writing its \`options\` — it gives the real \`options\`/\`relationSlug\` shape and the entry-value shape per type, and flags several options that are silently ignored at render time instead of erroring (so guessing them wastes a turn, it doesn't fail loudly). Needing a small FIXED set of choices → \`select\`/\`multiselect\` with \`options.choices\`; needing an open-ended or separately-managed set of records → \`relation\` with \`relationSlug\`. Never guess an options shape instead of calling this tool.
 3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable.
+4. If the workspace has many Content Types, organize them into sidebar folders with \`list_content_type_groups\` / \`create_content_type_group\` / \`assign_content_type_to_group\` (up to 3 levels deep) — Single Types have no grouping concept in SaCMS, don't invent one for them.
 
 ## Phase 2 — Explore real content before writing any UI
-4. Call \`query_content\` (or \`get_single_type\`) for each relevant type to see ACTUAL records — real field values, not assumptions. This tells you what's actually populated vs. empty.
-5. Never hardcode placeholder text/images in the frontend for anything that has a schema field — render from the real data instead, even if a given record is currently empty.
+5. Call \`query_content\` (or \`get_single_type\`) for each relevant type to see ACTUAL records — real field values, not assumptions. This tells you what's actually populated vs. empty.
+6. Never hardcode placeholder text/images in the frontend for anything that has a schema field — render from the real data instead, even if a given record is currently empty.
 
 ## Phase 3 — Scaffold the frontend
-6. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
-7. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
-8. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
-9. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
-10. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
+7. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
+8. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
+9. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
+10. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
+11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
 ## Phase 4 — Ship it
-11. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
-12. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+12. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
+13. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
@@ -2734,7 +2915,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.7.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.8.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
