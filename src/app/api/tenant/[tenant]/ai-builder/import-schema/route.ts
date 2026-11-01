@@ -5,6 +5,7 @@ import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { VALID_FIELD_TYPES } from "@/lib/field-types"
 import { assertSchemaEditable } from "@/lib/schema-lock"
+import { schemaTemplateGroupSchema } from "@/lib/validations/schema-template"
 
 // Model-level slug shape (Content Type / Single Type / Component) enforced
 // everywhere a human fills the form by hand (see createContentTypeSchema in
@@ -49,10 +50,15 @@ const importModelSchema = z.object({
   slug: z.string().trim().min(1).max(100).regex(SLUG_RE),
   description: z.string().trim().max(500).optional(),
   fields: z.array(importFieldSchema).max(100).default([]),
+  // Content Types only — see schemaTemplateModelSchema's own comment.
+  // References `schema.groups[].slug` below, resolved to a real
+  // ContentTypeGroup at materialize time.
+  group: z.string().trim().max(100).optional(),
 })
 
 const importSchemaBodySchema = z.object({
   schema: z.object({
+    groups: z.array(schemaTemplateGroupSchema).max(100).default([]),
     contentTypes: z.array(importModelSchema).max(50).default([]),
     singleTypes: z.array(importModelSchema).max(50).default([]),
     components: z.array(importModelSchema).max(50).default([]),

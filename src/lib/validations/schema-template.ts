@@ -33,9 +33,29 @@ export const schemaTemplateModelSchema = z.object({
   description: z.string().optional(),
   fields: z.array(schemaTemplateFieldSchema),
   dummyData: z.array(z.record(z.string(), z.any())).optional(),
+  // Content Types only — Single Types have no grouping concept anywhere in
+  // SaCMS (ContentTypeGroup has no relation to SingleType), so this is
+  // simply ignored by materialize/serialize for a singleType/component
+  // model. References `groups[].slug` below, NOT a real database id —
+  // templates are plain JSON with no group rows of their own yet.
+  group: z.string().optional(),
+})
+
+// A template has no real ContentTypeGroup rows (those only exist once
+// materialized into a real tenant) — `slug` is a synthetic, template-local
+// key each contentTypes[] entry's `group` field references, and
+// `parentSlug` nests groups the same way `parentId` does on the real
+// model (3 levels max, enforced at materialize time by the same
+// content-type-group-service.ts the dashboard dialog and the per-workspace
+// MCP server's group tools use). List parents before their children.
+export const schemaTemplateGroupSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  parentSlug: z.string().optional(),
 })
 
 export const schemaTemplateBundleSchema = z.object({
+  groups: z.array(schemaTemplateGroupSchema).default([]),
   contentTypes: z.array(schemaTemplateModelSchema).default([]),
   singleTypes: z.array(schemaTemplateModelSchema).default([]),
   components: z.array(schemaTemplateModelSchema).default([]),

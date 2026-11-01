@@ -348,6 +348,13 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "create_content_type", category: "schema", description: "Membuat Content Type (koleksi) baru lengkap dengan daftar field skema.", inputs: ["name", "slug", "description", "fields"] },
   { name: "update_content_type", category: "schema", description: "Memperbarui nama/deskripsi Content Type, atau menambah/mengganti field skemanya.", inputs: ["slug", "name", "description", "fields"] },
   { name: "delete_content_type", category: "schema", description: "Menghapus permanen Content Type, skema field-nya, dan seluruh entri konten tersimpan di dalamnya.", inputs: ["slug"] },
+  { name: "list_content_type_groups", category: "schema", description: "Mendaftar grup/folder sidebar Content Type sebagai tree bertingkat (maks. 3 level). Single Type tidak punya konsep grouping.", inputs: [] },
+  { name: "create_content_type_group", category: "schema", description: "Membuat grup Content Type baru, opsional bersarang di bawah grup lain (maks. 3 level).", inputs: ["name", "parentId?"] },
+  { name: "rename_content_type_group", category: "schema", description: "Mengubah nama grup Content Type.", inputs: ["id", "name"] },
+  { name: "reparent_content_type_group", category: "schema", description: "Memindahkan grup ke induk lain atau ke level teratas.", inputs: ["id", "newParentId?"] },
+  { name: "reorder_content_type_groups", category: "schema", description: "Mengatur urutan tampil grup-grup yang sama level (sibling).", inputs: ["parentId?", "orderedIds"] },
+  { name: "delete_content_type_group", category: "schema", description: "Menghapus grup beserta subgrup di dalamnya. Content Type di dalamnya tidak terhapus, hanya kehilangan grupnya.", inputs: ["id"] },
+  { name: "assign_content_type_to_group", category: "schema", description: "Memasukkan/memindahkan Content Type ke sebuah grup, atau mengeluarkannya dari grup (groupId null).", inputs: ["contentTypeId", "groupId?"] },
 
   { name: "query_content", category: "content", description: "Mengambil entri konten (published atau draft) dari satu Content Type dengan pagination, pencarian, dan sorting.", inputs: ["contentTypeSlug", "page", "limit", "status", "search", "locale", "sortOrder"] },
   { name: "get_content_entry", category: "content", description: "Mengambil data lengkap satu entri konten spesifik berdasarkan ID uniknya.", inputs: ["id"] },

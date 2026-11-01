@@ -232,10 +232,14 @@ const handler = createMcpHandler(
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🏢'"),
           description: z.string().max(500).optional(),
           schema: schemaTemplateBundleSchema.describe(
-            "{ contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
+            "{ groups?: [...], contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
             "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }], dummyData?: [...] }. " +
             "Call list_field_types FIRST — it has the real options/relationSlug shape and entry-value shape " +
-            "per field type, and flags options that look plausible but are silently ignored. Never guess one.",
+            "per field type, and flags options that look plausible but are silently ignored. Never guess one. " +
+            "Optionally organize Content Types into sidebar folders via `groups`: [{ slug, name, parentSlug? }] " +
+            "— `slug` here is a template-local key, NOT a real database id (list parents before children, max " +
+            "3 levels) — then set `group: '<that slug>'` on each contentTypes[] entry that belongs in it. " +
+            "Single Types and Components have no grouping concept in SaCMS — `group` on those is ignored.",
           ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
@@ -286,8 +290,9 @@ const handler = createMcpHandler(
           icon: z.string().max(10).optional(),
           description: z.string().max(500).optional(),
           schema: schemaTemplateBundleSchema.optional().describe(
-            "Full replacement for contentTypes/singleTypes/components. Call list_field_types first, same as " +
-            "create_schema_template — don't guess an options shape.",
+            "Full replacement for groups/contentTypes/singleTypes/components. Call list_field_types first, " +
+            "same as create_schema_template — don't guess an options shape. Same `groups`/`group` convention " +
+            "too (template-local slugs, Content Types only).",
           ),
           published: z.boolean().optional(),
         },
