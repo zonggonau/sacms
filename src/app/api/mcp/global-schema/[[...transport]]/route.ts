@@ -39,6 +39,8 @@ import { AsyncLocalStorage } from "async_hooks"
 import { slugify } from "@/lib/slug"
 import { rateLimit } from "@/lib/rate-limit"
 import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
+import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
+import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -108,6 +110,65 @@ function invalidSchema(error: z.ZodError) {
 const handler = createMcpHandler(
   async (server) => {
     server.registerTool(
+      "list_field_types",
+      {
+        title: "List Supported Field Types",
+        description:
+          "List all 36 field types a Schema Template's fields can use, with each one's real `options`/" +
+          "`relationSlug` shape and entry-value shape — call this BEFORE writing any field into " +
+          "create_schema_template/update_schema_template. Several options look plausible but are silently " +
+          "ignored at render time once a tenant applies the template (e.g. currency's currencyCode, media's " +
+          "allowedTypes) — this flags those explicitly so you don't guess an options shape that does nothing.",
+        inputSchema: {
+          category: z.enum([
+            "Basic", "Number", "Date & Time", "Selection", "Boolean",
+            "Validation", "Media", "Relations", "Advanced",
+          ]).optional().describe("Optional category to filter field types"),
+        },
+      },
+      async ({ category }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        let types = FIELD_TYPES as unknown as any[]
+        if (category) types = types.filter((t) => t.category.toLowerCase() === category.toLowerCase())
+
+        const fieldDocs = types.map((ft) => {
+          const guide = FIELD_TYPE_GUIDE[ft.type]
+          const supportedOptions: Record<string, string> = {
+            required: "boolean (default false)",
+            unique: "boolean (default false)",
+          }
+          if (guide?.options) supportedOptions.options = guide.options
+          if (guide?.relationSlug) supportedOptions.relationSlug = guide.relationSlug
+
+          return {
+            type: ft.type,
+            label: ft.label,
+            category: ft.category,
+            description: ft.description,
+            supportedOptions,
+            exampleOptions: guide?.exampleOptions,
+            entryValueShape: guide?.entryValue,
+            note: guide?.note,
+          }
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              totalCount: fieldDocs.length,
+              categories: FIELD_CATEGORIES,
+              fieldTypes: fieldDocs,
+              usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
+            }, null, 2),
+          }],
+        }
+      },
+    )
+
+    server.registerTool(
       "list_schema_templates",
       {
         title: "List Schema Templates",
@@ -173,12 +234,8 @@ const handler = createMcpHandler(
           schema: schemaTemplateBundleSchema.describe(
             "{ contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
             "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }], dummyData?: [...] }. " +
-            "Field type choice matters: a FIXED, SMALL set of choices (e.g. status: draft/published/archived, " +
-            "or a category picked from a short known list) is type 'select' (or 'multiselect' for more than one) " +
-            "with options: { choices: [{ label, value }, ...] } — never a plain 'text' field for this, and never " +
-            "leave options empty/omitted for a select/multiselect field. An OPEN-ENDED or GROWING set of records " +
-            "managed separately (e.g. authors, products, other content entries) is type 'relation' with " +
-            "relationSlug pointing at that other model's slug instead, not a select.",
+            "Call list_field_types FIRST — it has the real options/relationSlug shape and entry-value shape " +
+            "per field type, and flags options that look plausible but are silently ignored. Never guess one.",
           ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
@@ -229,9 +286,8 @@ const handler = createMcpHandler(
           icon: z.string().max(10).optional(),
           description: z.string().max(500).optional(),
           schema: schemaTemplateBundleSchema.optional().describe(
-            "Full replacement for contentTypes/singleTypes/components. Same select-vs-relation rule as " +
-            "create_schema_template: fixed/small choice sets are type 'select'/'multiselect' with " +
-            "options: { choices: [{ label, value }] }, never a bare text field with empty options.",
+            "Full replacement for contentTypes/singleTypes/components. Call list_field_types first, same as " +
+            "create_schema_template — don't guess an options shape.",
           ),
           published: z.boolean().optional(),
         },
@@ -287,17 +343,15 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.0.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.1.0" },
     instructions:
       "This server manages SaCMS's platform-wide Schema Template catalog ONLY — reusable CMS blueprints " +
       "(Content Types, Single Types, Components) that any workspace can start a new site from. It has no " +
       "access to any tenant's own content, deployment, or settings; for that, connect to a workspace's own " +
-      "MCP server at /api/mcp instead. Call list_schema_templates before creating a new one, to avoid a " +
-      "near-duplicate. A template's `schema` field uses the exact same shape as the per-workspace server's " +
-      "get_full_schema output. When a field represents a fixed/small set of choices (status, category, etc.), " +
-      "always use type 'select'/'multiselect' with options: { choices: [{ label, value }, ...] } — never a " +
-      "plain 'text' field with empty options; use 'relation' + relationSlug instead only for an open-ended or " +
-      "separately-managed set of records.",
+      "MCP server at /api/mcp instead. Call list_field_types before writing any field (it has the real " +
+      "options/relationSlug shape per type, and flags options that are silently ignored — never guess one), " +
+      "and list_schema_templates before creating a new template, to avoid a near-duplicate. A template's " +
+      "`schema` field uses the exact same shape as the per-workspace server's get_full_schema output.",
   },
 )
 

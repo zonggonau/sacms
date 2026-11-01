@@ -21,6 +21,7 @@ import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
 import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
+import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 import { safeFetch } from "@/lib/safe-url"
 import { rateLimit, getTenantRateLimit } from "@/lib/rate-limit"
 import {
@@ -409,7 +410,7 @@ const handler = createMcpHandler(
       "list_field_types",
       {
         title: "List Supported Field Types",
-        description: "List all 33 supported field types in SaCMS (text, textarea, richText, markdown, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating). Call this to discover allowed types, validation rules, and schema configuration options before creating or modifying content types.",
+        description: "List all 36 supported field types in SaCMS (text, textarea, richText, markdown, slug, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating, button, document_template). Call this BEFORE creating or modifying any field — it tells you exactly which `options`/`relationSlug` a type actually needs (several documented-sounding options are silently ignored at render time; this flags those explicitly) and what value shape a content entry must use for that field once created.",
         inputSchema: {
           category: z.enum([
             "Basic",
@@ -447,33 +448,14 @@ const handler = createMcpHandler(
             required: false,
           }
 
-          if (ft.type === "relation") {
-            supportedOptions.relationSlug = "string (target collection slug, e.g. 'categories')"
-            supportedOptions.relationType = "oneToOne | oneToMany | manyToOne | manyToMany"
+          const guide = FIELD_TYPE_GUIDE[ft.type]
+          if (guide?.options) {
+            supportedOptions.options = guide.options
+            if (guide.exampleOptions) exampleField.options = guide.exampleOptions
+          }
+          if (guide?.relationSlug) {
+            supportedOptions.relationSlug = guide.relationSlug
             exampleField.relationSlug = "categories"
-          } else if (ft.type === "component") {
-            supportedOptions.options = "{ componentSlug: string } (e.g. { componentSlug: 'hero_section' })"
-            exampleField.options = { componentSlug: "hero_section" }
-          } else if (ft.type === "repeater") {
-            supportedOptions.options = "{ componentSlugs: string[] } (dynamic polymorphic zone)"
-            exampleField.options = { componentSlugs: ["hero_section", "cta_banner", "testimonial_card"] }
-          } else if (ft.type === "select" || ft.type === "multiselect") {
-            supportedOptions.options = "{ choices: Array<{ label: string, value: string }> }"
-            exampleField.options = {
-              choices: [
-                { label: "Option A", value: "option_a" },
-                { label: "Option B", value: "option_b" }
-              ]
-            }
-          } else if (ft.type === "currency") {
-            supportedOptions.options = "{ currencyCode: 'IDR' | 'USD' | 'EUR', min?: number, max?: number }"
-            exampleField.options = { currencyCode: "IDR", min: 0 }
-          } else if (ft.type === "number" || ft.type === "percent") {
-            supportedOptions.options = "{ min?: number, max?: number, step?: number }"
-            exampleField.options = { min: 0, max: 100 }
-          } else if (ft.type === "media" || ft.type === "mediaMultiple") {
-            supportedOptions.options = "{ allowedTypes: ['image', 'video', 'document'], maxFileSizeMb?: number }"
-            exampleField.options = { allowedTypes: ["image"] }
           }
 
           return {
@@ -483,6 +465,11 @@ const handler = createMcpHandler(
             description: ft.description,
             supportedOptions,
             exampleSchemaField: exampleField,
+            // How a content ENTRY's value must be shaped once this field
+            // exists — a separate concern from the schema `options` above,
+            // undocumented anywhere else an agent could discover it.
+            entryValueShape: guide?.entryValue,
+            note: guide?.note,
           }
         })
 
@@ -493,7 +480,7 @@ const handler = createMcpHandler(
               totalCount: fieldDocs.length,
               categories: FIELD_CATEGORIES,
               fieldTypes: fieldDocs,
-              usageNote: "Pass these field definitions in the 'fields' array of 'create_content_type', 'create_single_type', or 'create_component'."
+              usageNote: "Pass these field definitions in the 'fields' array of 'create_content_type', 'create_single_type', or 'create_component'. `note` (when present) flags options that are silently ignored at render time, or a real capability that's easy to miss — read it before guessing an options shape for that type.",
             }, null, 2)
           }]
         }
@@ -553,7 +540,7 @@ const handler = createMcpHandler(
       "create_content_type",
       {
         title: "Create Content Type",
-        description: "Create a new Content Type collection schema with fields. Call 'list_field_types' to discover all 33 supported field types (text, textarea, richText, markdown, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating).",
+        description: "Create a new Content Type collection schema with fields. Call 'list_field_types' FIRST to discover all 36 supported field types and — critically — each one's real `options`/`relationSlug` shape and entry-value shape; several options look plausible but are silently ignored at render time (e.g. currency's currencyCode, media's allowedTypes), and guessing them wastes a turn instead of erroring.",
         inputSchema: {
           name: z.string().describe("Display name (e.g. 'Blog Post', 'Product Item')"),
           slug: z.string().describe("URL-safe slug (e.g. 'articles', 'products')"),
@@ -854,7 +841,7 @@ const handler = createMcpHandler(
       "create_content_entry",
       {
         title: "Create Content Entry",
-        description: "Insert a new content entry record into a Content Type collection with JSON payload data.",
+        description: "Insert a new content entry record into a Content Type collection with JSON payload data. Several field types need a composite value shape (e.g. dateRange, phone, seo, code, button, location, rating) rather than a plain string/number — call list_field_types once and check each field's `entryValueShape` instead of guessing one.",
         inputSchema: {
           contentTypeSlug: z.string().describe("Slug of the target Content Type (e.g. 'articles')"),
           data: z.record(z.string(), z.any()).describe("JSON object containing the field values (e.g. { title: 'Hello', slug: 'hello', content: '...' })"),
@@ -2044,7 +2031,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
 ## Phase 1 — Discover the real schema
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
-2. Call \`list_field_types\` if you need to know what a given field \`type\` (e.g. \`relation\`, \`component\`, \`seo\`, \`media\`) actually means and how it's shaped in API responses.
+2. Call \`list_field_types\` BEFORE picking a field type or writing its \`options\` — it gives the real \`options\`/\`relationSlug\` shape and the entry-value shape per type, and flags several options that are silently ignored at render time instead of erroring (so guessing them wastes a turn, it doesn't fail loudly). Needing a small FIXED set of choices → \`select\`/\`multiselect\` with \`options.choices\`; needing an open-ended or separately-managed set of records → \`relation\` with \`relationSlug\`. Never guess an options shape instead of calling this tool.
 3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable.
 
 ## Phase 2 — Explore real content before writing any UI
@@ -2747,7 +2734,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.6.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.7.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
