@@ -2413,7 +2413,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           // add_deployment_env/make_deployment_public, which only ever
           // resolve the workspace's *current* vercelProjectId.
           const lockedProjectName = `sacms-${auth.tenantSlug}`
-          const result = await deployToVercel(lockedProjectName, files, mergedEnv)
+          const result = await deployToVercel(lockedProjectName, files, mergedEnv, auth.tenantSlug)
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>

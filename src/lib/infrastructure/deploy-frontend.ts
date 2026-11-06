@@ -44,7 +44,7 @@ export async function deployTenantFrontend(
   const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i.test(origin)
   const projectName = `sacms-${tenantSlug}`
   const envVars = await resolveFrontendEnv(tenantId, tenantSlug, isLocalOrigin ? resolveApiOrigin() : origin)
-  const deployResult = await deployToVercel(projectName, files, envVars)
+  const deployResult = await deployToVercel(projectName, files, envVars, tenantSlug)
 
   if (deployResult.projectId && !deployResult.simulated) {
     pushEnvToVercelProject(deployResult.projectId, envVars)

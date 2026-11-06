@@ -6,8 +6,22 @@
 
 import { getPlatformSettings } from "./settings"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
+import { ROOT_DOMAIN } from "./portal-urls"
 
 const VERCEL_API_BASE = "https://api.vercel.com"
+
+/**
+ * Shared root for every tenant's auto-assigned SaCMS-branded subdomain
+ * (`<tenantSlug>.sites.sacms.cloud`) — a dedicated label under the main
+ * domain, deliberately NOT the bare apex (`sacms.cloud` itself already
+ * serves the main SaCMS app via Caddy on the production VPS; pointing a
+ * wildcard at Vercel for the apex or an existing subdomain like cms./
+ * admin. would break that). Requires a one-time wildcard DNS record
+ * (`*.sites.sacms.cloud` CNAME -> cname.vercel-dns.com) and `sacms.cloud`
+ * registered as a Team domain in Vercel — both set up once outside this
+ * codebase, not something any API call here can create.
+ */
+const BRANDED_SUBDOMAIN_ROOT = `sites.${ROOT_DOMAIN}`
 
 export async function getVercelToken(): Promise<string> {
   try {
@@ -97,7 +111,11 @@ export interface VercelDomainResult {
 export async function deployToVercel(
   projectName: string,
   files: { name: string; content: string }[],
-  envVars?: Record<string, string>
+  envVars?: Record<string, string>,
+  /** Used to auto-attach `<tenantSlug>.sites.sacms.cloud` to the project
+   *  (see ensureBrandedSubdomain) — omit to skip that and fall back to
+   *  the project's existing alias/custom domain/*.vercel.app only. */
+  tenantSlug?: string,
 ): Promise<VercelDeploymentResult> {
   const token = await getVercelToken()
   
@@ -164,7 +182,13 @@ export async function deployToVercel(
   // response — so don't trust it. Ask the PROJECT for its own stable
   // alias list instead (custom domain if attached, else the default
   // <project>.vercel.app), same as every later deploy will have; that's
-  // the one link safe to hand back as "where to see this live".
+  // the one link safe to hand back as "where to see this live". Attach
+  // this tenant's branded subdomain first (best-effort, idempotent) so a
+  // brand-new project shows it immediately instead of only from the next
+  // deploy onward.
+  if (data.projectId && tenantSlug) {
+    await ensureBrandedSubdomain(data.projectId, tenantSlug)
+  }
   const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
   const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
   return {
@@ -280,15 +304,46 @@ export async function disableVercelDeploymentProtection(
 }
 
 /**
- * The one URL that's actually safe to hand a real visitor for a project:
- * its custom domain if one is attached and verified, else its stable
- * default `<project>.vercel.app` alias — NEVER the per-deployment URL a
- * fresh deploy's own API response carries (the unique, random-suffixed
- * hostname like `project-abc123-team.vercel.app`), which Vercel's
- * "Vercel Authentication" deployment protection gates by default even
- * when the project itself is otherwise public, and which doesn't resolve
- * at all until the deploy's build finishes (so it's also simply wrong to
- * hand back the instant a deploy is *requested*, before it's ready).
+ * Idempotently attaches this tenant's SaCMS-branded subdomain
+ * (`<tenantSlug>.sites.sacms.cloud`) to its Vercel project, so a
+ * brand-new project has a clean, SaCMS-looking domain from its very
+ * first deploy instead of only a raw `*.vercel.app` alias. Best-effort:
+ * swallows any failure (e.g. the one-time wildcard DNS record for
+ * `*.sites.sacms.cloud` isn't live yet) rather than failing the deploy
+ * that triggered it — getProjectPrimaryDomain below falls back to the
+ * project's default alias when this hasn't succeeded (yet, or at all).
+ */
+export async function ensureBrandedSubdomain(projectId: string, tenantSlug: string): Promise<string | null> {
+  const token = await getVercelToken()
+  if (!token) return null
+
+  const clean = tenantSlug.toLowerCase().replace(/[^a-z0-9-]/g, "-")
+  if (!clean) return null
+  const domain = `${clean}.${BRANDED_SUBDOMAIN_ROOT}`
+
+  try {
+    await addDomainToProject(projectId, domain)
+    return domain
+  } catch (err: any) {
+    console.warn(`[Vercel Client] Failed to attach branded subdomain ${domain}:`, err?.message || err)
+    return null
+  }
+}
+
+/**
+ * The one URL that's actually safe to hand a real visitor for a project,
+ * in priority order: (1) a real custom domain the tenant bought and
+ * attached themselves (e.g. bangparjo.shop, via configure_deployment_domain
+ * or the dashboard's Infrastructure > Domains tab), (2) this tenant's
+ * SaCMS-branded subdomain (`<tenantSlug>.sites.sacms.cloud`, see
+ * ensureBrandedSubdomain), (3) the project's default `<project>.vercel.app`
+ * alias as a last resort. NEVER the per-deployment URL a fresh deploy's own
+ * API response carries (the unique, random-suffixed hostname like
+ * `project-abc123-team.vercel.app`), which Vercel's "Vercel Authentication"
+ * deployment protection gates by default even when the project itself is
+ * otherwise public, and which doesn't resolve at all until the deploy's
+ * build finishes (so it's also simply wrong to hand back the instant a
+ * deploy is *requested*, before it's ready).
  *
  * Reads the PROJECT's own alias list (`GET /v9/projects/{id}`, same
  * `alias[].domain` shape `listVercelProjectsDetailed` already reads from
@@ -312,10 +367,9 @@ export async function getProjectPrimaryDomain(projectId: string): Promise<string
       : []
     if (aliases.length === 0) return null
 
-    // A real custom domain (bangparjo.shop) beats the default
-    // project-name.vercel.app alias whenever both are attached.
-    const custom = aliases.find((d) => !d.endsWith(".vercel.app"))
-    return `https://${custom || aliases[0]}`
+    const external = aliases.find((d) => !d.endsWith(".vercel.app") && !d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
+    const branded = aliases.find((d) => d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
+    return `https://${external || branded || aliases[0]}`
   } catch {
     return null
   }
