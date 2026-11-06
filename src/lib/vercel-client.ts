@@ -157,14 +157,19 @@ export async function deployToVercel(
   // like project-abc123-team.vercel.app) — Vercel's "Vercel Authentication"
   // deployment protection gates THAT hostname by default on every project
   // that has it enabled, even for a `target: "production"` deploy like this
-  // one. `data.alias` is the assigned production alias (the clean
-  // project.vercel.app domain, or a custom domain) that Vercel protection
-  // leaves public by default — prefer it so the link we hand back is
-  // actually viewable without a Vercel login.
-  const publicUrl: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
+  // one, and it doesn't even resolve publicly until the build finishes.
+  // `data.alias` on THIS deploy-creation response is unreliable — empty
+  // more often than not, since aliasing to the project's production domain
+  // happens once the build is actually ready, which can race with this
+  // response — so don't trust it. Ask the PROJECT for its own stable
+  // alias list instead (custom domain if attached, else the default
+  // <project>.vercel.app), same as every later deploy will have; that's
+  // the one link safe to hand back as "where to see this live".
+  const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
+  const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
   return {
     id: data.id,
-    url: publicUrl ? `https://${publicUrl}` : (data.url ? `https://${data.url}` : ""),
+    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (data.url ? `https://${data.url}` : "")),
     state: data.readyState || data.state || "BUILDING",
     projectId: data.projectId,
     projectName: data.name
@@ -272,6 +277,48 @@ export async function disableVercelDeploymentProtection(
     return { ok: false, error: data.error?.message || data.message || res.statusText }
   }
   return { ok: true }
+}
+
+/**
+ * The one URL that's actually safe to hand a real visitor for a project:
+ * its custom domain if one is attached and verified, else its stable
+ * default `<project>.vercel.app` alias — NEVER the per-deployment URL a
+ * fresh deploy's own API response carries (the unique, random-suffixed
+ * hostname like `project-abc123-team.vercel.app`), which Vercel's
+ * "Vercel Authentication" deployment protection gates by default even
+ * when the project itself is otherwise public, and which doesn't resolve
+ * at all until the deploy's build finishes (so it's also simply wrong to
+ * hand back the instant a deploy is *requested*, before it's ready).
+ *
+ * Reads the PROJECT's own alias list (`GET /v9/projects/{id}`, same
+ * `alias[].domain` shape `listVercelProjectsDetailed` already reads from
+ * the list endpoint) rather than a single deployment's response, since a
+ * project's aliases are assigned once and then stay stable across every
+ * later deploy — this is what should be shown back to the user/agent
+ * after every deploy_to_sacms call, not deployToVercel's own `result.url`.
+ */
+export async function getProjectPrimaryDomain(projectId: string): Promise<string | null> {
+  const token = await getVercelToken()
+  if (!token) return null
+
+  try {
+    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
+      headers: await getVercelHeaders(),
+    })
+    if (!res.ok) return null
+    const data = await res.json().catch(() => ({}))
+    const aliases: string[] = Array.isArray(data?.alias)
+      ? data.alias.map((a: any) => a?.domain).filter((d: unknown): d is string => typeof d === "string")
+      : []
+    if (aliases.length === 0) return null
+
+    // A real custom domain (bangparjo.shop) beats the default
+    // project-name.vercel.app alias whenever both are attached.
+    const custom = aliases.find((d) => !d.endsWith(".vercel.app"))
+    return `https://${custom || aliases[0]}`
+  } catch {
+    return null
+  }
 }
 
 export type VercelEnvTarget = "production" | "preview" | "development"

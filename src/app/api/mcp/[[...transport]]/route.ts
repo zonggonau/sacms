@@ -2358,7 +2358,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "deploy_to_sacms",
       {
         title: "Deploy Website / App to SaCMS Cloud Hosting",
-        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the live production deployment URL. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one.",
+        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the project's actual PUBLIC domain (its custom domain if one is attached via configure_deployment_domain, else its default *.vercel.app alias) — never the per-deployment URL, which Vercel's protection gates by default and which a real visitor can't open. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one.",
         inputSchema: {
           projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
           files: z.array(z.object({
