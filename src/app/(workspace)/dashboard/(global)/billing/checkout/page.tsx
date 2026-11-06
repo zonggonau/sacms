@@ -145,10 +145,16 @@ function CheckoutContent() {
               }
             })
 
-            // Automatically reset button loading state once popup is active
-            setTimeout(() => {
-              setCheckoutLoading(false)
-            }, 2000)
+            // The four callbacks above already cover every way the Snap
+            // popup can resolve (paid, pending, errored, or manually
+            // closed) — a blind 2-second timeout used to reset
+            // checkoutLoading regardless of whether the popup was still
+            // open, letting the user click "Bayar Sekarang" again while
+            // the first snap.pay() overlay was still rendering. Calling
+            // snap.pay() a second time in quick succession makes Snap
+            // throw, which the catch block below then "resolves" by
+            // doing a full-page redirect to the hosted payment page
+            // instead of showing the modal — exactly the reported bug.
           } catch (snapErr) {
             console.warn("snap.pay error, redirecting to hosted payment page:", snapErr)
             if (data.redirect_url) {
