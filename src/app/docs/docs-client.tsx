@@ -101,20 +101,38 @@ const MCP_TOOLS: ToolDefinition[] = [
     name: "list_field_types",
     title: "List Supported Field Types",
     description:
-      "List all 33 supported field types (text, richText, number, currency, relation, component, repeater, media, etc.) with their supported options and an example schema field — call this before create_content_type/create_single_type/create_component to discover valid field shapes.",
+      "List all 36 supported field types (text, richText, number, currency, relation, component, repeater, media, etc.) with their REAL options/relationSlug shape and content-entry value shape — call this before create_content_type/create_single_type/create_component to discover valid field shapes. Several options look plausible but are silently ignored at render time (e.g. currency's currencyCode, media's allowedTypes) — the `note` field flags those explicitly instead of letting you guess.",
     inputs: [
       { name: "category", type: "string", required: false, description: "Filter by category: Basic | Number | Date & Time | Selection | Boolean | Validation | Media | Relations | Advanced" }
     ],
     sampleResponse: {
-      totalCount: 33,
+      totalCount: 36,
       categories: ["Basic", "Number", "Date & Time", "Selection", "Boolean", "Validation", "Media", "Relations", "Advanced"],
       fieldTypes: [
         {
           type: "relation",
           label: "Relation",
           category: "Relations",
-          supportedOptions: { relationSlug: "string (target collection slug, e.g. 'categories')", relationType: "oneToOne | oneToMany | manyToOne | manyToMany" },
-          exampleSchemaField: { name: "Relation", slug: "relation", type: "relation", required: false, relationSlug: "categories" }
+          supportedOptions: { relationSlug: "string — target Content Type/Single Type slug, e.g. 'categories'. Omit and set options.targetModel: 'member' instead to relate to this tenant's own end-user Members table.", options: "{ relationType: 'oneToOne'|'oneToMany'|'manyToOne'|'manyToMany', targetModel?: 'content-type'|'single-type'|'member' }" },
+          exampleSchemaField: { name: "Relation", slug: "relation", type: "relation", required: false, relationSlug: "categories" },
+          entryValueShape: "A related record's id (or an array of ids when relationType is a *-to-many)."
+        },
+        {
+          type: "select",
+          label: "Select",
+          category: "Selection",
+          supportedOptions: { options: "{ choices: Array<{ label: string, value: string }> }" },
+          exampleSchemaField: { name: "Status", slug: "status", type: "select", required: false, options: { choices: [{ label: "Draft", value: "draft" }, { label: "Published", value: "published" }] } },
+          entryValueShape: "One of the choices' `value`s.",
+          note: "REQUIRED for a usable field — omitting choices renders an empty dropdown."
+        },
+        {
+          type: "currency",
+          label: "Currency",
+          category: "Number",
+          supportedOptions: {},
+          exampleSchemaField: { name: "Price", slug: "price", type: "currency", required: false },
+          note: "No schema options — currencyCode is NOT configurable; every currency field always displays as IDR regardless of what you set."
         }
       ]
     }
@@ -206,6 +224,84 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "slug", type: "string", required: true, description: "Slug or ID of the Content Type to delete" }
     ],
     sampleResponse: { deleted: true, slug: "products" }
+  },
+
+  // ─── 2b. Content Type Groups (sidebar folders) ───
+  {
+    name: "list_content_type_groups",
+    title: "List Content Type Groups",
+    description: "List this workspace's Content Type groups (sidebar folders) as a nested tree, up to 3 levels deep. Groups organize Content Types only — Single Types have no grouping concept in SaCMS.",
+    inputs: [],
+    sampleResponse: [
+      {
+        id: "ctg_business",
+        name: "Business",
+        parentId: null,
+        order: 0,
+        children: [
+          { id: "ctg_retail", name: "Retail", parentId: "ctg_business", order: 0, children: [] }
+        ]
+      }
+    ]
+  },
+  {
+    name: "create_content_type_group",
+    title: "Create Content Type Group",
+    description: "Create a new Content Type group (sidebar folder). Omit parentId for a top-level group, or pass an existing group's id to nest it — nesting is capped at 3 levels total.",
+    inputs: [
+      { name: "name", type: "string", required: true, description: "Group display name, e.g. 'Marketing', 'E-Commerce'" },
+      { name: "parentId", type: "string", required: false, description: "Existing group id to nest this one under. Omit for top-level." }
+    ],
+    sampleResponse: { id: "ctg_marketing", name: "Marketing", parentId: null, order: 1 }
+  },
+  {
+    name: "rename_content_type_group",
+    title: "Rename Content Type Group",
+    description: "Rename an existing Content Type group.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "Group id" },
+      { name: "name", type: "string", required: true, description: "New name" }
+    ],
+    sampleResponse: { id: "ctg_marketing", name: "Marketing & Growth", parentId: null, order: 1 }
+  },
+  {
+    name: "reparent_content_type_group",
+    title: "Move Content Type Group",
+    description: "Move a group under a different parent (or to top-level by omitting newParentId). Rejected if it would exceed the 3-level cap, move a group into its own descendant, or into itself.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "Group id to move" },
+      { name: "newParentId", type: "string", required: false, description: "New parent group id. Omit to move to top-level." }
+    ],
+    sampleResponse: { id: "ctg_retail", name: "Retail", parentId: "ctg_marketing", order: 0 }
+  },
+  {
+    name: "reorder_content_type_groups",
+    title: "Reorder Content Type Groups",
+    description: "Set the display order of sibling groups (groups sharing the same parent). Pass EVERY sibling's id in orderedIds, in the desired order — a partial list is rejected.",
+    inputs: [
+      { name: "parentId", type: "string", required: false, description: "Parent group id whose children are being reordered. Omit for top-level groups." },
+      { name: "orderedIds", type: "array", required: true, description: "All sibling group ids, in the desired display order." }
+    ],
+    sampleResponse: { success: true }
+  },
+  {
+    name: "delete_content_type_group",
+    title: "Delete Content Type Group",
+    description: "Permanently delete a group AND all its descendant subgroups. Content Types inside the deleted subtree are NOT deleted — they just lose their group assignment and fall back to the ungrouped section.",
+    inputs: [
+      { name: "id", type: "string", required: true, description: "Group id to delete" }
+    ],
+    sampleResponse: { success: true, orphanedContentTypeCount: 3, descendantGroupCount: 1 }
+  },
+  {
+    name: "assign_content_type_to_group",
+    title: "Assign Content Type to Group",
+    description: "Put a Content Type into a group, move it to a different group, or ungroup it (omit groupId / pass null).",
+    inputs: [
+      { name: "contentTypeId", type: "string", required: true, description: "Content Type id" },
+      { name: "groupId", type: "string", required: false, description: "Target group id. Pass null (or omit) to ungroup." }
+    ],
+    sampleResponse: { id: "ct_products", name: "Products", slug: "products", groupId: "ctg_retail", groupOrder: 0 }
   },
 
   // ─── 3. Content Entries CRUD ───
@@ -527,6 +623,20 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: "# SaCMS API & MCP Integration Guide — Workspace: My Workspace\n\n## Base URL\nhttps://yourdomain.com/api/public/my-workspace\n\n## Authentication Header\nAuthorization: Bearer YOUR_API_TOKEN\n\n## Public REST Endpoints\n- GET /content/{contentTypeSlug}\n- GET /content/{contentTypeSlug}/{id}\n- GET /single/{singleTypeSlug}\n- POST /graphql"
   },
   {
+    name: "get_openapi_spec",
+    title: "Get OpenAPI Specification",
+    description: "Get a real OpenAPI 3.0.3 document generated live from this workspace's actual schema — every Content Type/Single Type as a JSON Schema model with its list/get/create/update/delete paths, plus every member-auth endpoint. The same document also powers the dashboard's own Swagger tab and the public GET /api/public/{tenant}/openapi.json (with CORS) for non-MCP tools.",
+    inputs: [],
+    sampleResponse: { openapi: "3.0.3", info: { title: "My Workspace API", version: "1.0.0" }, paths: { "/content/articles": { get: { summary: "List articles" } } } }
+  },
+  {
+    name: "get_agent_playbook",
+    title: "Get Agent Playbook (Start Here)",
+    description: "Read this FIRST when you connect to this MCP server. Returns the full ordered workflow (discover schema → explore real content → scaffold → deploy) — which tools to call, in what order, and the rules that apply throughout (never guess a field's options shape, never guess a base URL/token/domain).",
+    inputs: [],
+    sampleResponse: "# SaCMS Agent Playbook — Workspace: My Workspace\n\n## Phase 1 — Discover the real schema\n1. Call get_full_schema...\n2. Call list_field_types BEFORE picking a field type or writing its options...\n\n## Phase 4 — Ship it\n12. Call deploy_to_sacms...\n13. Check get_deployment_status..."
+  },
+  {
     name: "get_or_create_api_key",
     title: "Get or Create Workspace API Key",
     description: "Get this workspace's primary REST/GraphQL API key, creating it once if it doesn't exist yet. Safe to call repeatedly — an existing key is reused, never duplicated. The plaintext secret is only returned the first time it's created.",
@@ -543,13 +653,12 @@ const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "deploy_to_sacms",
     title: "Deploy Website / App to SaCMS Cloud Hosting",
-    description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. The SaCMS API URL, tenant, and key are injected automatically as env vars. Requires a PAID workspace.",
+    description: "Deploy generated website frontend files (Next.js, HTML, React) directly to this workspace's one locked hosting project — repeat calls update that same project, never create a new one. The SaCMS API URL, tenant, and key are injected automatically as env vars. Requires a PAID workspace. Returns the project's actual PUBLIC domain (a real custom domain if attached, else its auto-assigned <tenant>.sites.sacms.cloud, else a plain *.vercel.app alias) — never a per-deployment preview URL, which Vercel's protection gates by default.",
     inputs: [
-      { name: "projectName", type: "string", required: true, description: "Name of the deployment project (e.g. 'my-awesome-site')" },
       { name: "files", type: "array", required: true, description: "Array of { name: filePath, content: sourceCode } to deploy" },
       { name: "envVars", type: "object", required: false, description: "Extra env vars merged on top of the workspace's saved Environment vars" }
     ],
-    sampleResponse: { id: "dpl_abc123", url: "https://my-awesome-site.sacms.app", state: "READY", projectName: "my-awesome-site" }
+    sampleResponse: { id: "dpl_abc123", url: "https://my-workspace.sites.sacms.cloud", state: "READY", projectName: "sacms-my-workspace" }
   },
   {
     name: "get_deployment_status",
@@ -558,7 +667,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "deploymentId", type: "string", required: true, description: "Deployment ID (e.g. 'dpl_xxx')" }
     ],
-    sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-awesome-site.sacms.app", isReady: true }
+    sampleResponse: { deploymentId: "dpl_abc123", state: "READY", url: "https://my-workspace.sites.sacms.cloud", isReady: true }
   },
   {
     name: "configure_deployment_domain",
@@ -571,7 +680,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: {
       domain: "mysite.com",
       verified: false,
-      dnsConfig: { cnameTarget: "cname.sacms.cloud", aRecordTarget: "164.68.116.79", configured: false },
+      dnsConfig: { cnameTarget: "cname.vercel-dns.com", aRecordTarget: "76.76.21.21", configured: false },
       message: "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
     }
   },
@@ -586,6 +695,29 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "targets", type: "array", required: false, description: "Which environments to apply to: production | preview | development (default: all three)" }
     ],
     sampleResponse: { key: "STRIPE_SECRET_KEY", type: "encrypted", targets: ["production", "preview", "development"], action: "created" }
+  },
+  {
+    name: "list_deployment_env",
+    title: "List Deployment Environment Variables",
+    description: "List the environment variable KEY NAMES already configured for this workspace's deployment — system vars and custom vars. Returns NAMES ONLY, never values — secrets are injected directly into the deployed app's own process.env at runtime, never through this tool. Call this BEFORE writing code that needs a third-party API key, instead of guessing a name or asking the user to paste a secret into chat.",
+    inputs: [],
+    sampleResponse: {
+      systemVars: [{ key: "NEXT_PUBLIC_SACMS_API_URL", note: "URL API SaCMS — di-set otomatis saat deploy" }],
+      customVars: [{ key: "PRINTFUL_API_KEY" }]
+    }
+  },
+  {
+    name: "call_external_api",
+    title: "Call a Third-Party API Using a Stored Env Var",
+    description: "Call any third-party API (Printful, a payment gateway, a maps provider, etc.) using a secret already stored on this workspace's Environment tab, without ever exposing that secret's value. Write {{ENV_KEY}} in a header/query/body value instead of a raw secret — SaCMS substitutes the real value server-side right before the request goes out, then returns the response. Response body capped at 20,000 characters; any stored secret value that appears in it is redacted.",
+    inputs: [
+      { name: "url", type: "string", required: true, description: "Full URL of the third-party API endpoint. Supports {{ENV_KEY}} substitution." },
+      { name: "method", type: "string", required: false, default: "GET", description: "GET | POST | PUT | PATCH | DELETE" },
+      { name: "headers", type: "object", required: false, description: "Header name -> value, supports {{ENV_KEY}} substitution in values" },
+      { name: "query", type: "object", required: false, description: "Query string params, supports {{ENV_KEY}} substitution in values" },
+      { name: "body", type: "string", required: false, description: "Raw request body (e.g. a JSON string), supports {{ENV_KEY}} substitution" }
+    ],
+    sampleResponse: { status: 200, statusText: "OK", contentType: "application/json", body: "{\"result\":[...]}", truncated: false }
   },
   {
     name: "make_deployment_public",
