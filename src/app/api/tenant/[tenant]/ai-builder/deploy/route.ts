@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
+import { addDomainToProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
-import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
+import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import { getFrontendDeployToken, resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
@@ -121,11 +121,25 @@ export const POST = withStaffAuth(
 
     // ── BILLING GATE: deploying to production requires a paid plan ──────────
     const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
-    if ((action === "deploy" || action === "domain") && !isPaid) {
+    if ((action === "deploy" || action === "redeploy" || action === "domain") && !isPaid) {
       return apiError("plan_limit", {
         message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
         details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
       })
+    }
+
+    // ── ACTION: REDEPLOY (re-run the existing project, no new files) ───────
+    if (action === "redeploy") {
+      try {
+        const deployResult = await redeployTenantFrontend(tenantId, tenantSlug)
+        return NextResponse.json({
+          success: true,
+          ...deployResult,
+          hostType: deployResult.simulated ? "simulation" : "vercel",
+        })
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message || "Gagal melakukan redeploy" }, { status: 400 })
+      }
     }
 
     // ── ACTION: LINK / UPDATE VERCEL DEPLOYMENT URL ─────────────────────────
@@ -179,7 +193,23 @@ export const POST = withStaffAuth(
         where: { key: `${tenantId}_vercelProjectId` }
       })
 
-      const projectId = body.projectId?.trim() || existingProjectId?.value || (tenant as any).vercelProjectId || "prj_eHxeyu1ngdgXpaoLfqpiwPXfjZ12"
+      const projectId = body.projectId?.trim() || existingProjectId?.value || (tenant as any).vercelProjectId
+      if (!projectId) {
+        return NextResponse.json(
+          { error: "Belum ada deployment untuk workspace ini. Deploy terlebih dahulu lewat deploy_to_sacms sebelum mengatur domain." },
+          { status: 400 },
+        )
+      }
+
+      // Changing to a different domain — detach the old one from the Vercel
+      // project first (best-effort) so it doesn't keep sitting there forever;
+      // Tenant.customDomain only ever tracks ONE "current" domain per workspace.
+      const previousDomain = (tenant as any).customDomain as string | null
+      if (previousDomain && previousDomain !== cleanDomain) {
+        await removeDomainFromProject(projectId, previousDomain).catch((err) =>
+          console.warn("[deploy] Failed to detach previous custom domain from Vercel:", err),
+        )
+      }
 
       const [domainResult, dnsConfig] = await Promise.all([
         addDomainToProject(projectId, cleanDomain).catch((err) => ({
@@ -240,6 +270,16 @@ export const POST = withStaffAuth(
 
     // ── ACTION: REMOVE CUSTOM DOMAIN ────────────────────────────────────────
     if (action === "remove-domain") {
+      const existingProjectId = await db.setting.findUnique({ where: { key: `${tenantId}_vercelProjectId` } })
+      const projectId = existingProjectId?.value || (tenant as any).vercelProjectId
+      const currentDomain = (tenant as any).customDomain as string | null
+
+      if (projectId && currentDomain) {
+        await removeDomainFromProject(projectId, currentDomain).catch((err) =>
+          console.warn("[deploy] Failed to detach custom domain from Vercel:", err),
+        )
+      }
+
       await Promise.all([
         db.tenant.update({
           where: { id: tenantId },

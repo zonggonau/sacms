@@ -143,6 +143,17 @@ export function HostingDeploymentsView({
   const [linkProjectIdInput, setLinkProjectIdInput] = useState("")
   const [isSavingLink, setIsSavingLink] = useState(false)
 
+  // Redeploy (re-run the existing hosting project, no new files)
+  const [isRedeploying, setIsRedeploying] = useState(false)
+
+  // Deployment custom domain dialog (the Vercel project's own domain — NOT
+  // the white-label CMS/Workspace routing domains managed in the Domains tab)
+  const [isDeployDomainDialogOpen, setIsDeployDomainDialogOpen] = useState(false)
+  const [deployDomainInput, setDeployDomainInput] = useState("")
+  const [savingDeployDomain, setSavingDeployDomain] = useState(false)
+  const [removingDeployDomain, setRemovingDeployDomain] = useState(false)
+  const [deployDomainDns, setDeployDomainDns] = useState<{ cname?: string; aRecord?: string; configured?: boolean; error?: string } | null>(null)
+
   // Domains tab state
   const [domains, setDomains] = useState<DomainItem[]>([])
   const [domainsLoading, setDomainsLoading] = useState(true)
@@ -300,6 +311,88 @@ export function HostingDeploymentsView({
       toast.error("Terjadi kesalahan koneksi saat menyimpan URL")
     } finally {
       setIsSavingLink(false)
+    }
+  }
+
+  const handleRedeploy = async () => {
+    setIsRedeploying(true)
+    const toastId = toast.loading("Memulai redeploy...")
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "redeploy" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success("Redeploy berhasil dimulai — perubahan akan aktif setelah build selesai.", { id: toastId })
+        await fetchDeploymentData()
+        if (data.url) runHealthPing(data.url)
+      } else {
+        toast.error(data.error || "Gagal melakukan redeploy", { id: toastId })
+      }
+    } catch {
+      toast.error("Terjadi kesalahan koneksi saat redeploy", { id: toastId })
+    } finally {
+      setIsRedeploying(false)
+    }
+  }
+
+  const openDeployDomainDialog = () => {
+    setDeployDomainInput(vercelDeployment?.customDomain || "")
+    setDeployDomainDns(null)
+    setIsDeployDomainDialogOpen(true)
+  }
+
+  const handleSaveDeployDomain = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    const domainValue = deployDomainInput.trim().toLowerCase()
+    if (!domainValue) return
+
+    setSavingDeployDomain(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "domain", domain: domainValue }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success(`Domain ${domainValue} tersimpan. Atur DNS record sesuai instruksi di bawah.`)
+        setDeployDomainDns(data.dns || null)
+        await fetchDeploymentData()
+      } else {
+        toast.error(data.error || "Gagal menyimpan domain")
+      }
+    } catch {
+      toast.error("Terjadi kesalahan koneksi saat menyimpan domain")
+    } finally {
+      setSavingDeployDomain(false)
+    }
+  }
+
+  const handleRemoveDeployDomain = async () => {
+    setRemovingDeployDomain(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "remove-domain" }),
+      })
+      if (res.ok) {
+        toast.success("Domain berhasil dilepas.")
+        setDeployDomainInput("")
+        setDeployDomainDns(null)
+        setIsDeployDomainDialogOpen(false)
+        await fetchDeploymentData()
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Gagal melepas domain")
+      }
+    } catch {
+      toast.error("Terjadi kesalahan koneksi saat melepas domain")
+    } finally {
+      setRemovingDeployDomain(false)
     }
   }
 
@@ -531,6 +624,17 @@ export function HostingDeploymentsView({
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleRedeploy}
+                disabled={isRedeploying || !vercelDeployment}
+                title="Build ulang deployment yang sudah ada — gunakan ini setelah mengubah variabel Environment"
+                className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
+              >
+                <Rocket className={`h-3.5 w-3.5 mr-1.5 text-primary ${isRedeploying ? "animate-pulse" : ""}`} />
+                {isRedeploying ? "Me-redeploy..." : "Redeploy"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setIsLinkDialogOpen(true)}
                 className="rounded-xl h-9 px-3.5 text-xs font-bold border-border/80 cursor-pointer"
               >
@@ -638,23 +742,32 @@ export function HostingDeploymentsView({
 
                       <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
                         <div className="text-[11px] text-muted-foreground font-medium">Custom Domain:</div>
-                        <div className="font-mono font-bold text-foreground mt-0.5 truncate">
+                        <div className="font-mono font-bold text-foreground mt-0.5 flex items-center gap-1.5">
                           {vercelDeployment.customDomain ? (
-                            <a
-                              href={`https://${vercelDeployment.customDomain}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-1"
-                            >
-                              {vercelDeployment.customDomain}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
+                            <>
+                              <a
+                                href={`https://${vercelDeployment.customDomain}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-primary hover:underline inline-flex items-center gap-1 truncate"
+                              >
+                                {vercelDeployment.customDomain}
+                                <ExternalLink className="h-3 w-3 shrink-0" />
+                              </a>
+                              <button
+                                onClick={openDeployDomainDialog}
+                                className="text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+                                title="Ubah domain"
+                              >
+                                <Link2 className="h-3 w-3" />
+                              </button>
+                            </>
                           ) : (
                             <button
-                              onClick={() => onNavigate?.("domains")}
+                              onClick={openDeployDomainDialog}
                               className="text-muted-foreground font-normal italic hover:text-primary hover:not-italic transition-colors cursor-pointer"
                             >
-                              Belum dikonfigurasi — atur di tab Domains
+                              Belum dikonfigurasi — klik untuk atur domain
                             </button>
                           )}
                         </div>
@@ -1495,6 +1608,82 @@ export function HostingDeploymentsView({
                   >
                     {isSavingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
                     Simpan & Hubungkan
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* DEPLOYMENT CUSTOM DOMAIN MODAL — the Vercel project's own domain,
+              separate from the white-label CMS/Workspace routing domains in
+              the Domains tab */}
+          <Dialog open={isDeployDomainDialogOpen} onOpenChange={setIsDeployDomainDialogOpen}>
+            <DialogContent className="rounded-2xl sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" />
+                  Domain Kustom Deployment
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Hubungkan domain Anda sendiri (mis. situs.com) ke website yang di-deploy ini, menggantikan subdomain bawaan.
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handleSaveDeployDomain} className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold">Nama Domain *</Label>
+                  <Input
+                    placeholder="situs.com atau www.situs.com"
+                    value={deployDomainInput}
+                    onChange={(e) => setDeployDomainInput(e.target.value)}
+                    className="font-mono text-xs rounded-xl h-10"
+                    required
+                  />
+                </div>
+
+                {deployDomainDns && (
+                  <div className="p-3 rounded-xl bg-muted/40 border border-border/60 space-y-2 text-xs">
+                    <p className="font-bold text-foreground">Atur DNS record berikut di registrar domain Anda:</p>
+                    {deployDomainDns.error ? (
+                      <p className="text-amber-600 dark:text-amber-400 text-[11px]">{deployDomainDns.error}</p>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 rounded-lg px-2.5 py-1.5 border border-border/50">
+                          <span>A @ → {deployDomainDns.aRecord || "76.76.21.21"}</span>
+                        </div>
+                        <div className="flex items-center justify-between font-mono text-[11px] bg-background/80 rounded-lg px-2.5 py-1.5 border border-border/50">
+                          <span>CNAME www → {deployDomainDns.cname || "cname.vercel-dns.com"}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {deployDomainDns.configured ? "✅ DNS sudah terdeteksi benar." : "Propagasi DNS bisa memerlukan waktu beberapa menit hingga beberapa jam."}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                <DialogFooter className="pt-2 flex-row justify-between sm:justify-between">
+                  {vercelDeployment?.customDomain ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRemoveDeployDomain}
+                      disabled={removingDeployDomain || savingDeployDomain}
+                      className="rounded-xl h-9 text-xs text-destructive border-destructive/30 hover:bg-destructive/10 cursor-pointer"
+                    >
+                      {removingDeployDomain ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+                      Hapus Domain
+                    </Button>
+                  ) : (
+                    <span />
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={savingDeployDomain || !deployDomainInput.trim()}
+                    className="rounded-xl h-9 text-xs font-bold bg-primary text-primary-foreground cursor-pointer"
+                  >
+                    {savingDeployDomain ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />}
+                    Simpan Domain
                   </Button>
                 </DialogFooter>
               </form>

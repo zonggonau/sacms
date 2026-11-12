@@ -201,6 +201,88 @@ export async function deployToVercel(
 }
 
 /**
+ * Re-run the project's most recent production deployment — exactly what
+ * clicking "Redeploy" in the Vercel dashboard does: a fresh build of the
+ * same source, with no file re-upload needed, picking up whatever the
+ * Project's current env vars are. Needed because `add_deployment_env`/the
+ * Environment tab can only change a Vercel PROJECT's stored env vars; an
+ * already-live deployment keeps running with whatever was baked into it at
+ * build time until something triggers a new build.
+ *
+ * Explicitly passes `env` on the redeploy request rather than trusting
+ * Vercel to re-read the project's live env store for an inherited
+ * redeploy — the create-deployment docs only promise env vars are
+ * "inherited from the original unless explicitly overridden", which reads
+ * as "frozen at the original deployment" rather than "always live", so this
+ * passes the just-resolved values explicitly to guarantee they win.
+ */
+export async function redeployLatest(
+  projectId: string,
+  projectName: string,
+  envVars?: Record<string, string>,
+): Promise<VercelDeploymentResult> {
+  const token = await getVercelToken()
+  if (!token) {
+    if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
+    const sanitizedName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-")
+    return {
+      id: `dpl_${Date.now()}`,
+      url: `https://${sanitizedName}.vercel.app`,
+      state: "READY",
+      projectId,
+      projectName: sanitizedName,
+      simulated: true,
+    }
+  }
+
+  const headers = await getVercelHeaders()
+  const teamId = await getVercelTeamId()
+
+  const listParams = new URLSearchParams({ projectId, target: "production", limit: "1" })
+  if (teamId) listParams.set("teamId", teamId)
+  const listRes = await fetch(`${VERCEL_API_BASE}/v7/deployments?${listParams.toString()}`, { headers })
+  if (!listRes.ok) {
+    const error = await listRes.json().catch(() => ({ message: listRes.statusText }))
+    throw new Error(`Gagal mengambil riwayat deployment dari Vercel: ${error.error?.message || error.message || listRes.statusText}`)
+  }
+  const listData = await listRes.json().catch(() => ({}))
+  const latest = Array.isArray(listData.deployments) ? listData.deployments[0] : null
+  if (!latest?.uid) {
+    throw new Error("Belum ada deployment sebelumnya untuk di-redeploy. Deploy terlebih dahulu lewat deploy_to_sacms.")
+  }
+
+  const body: Record<string, any> = {
+    name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-"),
+    project: projectId,
+    deploymentId: latest.uid,
+    target: "production",
+  }
+  if (envVars && Object.keys(envVars).length > 0) body.env = envVars
+
+  const res = await fetch(`${VERCEL_API_BASE}/v13/deployments${await getTeamQuery()}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(`Redeploy gagal: ${error.error?.message || error.message || res.statusText}`)
+  }
+
+  const data = await res.json()
+  const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
+  const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
+  return {
+    id: data.id,
+    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (data.url ? `https://${data.url}` : "")),
+    state: data.readyState || data.state || "BUILDING",
+    projectId: data.projectId || projectId,
+    projectName: data.name,
+  }
+}
+
+/**
  * Get deployment status
  */
 export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string; projectId?: string; simulated?: boolean }> {
@@ -463,6 +545,27 @@ export async function addDomainToProject(
       domain: v.domain,
       value: v.value
     })) || []
+  }
+}
+
+/**
+ * Detach a custom domain from a Vercel project — best-effort counterpart to
+ * `addDomainToProject`, called when a workspace changes or removes its
+ * deployment's custom domain so Vercel's own domain list doesn't keep
+ * accumulating every domain ever typed in. A 404 (already detached, or
+ * never actually attached — e.g. the add call failed) is not an error here.
+ */
+export async function removeDomainFromProject(projectId: string, domain: string): Promise<void> {
+  const token = await getVercelToken()
+  if (!token) return
+
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}/domains/${domain}${await getTeamQuery()}`, {
+    method: "DELETE",
+    headers: await getVercelHeaders(),
+  })
+  if (!res.ok && res.status !== 404) {
+    const error = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(`Failed to remove domain: ${error.error?.message || error.message || res.statusText}`)
   }
 }
 

@@ -1,7 +1,7 @@
 import "server-only"
 
 import { db } from "@/lib/database"
-import { deployToVercel } from "@/lib/vercel-client"
+import { deployToVercel, redeployLatest } from "@/lib/vercel-client"
 import { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } from "./frontend-env"
 
 export interface DeployFile {
@@ -46,6 +46,37 @@ export async function deployTenantFrontend(
   const envVars = await resolveFrontendEnv(tenantId, tenantSlug, isLocalOrigin ? resolveApiOrigin() : origin)
   const deployResult = await deployToVercel(projectName, files, envVars, tenantSlug)
 
+  return persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
+}
+
+/**
+ * Re-run the workspace's existing deployment project on Vercel — no files
+ * to upload, just a fresh build of whatever was last deployed so a
+ * project-level env var change (Environment tab / `add_deployment_env`)
+ * actually takes effect on the live site. Mirrors `deployTenantFrontend`'s
+ * persistence tail; the only difference is how the Vercel deployment
+ * itself is produced (`redeployLatest` vs `deployToVercel`).
+ */
+export async function redeployTenantFrontend(tenantId: string, tenantSlug: string): Promise<DeployFrontendResult> {
+  const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { vercelProjectId: true } })
+  const projectId = tenant?.vercelProjectId
+  if (!projectId) {
+    throw new Error("Belum ada deployment untuk workspace ini. Deploy terlebih dahulu lewat deploy_to_sacms.")
+  }
+
+  const projectName = `sacms-${tenantSlug}`
+  const envVars = await resolveFrontendEnv(tenantId, tenantSlug, resolveApiOrigin())
+  const deployResult = await redeployLatest(projectId, projectName, envVars)
+
+  return persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
+}
+
+async function persistDeployResult(
+  tenantId: string,
+  tenantSlug: string,
+  deployResult: Awaited<ReturnType<typeof deployToVercel>>,
+  envVars: Record<string, string>,
+): Promise<DeployFrontendResult> {
   if (deployResult.projectId && !deployResult.simulated) {
     pushEnvToVercelProject(deployResult.projectId, envVars)
       .then((r) => {
