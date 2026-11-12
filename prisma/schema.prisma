@@ -121,7 +121,12 @@ model Tenant {
   sourceWebsiteTemplate            WebsiteTemplate?             @relation(fields: [sourceWebsiteTemplateId], references: [id], onDelete: SetNull)
   // Back-relation only (no column here) — set when this tenant IS the
   // internal demo tenant for a SchemaTemplate (see SchemaTemplate.demoTenantId).
-  demoForSchemaTemplate            SchemaTemplate?               @relation("SchemaTemplateDemoTenant")
+  // Plural/list because demoTenantId isn't @unique at the DB level (see
+  // its own comment) — Prisma requires the non-FK side of a relation to
+  // be a list whenever the FK side isn't constrained unique. App code
+  // (ensureDemoTenantForSchemaTemplate) guarantees this is really 1:1 in
+  // practice; this field itself is never read anywhere.
+  demoForSchemaTemplates            SchemaTemplate[]              @relation("SchemaTemplateDemoTenant")
   aiTokensUsed                    Int                           @default(0)
   aiCreditsExtra                  Int                           @default(0)
   /// No longer read: storage add-ons live in StorageAddon and expire monthly.
@@ -801,11 +806,17 @@ model SchemaTemplate {
 
   websiteTemplates WebsiteTemplate[]
 
-  // Internal, owner-less tenant (see Tenant.demoForSchemaTemplate) seeded
+  // Internal, owner-less tenant (see Tenant.demoForSchemaTemplates) seeded
   // with sample content matching this schema, lazily created the first
   // time any of its WebsiteTemplates deploys a live demo. Shared by every
   // WebsiteTemplate of this SchemaTemplate — never a real customer tenant.
-  demoTenantId String? @unique
+  // Deliberately NOT @unique at the DB level — a unique constraint add
+  // trips Prisma's "data loss" guard on `db push`, which the production
+  // deploy hook runs non-interactively with no --accept-data-loss flag
+  // (confirmed live: it aborted the deploy). One-demo-tenant-per-schema is
+  // already guaranteed by ensureDemoTenantForSchemaTemplate's own
+  // get-or-create check — the DB constraint was only defense in depth.
+  demoTenantId String?
   demoTenant   Tenant? @relation("SchemaTemplateDemoTenant", fields: [demoTenantId], references: [id], onDelete: SetNull)
 
   @@map("schema_templates")
