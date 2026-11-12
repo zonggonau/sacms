@@ -84,11 +84,14 @@ export function WebsiteTemplateReviewDialog({
       const res = await fetch(`/api/tenant/${tenantSlug}/website-templates/${detail.id}/apply`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal menerapkan Website Template")
+      const envNote = data.envVarsApplied?.length
+        ? ` ${data.envVarsApplied.length} variabel environment (${data.envVarsApplied.join(", ")}) otomatis diisi dengan nilai production.`
+        : ""
       toast({
         title: "Website Template Diterapkan",
-        description: data.deployment?.url
+        description: (data.deployment?.url
           ? `Schema dibuat dan situs sedang di-deploy. Lihat statusnya di tab Hosting: ${data.deployment.url}`
-          : "Schema dibuat dan situs sedang di-deploy. Cek tab Hosting untuk status terbaru.",
+          : "Schema dibuat dan situs sedang di-deploy. Cek tab Hosting untuk status terbaru.") + envNote,
       })
       onApplied?.(data.deployment)
       onOpenChange(false)

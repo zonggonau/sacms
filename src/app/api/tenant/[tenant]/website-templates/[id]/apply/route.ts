@@ -4,7 +4,12 @@ import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
-import { resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
+import {
+  resolveApiOrigin,
+  resolveWebsiteTemplateEnvVars,
+  getTenantCustomEnvVarList,
+  setTenantCustomEnvVars,
+} from "@/lib/infrastructure/frontend-env"
 
 /**
  * POST /api/tenant/[tenant]/website-templates/[id]/apply
@@ -63,15 +68,33 @@ export const POST = withStaffAuth(
       websiteTemplate.schemaTemplate.schema as any,
     )
 
-    const files = (websiteTemplate.files as unknown as { path: string; content: string }[]).map((f) => ({
-      name: f.path,
-      content: f.content,
-    }))
+    // Pre-populate the Environment tab with whatever custom vars the
+    // bundled frontend expects — resolved to this workspace's REAL
+    // production API origin/tenant slug/deploy token wherever the
+    // template's .env(.example) used a {{SACMS_*}} placeholder — BEFORE
+    // deploying, so the very first deploy (and every Redeploy after it)
+    // already carries correct values instead of the customer having to
+    // discover and fill them in by hand after the fact.
+    const templateFiles = websiteTemplate.files as unknown as { path: string; content: string }[]
+    const templateEnvVars = await resolveWebsiteTemplateEnvVars(tenant.id, tenant.slug, templateFiles)
+    if (templateEnvVars.length > 0) {
+      const existing = await getTenantCustomEnvVarList(tenant.id)
+      const merged = [...existing]
+      for (const v of templateEnvVars) {
+        const idx = merged.findIndex((m) => m.key === v.key)
+        if (idx >= 0) merged[idx] = v
+        else merged.push(v)
+      }
+      await setTenantCustomEnvVars(tenant.id, merged)
+    }
+
+    const files = templateFiles.map((f) => ({ name: f.path, content: f.content }))
     const deployResult = await deployTenantFrontend(tenant.id, tenant.slug, resolveApiOrigin(), files)
 
     return NextResponse.json({
       success: true,
       imported,
+      envVarsApplied: templateEnvVars.map((v) => v.key),
       deployment: deployResult,
     })
   },

@@ -31,6 +31,9 @@ vi.mock("@/lib/infrastructure/deploy-frontend", () => ({
 
 vi.mock("@/lib/infrastructure/frontend-env", () => ({
   resolveApiOrigin: vi.fn().mockReturnValue("https://sacms.cloud"),
+  resolveWebsiteTemplateEnvVars: vi.fn().mockResolvedValue([]),
+  getTenantCustomEnvVarList: vi.fn().mockResolvedValue([]),
+  setTenantCustomEnvVars: vi.fn().mockResolvedValue(undefined),
 }))
 
 import { getServerSession } from "next-auth"
@@ -39,6 +42,11 @@ import { db } from "@/lib/database"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
+import {
+  resolveWebsiteTemplateEnvVars,
+  getTenantCustomEnvVarList,
+  setTenantCustomEnvVars,
+} from "@/lib/infrastructure/frontend-env"
 import { POST } from "@/app/api/tenant/[tenant]/website-templates/[id]/apply/route"
 
 const mockSession = vi.mocked(getServerSession)
@@ -115,6 +123,25 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     )
     expect(body.imported).toBe(3)
     expect(body.deployment.url).toBe("https://acme.sites.sacms.cloud")
+    expect(setTenantCustomEnvVars).not.toHaveBeenCalled()
+    expect(body.envVarsApplied).toEqual([])
+  })
+
+  it("merges the template's resolved env vars into the Environment tab BEFORE deploying", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
+    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
+    vi.mocked(resolveWebsiteTemplateEnvVars).mockResolvedValue([{ key: "NEXT_PUBLIC_API_URL", value: "https://sacms.cloud" }])
+    vi.mocked(getTenantCustomEnvVarList).mockResolvedValue([{ key: "SOME_EXISTING_VAR", value: "keep-me" }])
+
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    const body = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(setTenantCustomEnvVars).toHaveBeenCalledWith("tenant1", [
+      { key: "SOME_EXISTING_VAR", value: "keep-me" },
+      { key: "NEXT_PUBLIC_API_URL", value: "https://sacms.cloud" },
+    ])
+    expect(body.envVarsApplied).toEqual(["NEXT_PUBLIC_API_URL"])
   })
 
   it("lets a super_admin apply even on a free plan", async () => {

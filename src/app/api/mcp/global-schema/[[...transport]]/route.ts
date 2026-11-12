@@ -414,7 +414,15 @@ const handler = createMcpHandler(
           "binary assets) that follows an existing Schema Template's structure. Call list_schema_templates " +
           "first to get the right schemaTemplateId, and get_schema_template to see exactly what Content " +
           "Types/Single Types/Components/fields this frontend needs to render. Call list_website_templates " +
-          "first to avoid creating a near-duplicate for the same Schema Template.",
+          "first to avoid creating a near-duplicate for the same Schema Template. IMPORTANT: include a " +
+          "`.env.example` file in `files` listing every env var the frontend reads from process.env — " +
+          "\"Terapkan\" parses it and auto-creates matching custom env vars on the workspace's Environment " +
+          "tab at apply time. If your frontend doesn't use SaCMS's own fixed names (NEXT_PUBLIC_SACMS_API_URL / " +
+          "NEXT_PUBLIC_SACMS_TENANT / SACMS_API_KEY) — e.g. it reads NEXT_PUBLIC_API_URL instead — write the " +
+          "value as the literal placeholder `{{SACMS_API_URL}}`, `{{SACMS_TENANT_SLUG}}`, or `{{SACMS_API_KEY}}` " +
+          "and it resolves to that workspace's REAL production value on apply, instead of staying empty for " +
+          "the customer to guess. Any other var (e.g. NEXT_PUBLIC_SITE_NAME=) is created with its literal " +
+          "default value, editable later on the Environment tab.",
         inputSchema: {
           schemaTemplateId: z.string().describe("The Schema Template this frontend follows (id or slug)"),
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
@@ -422,7 +430,8 @@ const handler = createMcpHandler(
           description: z.string().max(500).optional(),
           files: websiteTemplateFilesSchema.describe(
             "[{ path, content }, ...] — every source file for the frontend (package.json, app/**, " +
-            "components/**, tailwind config, etc.), as plain text. Max 200 files, 200KB each. No binary assets.",
+            "components/**, tailwind config, etc.), as plain text, PLUS a `.env.example` documenting its env " +
+            "vars (see the {{SACMS_*}} placeholder convention above). Max 200 files, 200KB each. No binary assets.",
           ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",

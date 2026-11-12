@@ -61,6 +61,100 @@ export async function upsertTenantCustomEnvVar(tenantId: string, key: string, va
   await setTenantCustomEnvVars(tenantId, list)
 }
 
+export interface WebsiteTemplateFile {
+  path: string
+  content: string
+}
+
+/** .env / .env.example / .env.sample / .env.template, optionally nested (e.g. "apps/web/.env.example"). */
+const ENV_FILE_NAME_RE = /(^|\/)\.env(\.(example|sample|template))?$/i
+
+/** Finds the first env-listing file in a Website Template's bundled files, if any. */
+export function findWebsiteTemplateEnvFile(files: WebsiteTemplateFile[]): WebsiteTemplateFile | null {
+  return files.find((f) => ENV_FILE_NAME_RE.test(f.path)) || null
+}
+
+export type SacmsEnvPlaceholder = "SACMS_API_URL" | "SACMS_TENANT_SLUG" | "SACMS_API_KEY"
+
+export interface ParsedWebsiteTemplateEnvVar {
+  key: string
+  /** Set when the file's value was a recognized {{SACMS_*}} placeholder — resolveWebsiteTemplateEnvVars substitutes the real per-workspace value for it. Otherwise the literal value from the file is used as-is. */
+  placeholder?: SacmsEnvPlaceholder
+  literalValue: string
+}
+
+const SACMS_PLACEHOLDER_RE = /^\{\{\s*(SACMS_API_URL|SACMS_TENANT_SLUG|SACMS_API_KEY)\s*\}\}$/
+
+/**
+ * Parse a Website Template's bundled .env(.example) file into the custom
+ * env vars its frontend expects. A Website Template's own frontend code may
+ * not use SaCMS's fixed SYSTEM_ENV_VARS names at all (the IT team that built
+ * it may have scaffolded it with its own conventions, e.g.
+ * NEXT_PUBLIC_API_URL instead of NEXT_PUBLIC_SACMS_API_URL) — writing
+ * `{{SACMS_API_URL}}` / `{{SACMS_TENANT_SLUG}}` / `{{SACMS_API_KEY}}` as a
+ * value in the env file tells "Terapkan" which real per-workspace value
+ * that variable needs, instead of leaving it empty for the customer to
+ * guess. Pure/sync — no DB access, easy to unit test; see
+ * resolveWebsiteTemplateEnvVars for the DB-backed resolution step.
+ */
+export function parseWebsiteTemplateEnvVars(files: WebsiteTemplateFile[]): ParsedWebsiteTemplateEnvVar[] {
+  const envFile = findWebsiteTemplateEnvFile(files)
+  if (!envFile) return []
+
+  const out: ParsedWebsiteTemplateEnvVar[] = []
+  for (const rawLine of envFile.content.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    if (!line || line.startsWith("#")) continue
+    const eq = line.indexOf("=")
+    if (eq === -1) continue
+
+    const key = line.slice(0, eq).trim()
+    if (!ENV_KEY_RE.test(key) || RESERVED_ENV_KEYS.includes(key)) continue // system vars always win regardless; never shadow them with a confusing duplicate custom entry
+
+    let value = line.slice(eq + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+
+    const placeholderMatch = SACMS_PLACEHOLDER_RE.exec(value)
+    out.push(
+      placeholderMatch
+        ? { key, placeholder: placeholderMatch[1] as SacmsEnvPlaceholder, literalValue: value }
+        : { key, literalValue: value },
+    )
+  }
+  return out
+}
+
+/**
+ * Resolve parseWebsiteTemplateEnvVars' output into real {key, value} pairs
+ * ready to persist as the workspace's custom env vars — substituting each
+ * recognized placeholder for this workspace's actual API origin/tenant
+ * slug/deploy token, the exact same values resolveFrontendEnv injects as
+ * system vars, so a frontend built under different variable names still
+ * gets wired to the real production SaCMS API on the very first deploy.
+ */
+export async function resolveWebsiteTemplateEnvVars(
+  tenantId: string,
+  tenantSlug: string,
+  files: WebsiteTemplateFile[],
+): Promise<EnvVar[]> {
+  const parsed = parseWebsiteTemplateEnvVars(files)
+  if (parsed.length === 0) return []
+
+  const needsToken = parsed.some((v) => v.placeholder === "SACMS_API_KEY")
+  const token = needsToken ? await getFrontendDeployToken(tenantId, tenantSlug) : null
+
+  return parsed.map(({ key, placeholder, literalValue }) => ({
+    key,
+    value:
+      placeholder === "SACMS_API_URL" ? resolveApiOrigin() :
+      placeholder === "SACMS_TENANT_SLUG" ? tenantSlug :
+      placeholder === "SACMS_API_KEY" ? (token as string) :
+      literalValue,
+  }))
+}
+
 function parseEnvSetting(raw: string | null | undefined): Record<string, string> {
   if (!raw) return {}
   try {
