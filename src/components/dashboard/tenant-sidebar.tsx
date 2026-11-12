@@ -98,6 +98,7 @@ interface NavItem {
     href: string
     icon: React.ElementType
     matchPrefix?: boolean
+    badge?: string
   }[]
 }
 
@@ -271,14 +272,14 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },
               { title: "Webhooks", href: "/developer/webhooks", icon: Webhook, matchPrefix: true },
               { title: "API Explorer", href: "/developer/api", icon: Play, matchPrefix: true },
+              {
+                title: s.infrastructure,
+                href: "/infrastructure",
+                icon: Rocket,
+                matchPrefix: true,
+                badge: effectiveHasDedicatedInfra ? "DEDICATED" : "CLOUD",
+              },
             ]
-          },
-          {
-            title: s.infrastructure,
-            href: "/infrastructure",
-            icon: Rocket,
-            matchPrefix: true,
-            badge: effectiveHasDedicatedInfra ? "DEDICATED" : "CLOUD"
           },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
@@ -414,6 +415,17 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                                   >
                                     <child.icon className={cn("h-3.5 w-3.5 shrink-0", childActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                                     <span className="truncate">{child.title}</span>
+                                    {child.badge && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={cn(
+                                          "ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold",
+                                          childActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/20 text-primary"
+                                        )}
+                                      >
+                                        {child.badge}
+                                      </Badge>
+                                    )}
                                   </div>
                                 </Link>
                               )
