@@ -1,11 +1,14 @@
 /**
  * SaCMS Global — Schema Template MCP Server
  *
- * A separate, deliberately narrow MCP server for ONE job: managing the
- * platform-wide Schema Template catalog (prisma/schema.prisma's
- * SchemaTemplate model — reusable Content Type/Single Type/Component
- * blueprints any workspace can start a new site from, e.g. "Company
- * Profile", "E-Commerce Storefront"). It has no access to any tenant's own
+ * A separate, deliberately narrow MCP server for managing the platform-wide
+ * template catalog: SchemaTemplate (prisma/schema.prisma's SchemaTemplate
+ * model — reusable Content Type/Single Type/Component blueprints any
+ * workspace can start a new site from, e.g. "Company Profile", "E-Commerce
+ * Storefront") AND WebsiteTemplate (a frontend source bundle built by
+ * SaCMS's own IT team here via ChatGPT/IDE, tied to one SchemaTemplate —
+ * one SchemaTemplate can have many WebsiteTemplates, different frontend
+ * "skins" for the same structure). It has no access to any tenant's own
  * content, schema, deployment, or settings — that's the per-workspace
  * server at /api/mcp instead.
  *
@@ -39,6 +42,7 @@ import { AsyncLocalStorage } from "async_hooks"
 import { slugify } from "@/lib/slug"
 import { rateLimit } from "@/lib/rate-limit"
 import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
+import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 
@@ -346,17 +350,203 @@ const handler = createMcpHandler(
         return { content: [{ type: "text" as const, text: `✅ Template '${existing.name}' dihapus.` }] }
       },
     )
+
+    // ── Website Templates (frontend bundles following a Schema Template) ──
+
+    server.registerTool(
+      "list_website_templates",
+      {
+        title: "List Website Templates",
+        description:
+          "List Website Templates — frontend source bundles that follow a specific Schema Template's " +
+          "structure, built by the SaCMS team. Metadata only (no `files` — call get_website_template for " +
+          "that). Call this FIRST before creating a new one, and to check which Website Templates already " +
+          "exist for a given Schema Template.",
+        inputSchema: {
+          schemaTemplateId: z.string().optional().describe("Filter to Website Templates following this Schema Template's id"),
+        },
+      },
+      async ({ schemaTemplateId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const templates = await db.websiteTemplate.findMany({
+          where: schemaTemplateId ? { schemaTemplateId } : {},
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
+            description: true, published: true, createdAt: true, updatedAt: true,
+            schemaTemplate: { select: { name: true, slug: true } },
+          },
+        })
+        return { content: [{ type: "text" as const, text: JSON.stringify(templates, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "get_website_template",
+      {
+        title: "Get Website Template",
+        description: "Get one Website Template's full detail, including its complete `files` array (path + content for every source file).",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const template = await db.websiteTemplate.findFirst({
+          where: { OR: [{ id }, { slug: id }] },
+          include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
+        })
+        if (!template) return notFound(id)
+        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "create_website_template",
+      {
+        title: "Create Website Template",
+        description:
+          "Create a new Website Template — a frontend source bundle (Next.js app files, text/code only, no " +
+          "binary assets) that follows an existing Schema Template's structure. Call list_schema_templates " +
+          "first to get the right schemaTemplateId, and get_schema_template to see exactly what Content " +
+          "Types/Single Types/Components/fields this frontend needs to render. Call list_website_templates " +
+          "first to avoid creating a near-duplicate for the same Schema Template.",
+        inputSchema: {
+          schemaTemplateId: z.string().describe("The Schema Template this frontend follows (id or slug)"),
+          name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
+          icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
+          description: z.string().max(500).optional(),
+          files: websiteTemplateFilesSchema.describe(
+            "[{ path, content }, ...] — every source file for the frontend (package.json, app/**, " +
+            "components/**, tailwind config, etc.), as plain text. Max 200 files, 200KB each. No binary assets.",
+          ),
+          published: z.boolean().optional().describe(
+            "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
+          ),
+        },
+      },
+      async ({ schemaTemplateId, name, icon, description, files, published }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const schemaTemplate = await db.schemaTemplate.findFirst({
+          where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
+          select: { id: true },
+        })
+        if (!schemaTemplate) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Schema Template '${schemaTemplateId}' tidak ditemukan. Panggil list_schema_templates untuk melihat id/slug yang valid.` }],
+            isError: true,
+          }
+        }
+
+        const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
+        if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
+
+        const baseSlug = slugify(name)
+        let slug = baseSlug
+        let suffix = 1
+        while (await db.websiteTemplate.findUnique({ where: { slug } })) {
+          slug = `${baseSlug}-${++suffix}`
+        }
+
+        const template = await db.websiteTemplate.create({
+          data: {
+            name,
+            slug,
+            schemaTemplateId: schemaTemplate.id,
+            icon: icon || "🖥️",
+            description: description || null,
+            files: parsedFiles.data,
+            published: published ?? false,
+          },
+        })
+        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "update_website_template",
+      {
+        title: "Update Website Template",
+        description:
+          "Update an existing Website Template's metadata, files, and/or published status. Passing `files` " +
+          "REPLACES the whole bundle — it is not merged file by file, so include every file you want to keep.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+          name: z.string().min(1).max(150).optional(),
+          icon: z.string().max(10).optional(),
+          description: z.string().max(500).optional(),
+          files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle — see create_website_template."),
+          published: z.boolean().optional(),
+        },
+      },
+      async ({ id, name, icon, description, files, published }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!existing) return notFound(id)
+
+        let filesData: z.infer<typeof websiteTemplateFilesSchema> | undefined
+        if (files !== undefined) {
+          const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
+          if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
+          filesData = parsedFiles.data
+        }
+
+        const template = await db.websiteTemplate.update({
+          where: { id: existing.id },
+          data: {
+            ...(name !== undefined ? { name } : {}),
+            ...(icon !== undefined ? { icon } : {}),
+            ...(description !== undefined ? { description } : {}),
+            ...(filesData !== undefined ? { files: filesData } : {}),
+            ...(published !== undefined ? { published } : {}),
+          },
+        })
+        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "delete_website_template",
+      {
+        title: "Delete Website Template",
+        description: "Permanently delete a Website Template from the catalog. The Schema Template it followed is unaffected.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!existing) return notFound(id)
+
+        await db.websiteTemplate.delete({ where: { id: existing.id } })
+        return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }] }
+      },
+    )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.1.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.2.0" },
     instructions:
-      "This server manages SaCMS's platform-wide Schema Template catalog ONLY — reusable CMS blueprints " +
-      "(Content Types, Single Types, Components) that any workspace can start a new site from. It has no " +
-      "access to any tenant's own content, deployment, or settings; for that, connect to a workspace's own " +
-      "MCP server at /api/mcp instead. Call list_field_types before writing any field (it has the real " +
-      "options/relationSlug shape per type, and flags options that are silently ignored — never guess one), " +
-      "and list_schema_templates before creating a new template, to avoid a near-duplicate. A template's " +
-      "`schema` field uses the exact same shape as the per-workspace server's get_full_schema output.",
+      "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
+      "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
+      "that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, " +
+      "or settings; for that, connect to a workspace's own MCP server at /api/mcp instead. Call " +
+      "list_field_types before writing any Schema Template field (it has the real options/relationSlug shape " +
+      "per type, and flags options that are silently ignored — never guess one), and list_schema_templates / " +
+      "list_website_templates before creating a new one, to avoid a near-duplicate. To build a Website " +
+      "Template: get_schema_template first to see exactly what structure the frontend needs to render, " +
+      "develop it like any other SaCMS frontend (same conventions as deploy_to_sacms on the per-workspace " +
+      "server), then create_website_template with every source file as plain text.",
   },
 )
 

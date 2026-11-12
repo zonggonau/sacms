@@ -789,7 +789,36 @@ model SchemaTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  websiteTemplates WebsiteTemplate[]
+
   @@map("schema_templates")
+}
+
+// A frontend source bundle built by SaCMS's own IT team (via ChatGPT
+// connected to the SaCMS Global "Schema Template" MCP server) that follows
+// one SchemaTemplate's structure. One SchemaTemplate can have many
+// WebsiteTemplates (different frontend "skins" for the same structure).
+// Same platform-catalog visibility rule as SchemaTemplate above — gated by
+// access.isGlobal in the API routes, always queried via the plain shared
+// `db` client.
+model WebsiteTemplate {
+  id               String   @id @default(cuid())
+  name             String
+  slug             String   @unique
+  schemaTemplateId String
+  schemaTemplate   SchemaTemplate @relation(fields: [schemaTemplateId], references: [id], onDelete: Cascade)
+  icon             String   @default("🖥️")
+  description      String?
+  // [{ path: string, content: string }, ...] — text/code source files only
+  // (no binary assets in v1). Validated by websiteTemplateFilesSchema.
+  files            Json
+  published        Boolean  @default(false)
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([schemaTemplateId])
+  @@map("website_templates")
 }
 
 model Webhook {

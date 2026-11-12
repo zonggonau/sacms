@@ -20,6 +20,7 @@ import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
 import { SchemaModelGrid } from "@/components/ai-builder/schema-model-grid"
 import { TemplatesTab } from "./templates-tab"
+import { WebsiteTemplatesTab } from "./website-templates-tab"
 
 interface SchemaGeneratorClientProps {
   tenantSlug: string
@@ -44,6 +45,7 @@ export function SchemaGeneratorClient({
   const router = useRouter()
   const { toast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
+  const [templatesSubTab, setTemplatesSubTab] = useState<"schema" | "website">("schema")
   const [showGenerator, setShowGenerator] = useState(false)
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
   const [schema, setSchema] = useState<SchemaExport>(EMPTY_SCHEMA)
@@ -366,14 +368,46 @@ export function SchemaGeneratorClient({
             )}
           </TabsContent>
 
-          <TabsContent value="templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <TemplatesTab
-              tenantSlug={tenantSlug}
-              isGlobal={isGlobal}
-              onUseTemplate={handleUseTemplate}
-              refreshKey={refreshKey}
-              onLiveSchemaChanged={() => setRefreshKey((k) => k + 1)}
-            />
+          <TabsContent value="templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden space-y-3">
+            <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 w-fit">
+              <button
+                type="button"
+                onClick={() => setTemplatesSubTab("schema")}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  templatesSubTab === "schema" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Schema Template
+              </button>
+              <button
+                type="button"
+                onClick={() => setTemplatesSubTab("website")}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  templatesSubTab === "website" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Website Template
+              </button>
+            </div>
+
+            {templatesSubTab === "schema" ? (
+              <TemplatesTab
+                tenantSlug={tenantSlug}
+                isGlobal={isGlobal}
+                onUseTemplate={handleUseTemplate}
+                refreshKey={refreshKey}
+                onLiveSchemaChanged={() => setRefreshKey((k) => k + 1)}
+              />
+            ) : (
+              <WebsiteTemplatesTab
+                tenantSlug={tenantSlug}
+                isGlobal={isGlobal}
+                onApplied={() => {
+                  setActiveTab("diagram")
+                  setRefreshKey((k) => k + 1)
+                }}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
