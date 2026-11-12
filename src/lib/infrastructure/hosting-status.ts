@@ -1,5 +1,12 @@
 import { db, type PrismaClient } from "@/lib/database"
-import { checkVercelProjectExists } from "@/lib/vercel-client"
+import { checkVercelProjectExists, ensureBrandedSubdomain, getProjectPrimaryDomain } from "@/lib/vercel-client"
+import { ROOT_DOMAIN } from "@/lib/portal-urls"
+
+// Mirrors vercel-client.ts's own (unexported) BRANDED_SUBDOMAIN_ROOT —
+// used here only to detect whether a stored URL is already the branded
+// one, not to construct it (ensureBrandedSubdomain/getProjectPrimaryDomain
+// own that).
+const BRANDED_SUBDOMAIN_ROOT = `sites.${ROOT_DOMAIN}`
 
 export interface TenantHostingStatus {
   deployed: boolean
@@ -33,6 +40,9 @@ export async function resolveTenantHostingStatus(
    *  — write the clear-out back to the same one the caller read from,
    *  defaulting to the shared master `db`. */
   client: PrismaClient = db,
+  /** Needed only for the branded-subdomain self-heal below — omit to skip
+   *  it (status still resolves correctly, just without the upgrade). */
+  tenantSlug?: string | null,
 ): Promise<TenantHostingStatus> {
   if (!vercelDeploymentUrl || !vercelProjectId) {
     return { deployed: false, url: null, projectId: null }
@@ -53,6 +63,33 @@ export async function resolveTenantHostingStatus(
         .catch(() => {}),
     ])
     return { deployed: false, url: null, projectId: null, wasCleared: true }
+  }
+
+  // Self-heal: `ensureBrandedSubdomain` runs best-effort at deploy time and
+  // swallows failures (a transient Vercel API hiccup, the wildcard DNS not
+  // propagated yet, etc.) — when that happens the tenant is stuck showing
+  // the raw `<project>-<team>.vercel.app` alias forever, since nothing else
+  // ever retries it. Retry here (idempotent) whenever the stored URL isn't
+  // already the branded `<slug>.sites.<root>` one, and persist the nicer
+  // URL the moment it succeeds.
+  if (tenantSlug && !vercelDeploymentUrl.includes(`.${BRANDED_SUBDOMAIN_ROOT}`)) {
+    await ensureBrandedSubdomain(vercelProjectId, tenantSlug).catch(() => null)
+    const healedUrl = await getProjectPrimaryDomain(vercelProjectId).catch(() => null)
+    if (healedUrl && healedUrl !== vercelDeploymentUrl) {
+      await Promise.all([
+        client.tenant
+          .update({ where: { id: tenantId }, data: { vercelDeploymentUrl: healedUrl } })
+          .catch((err) => console.warn(`[hosting-status] Failed to persist healed Vercel URL for tenant ${tenantId}:`, err)),
+        db.setting
+          .upsert({
+            where: { key: `${tenantId}_vercelDeploymentUrl` },
+            update: { value: healedUrl },
+            create: { tenantId, key: `${tenantId}_vercelDeploymentUrl`, value: healedUrl },
+          })
+          .catch(() => {}),
+      ])
+      return { deployed: true, url: healedUrl, projectId: vercelProjectId }
+    }
   }
 
   return { deployed: true, url: vercelDeploymentUrl, projectId: vercelProjectId }

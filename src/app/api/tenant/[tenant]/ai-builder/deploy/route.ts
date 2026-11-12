@@ -36,7 +36,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
     // showing as "Live" forever in the Hosting tab, since nothing else ever
     // re-checks it. A confirmed deletion self-heals the stale DB fields too.
     const { resolveTenantHostingStatus } = await import("@/lib/infrastructure/hosting-status")
-    const vercelStatus = await resolveTenantHostingStatus(tenantId, rawVercelUrl, rawVercelProjectId)
+    const vercelStatus = await resolveTenantHostingStatus(tenantId, rawVercelUrl, rawVercelProjectId, db, tenant.slug)
     const vercelUrl = vercelStatus.url
     const vercelProjectId = vercelStatus.projectId
 

@@ -136,6 +136,7 @@ export default async function TenantDashboardPage({
     effectiveVercelUrl,
     tenantData?.vercelProjectId || null,
     tenantDb,
+    access.tenant.slug,
   )
 
   const stats = {

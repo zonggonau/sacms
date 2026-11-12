@@ -119,7 +119,7 @@ export const GET = withStaffAuth(
     // since the Hosting tab falls back to this endpoint's vercelDeployment
     // when the other one reports nothing.
     const { resolveTenantHostingStatus } = await import("@/lib/infrastructure/hosting-status")
-    const vercelStatus = await resolveTenantHostingStatus(access.tenantId, rawVercelUrl, rawVercelProjectId)
+    const vercelStatus = await resolveTenantHostingStatus(access.tenantId, rawVercelUrl, rawVercelProjectId, db, tenantRecord.slug)
     const vercelUrl = vercelStatus.url
     const vercelProjectId = vercelStatus.projectId
 
