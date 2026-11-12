@@ -146,6 +146,11 @@ export function HostingDeploymentsView({
   // Redeploy (re-run the existing hosting project, no new files)
   const [isRedeploying, setIsRedeploying] = useState(false)
 
+  // Delete project (irreversible — wipes the Vercel project; no auto-redeploy)
+  const [isDeleteProjectDialogOpen, setIsDeleteProjectDialogOpen] = useState(false)
+  const [deleteProjectConfirmText, setDeleteProjectConfirmText] = useState("")
+  const [isDeletingProject, setIsDeletingProject] = useState(false)
+
   // Deployment custom domain dialog (the Vercel project's own domain — NOT
   // the white-label CMS/Workspace routing domains managed in the Domains tab)
   const [isDeployDomainDialogOpen, setIsDeployDomainDialogOpen] = useState(false)
@@ -335,6 +340,31 @@ export function HostingDeploymentsView({
       toast.error("Terjadi kesalahan koneksi saat redeploy", { id: toastId })
     } finally {
       setIsRedeploying(false)
+    }
+  }
+
+  const handleDeleteProject = async () => {
+    setIsDeletingProject(true)
+    const toastId = toast.loading("Menghapus project...")
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete-project" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success("Project berhasil dihapus. Deploy ulang kapan pun Anda siap.", { id: toastId })
+        setIsDeleteProjectDialogOpen(false)
+        setDeleteProjectConfirmText("")
+        await fetchDeploymentData()
+      } else {
+        toast.error(data.error || "Gagal menghapus project", { id: toastId })
+      }
+    } catch {
+      toast.error("Terjadi kesalahan koneksi saat menghapus project", { id: toastId })
+    } finally {
+      setIsDeletingProject(false)
     }
   }
 
@@ -631,6 +661,17 @@ export function HostingDeploymentsView({
               >
                 <Rocket className={`h-3.5 w-3.5 mr-1.5 text-primary ${isRedeploying ? "animate-pulse" : ""}`} />
                 {isRedeploying ? "Me-redeploy..." : "Redeploy"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsDeleteProjectDialogOpen(true)}
+                disabled={!vercelDeployment}
+                title="Hapus project Vercel ini secara permanen — tidak bisa dibatalkan"
+                className="rounded-xl h-9 px-3.5 text-xs font-semibold border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Hapus Project
               </Button>
               <Button
                 variant="outline"
@@ -1611,6 +1652,61 @@ export function HostingDeploymentsView({
                   </Button>
                 </DialogFooter>
               </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* DELETE PROJECT MODAL — irreversible, requires typing the project
+              name to confirm, same convention as Schema Template's delete */}
+          <Dialog
+            open={isDeleteProjectDialogOpen}
+            onOpenChange={(open) => {
+              setIsDeleteProjectDialogOpen(open)
+              if (!open) setDeleteProjectConfirmText("")
+            }}
+          >
+            <DialogContent className="rounded-2xl border border-border bg-card sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold text-destructive flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" /> Hapus Project Vercel?
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Tindakan ini akan menghapus project <strong className="text-foreground font-bold">sacms-{tenantSlug}</strong> beserta seluruh riwayat deployment-nya secara permanen di Vercel. Tidak bisa dibatalkan. Website Anda akan offline sampai Anda men-deploy ulang (lewat MCP/IDE atau Website Template).
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs">
+                  <p className="font-semibold text-destructive">Ketik nama project persis untuk konfirmasi:</p>
+                  <p className="font-mono font-bold mt-1 text-foreground">sacms-{tenantSlug}</p>
+                </div>
+                <Input
+                  value={deleteProjectConfirmText}
+                  onChange={(e) => setDeleteProjectConfirmText(e.target.value)}
+                  placeholder="Ketik nama project"
+                  className="h-9 text-xs rounded-xl font-mono"
+                />
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDeleteProjectDialogOpen(false)}
+                  className="rounded-xl h-9 text-xs cursor-pointer"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={isDeletingProject || deleteProjectConfirmText !== `sacms-${tenantSlug}`}
+                  onClick={handleDeleteProject}
+                  className="rounded-xl h-9 text-xs font-bold cursor-pointer"
+                >
+                  {isDeletingProject ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+                  {isDeletingProject ? "Menghapus..." : "Hapus Permanen"}
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
 

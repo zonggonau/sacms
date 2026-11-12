@@ -352,6 +352,32 @@ export async function checkVercelProjectExists(projectId: string): Promise<boole
 }
 
 /**
+ * Permanently deletes a Vercel project and every deployment under it.
+ * Irreversible on Vercel's side — callers must confirm with the user before
+ * calling this, there is no undo. A 404 (project already gone, e.g. deleted
+ * directly on vercel.com) is treated as success since the end state is the
+ * same either way.
+ */
+export async function deleteVercelProject(projectId: string): Promise<{ ok: boolean; error?: string }> {
+  const token = await getVercelToken()
+  if (!token) {
+    if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
+    return { ok: true }
+  }
+
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
+    method: "DELETE",
+    headers: await getVercelHeaders(),
+  })
+
+  if (!res.ok && res.status !== 404) {
+    const data = await res.json().catch(() => ({}))
+    return { ok: false, error: data.error?.message || data.message || res.statusText }
+  }
+  return { ok: true }
+}
+
+/**
  * Turn off Vercel's "Vercel Authentication" deployment protection for a
  * project, so its deployment URLs (including the per-deployment ones with a
  * random suffix, not just the production alias) are viewable by anyone with

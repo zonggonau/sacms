@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { addDomainToProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
+import { addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
@@ -140,6 +140,38 @@ export const POST = withStaffAuth(
       } catch (err: any) {
         return NextResponse.json({ error: err.message || "Gagal melakukan redeploy" }, { status: 400 })
       }
+    }
+
+    // ── ACTION: DELETE PROJECT (irreversible — wipes the Vercel project and
+    // every deployment under it, so the workspace can redeploy clean later) ─
+    if (action === "delete-project") {
+      const existingProjectId = await db.setting.findUnique({ where: { key: `${tenantId}_vercelProjectId` } })
+      const projectId = existingProjectId?.value || (tenant as any).vercelProjectId
+
+      if (!projectId) {
+        return NextResponse.json({ error: "Tidak ada project Vercel untuk dihapus" }, { status: 400 })
+      }
+
+      const result = await deleteVercelProject(projectId)
+      if (!result.ok) {
+        return NextResponse.json({ error: result.error || "Gagal menghapus project di Vercel" }, { status: 400 })
+      }
+
+      await Promise.all([
+        db.tenant.update({
+          where: { id: tenantId },
+          data: { vercelDeploymentUrl: null, vercelProjectId: null, customDomain: null },
+        }).catch((err) => console.warn("Failed to clear tenant vercel fields after delete:", err)),
+        db.setting.deleteMany({
+          where: {
+            key: {
+              in: [`${tenantId}_vercelDeploymentUrl`, `${tenantId}_vercelProjectId`, `${tenantId}_customDomain`],
+            },
+          },
+        }).catch(() => null),
+      ])
+
+      return NextResponse.json({ success: true })
     }
 
     // ── ACTION: LINK / UPDATE VERCEL DEPLOYMENT URL ─────────────────────────
