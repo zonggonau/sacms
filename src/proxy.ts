@@ -703,6 +703,30 @@ export async function proxy(request: NextRequest) {
     }
 
     if (tenantSlug) {
+      // Self-heal a cache entry written before the 2026-11-12 fix (slug
+      // only, no id) — resolve the tenant's real id once and persist it
+      // back into the cache, instead of requiring every already-registered
+      // domain to be manually re-verified just to pick up that fix. Costs
+      // one extra DB lookup only on a stale entry's first request after
+      // this deploy; every request after that (including this one) has
+      // `id` from the cache directly and skips this entirely.
+      if (!tenantId) {
+        let resolvedTenant: { id: string } | null = null
+        try {
+          resolvedTenant = await db.tenant.findFirst({ where: { slug: tenantSlug }, select: { id: true } })
+        } catch {
+          resolvedTenant = null
+        }
+        if (resolvedTenant?.id) {
+          tenantId = resolvedTenant.id
+          if (redis) {
+            redis
+              .set(`domain:${host}`, JSON.stringify({ slug: tenantSlug, id: tenantId, target: domainTarget }))
+              .catch(() => {})
+          }
+        }
+      }
+
       // ---- Apex custom domain (e.g. bangparjo.shop, no subdomain label) ->
       // the tenant's deployed frontend website (Infrastruktur > Hosting),
       // not the CMS/Workspace portal. A SUBDOMAIN of a registered domain

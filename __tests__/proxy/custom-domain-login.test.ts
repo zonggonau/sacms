@@ -35,11 +35,18 @@ const mockGet = vi.fn((key: string) => {
   if (key === "domain:idtest.theirdomain.com") {
     return Promise.resolve(JSON.stringify({ slug: "acme-corp", id: "tnt_realid123", target: "cms" }))
   }
+  // Pre-fix cache shape (slug only, no id) still sitting in Redis for a
+  // domain that was verified before 2026-11-12 — exercises the self-heal path.
+  if (key === "domain:staleheal.theirdomain.com") {
+    return Promise.resolve(JSON.stringify({ slug: "stale-corp", target: "cms" }))
+  }
   return Promise.resolve(undefined)
 })
 
+const mockSet = vi.fn().mockResolvedValue(undefined)
+
 vi.mock("@/lib/redis", () => ({
-  getRedis: () => ({ get: mockGet }),
+  getRedis: () => ({ get: mockGet, set: mockSet }),
 }))
 
 const { proxy } = await import("@/proxy")
@@ -268,6 +275,52 @@ describe("Custom domain → navigating by tenant id (not just slug) works (proxy
 
     expect(res.status).toBe(307)
     expect(res.headers.get("location")).toContain("/dashboard/acme-corp/cms")
+  })
+})
+
+// Bug fixed 2026-11-12 (follow-up): the 2026-11-12 fix above only applies to
+// a cache entry WRITTEN after that fix (on the next verify/target change).
+// A domain verified before then still has the stale {slug, target} shape
+// sitting in Redis indefinitely — nothing ever re-verifies it on its own —
+// so the original bug would keep reproducing for every already-registered
+// domain until someone happened to click "Verifikasi" again. Self-heal
+// instead: resolve the id via one DB lookup on the first request that hits
+// a stale entry, and persist it back to the cache so every later request
+// (including the very next one) skips the DB entirely.
+describe("Custom domain → stale Redis cache (slug only, no id) self-heals on first hit (proxy.ts)", () => {
+  beforeEach(() => {
+    mockGet.mockClear()
+    mockSet.mockClear()
+    vi.mocked(db.tenant.findFirst).mockReset()
+  })
+
+  it("resolves the tenant id via DB, persists it to the cache, and lets the request through without a stale redirect", async () => {
+    vi.mocked(db.tenant.findFirst).mockResolvedValue({ id: "tnt_healed456" } as any)
+
+    const req = new NextRequest("http://staleheal.theirdomain.com/dashboard/tnt_healed456/cms/media", {
+      headers: { host: "staleheal.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).not.toBe(307)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/tnt_healed456/cms/media")
+    expect(mockSet).toHaveBeenCalledWith(
+      "domain:staleheal.theirdomain.com",
+      JSON.stringify({ slug: "stale-corp", id: "tnt_healed456", target: "cms" }),
+    )
+  })
+
+  it("still redirects to the bare cms root when the id can't be resolved (DB lookup fails)", async () => {
+    vi.mocked(db.tenant.findFirst).mockResolvedValue(null)
+
+    const req = new NextRequest("http://staleheal.theirdomain.com/dashboard/some-id/cms/media", {
+      headers: { host: "staleheal.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/dashboard/stale-corp/cms")
+    expect(mockSet).not.toHaveBeenCalled()
   })
 })
 
