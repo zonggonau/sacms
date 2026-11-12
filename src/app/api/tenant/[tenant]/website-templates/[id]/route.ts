@@ -55,6 +55,13 @@ export const DELETE = withStaffAuth(
     const existing = await db.websiteTemplate.findUnique({ where: { id } })
     if (!existing) return apiError("not_found", { message: "Website Template tidak ditemukan" })
 
+    if (existing.demoVercelProjectId) {
+      const { deleteVercelProject } = await import("@/lib/vercel-client")
+      await deleteVercelProject(existing.demoVercelProjectId).catch((err) =>
+        console.warn(`[website-templates] Failed to delete demo Vercel project for ${existing.slug}:`, err),
+      )
+    }
+
     await db.websiteTemplate.delete({ where: { id } })
 
     return NextResponse.json({ success: true })

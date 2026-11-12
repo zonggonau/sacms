@@ -16,6 +16,7 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     select: {
       id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
       description: true, published: true, createdAt: true, updatedAt: true,
+      demoUrl: true,
       schemaTemplate: { select: { id: true, name: true, slug: true, icon: true } },
     },
   })

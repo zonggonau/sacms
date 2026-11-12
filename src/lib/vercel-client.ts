@@ -23,6 +23,16 @@ const VERCEL_API_BASE = "https://api.vercel.com"
  */
 const BRANDED_SUBDOMAIN_ROOT = `sites.${ROOT_DOMAIN}`
 
+/**
+ * Root for a Website Template's live-demo subdomain
+ * (`<templateSlug>.demo.sacms.cloud`) — deliberately a different label
+ * from `BRANDED_SUBDOMAIN_ROOT` so a template preview the SaCMS team is
+ * testing is never mistaken for a real customer's own deployed site. Same
+ * one-time external setup required (wildcard DNS + the apex registered as
+ * a Team domain in Vercel).
+ */
+const DEMO_SUBDOMAIN_ROOT = `demo.${ROOT_DOMAIN}`
+
 export async function getVercelToken(): Promise<string> {
   try {
     const settings = await getPlatformSettings()
@@ -412,30 +422,53 @@ export async function disableVercelDeploymentProtection(
 }
 
 /**
- * Idempotently attaches this tenant's SaCMS-branded subdomain
- * (`<tenantSlug>.sites.sacms.cloud`) to its Vercel project, so a
- * brand-new project has a clean, SaCMS-looking domain from its very
- * first deploy instead of only a raw `*.vercel.app` alias. Best-effort:
- * swallows any failure (e.g. the one-time wildcard DNS record for
- * `*.sites.sacms.cloud` isn't live yet) rather than failing the deploy
- * that triggered it — getProjectPrimaryDomain below falls back to the
- * project's default alias when this hasn't succeeded (yet, or at all).
+ * Shared idempotent "attach `<label>.<root>` to this Vercel project"
+ * logic behind both `ensureBrandedSubdomain` (real tenant deployments,
+ * `sites.<ROOT_DOMAIN>`) and `ensureDemoSubdomain` (Website Template demo
+ * deployments, `demo.<ROOT_DOMAIN>`) below. Best-effort: swallows any
+ * failure (e.g. the root's one-time wildcard DNS record isn't live yet)
+ * rather than failing the deploy that triggered it — getProjectPrimaryDomain
+ * falls back to the project's default `.vercel.app` alias when this hasn't
+ * succeeded (yet, or at all).
  */
-export async function ensureBrandedSubdomain(projectId: string, tenantSlug: string): Promise<string | null> {
+async function attachAutoSubdomain(projectId: string, label: string, root: string): Promise<string | null> {
   const token = await getVercelToken()
   if (!token) return null
 
-  const clean = tenantSlug.toLowerCase().replace(/[^a-z0-9-]/g, "-")
+  const clean = label.toLowerCase().replace(/[^a-z0-9-]/g, "-")
   if (!clean) return null
-  const domain = `${clean}.${BRANDED_SUBDOMAIN_ROOT}`
+  const domain = `${clean}.${root}`
 
   try {
     await addDomainToProject(projectId, domain)
     return domain
   } catch (err: any) {
-    console.warn(`[Vercel Client] Failed to attach branded subdomain ${domain}:`, err?.message || err)
+    console.warn(`[Vercel Client] Failed to attach subdomain ${domain}:`, err?.message || err)
     return null
   }
+}
+
+/**
+ * Idempotently attaches this tenant's SaCMS-branded subdomain
+ * (`<tenantSlug>.sites.sacms.cloud`) to its Vercel project, so a
+ * brand-new project has a clean, SaCMS-looking domain from its very
+ * first deploy instead of only a raw `*.vercel.app` alias.
+ */
+export async function ensureBrandedSubdomain(projectId: string, tenantSlug: string): Promise<string | null> {
+  return attachAutoSubdomain(projectId, tenantSlug, BRANDED_SUBDOMAIN_ROOT)
+}
+
+/**
+ * Idempotently attaches a Website Template's live-demo subdomain
+ * (`<templateSlug>.demo.sacms.cloud`) to its demo Vercel project — a
+ * separate root from `ensureBrandedSubdomain`'s `sites.` so a template
+ * preview the SaCMS team is iterating on is never mistaken for a real
+ * customer's own deployed site. Requires the same kind of one-time
+ * wildcard DNS record (`*.demo.<ROOT_DOMAIN>` CNAME -> cname.vercel-dns.com)
+ * that `sites.` already needed, set up outside this codebase.
+ */
+export async function ensureDemoSubdomain(projectId: string, templateSlug: string): Promise<string | null> {
+  return attachAutoSubdomain(projectId, templateSlug, DEMO_SUBDOMAIN_ROOT)
 }
 
 /**

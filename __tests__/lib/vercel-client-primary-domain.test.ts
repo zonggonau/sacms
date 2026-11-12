@@ -22,7 +22,7 @@ vi.mock("@/lib/dev-mode", () => ({
   requireCredentialOutsideMock: vi.fn(),
 }))
 
-const { getProjectPrimaryDomain, ensureBrandedSubdomain } = await import("@/lib/vercel-client")
+const { getProjectPrimaryDomain, ensureBrandedSubdomain, ensureDemoSubdomain } = await import("@/lib/vercel-client")
 
 describe("getProjectPrimaryDomain", () => {
   const originalFetch = global.fetch
@@ -158,5 +158,40 @@ describe("ensureBrandedSubdomain", () => {
     }) as any
 
     expect(await ensureBrandedSubdomain("prj_1", "acme")).toBeNull()
+  })
+})
+
+describe("ensureDemoSubdomain", () => {
+  const originalFetch = global.fetch
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it("attaches <templateSlug>.demo.sacms.cloud — a different root from ensureBrandedSubdomain's sites.", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ name: "modern-dark.demo.sacms.cloud", verified: true }),
+    }) as any
+
+    const domain = await ensureDemoSubdomain("prj_1", "Modern-Dark")
+    expect(domain).toBe("modern-dark.demo.sacms.cloud")
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v10/projects/prj_1/domains"),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ name: "modern-dark.demo.sacms.cloud" }) }),
+    )
+  })
+
+  it("returns null (never throws) when Vercel rejects the attach", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: { message: "Invalid domain" } }),
+    }) as any
+
+    expect(await ensureDemoSubdomain("prj_1", "modern-dark")).toBeNull()
   })
 })

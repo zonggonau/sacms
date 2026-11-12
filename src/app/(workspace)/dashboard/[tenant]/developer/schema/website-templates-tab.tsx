@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Eye, Trash2, Filter } from "lucide-react"
+import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
 
 interface WebsiteTemplateItem {
@@ -21,6 +21,7 @@ interface WebsiteTemplateItem {
   description: string | null
   published: boolean
   createdAt?: string
+  demoUrl?: string | null
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
 
@@ -194,6 +195,23 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
                       </TableCell>
                       <TableCell className="text-right pr-6 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          {t.demoUrl ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              asChild
+                              className="h-7 w-7 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                              title={`Buka Demo: ${t.demoUrl}`}
+                            >
+                              <a href={t.demoUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                            </Button>
+                          ) : (
+                            <span className="h-7 w-7 inline-flex items-center justify-center text-muted-foreground/30" title="Demo belum tersedia">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </span>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

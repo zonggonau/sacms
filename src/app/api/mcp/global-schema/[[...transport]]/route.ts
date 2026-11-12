@@ -444,7 +444,7 @@ const handler = createMcpHandler(
 
         const schemaTemplate = await db.schemaTemplate.findFirst({
           where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
-          select: { id: true },
+          select: { id: true, slug: true, name: true, schema: true, demoTenantId: true },
         })
         if (!schemaTemplate) {
           return {
@@ -474,7 +474,25 @@ const handler = createMcpHandler(
             published: published ?? false,
           },
         })
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+
+        const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
+        const demo = await deployWebsiteTemplateDemo({
+          id: template.id,
+          slug: template.slug,
+          files: parsedFiles.data,
+          schemaTemplate,
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              ...template,
+              demoUrl: demo.url,
+              demoDeployment: demo.url ? { status: "ok" } : { status: "failed", error: demo.error },
+            }, null, 2),
+          }],
+        }
       },
     )
 
@@ -498,7 +516,10 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        const existing = await db.websiteTemplate.findFirst({
+          where: { OR: [{ id }, { slug: id }] },
+          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
+        })
         if (!existing) return notFound(id)
 
         let filesData: z.infer<typeof websiteTemplateFilesSchema> | undefined
@@ -518,6 +539,29 @@ const handler = createMcpHandler(
             ...(published !== undefined ? { published } : {}),
           },
         })
+
+        // Only a real file change warrants a redeploy — a metadata-only
+        // edit (name/icon/description/published) shouldn't rebuild the demo.
+        if (filesData !== undefined) {
+          const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
+          const demo = await deployWebsiteTemplateDemo({
+            id: template.id,
+            slug: template.slug,
+            files: filesData,
+            schemaTemplate: existing.schemaTemplate,
+          })
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                ...template,
+                demoUrl: demo.url,
+                demoDeployment: demo.url ? { status: "ok" } : { status: "failed", error: demo.error },
+              }, null, 2),
+            }],
+          }
+        }
+
         return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
       },
     )
@@ -538,13 +582,20 @@ const handler = createMcpHandler(
         const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound(id)
 
+        if (existing.demoVercelProjectId) {
+          const { deleteVercelProject } = await import("@/lib/vercel-client")
+          await deleteVercelProject(existing.demoVercelProjectId).catch((err) =>
+            console.warn(`[delete_website_template] Failed to delete demo Vercel project for ${existing.slug}:`, err),
+          )
+        }
+
         await db.websiteTemplate.delete({ where: { id: existing.id } })
         return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }] }
       },
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.2.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.3.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -555,7 +606,13 @@ const handler = createMcpHandler(
       "list_website_templates before creating a new one, to avoid a near-duplicate. To build a Website " +
       "Template: get_schema_template first to see exactly what structure the frontend needs to render, " +
       "develop it like any other SaCMS frontend (same conventions as deploy_to_sacms on the per-workspace " +
-      "server), then create_website_template with every source file as plain text.",
+      "server), then create_website_template with every source file as plain text. Every " +
+      "create_website_template and update_website_template(files: ...) call automatically (re)deploys a " +
+      "live preview at https://<slug>.demo.sacms.cloud, fed by sample content — never a real customer's " +
+      "data — so you can test in a real browser before publishing. The response includes `demoUrl` (and " +
+      "`demoDeployment.error` if the deploy itself failed — the save still succeeds either way, just retry " +
+      "update_website_template with the same files to redeploy). A metadata-only update (no `files`) does " +
+      "not redeploy.",
   },
 )
 

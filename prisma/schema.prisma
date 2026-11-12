@@ -112,6 +112,16 @@ model Tenant {
   hostingExpiresAt                DateTime?
   vercelProjectId                 String?
   vercelDeploymentUrl             String?
+  // Which Website Template (if any) this workspace's current hosting
+  // deployment was cloned from — set on "Terapkan", cleared the moment the
+  // workspace deploys its own files via deploy_to_sacms/the dashboard's own
+  // deploy action, since it's no longer the unmodified template at that
+  // point. Purely informational (Hosting tab banner) — never gates anything.
+  sourceWebsiteTemplateId          String?
+  sourceWebsiteTemplate            WebsiteTemplate?             @relation(fields: [sourceWebsiteTemplateId], references: [id], onDelete: SetNull)
+  // Back-relation only (no column here) — set when this tenant IS the
+  // internal demo tenant for a SchemaTemplate (see SchemaTemplate.demoTenantId).
+  demoForSchemaTemplate            SchemaTemplate?               @relation("SchemaTemplateDemoTenant")
   aiTokensUsed                    Int                           @default(0)
   aiCreditsExtra                  Int                           @default(0)
   /// No longer read: storage add-ons live in StorageAddon and expire monthly.
@@ -791,6 +801,13 @@ model SchemaTemplate {
 
   websiteTemplates WebsiteTemplate[]
 
+  // Internal, owner-less tenant (see Tenant.demoForSchemaTemplate) seeded
+  // with sample content matching this schema, lazily created the first
+  // time any of its WebsiteTemplates deploys a live demo. Shared by every
+  // WebsiteTemplate of this SchemaTemplate — never a real customer tenant.
+  demoTenantId String? @unique
+  demoTenant   Tenant? @relation("SchemaTemplateDemoTenant", fields: [demoTenantId], references: [id], onDelete: SetNull)
+
   @@map("schema_templates")
 }
 
@@ -816,6 +833,17 @@ model WebsiteTemplate {
   createdBy        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  deployedTenants  Tenant[]
+
+  // Live demo deployment on demo.<ROOT_DOMAIN> — a dedicated Vercel
+  // project per WebsiteTemplate, redeployed automatically on every
+  // create/update-with-files from the SaCMS Global MCP server. Purely
+  // for the SaCMS team (and as a preview for customers) — never a
+  // customer's own hosting.
+  demoVercelProjectId String?
+  demoUrl             String?
+  demoDeployedAt      DateTime?
 
   @@index([schemaTemplateId])
   @@map("website_templates")

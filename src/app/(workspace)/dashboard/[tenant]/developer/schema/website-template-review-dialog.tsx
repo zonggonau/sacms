@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/clipboard"
-import { Loader2, FileCode, Copy, Check, Rocket, Layers } from "lucide-react"
+import { Loader2, FileCode, Copy, Check, Rocket, Layers, ExternalLink, Sparkles } from "lucide-react"
 
 interface WebsiteTemplateFile {
   path: string
@@ -19,6 +19,7 @@ interface WebsiteTemplateDetail {
   icon: string
   description: string | null
   published: boolean
+  demoUrl?: string | null
   files: WebsiteTemplateFile[]
   schemaTemplate: {
     id: string
@@ -126,6 +127,21 @@ export function WebsiteTemplateReviewDialog({
             )}
           </DialogDescription>
         </DialogHeader>
+
+        {detail?.demoUrl && (
+          <a
+            href={detail.demoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/5 text-[11px] text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors shrink-0"
+          >
+            <Sparkles className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1 min-w-0">
+              <strong className="font-bold">Pratinjau Demo</strong> — dibangun tim SaCMS di {new URL(detail.demoUrl).hostname}, bukan bagian dari hosting Anda.
+            </span>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+          </a>
+        )}
 
         {isLoading ? (
           <div className="flex items-center justify-center gap-2 py-16 text-xs text-muted-foreground">
