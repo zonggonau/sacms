@@ -29,6 +29,12 @@ const mockGet = vi.fn((key: string) => {
   if (key === "domain:bangparjo.shop") {
     return Promise.resolve(JSON.stringify({ slug: "acme-corp", target: "cms" }))
   }
+  // Cache entry that also carries the tenant's raw id (written by
+  // white-label/domain/route.ts since the 2026-11-12 fix below) —
+  // exercises navigation via /dashboard/<id>/... instead of /dashboard/<slug>/....
+  if (key === "domain:idtest.theirdomain.com") {
+    return Promise.resolve(JSON.stringify({ slug: "acme-corp", id: "tnt_realid123", target: "cms" }))
+  }
   return Promise.resolve(undefined)
 })
 
@@ -227,6 +233,41 @@ describe("Custom domain → Redis value may already be a parsed object (proxy.ts
     const location = res.headers.get("location")
     expect(location).toContain("/dashboard/acme-corp/cms")
     expect(location).not.toContain("%5Bobject")
+  })
+})
+
+// Bug fixed 2026-11-12: the "wrong tenant in URL" guard compared the path
+// segment only against the cached tenant SLUG, but the dashboard's own
+// sidebar/CMS navigation always links by the tenant's raw id (e.g.
+// /dashboard/<id>/cms/media) — never by slug. So on a verified custom
+// domain, every single in-app navigation click (Media Library, Content
+// Collection, ...) looked like "wrong tenant" and got redirected straight
+// back to the bare /cms root, silently dropping whatever sub-page was
+// actually requested. Confirmed live: https://admin.bangparjo.shop/dashboard/<id>/cms
+// could never navigate anywhere else. Fixed by also caching the tenant's id
+// and accepting either id or slug in the path.
+describe("Custom domain → navigating by tenant id (not just slug) works (proxy.ts)", () => {
+  beforeEach(() => mockGet.mockClear())
+
+  it("does not bounce a deep CMS sub-page back to /cms when the URL addresses the tenant by id", async () => {
+    const req = new NextRequest("http://idtest.theirdomain.com/dashboard/tnt_realid123/cms/media", {
+      headers: { host: "idtest.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).not.toBe(307)
+    const rewrite = res.headers.get("x-middleware-rewrite")
+    expect(rewrite).toContain("/dashboard/tnt_realid123/cms/media")
+  })
+
+  it("still redirects a genuinely different tenant id back to this domain's own tenant", async () => {
+    const req = new NextRequest("http://idtest.theirdomain.com/dashboard/some-other-id/cms", {
+      headers: { host: "idtest.theirdomain.com" },
+    })
+    const res = await proxy(req)
+
+    expect(res.status).toBe(307)
+    expect(res.headers.get("location")).toContain("/dashboard/acme-corp/cms")
   })
 })
 

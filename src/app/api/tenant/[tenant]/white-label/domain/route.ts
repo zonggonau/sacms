@@ -299,10 +299,16 @@ export const PUT = withStaffAuth(
     const redis = getRedis()
     if (diagnostics.verified && tenantRecord) {
       if (redis) {
-        // Store JSON payload so proxy can read both slug AND portal target
+        // Store JSON payload so proxy can read both slug AND portal target.
+        // `id` is included alongside `slug` because the dashboard's own
+        // sidebar links always address a tenant by its raw id (e.g.
+        // /dashboard/<id>/cms/media), never its slug — proxy.ts's
+        // "wrong tenant in URL" guard must accept either, or every click
+        // on a custom domain gets redirected straight back to /cms,
+        // dropping whatever sub-page was actually requested.
         await redis.set(
           `domain:${customDomain}`,
-          JSON.stringify({ slug: tenantRecord.slug, target: updatedDomain.target || "cms" })
+          JSON.stringify({ slug: tenantRecord.slug, id: access.tenantId, target: updatedDomain.target || "cms" })
         )
       }
     } else {
@@ -355,7 +361,7 @@ export const PATCH = withStaffAuth(
         if (redis && tenantRecord) {
           await redis.set(
             `domain:${customDomain}`,
-            JSON.stringify({ slug: tenantRecord.slug, target })
+            JSON.stringify({ slug: tenantRecord.slug, id: access.tenantId, target })
           )
         }
       }

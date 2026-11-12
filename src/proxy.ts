@@ -665,6 +665,7 @@ export async function proxy(request: NextRequest) {
 
   // ==================== CUSTOM DOMAIN ROUTING ====================
   let tenantSlug: string | null = null
+  let tenantId: string | null = null
   let domainTarget: string = "cms"
   let version = "v1"
 
@@ -683,13 +684,15 @@ export async function proxy(request: NextRequest) {
       // whose address bar showed /dashboard/[object%20Object]/cms).
       const rawValue = await redis.get<unknown>(`domain:${host}`)
       if (rawValue && typeof rawValue === "object") {
-        const parsed = rawValue as { slug?: string; target?: string }
+        const parsed = rawValue as { slug?: string; id?: string; target?: string }
         tenantSlug = parsed.slug || null
+        tenantId = parsed.id || null
         domainTarget = parsed.target || "cms"
       } else if (typeof rawValue === "string") {
         try {
           const parsed = JSON.parse(rawValue)
           tenantSlug = parsed.slug || null
+          tenantId = parsed.id || null
           domainTarget = parsed.target || "cms"
         } catch {
           // Legacy plain string value
@@ -822,8 +825,18 @@ export async function proxy(request: NextRequest) {
         // own tenant, server-side, before any page component runs. Fixes
         // a real bug: deleting the tenant id from the URL briefly flashed
         // the generic workspace list before it client-redirected to cms.
+        //
+        // Must accept EITHER the tenant's slug OR its raw id: the
+        // dashboard's own sidebar/CMS navigation always links by id (e.g.
+        // /dashboard/<id>/cms/media), never by slug, while this cache entry
+        // is keyed by slug (see white-label/domain/route.ts). Comparing
+        // against slug alone treated every single in-app navigation click
+        // as "wrong tenant" and redirected it straight back to the bare
+        // /cms root, dropping whatever sub-page (Media, Content, ...) was
+        // actually requested — confirmed live on a verified custom domain.
         const pathTenant = pathname.split("/")[2] || null
-        if (pathTenant !== tenantSlug) {
+        const pathTenantMatches = pathTenant === tenantSlug || (tenantId !== null && pathTenant === tenantId)
+        if (!pathTenantMatches) {
           const target = request.nextUrl.clone()
           switch (domainTarget) {
             case "workspace":
