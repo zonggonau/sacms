@@ -34,10 +34,15 @@ describe("redeployLatest", () => {
       if (String(url).includes("/v13/deployments")) {
         return Promise.resolve({ ok: true, json: async () => ({ id: "dpl_new456", projectId: "prj_1", readyState: "QUEUED" }) })
       }
-      if (String(url).includes("/v9/projects/")) {
+      if (String(url).includes("/v9/projects/") && String(url).includes("/domains")) {
         return Promise.resolve({
           ok: true,
-          json: async () => ({ alias: [{ domain: "sacms-abc.vercel.app" }, { domain: "bangparjo.shop" }] }),
+          json: async () => ({
+            domains: [
+              { name: "sacms-abc.vercel.app", verified: true },
+              { name: "bangparjo.shop", verified: true },
+            ],
+          }),
         })
       }
       throw new Error(`Unexpected fetch call: ${url}`)

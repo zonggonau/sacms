@@ -8,6 +8,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 // and which doesn't even resolve until the build finishes. This tests the
 // project-domain lookup directly: custom domain wins over the default
 // <project>.vercel.app alias whenever both are attached.
+//
+// Reads GET /v9/projects/{id}/domains, NOT the project's own `alias`
+// field — confirmed live that `alias` stays `[]` for a domain attached via
+// addDomainToProject/ensureBrandedSubdomain even once Vercel has fully
+// verified it, which silently defeated the hosting-status.ts self-heal.
 
 vi.mock("@/lib/settings", () => ({
   getPlatformSettings: vi.fn().mockResolvedValue({ vercelAccessToken: "test-token" }),
@@ -33,7 +38,10 @@ describe("getProjectPrimaryDomain", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        alias: [{ domain: "sacms-abc123.vercel.app" }, { domain: "bangparjo.shop" }],
+        domains: [
+          { name: "sacms-abc123.vercel.app", verified: true },
+          { name: "bangparjo.shop", verified: true },
+        ],
       }),
     }) as any
 
@@ -44,16 +52,31 @@ describe("getProjectPrimaryDomain", () => {
   it("falls back to the default .vercel.app alias when no custom domain is attached", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ alias: [{ domain: "sacms-abc123.vercel.app" }] }),
+      json: async () => ({ domains: [{ name: "sacms-abc123.vercel.app", verified: true }] }),
     }) as any
 
     const url = await getProjectPrimaryDomain("prj_1")
     expect(url).toBe("https://sacms-abc123.vercel.app")
   })
 
-  it("returns null when the project has no alias at all", async () => {
-    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ alias: [] }) }) as any
+  it("returns null when the project has no verified domain at all", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ domains: [] }) }) as any
     expect(await getProjectPrimaryDomain("prj_1")).toBeNull()
+  })
+
+  it("ignores an unverified domain and falls back to a verified one", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        domains: [
+          { name: "sacms-abc123.vercel.app", verified: true },
+          { name: "pending-custom.example.com", verified: false },
+        ],
+      }),
+    }) as any
+
+    const url = await getProjectPrimaryDomain("prj_1")
+    expect(url).toBe("https://sacms-abc123.vercel.app")
   })
 
   it("returns null (never throws) when the Vercel API call fails", async () => {
@@ -65,7 +88,10 @@ describe("getProjectPrimaryDomain", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        alias: [{ domain: "sacms-abc123.vercel.app" }, { domain: "acme.sites.sacms.cloud" }],
+        domains: [
+          { name: "sacms-abc123.vercel.app", verified: true },
+          { name: "acme.sites.sacms.cloud", verified: true },
+        ],
       }),
     }) as any
 
@@ -77,10 +103,10 @@ describe("getProjectPrimaryDomain", () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
-        alias: [
-          { domain: "sacms-abc123.vercel.app" },
-          { domain: "acme.sites.sacms.cloud" },
-          { domain: "bangparjo.shop" },
+        domains: [
+          { name: "sacms-abc123.vercel.app", verified: true },
+          { name: "acme.sites.sacms.cloud", verified: true },
+          { name: "bangparjo.shop", verified: true },
         ],
       }),
     }) as any

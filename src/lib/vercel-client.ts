@@ -453,31 +453,42 @@ export async function ensureBrandedSubdomain(projectId: string, tenantSlug: stri
  * build finishes (so it's also simply wrong to hand back the instant a
  * deploy is *requested*, before it's ready).
  *
- * Reads the PROJECT's own alias list (`GET /v9/projects/{id}`, same
- * `alias[].domain` shape `listVercelProjectsDetailed` already reads from
- * the list endpoint) rather than a single deployment's response, since a
- * project's aliases are assigned once and then stay stable across every
- * later deploy — this is what should be shown back to the user/agent
- * after every deploy_to_sacms call, not deployToVercel's own `result.url`.
+ * Reads the project's own domains list (`GET /v9/projects/{id}/domains`)
+ * rather than a single deployment's response, since a project's domains
+ * are assigned once and then stay stable across every later deploy — this
+ * is what should be shown back to the user/agent after every
+ * deploy_to_sacms call, not deployToVercel's own `result.url`.
+ *
+ * Deliberately NOT `GET /v9/projects/{id}`'s own `alias` field: that only
+ * reflects the aliases Vercel assigned while *aliasing a deployment*
+ * (production deploy time), and stays `[]` for any domain attached later
+ * via `addDomainToProject`/`ensureBrandedSubdomain` even once Vercel has
+ * fully verified and routed it — confirmed live on a real project whose
+ * branded `sites.sacms.cloud` subdomain was verified and serving traffic
+ * while `alias` still read `[]`, which silently defeated the self-heal in
+ * `hosting-status.ts` (it kept "healing" back to the same `.vercel.app`
+ * default). The domains endpoint carries each domain's own `verified`
+ * flag directly, so only domains Vercel has actually confirmed are
+ * eligible to be shown.
  */
 export async function getProjectPrimaryDomain(projectId: string): Promise<string | null> {
   const token = await getVercelToken()
   if (!token) return null
 
   try {
-    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${await getTeamQuery()}`, {
+    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}/domains${await getTeamQuery()}`, {
       headers: await getVercelHeaders(),
     })
     if (!res.ok) return null
     const data = await res.json().catch(() => ({}))
-    const aliases: string[] = Array.isArray(data?.alias)
-      ? data.alias.map((a: any) => a?.domain).filter((d: unknown): d is string => typeof d === "string")
+    const domains: string[] = Array.isArray(data?.domains)
+      ? data.domains.filter((d: any) => d?.verified).map((d: any) => d?.name).filter((d: unknown): d is string => typeof d === "string")
       : []
-    if (aliases.length === 0) return null
+    if (domains.length === 0) return null
 
-    const external = aliases.find((d) => !d.endsWith(".vercel.app") && !d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
-    const branded = aliases.find((d) => d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
-    return `https://${external || branded || aliases[0]}`
+    const external = domains.find((d) => !d.endsWith(".vercel.app") && !d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
+    const branded = domains.find((d) => d.endsWith(`.${BRANDED_SUBDOMAIN_ROOT}`))
+    return `https://${external || branded || domains[0]}`
   } catch {
     return null
   }
