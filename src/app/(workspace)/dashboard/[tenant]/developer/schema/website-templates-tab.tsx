@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket } from "lucide-react"
+import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
 
 interface WebsiteTemplateItem {
@@ -40,6 +40,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
   const [isLoading, setIsLoading] = useState(true)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [schemaFilter, setSchemaFilter] = useState(ALL_SCHEMAS)
+  const [search, setSearch] = useState("")
   const [deleteDialog, setDeleteDialog] = useState<WebsiteTemplateItem | null>(null)
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
@@ -132,6 +133,24 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
     [templates],
   )
 
+  const matchesSearch = (t: WebsiteTemplateItem) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return t.name.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q)
+  }
+
+  const SearchBox = () => (
+    <div className="relative w-[200px] shrink-0">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Cari template..."
+        className="h-8 pl-8 text-xs rounded-xl"
+      />
+    </div>
+  )
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center gap-2 py-20 text-xs text-muted-foreground">
@@ -159,7 +178,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
   if (isGlobal) {
     const formatDate = (iso?: string) =>
       iso ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"
-    const filtered = schemaFilter === ALL_SCHEMAS ? templates : templates.filter((t) => t.schemaTemplate.slug === schemaFilter)
+    const filtered = (schemaFilter === ALL_SCHEMAS ? templates : templates.filter((t) => t.schemaTemplate.slug === schemaFilter)).filter(matchesSearch)
 
     return (
       <div className="space-y-3">
@@ -170,14 +189,21 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
         <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
           <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20 flex-row items-center justify-between gap-3 flex-wrap space-y-0">
             <CardTitle className="text-sm font-bold text-foreground">Daftar Website Template ({filtered.length})</CardTitle>
-            {schemaOptions.length > 0 && <SchemaFilterSelect />}
+            <div className="flex items-center gap-2">
+              <SearchBox />
+              {schemaOptions.length > 0 && <SchemaFilterSelect />}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-                <p className="font-bold text-xs text-foreground">Belum ada Website Template</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Buat lewat MCP SaCMS Global (<code className="font-mono">create_website_template</code>).</p>
+                <p className="font-bold text-xs text-foreground">
+                  {templates.length === 0 ? "Belum ada Website Template" : "Tidak ada template yang cocok"}
+                </p>
+                {templates.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Buat lewat MCP SaCMS Global (<code className="font-mono">create_website_template</code>).</p>
+                )}
               </div>
             ) : (
               <Table>
@@ -341,7 +367,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
 
   // ── Regular tenant: browse & apply table (published templates only) ──
   const published = templates.filter((t) => t.published)
-  const visibleTemplates = schemaFilter === ALL_SCHEMAS ? published : published.filter((t) => t.schemaTemplate.slug === schemaFilter)
+  const visibleTemplates = (schemaFilter === ALL_SCHEMAS ? published : published.filter((t) => t.schemaTemplate.slug === schemaFilter)).filter(matchesSearch)
 
   if (published.length === 0) {
     return (
@@ -385,6 +411,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SearchBox />
           {schemaOptions.length > 0 && <SchemaFilterSelect />}
           <ViewToggle />
         </div>
@@ -394,7 +421,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
         <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
           <CardContent className="text-center py-16 text-muted-foreground">
             <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-            <p className="font-bold text-xs text-foreground">Tidak ada Website Template untuk Schema Template ini</p>
+            <p className="font-bold text-xs text-foreground">Tidak ada Website Template yang cocok</p>
           </CardContent>
         </Card>
       ) : viewMode === "card" ? (

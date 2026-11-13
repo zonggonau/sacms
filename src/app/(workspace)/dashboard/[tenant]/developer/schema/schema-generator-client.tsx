@@ -14,7 +14,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Layers, FileText, Box, Database, Loader2, X,
-  LayoutTemplate, Lock, LockOpen, Trash2, PackageCheck,
+  LayoutTemplate, Globe, Lock, LockOpen, Trash2, PackageCheck,
 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
@@ -45,7 +45,6 @@ export function SchemaGeneratorClient({
   const router = useRouter()
   const { toast } = useToast()
   const [refreshKey, setRefreshKey] = useState(0)
-  const [templatesSubTab, setTemplatesSubTab] = useState<"schema" | "website">("schema")
   const [showGenerator, setShowGenerator] = useState(false)
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
   const [schema, setSchema] = useState<SchemaExport>(EMPTY_SCHEMA)
@@ -225,8 +224,8 @@ export function SchemaGeneratorClient({
             variant="outline"
             onClick={() => setShowPublishToTemplate(true)}
             disabled={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
-            title="Bundel Content Type/Single Type/Component saat ini jadi 1 template baru"
-            className="h-8 gap-1.5 text-xs font-bold disabled:opacity-50"
+            title="Bundel Content Type/Single Type/Component saat ini jadi 1 template baru, lalu kosongkan tab ini untuk template berikutnya"
+            className="h-8 gap-1.5 text-xs font-bold border-amber-500/30 bg-amber-500/5 text-amber-700 hover:bg-amber-500/10 hover:text-amber-700 dark:text-amber-400 dark:hover:bg-amber-500/10 disabled:opacity-50"
           >
             <PackageCheck className="size-3.5" /> Publish ke Template
           </Button>
@@ -294,8 +293,11 @@ export function SchemaGeneratorClient({
                 <Box className="h-3.5 w-3.5" /> Component
                 <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5">{schema.components.length}</Badge>
               </TabsTrigger>
-              <TabsTrigger value="templates" className="gap-1.5">
-                <LayoutTemplate className="h-3.5 w-3.5" /> Templates
+              <TabsTrigger value="schema-templates" className="gap-1.5">
+                <LayoutTemplate className="h-3.5 w-3.5" /> Schema Template
+              </TabsTrigger>
+              <TabsTrigger value="website-templates" className="gap-1.5">
+                <Globe className="h-3.5 w-3.5" /> Website Template
               </TabsTrigger>
             </TabsList>
 
@@ -368,46 +370,25 @@ export function SchemaGeneratorClient({
             )}
           </TabsContent>
 
-          <TabsContent value="templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden space-y-3">
-            <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 w-fit">
-              <button
-                type="button"
-                onClick={() => setTemplatesSubTab("schema")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  templatesSubTab === "schema" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Schema Template
-              </button>
-              <button
-                type="button"
-                onClick={() => setTemplatesSubTab("website")}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  templatesSubTab === "website" ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Website Template
-              </button>
-            </div>
+          <TabsContent value="schema-templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            <TemplatesTab
+              tenantSlug={tenantSlug}
+              isGlobal={isGlobal}
+              onUseTemplate={handleUseTemplate}
+              refreshKey={refreshKey}
+              onLiveSchemaChanged={() => setRefreshKey((k) => k + 1)}
+            />
+          </TabsContent>
 
-            {templatesSubTab === "schema" ? (
-              <TemplatesTab
-                tenantSlug={tenantSlug}
-                isGlobal={isGlobal}
-                onUseTemplate={handleUseTemplate}
-                refreshKey={refreshKey}
-                onLiveSchemaChanged={() => setRefreshKey((k) => k + 1)}
-              />
-            ) : (
-              <WebsiteTemplatesTab
-                tenantSlug={tenantSlug}
-                isGlobal={isGlobal}
-                onApplied={() => {
-                  setActiveTab("diagram")
-                  setRefreshKey((k) => k + 1)
-                }}
-              />
-            )}
+          <TabsContent value="website-templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
+            <WebsiteTemplatesTab
+              tenantSlug={tenantSlug}
+              isGlobal={isGlobal}
+              onApplied={() => {
+                setActiveTab("diagram")
+                setRefreshKey((k) => k + 1)
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>

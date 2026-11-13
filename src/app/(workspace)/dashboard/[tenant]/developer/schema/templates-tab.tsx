@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Sparkles, Plus, Trash2, Pencil, ArrowLeft, Filter } from "lucide-react"
+import { Loader2, LayoutTemplate, Sparkles, Plus, Trash2, Pencil, ArrowLeft, Filter, Search } from "lucide-react"
 import type { SchemaExport } from "@/components/ai-builder/schema-diagram"
 import { SchemaStep } from "./schema-step"
 
@@ -73,6 +73,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
   const [isLoading, setIsLoading] = useState(true)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [categoryFilter, setCategoryFilter] = useState(ALL_CATEGORIES)
+  const [search, setSearch] = useState("")
   const [deleteDialog, setDeleteDialog] = useState<SchemaTemplateItem | null>(null)
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
@@ -144,6 +145,24 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
     [templates],
   )
 
+  const matchesSearch = (t: SchemaTemplateItem) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return t.name.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q)
+  }
+
+  const SearchBox = () => (
+    <div className="relative w-[200px] shrink-0">
+      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      <Input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Cari template..."
+        className="h-8 pl-8 text-xs rounded-xl"
+      />
+    </div>
+  )
+
   if (view === "author") {
     return (
       <div className="space-y-3">
@@ -180,7 +199,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
   if (isGlobal) {
     const formatDate = (iso?: string) =>
       iso ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"
-    const filtered = categoryFilter === ALL_CATEGORIES ? templates : templates.filter((t) => t.category === categoryFilter)
+    const filtered = (categoryFilter === ALL_CATEGORIES ? templates : templates.filter((t) => t.category === categoryFilter)).filter(matchesSearch)
 
     return (
       <div className="space-y-3">
@@ -196,14 +215,17 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
         <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
           <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20 flex-row items-center justify-between gap-3 flex-wrap space-y-0">
             <CardTitle className="text-sm font-bold text-foreground">Daftar Template ({filtered.length})</CardTitle>
-            {categories.length > 0 && <CategoryFilter categories={categories} value={categoryFilter} onChange={setCategoryFilter} />}
+            <div className="flex items-center gap-2">
+              <SearchBox />
+              {categories.length > 0 && <CategoryFilter categories={categories} value={categoryFilter} onChange={setCategoryFilter} />}
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {filtered.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground">
                 <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                 <p className="font-bold text-xs text-foreground">
-                  {templates.length === 0 ? "Belum ada template" : "Tidak ada template di kategori ini"}
+                  {templates.length === 0 ? "Belum ada template" : "Tidak ada template yang cocok"}
                 </p>
                 {templates.length === 0 && (
                   <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -350,7 +372,7 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
   // ── Regular tenant: browse & use table (published templates only) ──
   const published = templates.filter((t) => t.published)
   const publishedCategories = Array.from(new Set(published.map((t) => t.category))).sort((a, b) => a.localeCompare(b))
-  const visibleTemplates = categoryFilter === ALL_CATEGORIES ? published : published.filter((t) => t.category === categoryFilter)
+  const visibleTemplates = (categoryFilter === ALL_CATEGORIES ? published : published.filter((t) => t.category === categoryFilter)).filter(matchesSearch)
 
   if (published.length === 0) {
     return (
@@ -371,15 +393,18 @@ export function TemplatesTab({ tenantSlug, isGlobal, onUseTemplate, refreshKey, 
               Dibuat tim SaCMS — klik <strong>Pakai Template</strong> untuk preview di tab Diagram Schema, lalu konfirmasi kalau sudah sesuai.
             </p>
           </div>
-          {publishedCategories.length > 0 && (
-            <CategoryFilter categories={publishedCategories} value={categoryFilter} onChange={setCategoryFilter} />
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <SearchBox />
+            {publishedCategories.length > 0 && (
+              <CategoryFilter categories={publishedCategories} value={categoryFilter} onChange={setCategoryFilter} />
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {visibleTemplates.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
               <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="font-bold text-xs text-foreground">Tidak ada template di kategori ini</p>
+              <p className="font-bold text-xs text-foreground">Tidak ada template yang cocok</p>
             </div>
           ) : (
             <Table>
