@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink } from "lucide-react"
+import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
 
 interface WebsiteTemplateItem {
@@ -44,6 +44,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
   const [reviewId, setReviewId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<"card" | "table">("card")
+  const [applyingId, setApplyingId] = useState<string | null>(null)
 
   const fetchTemplates = () => {
     setIsLoading(true)
@@ -99,6 +101,29 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
       toast({ variant: "destructive", title: "Gagal", description: err.message })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleApply = async (template: WebsiteTemplateItem) => {
+    setApplyingId(template.id)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/website-templates/${template.id}/apply`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal menerapkan Website Template")
+      const envNote = data.envVarsApplied?.length
+        ? ` ${data.envVarsApplied.length} variabel environment (${data.envVarsApplied.join(", ")}) otomatis diisi dengan nilai production.`
+        : ""
+      toast({
+        title: "Website Template Diterapkan",
+        description: (data.deployment?.url
+          ? `Schema dibuat dan situs sedang di-deploy. Lihat statusnya di tab Hosting: ${data.deployment.url}`
+          : "Schema dibuat dan situs sedang di-deploy. Cek tab Hosting untuk status terbaru.") + envNote,
+      })
+      onApplied?.()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Menerapkan", description: err.message })
+    } finally {
+      setApplyingId(null)
     }
   }
 
@@ -327,25 +352,111 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
     )
   }
 
+  const ViewToggle = () => (
+    <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl border border-border/60 bg-muted/30 shrink-0">
+      <Button
+        type="button"
+        variant={viewMode === "card" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("card")}
+        className="h-7 rounded-lg px-2.5 text-[11px] font-bold gap-1.5"
+      >
+        <LayoutGrid className="h-3 w-3" /> Card
+      </Button>
+      <Button
+        type="button"
+        variant={viewMode === "table" ? "default" : "ghost"}
+        size="sm"
+        onClick={() => setViewMode("table")}
+        className="h-7 rounded-lg px-2.5 text-[11px] font-bold gap-1.5"
+      >
+        <TableIcon className="h-3 w-3" /> Tabel
+      </Button>
+    </div>
+  )
+
   return (
     <div className="space-y-3">
-      <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
-        <CardHeader className="p-4 pb-3 border-b border-border/60 bg-muted/20 flex-row items-center justify-between gap-3 flex-wrap space-y-0">
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</CardTitle>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Frontend siap pakai dari tim SaCMS — klik <strong>Pratinjau</strong> untuk melihat file dan skema yang dipakai, lalu <strong>Terapkan</strong> kalau sudah sesuai.
-            </p>
-          </div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Frontend siap pakai dari tim SaCMS — buka demonya di tab baru, lalu <strong>Terapkan</strong> kalau sudah sesuai.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
           {schemaOptions.length > 0 && <SchemaFilterSelect />}
-        </CardHeader>
-        <CardContent className="p-0">
-          {visibleTemplates.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
-              <p className="font-bold text-xs text-foreground">Tidak ada Website Template untuk Schema Template ini</p>
-            </div>
-          ) : (
+          <ViewToggle />
+        </div>
+      </div>
+
+      {visibleTemplates.length === 0 ? (
+        <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
+          <CardContent className="text-center py-16 text-muted-foreground">
+            <LayoutTemplate className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+            <p className="font-bold text-xs text-foreground">Tidak ada Website Template untuk Schema Template ini</p>
+          </CardContent>
+        </Card>
+      ) : viewMode === "card" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {visibleTemplates.map((t) => (
+            <Card key={t.id} className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden flex flex-col">
+              <div className="relative aspect-[4/3] w-full bg-muted/40 border-b border-border/60 overflow-hidden">
+                {t.demoUrl ? (
+                  <iframe
+                    src={t.demoUrl}
+                    className="w-full h-full border-0 pointer-events-none bg-white"
+                    loading="lazy"
+                    tabIndex={-1}
+                    title={`Pratinjau ${t.name}`}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted-foreground/50">
+                    <LayoutTemplate className="h-7 w-7" />
+                    <span className="text-[10px] font-semibold">Demo belum tersedia</span>
+                  </div>
+                )}
+              </div>
+              <CardContent className="p-3.5 flex flex-col gap-2.5 flex-1">
+                <div className="flex items-start gap-2 min-w-0">
+                  <span className="text-base shrink-0">{t.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground truncate">{t.name}</p>
+                    {t.description && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{t.description}</p>}
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1 self-start">
+                  {t.schemaTemplate.icon} {t.schemaTemplate.name}
+                </Badge>
+                <div className="flex items-center gap-2 mt-auto pt-1">
+                  {t.demoUrl ? (
+                    <Button variant="outline" size="sm" asChild className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5">
+                      <a href={t.demoUrl} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-3 w-3" /> Buka Tab
+                      </a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5">
+                      <ExternalLink className="h-3 w-3" /> Buka Tab
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => handleApply(t)}
+                    disabled={applyingId === t.id}
+                    className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
+                  >
+                    {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+                    Terapkan
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
+          <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-muted/30 border-b border-border/60">
                 <TableRow>
@@ -370,31 +481,36 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
                       <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1">{t.schemaTemplate.icon} {t.schemaTemplate.name}</Badge>
                     </TableCell>
                     <TableCell className="text-right pr-6 py-3">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setReviewId(t.id)}
-                        className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-                      >
-                        <Eye className="h-3 w-3" /> Pratinjau
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        {t.demoUrl ? (
+                          <Button variant="outline" size="sm" asChild className="h-7 rounded-lg text-[11px] font-bold gap-1.5">
+                            <a href={t.demoUrl} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3" /> Buka Tab
+                            </a>
+                          </Button>
+                        ) : (
+                          <Button variant="outline" size="sm" disabled className="h-7 rounded-lg text-[11px] font-bold gap-1.5">
+                            <ExternalLink className="h-3 w-3" /> Buka Tab
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => handleApply(t)}
+                          disabled={applyingId === t.id}
+                          className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+                        >
+                          {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+                          Terapkan
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <WebsiteTemplateReviewDialog
-        open={!!reviewId}
-        onOpenChange={(open) => !open && setReviewId(null)}
-        tenantSlug={tenantSlug}
-        websiteTemplateId={reviewId}
-        isGlobal={false}
-        onApplied={() => onApplied?.()}
-      />
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
