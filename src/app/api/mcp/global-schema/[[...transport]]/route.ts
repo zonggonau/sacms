@@ -608,7 +608,7 @@ const handler = createMcpHandler(
       "develop it like any other SaCMS frontend (same conventions as deploy_to_sacms on the per-workspace " +
       "server), then create_website_template with every source file as plain text. Every " +
       "create_website_template and update_website_template(files: ...) call automatically (re)deploys a " +
-      "live preview at https://<slug>.demo.sacms.cloud, fed by sample content — never a real customer's " +
+      "live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a real customer's " +
       "data — so you can test in a real browser before publishing. The response includes `demoUrl` (and " +
       "`demoDeployment.error` if the deploy itself failed — the save still succeeds either way, just retry " +
       "update_website_template with the same files to redeploy). A metadata-only update (no `files`) does " +

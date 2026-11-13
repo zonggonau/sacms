@@ -23,16 +23,6 @@ const VERCEL_API_BASE = "https://api.vercel.com"
  */
 const BRANDED_SUBDOMAIN_ROOT = `sites.${ROOT_DOMAIN}`
 
-/**
- * Root for a Website Template's live-demo subdomain
- * (`<templateSlug>.demo.sacms.cloud`) — deliberately a different label
- * from `BRANDED_SUBDOMAIN_ROOT` so a template preview the SaCMS team is
- * testing is never mistaken for a real customer's own deployed site. Same
- * one-time external setup required (wildcard DNS + the apex registered as
- * a Team domain in Vercel).
- */
-const DEMO_SUBDOMAIN_ROOT = `demo.${ROOT_DOMAIN}`
-
 export async function getVercelToken(): Promise<string> {
   try {
     const settings = await getPlatformSettings()
@@ -460,15 +450,17 @@ export async function ensureBrandedSubdomain(projectId: string, tenantSlug: stri
 
 /**
  * Idempotently attaches a Website Template's live-demo subdomain
- * (`<templateSlug>.demo.sacms.cloud`) to its demo Vercel project — a
- * separate root from `ensureBrandedSubdomain`'s `sites.` so a template
- * preview the SaCMS team is iterating on is never mistaken for a real
- * customer's own deployed site. Requires the same kind of one-time
- * wildcard DNS record (`*.demo.<ROOT_DOMAIN>` CNAME -> cname.vercel-dns.com)
- * that `sites.` already needed, set up outside this codebase.
+ * (`demo-<templateSlug>.sites.sacms.cloud`) to its demo Vercel project —
+ * the SAME proven `sites.` root real tenant deployments already use
+ * (a standalone `demo.<ROOT_DOMAIN>` root was tried first but its wildcard
+ * domain was never fully registered/cert-issued on Vercel's side, so every
+ * demo subdomain under it failed TLS — ERR_CONNECTION_CLOSED — even though
+ * DNS and the underlying deployment were fine). The `demo-` label prefix
+ * keeps it visibly distinct from a real customer's own branded subdomain
+ * and avoids colliding with one in Vercel's domain registry.
  */
 export async function ensureDemoSubdomain(projectId: string, templateSlug: string): Promise<string | null> {
-  return attachAutoSubdomain(projectId, templateSlug, DEMO_SUBDOMAIN_ROOT)
+  return attachAutoSubdomain(projectId, `demo-${templateSlug}`, BRANDED_SUBDOMAIN_ROOT)
 }
 
 /**

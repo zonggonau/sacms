@@ -53,8 +53,8 @@ describe("deployWebsiteTemplateDemo", () => {
 
   it("maps {path,content} files to {name,content}, deploys to a dedicated sacms-demo-<slug> project, and persists the result", async () => {
     deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://sacms-demo-modern-dark.vercel.app", state: "QUEUED", projectId: "prj_1", projectName: "sacms-demo-modern-dark" })
-    ensureDemoSubdomain.mockResolvedValue("modern-dark.demo.sacms.cloud")
-    getProjectPrimaryDomain.mockResolvedValue("https://modern-dark.demo.sacms.cloud")
+    ensureDemoSubdomain.mockResolvedValue("demo-modern-dark.sites.sacms.cloud")
+    getProjectPrimaryDomain.mockResolvedValue("https://demo-modern-dark.sites.sacms.cloud")
 
     const result = await deployWebsiteTemplateDemo(websiteTemplate)
 
@@ -64,12 +64,12 @@ describe("deployWebsiteTemplateDemo", () => {
       {},
     )
     expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
-    expect(result).toEqual({ url: "https://modern-dark.demo.sacms.cloud" })
+    expect(result).toEqual({ url: "https://demo-modern-dark.sites.sacms.cloud" })
     expect(websiteTemplateUpdate).toHaveBeenCalledWith({
       where: { id: "wt_1" },
       data: {
         demoVercelProjectId: "prj_1",
-        demoUrl: "https://modern-dark.demo.sacms.cloud",
+        demoUrl: "https://demo-modern-dark.sites.sacms.cloud",
         demoDeployedAt: expect.any(Date),
       },
     })

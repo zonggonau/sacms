@@ -171,17 +171,17 @@ describe("ensureDemoSubdomain", () => {
     global.fetch = originalFetch
   })
 
-  it("attaches <templateSlug>.demo.sacms.cloud — a different root from ensureBrandedSubdomain's sites.", async () => {
+  it("attaches demo-<templateSlug>.sites.sacms.cloud — the same proven root ensureBrandedSubdomain uses", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ name: "modern-dark.demo.sacms.cloud", verified: true }),
+      json: async () => ({ name: "demo-modern-dark.sites.sacms.cloud", verified: true }),
     }) as any
 
     const domain = await ensureDemoSubdomain("prj_1", "Modern-Dark")
-    expect(domain).toBe("modern-dark.demo.sacms.cloud")
+    expect(domain).toBe("demo-modern-dark.sites.sacms.cloud")
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/v10/projects/prj_1/domains"),
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ name: "modern-dark.demo.sacms.cloud" }) }),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ name: "demo-modern-dark.sites.sacms.cloud" }) }),
     )
   })
 
