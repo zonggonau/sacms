@@ -15,7 +15,7 @@ vi.mock("@/lib/dev-mode", () => ({
   requireCredentialOutsideMock: vi.fn(),
 }))
 
-const { getLatestDeployment, getDeploymentFiles } = await import("@/lib/vercel-client")
+const { getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs } = await import("@/lib/vercel-client")
 
 describe("getLatestDeployment", () => {
   const originalFetch = global.fetch
@@ -52,7 +52,7 @@ describe("getDeploymentFiles", () => {
     global.fetch = originalFetch
   })
 
-  it("flattens the file tree, reads each file's content, and skips binary/build-noise paths", async () => {
+  it("flattens the file tree, reads each file's content, and skips build-noise/node_modules", async () => {
     global.fetch = vi.fn((url: any) => {
       const u = String(url)
       if (u.includes("/v6/deployments/dpl_1/files")) {
@@ -64,7 +64,7 @@ describe("getDeploymentFiles", () => {
               type: "directory",
               children: [
                 { name: "page.tsx", type: "file", uid: "file_1" },
-                { name: "logo.png", type: "file", uid: "file_2" },
+                { name: "bun.lockb", type: "file", uid: "file_2" },
               ],
             },
             { name: "node_modules", type: "directory", children: [{ name: "x.js", type: "file", uid: "file_3" }] },
@@ -78,23 +78,51 @@ describe("getDeploymentFiles", () => {
     }) as any
 
     const result = await getDeploymentFiles("dpl_1")
-    expect(result.files).toEqual([{ name: "app/page.tsx", content: "export default function Page() {}" }])
-    expect(result.skipped).toEqual(["app/logo.png"])
+    expect(result.files).toEqual([{ name: "app/page.tsx", content: "export default function Page() {}", encoding: "utf-8" }])
+    expect(result.skipped).toEqual(["app/bun.lockb"])
     expect(result.truncated).toBe(false)
   })
 
-  it("decodes base64-encoded file content", async () => {
-    const encoded = Buffer.from("hello world", "utf-8").toString("base64")
+  it("reads binary assets back as base64 instead of skipping them — deploy_to_sacms can now redeploy them", async () => {
+    const encoded = Buffer.from("fake-png-bytes", "utf-8").toString("base64")
     global.fetch = vi.fn((url: any) => {
       const u = String(url)
       if (u.includes("/v6/deployments/dpl_1/files")) {
-        return Promise.resolve({ ok: true, json: async () => [{ name: "index.html", type: "file", uid: "file_1" }] })
+        return Promise.resolve({ ok: true, json: async () => [{ name: "favicon.png", type: "file", uid: "file_1" }] })
       }
       return Promise.resolve({ ok: true, json: async () => ({ data: encoded, encoding: "base64" }) })
     }) as any
 
     const result = await getDeploymentFiles("dpl_1")
-    expect(result.files).toEqual([{ name: "index.html", content: "hello world" }])
+    expect(result.files).toEqual([{ name: "favicon.png", content: encoded, encoding: "base64" }])
+    expect(result.skipped).toEqual([])
+  })
+
+  it("marks plain-text files utf-8 and leaves their content as-is (no decoding)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "index.html", type: "file", uid: "file_1" }] })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: "<html></html>" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files).toEqual([{ name: "index.html", content: "<html></html>", encoding: "utf-8" }])
+  })
+
+  it("skips a file over the per-file size cap even if it isn't a known noise extension", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "huge.bin", type: "file", uid: "file_1", size: 5_000_000 }] })
+      }
+      throw new Error(`Unexpected fetch call: ${u}`)
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files).toEqual([])
+    expect(result.skipped).toEqual(["huge.bin"])
   })
 
   it("truncates at maxFiles and reports it", async () => {
@@ -125,5 +153,43 @@ describe("getDeploymentFiles", () => {
     }) as any
 
     await expect(getDeploymentFiles("dpl_missing")).rejects.toThrow(/Deployment not found/)
+  })
+})
+
+describe("getDeploymentBuildLogs", () => {
+  const originalFetch = global.fetch
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it("extracts log text from each event and flags error-looking lines", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => [
+        { payload: { text: "Installing dependencies..." } },
+        { payload: { text: "Error: Cannot find module 'foo'" } },
+        { payload: { text: "" } },
+      ],
+    }) as any
+
+    const result = await getDeploymentBuildLogs("dpl_1")
+    expect(result.lines).toEqual(["Installing dependencies...", "Error: Cannot find module 'foo'"])
+    expect(result.errorLines).toEqual(["Error: Cannot find module 'foo'"])
+  })
+
+  it("returns an empty result (never throws) when there are no events yet", async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => [] }) as any
+    expect(await getDeploymentBuildLogs("dpl_1")).toEqual({ lines: [], errorLines: [] })
+  })
+
+  it("throws a clear error when the Vercel API call itself fails", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { message: "Deployment not found" } }),
+    }) as any
+
+    await expect(getDeploymentBuildLogs("dpl_missing")).rejects.toThrow(/Deployment not found/)
   })
 })

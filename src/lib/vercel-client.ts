@@ -110,7 +110,7 @@ export interface VercelDomainResult {
  */
 export async function deployToVercel(
   projectName: string,
-  files: { name: string; content: string }[],
+  files: { name: string; content: string; encoding?: "utf-8" | "base64" }[],
   envVars?: Record<string, string>,
   /** Used to auto-attach `<tenantSlug>.sites.sacms.cloud` to the project
    *  (see ensureBrandedSubdomain) — omit to skip that and fall back to
@@ -143,7 +143,10 @@ export async function deployToVercel(
   const deployFiles: VercelDeploymentFile[] = files.map(f => ({
     file: f.name,
     data: f.content,
-    encoding: "utf-8"
+    // Per-file, defaulting to utf-8 for plain source — a caller sends
+    // "base64" for binary assets (a PNG icon, a font, etc.) that it
+    // base64-encoded itself, since JSON/MCP has no way to carry raw bytes.
+    encoding: f.encoding || "utf-8"
   }))
 
   const body: Record<string, any> = {
@@ -349,32 +352,42 @@ interface VercelFileNode {
   name: string
   type: "file" | "directory" | "lambda"
   uid?: string
+  size?: number
   children?: VercelFileNode[]
 }
 
 const SKIP_DEPLOYMENT_DIRS = new Set(["node_modules", ".git", ".next", ".vercel"])
-const SKIP_DEPLOYMENT_FILE_RE = /\.(png|jpe?g|gif|webp|avif|ico|svg|woff2?|ttf|eot|mp4|mp3|zip|pdf|lockb?)$/i
+// Build noise / lockfiles — never meaningful to read back or round-trip,
+// unlike a binary ASSET (a PNG icon, a font) which deploy_to_sacms can now
+// redeploy via its own `encoding: "base64"` support, so those are no
+// longer skipped outright here.
+const SKIP_DEPLOYMENT_FILE_NAME_RE = /^(package-lock\.json|bun\.lockb|yarn\.lock|pnpm-lock\.yaml)$/i
+const SKIP_DEPLOYMENT_EXT_RE = /\.(mp4|mov|avi|mp3|zip|pdf)$/i
+const MAX_DEPLOYMENT_FILE_BYTES = 2 * 1024 * 1024
 
 /**
- * Reads back the actual source files of a deployment — the one thing the
- * MCP deploy tools never exposed before: `deploy_to_sacms` only ever pushed
+ * Reads back the actual files of a deployment — the one thing the MCP
+ * deploy tools never exposed before: `deploy_to_sacms` only ever pushed
  * `files[]` to Vercel, it never persisted them anywhere in SaCMS's own DB,
  * so an agent asked to make a targeted revision ("ubah warna header") had
  * no way to recover the current source once it fell out of its own
  * conversation context. Vercel already stores the exact files it was given
  * (same `{name, content}` shape `deployToVercel` uploads), so this just
  * reads them back via Vercel's own deployment-files API instead of SaCMS
- * inventing a second copy to keep in sync.
+ * inventing a second copy to keep in sync. Each file's own `encoding` (as
+ * Vercel reports it — "base64" for binary assets, otherwise plain text) is
+ * preserved so a caller can redeploy the exact same set, PNG icons and all,
+ * via deploy_to_sacms's matching per-file `encoding`.
  *
- * Best-effort per file: an individual file that fails to fetch or decode is
- * reported in `skipped` rather than failing the whole read. Binary-looking
- * extensions and build-noise directories are skipped outright — this is
- * for reading back *source*, not shipping assets back out.
+ * Best-effort per file: an individual file that fails to fetch is reported
+ * in `skipped` rather than failing the whole read, as are build-noise
+ * lockfiles, large non-source media, and anything over the per-file size
+ * cap (reading back a multi-megabyte video isn't what this is for).
  */
 export async function getDeploymentFiles(
   deploymentId: string,
   maxFiles = 100,
-): Promise<{ files: { name: string; content: string }[]; skipped: string[]; truncated: boolean }> {
+): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64" }[]; skipped: string[]; truncated: boolean }> {
   const token = await getVercelToken()
   if (!token) return { files: [], skipped: [], truncated: false }
 
@@ -388,7 +401,7 @@ export async function getDeploymentFiles(
   }
   const tree: VercelFileNode[] = await treeRes.json().catch(() => [])
 
-  const leaves: { path: string; uid: string }[] = []
+  const leaves: { path: string; uid: string; size?: number }[] = []
   const walk = (nodes: VercelFileNode[], prefix: string) => {
     for (const node of nodes) {
       if (!node?.name) continue
@@ -397,13 +410,13 @@ export async function getDeploymentFiles(
         if (SKIP_DEPLOYMENT_DIRS.has(node.name)) continue
         if (node.children) walk(node.children, path)
       } else if (node.type === "file" && node.uid) {
-        leaves.push({ path, uid: node.uid })
+        leaves.push({ path, uid: node.uid, size: node.size })
       }
     }
   }
   walk(Array.isArray(tree) ? tree : [], "")
 
-  const files: { name: string; content: string }[] = []
+  const files: { name: string; content: string; encoding: "utf-8" | "base64" }[] = []
   const skipped: string[] = []
   let truncated = false
 
@@ -412,7 +425,12 @@ export async function getDeploymentFiles(
       truncated = true
       break
     }
-    if (SKIP_DEPLOYMENT_FILE_RE.test(leaf.path)) {
+    const basename = leaf.path.split("/").pop() || leaf.path
+    if (SKIP_DEPLOYMENT_FILE_NAME_RE.test(basename) || SKIP_DEPLOYMENT_EXT_RE.test(leaf.path)) {
+      skipped.push(leaf.path)
+      continue
+    }
+    if (typeof leaf.size === "number" && leaf.size > MAX_DEPLOYMENT_FILE_BYTES) {
       skipped.push(leaf.path)
       continue
     }
@@ -428,14 +446,50 @@ export async function getDeploymentFiles(
         skipped.push(leaf.path)
         continue
       }
-      const content = data.encoding === "base64" ? Buffer.from(raw, "base64").toString("utf-8") : raw
-      files.push({ name: leaf.path, content })
+      const encoding: "utf-8" | "base64" = data.encoding === "base64" ? "base64" : "utf-8"
+      files.push({ name: leaf.path, content: raw, encoding })
     } catch {
       skipped.push(leaf.path)
     }
   }
 
   return { files, skipped, truncated }
+}
+
+/**
+ * Reads a deployment's build log output — the diagnostic an agent needs
+ * when `get_deployment_status` comes back ERROR: deploy_to_sacms succeeding
+ * only means Vercel ACCEPTED the source, not that the build itself passed.
+ * Returns every log line plus a filtered `errorLines` subset (heuristic:
+ * lines mentioning "error"/"fail"/"exception") so an agent doesn't have to
+ * scroll a wall of build output to find the actual cause. Never throws for
+ * "no logs yet" (an empty array is a valid, meaningful result for a build
+ * that's still queued) — only a genuine Vercel API failure throws.
+ */
+export async function getDeploymentBuildLogs(
+  deploymentId: string,
+  limit = 200,
+): Promise<{ lines: string[]; errorLines: string[] }> {
+  const token = await getVercelToken()
+  if (!token) return { lines: [], errorLines: [] }
+
+  const headers = await getVercelHeaders()
+  const teamParam = (await getTeamQuery()).replace("?", "&")
+
+  const res = await fetch(`${VERCEL_API_BASE}/v2/deployments/${deploymentId}/events?limit=${limit}${teamParam}`, { headers })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }))
+    throw new Error(`Gagal mengambil build log dari Vercel: ${error.error?.message || error.message || res.statusText}`)
+  }
+  const events = await res.json().catch(() => [])
+
+  const lines: string[] = []
+  for (const ev of Array.isArray(events) ? events : []) {
+    const text = ev?.payload?.text ?? ev?.text
+    if (typeof text === "string" && text.trim()) lines.push(text)
+  }
+  const errorLines = lines.filter((l) => /error|fail|exception/i.test(l))
+  return { lines, errorLines }
 }
 
 /**

@@ -30,7 +30,17 @@ describe("MCP workspace server route — source contract", () => {
   })
 
   it("declares an outputSchema on every tool driving the deploy/verify flow", () => {
-    for (const tool of ["get_full_schema", "list_deployment_env", "deploy_to_sacms", "get_deployment_status", "get_deployment_source"]) {
+    for (const tool of [
+      "get_full_schema",
+      "list_deployment_env",
+      "deploy_to_sacms",
+      "get_deployment_status",
+      "get_deployment_source",
+      "get_deployment_build_logs",
+      "verify_deployment_url",
+      "start_website_build",
+      "get_build_run",
+    ]) {
       const toolBlock = routeSource.slice(routeSource.indexOf(`"${tool}",`))
       const nextRegisterTool = toolBlock.indexOf("server.registerTool(", 1)
       const scoped = nextRegisterTool === -1 ? toolBlock : toolBlock.slice(0, nextRegisterTool)
@@ -43,6 +53,12 @@ describe("MCP workspace server route — source contract", () => {
     const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_status",'))
     const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
     expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/resolveDeploymentId/)
+  })
+
+  it("resolveDeploymentId (shared by get_deployment_status/source/build_logs) falls back to getLatestDeployment", () => {
+    const fnBlock = routeSource.slice(routeSource.indexOf("async function resolveDeploymentId"))
+    const scoped = fnBlock.slice(0, fnBlock.indexOf("\n}\n"))
     expect(scoped).toMatch(/getLatestDeployment/)
   })
 
@@ -54,10 +70,56 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/TARGET_CONFLICT/)
   })
 
-  it("registers get_deployment_source as a new tool reading back real deployed files", () => {
+  it("registers get_deployment_source as a new tool reading back real deployed files, encoding included", () => {
     const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_source",'))
     const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
     expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/getDeploymentFiles/)
+    expect(scoped).toMatch(/encoding:\s*z\.enum\(\["utf-8", "base64"\]\)/)
+  })
+
+  it("deploy_to_sacms's files accept a per-file encoding for binary assets", () => {
+    const toolBlock = routeSource.slice(routeSource.indexOf('"deploy_to_sacms",'))
+    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    expect(scoped).toMatch(/encoding:\s*z\.enum\(\["utf-8", "base64"\]\)\.optional\(\)/)
+  })
+
+  it("registers get_deployment_build_logs reading real Vercel build output", () => {
+    const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_build_logs",'))
+    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/resolveDeploymentId/)
+    expect(scoped).toMatch(/getDeploymentBuildLogs/)
+  })
+
+  it("registers verify_deployment_url to actually fetch the live site, not just trust Vercel's status", () => {
+    const toolBlock = routeSource.slice(routeSource.indexOf('"verify_deployment_url",'))
+    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    expect(scoped).toMatch(/expectedText:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/safeFetch/)
+    expect(scoped).toMatch(/containsExpectedText/)
+  })
+
+  it("registers start_website_build and get_build_run for a resumable entry point", () => {
+    const startBlock = routeSource.slice(routeSource.indexOf('"start_website_build",'))
+    const scopedStart = startBlock.slice(0, startBlock.indexOf("server.registerTool(", 1))
+    expect(scopedStart).toMatch(/startOrResumeBuildRun/)
+    expect(scopedStart).toMatch(/TARGET_CONFLICT|conflict/)
+    // Deliberately doesn't claim to be "the first step" the same way
+    // get_agent_playbook does — see the single-FIRST-claim test above.
+    expect(scopedStart).not.toMatch(/call this first/i)
+
+    const getBlock = routeSource.slice(routeSource.indexOf('"get_build_run",'))
+    const scopedGet = getBlock.slice(0, getBlock.indexOf("server.registerTool(", 1))
+    expect(scopedGet).toMatch(/getBuildRun/)
+  })
+
+  it("deploy_to_sacms and verify_deployment_url accept a runId to advance the build run", () => {
+    for (const tool of ["deploy_to_sacms", "verify_deployment_url"]) {
+      const toolBlock = routeSource.slice(routeSource.indexOf(`"${tool}",`))
+      const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+      expect(scoped, `${tool} should accept runId`).toMatch(/runId:\s*z\.string\(\)\.optional\(\)/)
+      expect(scoped, `${tool} should advance the build run`).toMatch(/advanceBuildRun/)
+    }
   })
 })

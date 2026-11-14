@@ -14,10 +14,22 @@ vi.mock("mcp-handler", () => ({
 vi.mock("@/lib/vercel-client", () => ({
   deployToVercel: vi.fn(),
   getDeploymentStatus: vi.fn(),
+  getLatestDeployment: vi.fn(),
+  getDeploymentFiles: vi.fn(),
+  getDeploymentBuildLogs: vi.fn(),
   addDomainToProject: vi.fn(),
   getDomainConfig: vi.fn(),
   upsertVercelProjectEnv: vi.fn(),
   disableVercelDeploymentProtection: vi.fn(),
+}))
+
+// mcp-build-run.ts starts with `import "server-only"`, unresolvable by
+// vitest's plain Node resolution — mocked away like every other adjacent
+// dependency this file doesn't actually exercise.
+vi.mock("@/lib/infrastructure/mcp-build-run", () => ({
+  startOrResumeBuildRun: vi.fn(),
+  getBuildRun: vi.fn(),
+  advanceBuildRun: vi.fn(),
 }))
 
 vi.mock("@/lib/field-types", () => ({

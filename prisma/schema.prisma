@@ -158,6 +158,7 @@ model Tenant {
   apiKeys                         ApiKey[]
   apiRequests                     ApiRequest[]
   apiTokens                       ApiToken[]
+  mcpBuildRuns                    McpBuildRun[]
   auditLogs                       AuditLog[]
   components                      Component[]
   contentEntries                  ContentEntry[]
@@ -783,6 +784,29 @@ model ApiToken {
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_tokens")
+}
+
+// Persistent MCP "build run" — the resumable work unit behind
+// start_website_build/get_build_run. Lets an agent that loses its
+// conversation mid-flow (ChatGPT session ends, context gets summarized)
+// pick back up via runId instead of guessing from scratch: deploy_to_sacms
+// and verify_deployment_url advance a run's stage/deploymentId when called
+// with a runId, so get_build_run always reflects the real last-known state.
+model McpBuildRun {
+  id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  intent           String // "create" | "update"
+  stage            String    @default("discover") // discover|deploying|verifying|done|failed
+  hostingProjectId String?
+  deploymentId     String?
+  sourceRevision   String?
+  lastError        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([tenantId, createdAt])
+  @@map("mcp_build_runs")
 }
 
 // Platform-wide schema template catalog, authored in the SaCMS Global

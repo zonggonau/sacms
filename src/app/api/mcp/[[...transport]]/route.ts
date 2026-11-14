@@ -19,7 +19,8 @@ import { db, getTenantDb } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
-import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
+import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
+import { startOrResumeBuildRun, getBuildRun, advanceBuildRun } from "@/lib/infrastructure/mcp-build-run"
 import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 import { safeFetch } from "@/lib/safe-url"
@@ -275,6 +276,65 @@ async function resolveOwnProjectId(
   }
 
   return { ok: true, projectId: ownProjectId }
+}
+
+/**
+ * Resolves which deployment a read-only deployment-scoped tool should act
+ * on: the caller's own id (ownership-checked — a deploymentId alone carries
+ * no tenant scoping) or, when omitted, this workspace's latest production
+ * deployment. Shared by get_deployment_status, get_deployment_source, and
+ * get_deployment_build_logs so a lost deploy_to_sacms response never leaves
+ * an agent stuck with no way to recover an id. When resolved via the
+ * fallback path, `status` is already known (from the same lookup that
+ * found the deployment) so get_deployment_status doesn't need a second
+ * Vercel API call just to re-fetch what it already has.
+ */
+async function resolveDeploymentId(
+  auth: AuthContext,
+  suppliedId: string | undefined,
+): Promise<
+  | { ok: true; id: string; status?: { state: string; url: string; projectId?: string } }
+  | { ok: false; response: { content: { type: "text"; text: string }[]; structuredContent: Record<string, unknown>; isError: true } }
+> {
+  const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+
+  if (suppliedId) {
+    const status = await getDeploymentStatus(suppliedId)
+    if (status.projectId && tenant?.vercelProjectId && tenant.vercelProjectId !== status.projectId) {
+      return {
+        ok: false,
+        response: {
+          content: [{ type: "text", text: `❌ Deployment '${suppliedId}' bukan milik workspace ini.` }],
+          structuredContent: { ok: false, code: "FORBIDDEN", message: "Deployment does not belong to this workspace." },
+          isError: true,
+        },
+      }
+    }
+    return { ok: true, id: suppliedId, status }
+  }
+
+  if (!tenant?.vercelProjectId) {
+    return {
+      ok: false,
+      response: {
+        content: [{ type: "text", text: "❌ Belum ada deployment project untuk workspace ini. Deploy dulu dengan deploy_to_sacms." }],
+        structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment project yet." },
+        isError: true,
+      },
+    }
+  }
+  const latest = await getLatestDeployment(tenant.vercelProjectId)
+  if (!latest) {
+    return {
+      ok: false,
+      response: {
+        content: [{ type: "text", text: "❌ Tidak ditemukan riwayat deployment untuk workspace ini di Vercel." }],
+        structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment history found." },
+        isError: true,
+      },
+    }
+  }
+  return { ok: true, id: latest.id, status: { state: latest.state, url: latest.url, projectId: tenant.vercelProjectId } }
 }
 
 // ─── Content entry write context ───────────────────────────────────────────
@@ -2218,6 +2278,9 @@ export default async function NewsPage() {
 
 You are connected to a live, real headless CMS workspace via MCP. Follow these phases IN ORDER — do not invent Content Types, fields, or data; everything must come from these tools.
 
+## Phase 0 — Build/revise requests only
+0. If the user is asking you to build, create, or revise this workspace's website/app (not just browse schema/content), call \`start_website_build\` before anything else — it registers a resumable \`runId\` and flags a target conflict up front if this workspace already has a live site and the user wants a brand-new one. If the user instead opens a NEW conversation referring back to an earlier build ("lanjutkan website kemarin"), call \`get_build_run\` first to resume its actual last-known state instead of starting over or guessing.
+
 ## Phase 1 — Discover the real schema
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
 2. Call \`list_field_types\` BEFORE picking a field type or writing its \`options\` — it gives the real \`options\`/\`relationSlug\` shape and the entry-value shape per type, and flags several options that are silently ignored at render time instead of erroring (so guessing them wastes a turn, it doesn't fail loudly). Needing a small FIXED set of choices → \`select\`/\`multiselect\` with \`options.choices\`; needing an open-ended or separately-managed set of records → \`relation\` with \`relationSlug\`. Never guess an options shape instead of calling this tool.
@@ -2236,9 +2299,10 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
 ## Phase 4 — Ship it
-12. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived — it always updates the SAME project, never a duplicate). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true.
-13. Call \`get_deployment_status\` to confirm it's READY before telling the user it's done — never report success just because deploy_to_sacms returned. You can omit deploymentId to auto-check the latest deployment (useful if you lost the id from a previous response). Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
-14. For a revision request on a site that's already live ("ubah warna header", "kecilkan logo") and you don't already have its current source in this conversation, call \`get_deployment_source\` first to read back the real deployed files, make the targeted change, then \`deploy_to_sacms\` the full updated set — never regenerate the whole frontend from scratch for a small ask, and never invent what the current file looks like.
+12. Once the frontend works, call \`deploy_to_sacms\` (pass the \`runId\` from Phase 0 if you have one) to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived — it always updates the SAME project, never a duplicate). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true. Binary assets (a PNG icon, a font) go in the same \`files\` array with \`encoding: "base64"\` — this tool cannot carry raw bytes any other way.
+13. Call \`get_deployment_status\` to confirm it's READY before telling the user it's done — never report success just because deploy_to_sacms returned. You can omit deploymentId to auto-check the latest deployment (useful if you lost the id from a previous response). If the state comes back errored/failed, call \`get_deployment_build_logs\` to see WHY before trying again. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+14. Once READY, call \`verify_deployment_url\` (pass the \`runId\` too) to actually fetch the live site and confirm it renders — a "ready" build can still show a login wall, an error page, or empty data. Pass \`expectedText\` with something real you already saw via \`query_content\` to confirm actual content rendered, not just that the page loaded. Only report the website as done to the user after this comes back \`ok: true\`.
+15. For a revision request on a site that's already live ("ubah warna header", "kecilkan logo") and you don't already have its current source in this conversation, call \`get_deployment_source\` first to read back the real deployed files, make the targeted change, then \`deploy_to_sacms\` the full updated set — never regenerate the whole frontend from scratch for a small ask, and never invent what the current file looks like.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
@@ -2363,6 +2427,129 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
     // =========================================================================
 
+    // ── start_website_build ──────────────────────────────────────────────────
+    server.registerTool(
+      "start_website_build",
+      {
+        title: "Start or Resume a Website Build",
+        description: "The entry point for any build, create, or revise request against this workspace's website/app — call it before get_full_schema whenever the ask is build-shaped, not just schema/content browsing. Example intents this covers: \"buatkan portal berita untuk workspace ini dan deploy ke SaCMS\", \"ubah warna header website saya\", \"ganti logo di website yang sudah ada\", \"lanjutkan build kemarin\" / \"build a responsive news site and deploy it to SaCMS\", \"change the header color on my site\", \"continue the build from before\". Returns a runId tied to this workspace — pass it to deploy_to_sacms and verify_deployment_url as you go, and call get_build_run (even from a brand-new conversation) to resume exactly where a previous attempt left off if this one gets interrupted. This tool only registers intent and flags a target conflict up front if one exists — it never touches schema or deploys anything by itself. If the user only asked for a plan, design, or preview rather than an actual live deploy, stop there and show it to them — do not go on to call deploy_to_sacms just because you called this.",
+        inputSchema: {
+          intent: z.enum(["create", "update"]).optional().describe("\"create\" for a brand-new website, \"update\" for a revision of whatever is already live. Omit to auto-detect: \"update\" if this workspace already has a deployment, \"create\" otherwise."),
+        },
+        outputSchema: {
+          runId: z.string(),
+          intent: z.enum(["create", "update"]),
+          stage: z.string(),
+          resumed: z.boolean(),
+          hostingProjectId: z.string().optional(),
+          conflict: z.boolean(),
+          existingUrl: z.string().optional(),
+          nextStep: z.string(),
+        },
+      },
+      async ({ intent }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        try {
+          const tenant = await db.tenant.findUnique({
+            where: { id: auth.tenantId },
+            select: { vercelDeploymentUrl: true, vercelProjectId: true },
+          })
+          const resolvedIntent: "create" | "update" = intent || (tenant?.vercelDeploymentUrl ? "update" : "create")
+          const { run, resumed } = await startOrResumeBuildRun(auth.tenantId, resolvedIntent)
+          const conflict = resolvedIntent === "create" && !!tenant?.vercelDeploymentUrl
+
+          const structured = {
+            runId: run.id,
+            intent: resolvedIntent,
+            stage: run.stage,
+            resumed,
+            hostingProjectId: run.hostingProjectId || tenant?.vercelProjectId || undefined,
+            conflict,
+            existingUrl: conflict ? tenant?.vercelDeploymentUrl || undefined : undefined,
+            nextStep: conflict
+              ? `Workspace already has a live site at ${tenant?.vercelDeploymentUrl}. Confirm with the user whether to overwrite it before deploying — then pass confirmOverwrite: true to deploy_to_sacms, or treat this as a revision instead (call deploy_to_sacms without intent: "create").`
+              : resumed
+                ? `Resuming an in-progress run at stage "${run.stage}" — call get_build_run anytime to re-check this state. Continue from where it left off instead of starting over.`
+                : "Call get_agent_playbook for the full phase order, then get_full_schema, scaffold the frontend, and call deploy_to_sacms with this runId.",
+          }
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
+          }
+        } catch (err: any) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal memulai build run: ${err.message}` }],
+            structuredContent: { ok: false, code: "BUILD_FAILED", message: err.message },
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── get_build_run ─────────────────────────────────────────────────────────
+    server.registerTool(
+      "get_build_run",
+      {
+        title: "Get Build Run Status (Resume After an Interruption)",
+        description: "Fetch a build run's current state — call this at the start of a new conversation when the user refers back to a build/revision you (or another session) started earlier (\"lanjutkan website kemarin\", \"continue the site we were building\"), instead of starting over from scratch. Omit runId to get this workspace's most recent run.",
+        inputSchema: {
+          runId: z.string().optional().describe("A specific run's id, from start_website_build. Omit to fetch this workspace's most recent run."),
+        },
+        outputSchema: {
+          runId: z.string(),
+          intent: z.string(),
+          stage: z.string(),
+          hostingProjectId: z.string().optional(),
+          deploymentId: z.string().optional(),
+          sourceRevision: z.string().optional(),
+          lastError: z.string().optional(),
+          updatedAt: z.string(),
+        },
+      },
+      async ({ runId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        try {
+          const run = await getBuildRun(auth.tenantId, runId)
+          if (!run) {
+            return {
+              content: [{ type: "text" as const, text: runId ? `❌ Build run '${runId}' tidak ditemukan untuk workspace ini.` : "❌ Belum ada build run untuk workspace ini — mulai dengan start_website_build." }],
+              structuredContent: { ok: false, code: "NOT_FOUND", message: "No matching build run." },
+              isError: true,
+            }
+          }
+
+          const structured = {
+            runId: run.id,
+            intent: run.intent,
+            stage: run.stage,
+            hostingProjectId: run.hostingProjectId || undefined,
+            deploymentId: run.deploymentId || undefined,
+            sourceRevision: run.sourceRevision || undefined,
+            lastError: run.lastError || undefined,
+            updatedAt: run.updatedAt.toISOString(),
+          }
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
+          }
+        } catch (err: any) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal mengambil build run: ${err.message}` }],
+            structuredContent: { ok: false, code: "BUILD_FAILED", message: err.message },
+            isError: true,
+          }
+        }
+      }
+    )
+
     // ── deploy_to_sacms ──────────────────────────────────────────────────────
     server.registerTool(
       "deploy_to_sacms",
@@ -2373,11 +2560,13 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
           files: z.array(z.object({
             name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
-            content: z.string().describe("Raw source code content of the file")
+            content: z.string().describe("Raw source content, or base64-encoded bytes when encoding is \"base64\""),
+            encoding: z.enum(["utf-8", "base64"]).optional().describe("Defaults to \"utf-8\" (plain text source). Set to \"base64\" for binary assets — a PNG app icon, favicon, or font file — base64-encoded by you first; this tool cannot carry raw bytes over JSON."),
           })).describe("Array of files to deploy"),
           envVars: z.record(z.string(), z.string()).optional().describe("Extra env vars for this deploy, merged on top of the workspace's saved Environment vars (the SaCMS API URL/tenant/key are always injected automatically)"),
           intent: z.enum(["create", "update"]).optional().describe("Set to \"create\" when the user wants a brand-new website and this ISN'T a revision of whatever is already deployed. When omitted/\"update\", behaves exactly as before (always deploys, no conflict check) — for backward compatibility with callers that don't know about this field."),
           confirmOverwrite: z.boolean().optional().describe("Set to true to proceed with intent: \"create\" even though a deployment already exists — only after the user has explicitly confirmed they want to replace it."),
+          runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — advances that run's recorded stage/deploymentId so get_build_run reflects reality even if this conversation gets interrupted right after."),
         },
         outputSchema: {
           ok: z.boolean(),
@@ -2392,7 +2581,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           message: z.string(),
         },
       },
-      async ({ files, envVars, intent, confirmOverwrite }) => {
+      async ({ files, envVars, intent, confirmOverwrite, runId }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2499,6 +2688,15 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             }
           }
 
+          if (runId) {
+            advanceBuildRun(auth.tenantId, runId, {
+              stage: "deploying",
+              deploymentId: result.id,
+              sourceRevision: result.id,
+              hostingProjectId: result.projectId || undefined,
+            })
+          }
+
           return {
             content: [{
               type: "text" as const,
@@ -2517,6 +2715,9 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             },
           }
         } catch (err: any) {
+          if (runId) {
+            advanceBuildRun(auth.tenantId, runId, { stage: "failed", lastError: err.message })
+          }
           return {
             content: [{
               type: "text" as const,
@@ -2551,47 +2752,12 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         try {
-          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
-
-          let resolvedId = deploymentId
-          let status: { state: string; url: string; projectId?: string }
-
-          if (resolvedId) {
-            status = await getDeploymentStatus(resolvedId)
-
-            // Reject a deployment that belongs to a different tenant's
-            // project — deploymentId alone carries no tenant scoping, so
-            // without this any token could poll any tenant's build state
-            // and live URL by guessing/observing an id.
-            if (status.projectId && tenant?.vercelProjectId && tenant.vercelProjectId !== status.projectId) {
-              return {
-                content: [{ type: "text" as const, text: `❌ Deployment '${resolvedId}' bukan milik workspace ini.` }],
-                structuredContent: { ok: false, code: "FORBIDDEN", message: "Deployment does not belong to this workspace." },
-                isError: true,
-              }
-            }
-          } else {
-            if (!tenant?.vercelProjectId) {
-              return {
-                content: [{ type: "text" as const, text: "❌ Belum ada deployment project untuk workspace ini. Deploy dulu dengan deploy_to_sacms." }],
-                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment project yet." },
-                isError: true,
-              }
-            }
-            const latest = await getLatestDeployment(tenant.vercelProjectId)
-            if (!latest) {
-              return {
-                content: [{ type: "text" as const, text: "❌ Tidak ditemukan riwayat deployment untuk workspace ini di Vercel." }],
-                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment history found." },
-                isError: true,
-              }
-            }
-            resolvedId = latest.id
-            status = { state: latest.state, url: latest.url, projectId: tenant.vercelProjectId }
-          }
+          const resolved = await resolveDeploymentId(auth, deploymentId)
+          if (!resolved.ok) return resolved.response
+          const status = resolved.status!
 
           const structured = {
-            deploymentId: resolvedId,
+            deploymentId: resolved.id,
             state: status.state,
             url: status.url,
             isReady: status.state === "READY",
@@ -2619,14 +2785,14 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "get_deployment_source",
       {
         title: "Get Current Deployed Source Files",
-        description: "Read back the actual source files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content} shape deploy_to_sacms expects, so you can edit just what needs to change and deploy the full updated set back. Omit deploymentId to read the latest production deployment.",
+        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), so you can edit just what needs to change and deploy the full updated set back. Omit deploymentId to read the latest production deployment.",
         inputSchema: {
           deploymentId: z.string().optional().describe("Specific deployment to read from. Omit to use the latest production deployment for this workspace."),
-          maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100). Large binary assets (images, fonts, lockfiles) are always skipped — this is for reading back source, not shipping assets."),
+          maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100). Build-noise lockfiles and large non-source media are always skipped — this is for reading back source and small assets, not shipping bulk media."),
         },
         outputSchema: {
           deploymentId: z.string(),
-          files: z.array(z.object({ name: z.string(), content: z.string() })),
+          files: z.array(z.object({ name: z.string(), content: z.string(), encoding: z.enum(["utf-8", "base64"]) })),
           skipped: z.array(z.string()),
           truncated: z.boolean(),
         },
@@ -2637,40 +2803,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         try {
-          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
-          if (!tenant?.vercelProjectId) {
-            return {
-              content: [{ type: "text" as const, text: "❌ Belum ada deployment untuk workspace ini. Deploy dulu dengan deploy_to_sacms sebelum membaca source-nya kembali." }],
-              structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment project yet." },
-              isError: true,
-            }
-          }
+          const resolved = await resolveDeploymentId(auth, deploymentId)
+          if (!resolved.ok) return resolved.response
 
-          let resolvedId = deploymentId
-          if (resolvedId) {
-            // Ownership check — a deploymentId alone carries no tenant scoping.
-            const status = await getDeploymentStatus(resolvedId)
-            if (status.projectId && status.projectId !== tenant.vercelProjectId) {
-              return {
-                content: [{ type: "text" as const, text: `❌ Deployment '${resolvedId}' bukan milik workspace ini.` }],
-                structuredContent: { ok: false, code: "FORBIDDEN", message: "Deployment does not belong to this workspace." },
-                isError: true,
-              }
-            }
-          } else {
-            const latest = await getLatestDeployment(tenant.vercelProjectId)
-            if (!latest) {
-              return {
-                content: [{ type: "text" as const, text: "❌ Tidak ditemukan riwayat deployment untuk workspace ini di Vercel." }],
-                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment history found." },
-                isError: true,
-              }
-            }
-            resolvedId = latest.id
-          }
-
-          const result = await getDeploymentFiles(resolvedId, maxFiles ?? 100)
-          const structured = { deploymentId: resolvedId, ...result }
+          const result = await getDeploymentFiles(resolved.id, maxFiles ?? 100)
+          const structured = { deploymentId: resolved.id, ...result }
 
           return {
             content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -2680,6 +2817,140 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           return {
             content: [{ type: "text" as const, text: `❌ Gagal membaca source deployment: ${err.message}` }],
             structuredContent: { ok: false, code: "VERIFICATION_FAILED", message: err.message },
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── get_deployment_build_logs ────────────────────────────────────────────
+    server.registerTool(
+      "get_deployment_build_logs",
+      {
+        title: "Get Deployment Build Logs",
+        description: "Read the build log output of a SaCMS Cloud Hosting deployment — call this when get_deployment_status reports an errored/failed build, to see WHY it failed (compiler error, missing dependency, etc.) before fixing the source and calling deploy_to_sacms again. Omit deploymentId to read the latest production deployment's logs.",
+        inputSchema: {
+          deploymentId: z.string().optional().describe("Specific deployment to read logs from. Omit to use the latest production deployment for this workspace."),
+        },
+        outputSchema: {
+          deploymentId: z.string(),
+          lines: z.array(z.string()),
+          errorLines: z.array(z.string()),
+        },
+      },
+      async ({ deploymentId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        try {
+          const resolved = await resolveDeploymentId(auth, deploymentId)
+          if (!resolved.ok) return resolved.response
+
+          const { lines, errorLines } = await getDeploymentBuildLogs(resolved.id)
+          const structured = { deploymentId: resolved.id, lines, errorLines }
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
+          }
+        } catch (err: any) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal membaca build log: ${err.message}` }],
+            structuredContent: { ok: false, code: "BUILD_FAILED", message: err.message },
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── verify_deployment_url ────────────────────────────────────────────────
+    server.registerTool(
+      "verify_deployment_url",
+      {
+        title: "Verify the Live Deployment Actually Works",
+        description: "Fetch this workspace's live deployed site (or a specific path on it) to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data. Pass expectedText (e.g. a real article title you already got from query_content) to confirm that specific content actually renders, not just that the page returns 200.",
+        inputSchema: {
+          path: z.string().optional().describe("Path to check on this workspace's own live deployment domain, e.g. \"/\" (default) or \"/artikel/contoh-slug\". Never pass a full URL to a different host — this always checks THIS workspace's own deployment."),
+          expectedText: z.string().optional().describe("A substring you expect to see in the rendered HTML — e.g. a real article title or headline you already confirmed exists via query_content. Confirms real content rendered, not just that the page loaded."),
+          runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — marks that run done (or failed, with the reason) based on this check's result."),
+        },
+        outputSchema: {
+          url: z.string(),
+          status: z.number(),
+          ok: z.boolean(),
+          htmlLength: z.number(),
+          containsExpectedText: z.boolean().optional(),
+          looksLikeErrorPage: z.boolean(),
+        },
+      },
+      async ({ path, expectedText, runId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        try {
+          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelDeploymentUrl: true } })
+          if (!tenant?.vercelDeploymentUrl) {
+            return {
+              content: [{ type: "text" as const, text: "❌ Belum ada deployment untuk workspace ini. Deploy dulu dengan deploy_to_sacms sebelum verifikasi URL." }],
+              structuredContent: { ok: false, code: "NOT_FOUND", url: "", status: 0, htmlLength: 0, looksLikeErrorPage: false, message: "No deployment yet." },
+              isError: true,
+            }
+          }
+
+          const base = tenant.vercelDeploymentUrl.replace(/\/$/, "")
+          const targetUrl = path ? `${base}${path.startsWith("/") ? path : `/${path}`}` : base
+
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 15000)
+          let res: Response
+          try {
+            res = await safeFetch(targetUrl, {
+              method: "GET",
+              signal: controller.signal,
+              headers: { "User-Agent": "SaCMS-MCP-Verify/1.0" },
+            })
+          } finally {
+            clearTimeout(timeoutId)
+          }
+
+          const html = await res.text().catch(() => "")
+          const containsExpectedText = expectedText ? html.includes(expectedText) : undefined
+          // Heuristic only, not exhaustive — catches Vercel's own protection/
+          // not-found boilerplate; the frontend's OWN 404/error page (if it
+          // has one) is a real rendered page and isn't flagged by this, by
+          // design — that's a route the caller itself built and should check
+          // with its own expectedText instead.
+          const looksLikeErrorPage = /DEPLOYMENT_NOT_FOUND|This deployment is protected|Authentication Required/i.test(html)
+          const verified = res.ok && !looksLikeErrorPage && (containsExpectedText ?? true)
+
+          if (runId) {
+            advanceBuildRun(auth.tenantId, runId, verified
+              ? { stage: "done" }
+              : { stage: "failed", lastError: `Verification failed for ${targetUrl} (status ${res.status})` })
+          }
+
+          const structured = {
+            url: targetUrl,
+            status: res.status,
+            ok: verified,
+            htmlLength: html.length,
+            ...(expectedText ? { containsExpectedText } : {}),
+            looksLikeErrorPage,
+          }
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
+          }
+        } catch (err: any) {
+          if (runId) {
+            advanceBuildRun(auth.tenantId, runId, { stage: "failed", lastError: err.message })
+          }
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal memverifikasi URL: ${err.message}` }],
+            structuredContent: { ok: false, code: "VERIFICATION_FAILED", url: "", status: 0, htmlLength: 0, looksLikeErrorPage: false, message: err.message },
             isError: true,
           }
         }
@@ -3085,7 +3356,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.9.0" },
+    serverInfo: { name: "sacms-mcp", version: "3.0.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
@@ -3096,7 +3367,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (discover schema → explore real content → scaffold → deploy). Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
+      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy → verify). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
   }
 )
 
