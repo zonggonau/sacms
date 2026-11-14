@@ -907,6 +907,11 @@ model WebsiteTemplate {
   demoVercelProjectId String?
   demoUrl             String?
   demoDeployedAt      DateTime?
+  // The Vercel deploymentId from the demo's most recent deploy — lets a
+  // future status/log check target the exact build instead of only the
+  // "latest" one (same distinction the per-workspace MCP server's
+  // get_deployment_status/get_deployment_build_logs rely on).
+  demoDeploymentId    String?
 
   @@index([schemaTemplateId])
   @@map("website_templates")

@@ -99,6 +99,50 @@ function notFound(id: string) {
   return { content: [{ type: "text" as const, text: `❌ Schema Template '${id}' tidak ditemukan.` }], isError: true }
 }
 
+/**
+ * Shared output shape + serializer for get_website_template/
+ * create_website_template/update_website_template — all three return the
+ * same WebsiteTemplate row shape (Prisma Dates converted to ISO strings,
+ * since structuredContent is validated against this zod shape directly,
+ * not after a JSON.stringify round-trip that would've done it for free).
+ */
+const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
+  id: z.string(), name: z.string(), slug: z.string(), schemaTemplateId: z.string(), icon: z.string(),
+  description: z.string().nullable(), files: z.array(z.object({ path: z.string(), content: z.string() })),
+  published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+  demoVercelProjectId: z.string().nullable(), demoUrl: z.string().nullable(),
+  demoDeployedAt: z.string().nullable(), demoDeploymentId: z.string().nullable(),
+}
+
+function serializeWebsiteTemplate(t: {
+  createdAt: Date
+  updatedAt: Date
+  demoDeployedAt: Date | null
+  [key: string]: unknown
+}) {
+  return {
+    ...t,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+    demoDeployedAt: t.demoDeployedAt ? t.demoDeployedAt.toISOString() : null,
+  }
+}
+
+/** The demoDeployment sub-object every create/update_website_template response carries. */
+const DEMO_DEPLOYMENT_OUTPUT_SHAPE = z.object({
+  status: z.enum(["ok", "failed", "skipped"]),
+  error: z.string().optional(),
+  deploymentId: z.string().optional(),
+  verified: z.boolean().optional(),
+  verificationError: z.string().optional(),
+})
+
+function describeDemoDeployment(demo: { url: string | null; deploymentId?: string; verified?: boolean; verificationError?: string; error?: string }) {
+  return demo.url
+    ? { status: "ok" as const, deploymentId: demo.deploymentId, verified: demo.verified, verificationError: demo.verificationError }
+    : { status: "failed" as const, error: demo.error, deploymentId: demo.deploymentId }
+}
+
 function invalidSchema(error: z.ZodError) {
   return {
     content: [{
@@ -129,6 +173,12 @@ const handler = createMcpHandler(
             "Validation", "Media", "Relations", "Advanced",
           ]).optional().describe("Optional category to filter field types"),
         },
+        outputSchema: {
+          totalCount: z.number(),
+          categories: z.array(z.string()),
+          fieldTypes: z.array(z.any()),
+          usageNote: z.string(),
+        },
       },
       async ({ category }) => {
         const auth = authContext.getStore()
@@ -158,16 +208,15 @@ const handler = createMcpHandler(
           }
         })
 
+        const structured = {
+          totalCount: fieldDocs.length,
+          categories: FIELD_CATEGORIES,
+          fieldTypes: fieldDocs,
+          usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
+        }
         return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              totalCount: fieldDocs.length,
-              categories: FIELD_CATEGORIES,
-              fieldTypes: fieldDocs,
-              usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
-            }, null, 2),
-          }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
         }
       },
     )
@@ -182,19 +231,30 @@ const handler = createMcpHandler(
           "(call get_schema_template for that). Call this FIRST before creating a new template, to check " +
           "whether something close enough already exists.",
         inputSchema: {},
+        outputSchema: {
+          templates: z.array(z.object({
+            id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
+            description: z.string().nullable(), published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+          })),
+        },
       },
       async () => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const templates = await db.schemaTemplate.findMany({
+        const rows = await db.schemaTemplate.findMany({
           orderBy: { createdAt: "desc" },
           select: {
             id: true, name: true, slug: true, category: true, icon: true,
             description: true, published: true, createdAt: true, updatedAt: true,
           },
         })
-        return { content: [{ type: "text" as const, text: JSON.stringify(templates, null, 2) }] }
+        const templates = rows.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() }))
+        const structured = { templates }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(templates, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -209,6 +269,11 @@ const handler = createMcpHandler(
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
         },
+        outputSchema: {
+          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
+          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
+          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+        },
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -216,7 +281,11 @@ const handler = createMcpHandler(
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!template) return notFound(id)
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -249,6 +318,11 @@ const handler = createMcpHandler(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
         },
+        outputSchema: {
+          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
+          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
+          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+        },
       },
       async ({ name, category, icon, description, schema, published }) => {
         const auth = authContext.getStore()
@@ -275,7 +349,11 @@ const handler = createMcpHandler(
             published: published ?? false,
           },
         })
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -299,6 +377,11 @@ const handler = createMcpHandler(
             "too (template-local slugs, Content Types only).",
           ),
           published: z.boolean().optional(),
+        },
+        outputSchema: {
+          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
+          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
+          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
         },
       },
       async ({ id, name, category, icon, description, schema, published }) => {
@@ -326,7 +409,11 @@ const handler = createMcpHandler(
             ...(published !== undefined ? { published } : {}),
           },
         })
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -365,21 +452,33 @@ const handler = createMcpHandler(
         inputSchema: {
           schemaTemplateId: z.string().optional().describe("Filter to Website Templates following this Schema Template's id"),
         },
+        outputSchema: {
+          templates: z.array(z.object({
+            id: z.string(), name: z.string(), slug: z.string(), schemaTemplateId: z.string(), icon: z.string(),
+            description: z.string().nullable(), published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+            demoUrl: z.string().nullable(), schemaTemplate: z.object({ name: z.string(), slug: z.string() }),
+          })),
+        },
       },
       async ({ schemaTemplateId }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const templates = await db.websiteTemplate.findMany({
+        const rows = await db.websiteTemplate.findMany({
           where: schemaTemplateId ? { schemaTemplateId } : {},
           orderBy: { createdAt: "desc" },
           select: {
             id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
-            description: true, published: true, createdAt: true, updatedAt: true,
+            description: true, published: true, createdAt: true, updatedAt: true, demoUrl: true,
             schemaTemplate: { select: { name: true, slug: true } },
           },
         })
-        return { content: [{ type: "text" as const, text: JSON.stringify(templates, null, 2) }] }
+        const templates = rows.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() }))
+        const structured = { templates }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(templates, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -387,10 +486,11 @@ const handler = createMcpHandler(
       "get_website_template",
       {
         title: "Get Website Template",
-        description: "Get one Website Template's full detail, including its complete `files` array (path + content for every source file).",
+        description: "Get one Website Template's full detail, including its complete `files` array (path + content for every source file) and its demo deployment state (demoUrl/demoDeploymentId) — use `files` as the base for a changedFiles/deletedFiles patch via update_website_template instead of regenerating the whole bundle for a small edit.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },
+        outputSchema: WEBSITE_TEMPLATE_OUTPUT_SHAPE,
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -401,7 +501,11 @@ const handler = createMcpHandler(
           include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
         })
         if (!template) return notFound(id)
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+        const structured = serializeWebsiteTemplate(template)
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -436,6 +540,10 @@ const handler = createMcpHandler(
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
+        },
+        outputSchema: {
+          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
         },
       },
       async ({ schemaTemplateId, name, icon, description, files, published }) => {
@@ -483,15 +591,15 @@ const handler = createMcpHandler(
           schemaTemplate,
         })
 
+        // Re-read rather than patch the in-memory `template` by hand —
+        // deployWebsiteTemplateDemo persists the authoritative demo* fields
+        // itself (or leaves them untouched on a hard failure), so this is
+        // the one query that can't drift from what it actually wrote.
+        const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
+        const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
         return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              ...template,
-              demoUrl: demo.url,
-              demoDeployment: demo.url ? { status: "ok" } : { status: "failed", error: demo.error },
-            }, null, 2),
-          }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
         }
       },
     )
@@ -501,20 +609,38 @@ const handler = createMcpHandler(
       {
         title: "Update Website Template",
         description:
-          "Update an existing Website Template's metadata, files, and/or published status. Passing `files` " +
-          "REPLACES the whole bundle — it is not merged file by file, so include every file you want to keep.",
+          "Update an existing Website Template's metadata, files, and/or published status. For a TARGETED " +
+          "edit (\"ubah warna header\", \"ganti font\"), prefer changedFiles/deletedFiles over files — call " +
+          "get_website_template first if you don't already have the current bundle in this conversation, " +
+          "then send only what actually changed; SaCMS merges it onto the full stored bundle so you never risk " +
+          "silently dropping an untouched file. Passing `files` instead REPLACES the whole bundle wholesale — " +
+          "only use that for a full rewrite, and include every file you want to keep.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
           name: z.string().min(1).max(150).optional(),
           icon: z.string().max(10).optional(),
           description: z.string().max(500).optional(),
-          files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle — see create_website_template."),
+          files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle. Do not combine with changedFiles/deletedFiles — pick one."),
+          changedFiles: z.array(z.object({ path: z.string().trim().min(1).max(300), content: z.string().max(200_000) })).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is."),
+          deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           published: z.boolean().optional(),
         },
+        outputSchema: {
+          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional(),
+        },
       },
-      async ({ id, name, icon, description, files, published }) => {
+      async ({ id, name, icon, description, files, changedFiles, deletedFiles, published }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        if (files !== undefined && (changedFiles !== undefined || deletedFiles !== undefined)) {
+          return {
+            content: [{ type: "text" as const, text: "❌ Berikan `files` ATAU `changedFiles`/`deletedFiles`, bukan keduanya — keduanya menyatakan maksud yang berbeda (ganti seluruh bundle vs ubah sebagian)." }],
+            structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "files is mutually exclusive with changedFiles/deletedFiles." },
+            isError: true,
+          }
+        }
 
         const existing = await db.websiteTemplate.findFirst({
           where: { OR: [{ id }, { slug: id }] },
@@ -525,6 +651,19 @@ const handler = createMcpHandler(
         let filesData: z.infer<typeof websiteTemplateFilesSchema> | undefined
         if (files !== undefined) {
           const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
+          if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
+          filesData = parsedFiles.data
+        } else if (changedFiles !== undefined || deletedFiles !== undefined) {
+          // Merge onto the bundle already persisted on this row — the DB
+          // row IS the full source of truth here (unlike the per-workspace
+          // deploy_to_sacms flow, there's no separate "ask Vercel what it
+          // has" step needed), so a patch update is a cheap, safe merge.
+          const base = existing.files as unknown as { path: string; content: string }[]
+          const fileMap = new Map(base.map((f) => [f.path, f] as const))
+          for (const f of changedFiles || []) fileMap.set(f.path, f)
+          for (const path of deletedFiles || []) fileMap.delete(path)
+          const merged = Array.from(fileMap.values())
+          const parsedFiles = websiteTemplateFilesSchema.safeParse(merged)
           if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
           filesData = parsedFiles.data
         }
@@ -550,19 +689,19 @@ const handler = createMcpHandler(
             files: filesData,
             schemaTemplate: existing.schemaTemplate,
           })
+          const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
+          const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
           return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({
-                ...template,
-                demoUrl: demo.url,
-                demoDeployment: demo.url ? { status: "ok" } : { status: "failed", error: demo.error },
-              }, null, 2),
-            }],
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
           }
         }
 
-        return { content: [{ type: "text" as const, text: JSON.stringify(template, null, 2) }] }
+        const structured = { ...serializeWebsiteTemplate(template), demoDeployment: { status: "skipped" as const } }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
       },
     )
 
@@ -595,7 +734,7 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.3.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.4.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -607,12 +746,16 @@ const handler = createMcpHandler(
       "Template: get_schema_template first to see exactly what structure the frontend needs to render, " +
       "develop it like any other SaCMS frontend (same conventions as deploy_to_sacms on the per-workspace " +
       "server), then create_website_template with every source file as plain text. Every " +
-      "create_website_template and update_website_template(files: ...) call automatically (re)deploys a " +
-      "live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a real customer's " +
-      "data — so you can test in a real browser before publishing. The response includes `demoUrl` (and " +
-      "`demoDeployment.error` if the deploy itself failed — the save still succeeds either way, just retry " +
-      "update_website_template with the same files to redeploy). A metadata-only update (no `files`) does " +
-      "not redeploy.",
+      "create_website_template and update_website_template(files/changedFiles: ...) call automatically " +
+      "(re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a " +
+      "real customer's data — so you can test in a real browser before publishing. The response's " +
+      "`demoDeployment` reports `status` (ok/failed/skipped), `verified` (SaCMS actually fetched the URL and " +
+      "confirmed it renders — Vercel accepting the build is NOT the same as it working), and `error`/" +
+      "`verificationError` when something's wrong; `status: \"ok\"` alone doesn't mean verified is true, check " +
+      "both before telling a human the preview is ready. A metadata-only update (no files/changedFiles) " +
+      "returns `demoDeployment.status: \"skipped\"` and does not redeploy. For a TARGETED revision of an " +
+      "existing template (\"ubah warna header\"), call get_website_template to see the current bundle, then " +
+      "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`.",
   },
 )
 

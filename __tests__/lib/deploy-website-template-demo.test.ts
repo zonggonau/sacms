@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
 // deploy-website-template-demo.ts starts with `import "server-only"` —
 // not an npm package vitest's plain Node resolution can see, same stub
@@ -51,10 +51,17 @@ describe("deployWebsiteTemplateDemo", () => {
     ensureDemoTenantForSchemaTemplate.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
   })
 
-  it("maps {path,content} files to {name,content}, deploys to a dedicated sacms-demo-<slug> project, and persists the result", async () => {
+  const originalFetch = global.fetch
+
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it("maps {path,content} files to {name,content}, deploys to a dedicated sacms-demo-<slug> project, persists the result, and verifies the URL actually renders", async () => {
     deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://sacms-demo-modern-dark.vercel.app", state: "QUEUED", projectId: "prj_1", projectName: "sacms-demo-modern-dark" })
     ensureDemoSubdomain.mockResolvedValue("demo-modern-dark.sites.sacms.cloud")
     getProjectPrimaryDomain.mockResolvedValue("https://demo-modern-dark.sites.sacms.cloud")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html>real page</html>" }) as any
 
     const result = await deployWebsiteTemplateDemo(websiteTemplate)
 
@@ -64,20 +71,32 @@ describe("deployWebsiteTemplateDemo", () => {
       {},
     )
     expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
-    expect(result).toEqual({ url: "https://demo-modern-dark.sites.sacms.cloud" })
+    expect(result).toEqual({ url: "https://demo-modern-dark.sites.sacms.cloud", deploymentId: "dpl_1", verified: true, verificationError: undefined })
     expect(websiteTemplateUpdate).toHaveBeenCalledWith({
       where: { id: "wt_1" },
       data: {
         demoVercelProjectId: "prj_1",
         demoUrl: "https://demo-modern-dark.sites.sacms.cloud",
         demoDeployedAt: expect.any(Date),
+        demoDeploymentId: "dpl_1",
       },
     })
+  })
+
+  it("reports verified: false (never throws) when Vercel accepted the deploy but the URL doesn't actually render — accepted is not the same as working", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_1" })
+    getProjectPrimaryDomain.mockResolvedValue("https://demo-x.sites.sacms.cloud")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "DEPLOYMENT_NOT_FOUND" }) as any
+
+    const result = await deployWebsiteTemplateDemo(websiteTemplate)
+    expect(result.verified).toBe(false)
+    expect(result.verificationError).toMatch(/error\/protection page/)
   })
 
   it("resolves env vars against the demo tenant, not any real tenant", async () => {
     deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_1" })
     getProjectPrimaryDomain.mockResolvedValue("https://x.vercel.app")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html></html>" }) as any
 
     await deployWebsiteTemplateDemo(websiteTemplate)
 
