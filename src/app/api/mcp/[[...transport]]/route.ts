@@ -19,7 +19,7 @@ import { db, getTenantDb } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
-import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
+import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
 import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 import { safeFetch } from "@/lib/safe-url"
@@ -396,8 +396,14 @@ const handler = createMcpHandler(
       "get_full_schema",
       {
         title: "Get Full Schema",
-        description: "Get the complete database schema of the workspace — all Content Types (collections), Single Types (one-off pages), and Components (reusable blocks) with their fields and configurations. Call this FIRST when building or scaffolding frontend applications.",
+        description: "Get the complete database schema of the workspace — all Content Types (collections), Single Types (one-off pages), and Components (reusable blocks) with their fields and configurations. This is Phase 1, step 1 of the agent playbook — call get_agent_playbook first if you haven't connected before.",
         inputSchema: {},
+        outputSchema: {
+          workspace: z.object({ id: z.string(), name: z.string(), slug: z.string() }),
+          contentTypes: z.array(z.any()),
+          singleTypes: z.array(z.any()),
+          components: z.array(z.any()),
+        },
       },
       async () => {
         const auth = authContext.getStore()
@@ -411,7 +417,10 @@ const handler = createMcpHandler(
           slug: auth.tenantSlug,
         })
 
-        return { content: [{ type: "text" as const, text: JSON.stringify(schema, null, 2) }] }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(schema, null, 2) }],
+          structuredContent: schema,
+        }
       }
     )
 
@@ -2227,8 +2236,9 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
 ## Phase 4 — Ship it
-12. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits).
-13. Check \`get_deployment_status\` to confirm it's live. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+12. Once the frontend works, call \`deploy_to_sacms\` to publish it to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived — it always updates the SAME project, never a duplicate). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true.
+13. Call \`get_deployment_status\` to confirm it's READY before telling the user it's done — never report success just because deploy_to_sacms returned. You can omit deploymentId to auto-check the latest deployment (useful if you lost the id from a previous response). Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
+14. For a revision request on a site that's already live ("ubah warna header", "kecilkan logo") and you don't already have its current source in this conversation, call \`get_deployment_source\` first to read back the real deployed files, make the targeted change, then \`deploy_to_sacms\` the full updated set — never regenerate the whole frontend from scratch for a small ask, and never invent what the current file looks like.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically.
@@ -2358,17 +2368,31 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "deploy_to_sacms",
       {
         title: "Deploy Website / App to SaCMS Cloud Hosting",
-        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the project's actual PUBLIC domain (its custom domain if one is attached via configure_deployment_domain, else its default *.vercel.app alias) — never the per-deployment URL, which Vercel's protection gates by default and which a real visitor can't open. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one.",
+        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to SaCMS Cloud Hosting. Returns the project's actual PUBLIC domain (its custom domain if one is attached via configure_deployment_domain, else its default *.vercel.app alias) — never the per-deployment URL, which Vercel's protection gates by default and which a real visitor can't open. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one, which also means it's always safe to call again if a previous response never arrived. Pass intent: \"create\" when the user explicitly wants a brand-new site (not a revision of the one already live) — if this workspace already has a deployment, you'll get a TARGET_CONFLICT back instead of silently overwriting it; confirm with the user first, then either retry with confirmOverwrite: true, or omit intent entirely to proceed as an ordinary update. For a targeted revision (\"ubah warna header\", \"kecilkan logo\") call get_deployment_source first if you don't already have the current files in this conversation.",
         inputSchema: {
           projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
           files: z.array(z.object({
             name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
             content: z.string().describe("Raw source code content of the file")
           })).describe("Array of files to deploy"),
-          envVars: z.record(z.string(), z.string()).optional().describe("Extra env vars for this deploy, merged on top of the workspace's saved Environment vars (the SaCMS API URL/tenant/key are always injected automatically)")
+          envVars: z.record(z.string(), z.string()).optional().describe("Extra env vars for this deploy, merged on top of the workspace's saved Environment vars (the SaCMS API URL/tenant/key are always injected automatically)"),
+          intent: z.enum(["create", "update"]).optional().describe("Set to \"create\" when the user wants a brand-new website and this ISN'T a revision of whatever is already deployed. When omitted/\"update\", behaves exactly as before (always deploys, no conflict check) — for backward compatibility with callers that don't know about this field."),
+          confirmOverwrite: z.boolean().optional().describe("Set to true to proceed with intent: \"create\" even though a deployment already exists — only after the user has explicitly confirmed they want to replace it."),
+        },
+        outputSchema: {
+          ok: z.boolean(),
+          code: z.string().optional(),
+          deploymentId: z.string().optional(),
+          url: z.string().optional(),
+          state: z.string().optional(),
+          projectId: z.string().optional(),
+          projectName: z.string().optional(),
+          envKeysSent: z.array(z.string()).optional(),
+          simulated: z.boolean().optional(),
+          message: z.string(),
         },
       },
-      async ({ files, envVars }) => {
+      async ({ files, envVars, intent, confirmOverwrite }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2380,6 +2404,34 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               text: `❌ Payment Required: Fitur deploy SaCMS Cloud Hosting memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
             }],
             isError: true,
+          }
+        }
+
+        // Target-conflict guard: only engages when the caller explicitly
+        // declares intent "create" (old callers that never pass `intent`
+        // keep today's exact always-overwrite behavior — see the
+        // backward-compat note on that field above). A "brand-new site"
+        // request against a workspace that already has a live deployment
+        // must surface the conflict instead of silently replacing it.
+        if (intent === "create" && !confirmOverwrite) {
+          const existing = await db.tenant.findUnique({
+            where: { id: auth.tenantId },
+            select: { vercelDeploymentUrl: true },
+          })
+          if (existing?.vercelDeploymentUrl) {
+            return {
+              content: [{
+                type: "text" as const,
+                text: `⚠️ Target Conflict: Workspace '${auth.tenantSlug}' sudah punya website live di ${existing.vercelDeploymentUrl}. SaCMS Cloud Hosting hanya mendukung SATU project per workspace — deploy ini akan MENIMPA website yang sudah ada, bukan membuat yang baru terpisah. Konfirmasi dulu ke pengguna apakah memang ingin menimpanya, lalu panggil ulang deploy_to_sacms dengan confirmOverwrite: true — atau, kalau maksudnya memang merevisi website yang sudah ada, panggil lagi tanpa intent: "create".`
+              }],
+              structuredContent: {
+                ok: false,
+                code: "TARGET_CONFLICT",
+                url: existing.vercelDeploymentUrl,
+                message: "Workspace already has a live deployment — confirm before overwriting.",
+              },
+              isError: true,
+            }
           }
         }
 
@@ -2451,7 +2503,18 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             content: [{
               type: "text" as const,
               text: `🚀 Deploy ke SaCMS Cloud Hosting Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || lockedProjectName}\n- Env terkirim: ${Object.keys(mergedEnv).join(", ")}`
-            }]
+            }],
+            structuredContent: {
+              ok: true,
+              deploymentId: result.id,
+              url: result.url,
+              state: result.state,
+              projectId: result.projectId || "",
+              projectName: result.projectName || lockedProjectName,
+              envKeysSent: Object.keys(mergedEnv),
+              simulated: !!result.simulated,
+              message: `Next step: call get_deployment_status (deploymentId: "${result.id}", or omit it to auto-resolve the latest) to confirm it's READY before telling the user it's done.`,
+            },
           }
         } catch (err: any) {
           return {
@@ -2459,6 +2522,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               type: "text" as const,
               text: `❌ Gagal deploy ke SaCMS Cloud Hosting: ${err.message}`
             }],
+            structuredContent: { ok: false, code: "DEPLOYMENT_FAILED", message: err.message },
             isError: true,
           }
         }
@@ -2470,9 +2534,15 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "get_deployment_status",
       {
         title: "Get Deployment Status",
-        description: "Check the build progress, ready state, and live URL of an existing SaCMS Cloud Hosting deployment.",
+        description: "Check the build progress, ready state, and live URL of a SaCMS Cloud Hosting deployment. Omit deploymentId to automatically check the latest production deployment for this workspace — use that whenever you don't have a specific id handy (e.g. a previous deploy_to_sacms response never arrived), instead of re-deploying just to get a fresh id.",
         inputSchema: {
-          deploymentId: z.string().describe("Deployment ID (e.g. 'dpl_xxx')"),
+          deploymentId: z.string().optional().describe("Specific Deployment ID (e.g. 'dpl_xxx'). Omit to auto-resolve this workspace's latest production deployment."),
+        },
+        outputSchema: {
+          deploymentId: z.string(),
+          state: z.string(),
+          url: z.string(),
+          isReady: z.boolean(),
         },
       },
       async ({ deploymentId }) => {
@@ -2481,32 +2551,55 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         try {
-          const status = await getDeploymentStatus(deploymentId)
+          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
 
-          // Reject a deployment that belongs to a different tenant's
-          // project — deploymentId alone carries no tenant scoping, so
-          // without this any token could poll any tenant's build state and
-          // live URL by guessing/observing an id.
-          if (status.projectId) {
-            const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
-            if (tenant?.vercelProjectId && tenant.vercelProjectId !== status.projectId) {
+          let resolvedId = deploymentId
+          let status: { state: string; url: string; projectId?: string }
+
+          if (resolvedId) {
+            status = await getDeploymentStatus(resolvedId)
+
+            // Reject a deployment that belongs to a different tenant's
+            // project — deploymentId alone carries no tenant scoping, so
+            // without this any token could poll any tenant's build state
+            // and live URL by guessing/observing an id.
+            if (status.projectId && tenant?.vercelProjectId && tenant.vercelProjectId !== status.projectId) {
               return {
-                content: [{ type: "text" as const, text: `❌ Deployment '${deploymentId}' bukan milik workspace ini.` }],
+                content: [{ type: "text" as const, text: `❌ Deployment '${resolvedId}' bukan milik workspace ini.` }],
+                structuredContent: { ok: false, code: "FORBIDDEN", message: "Deployment does not belong to this workspace." },
                 isError: true,
               }
             }
+          } else {
+            if (!tenant?.vercelProjectId) {
+              return {
+                content: [{ type: "text" as const, text: "❌ Belum ada deployment project untuk workspace ini. Deploy dulu dengan deploy_to_sacms." }],
+                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment project yet." },
+                isError: true,
+              }
+            }
+            const latest = await getLatestDeployment(tenant.vercelProjectId)
+            if (!latest) {
+              return {
+                content: [{ type: "text" as const, text: "❌ Tidak ditemukan riwayat deployment untuk workspace ini di Vercel." }],
+                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment history found." },
+                isError: true,
+              }
+            }
+            resolvedId = latest.id
+            status = { state: latest.state, url: latest.url, projectId: tenant.vercelProjectId }
+          }
+
+          const structured = {
+            deploymentId: resolvedId,
+            state: status.state,
+            url: status.url,
+            isReady: status.state === "READY",
           }
 
           return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({
-                deploymentId,
-                state: status.state,
-                url: status.url,
-                isReady: status.state === "READY",
-              }, null, 2)
-            }]
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
           }
         } catch (err: any) {
           return {
@@ -2514,6 +2607,79 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               type: "text" as const,
               text: `❌ Error memeriksa status deployment: ${err.message}`
             }],
+            structuredContent: { ok: false, code: "VERIFICATION_FAILED", message: err.message },
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── get_deployment_source ────────────────────────────────────────────────
+    server.registerTool(
+      "get_deployment_source",
+      {
+        title: "Get Current Deployed Source Files",
+        description: "Read back the actual source files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content} shape deploy_to_sacms expects, so you can edit just what needs to change and deploy the full updated set back. Omit deploymentId to read the latest production deployment.",
+        inputSchema: {
+          deploymentId: z.string().optional().describe("Specific deployment to read from. Omit to use the latest production deployment for this workspace."),
+          maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100). Large binary assets (images, fonts, lockfiles) are always skipped — this is for reading back source, not shipping assets."),
+        },
+        outputSchema: {
+          deploymentId: z.string(),
+          files: z.array(z.object({ name: z.string(), content: z.string() })),
+          skipped: z.array(z.string()),
+          truncated: z.boolean(),
+        },
+      },
+      async ({ deploymentId, maxFiles }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        try {
+          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+          if (!tenant?.vercelProjectId) {
+            return {
+              content: [{ type: "text" as const, text: "❌ Belum ada deployment untuk workspace ini. Deploy dulu dengan deploy_to_sacms sebelum membaca source-nya kembali." }],
+              structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment project yet." },
+              isError: true,
+            }
+          }
+
+          let resolvedId = deploymentId
+          if (resolvedId) {
+            // Ownership check — a deploymentId alone carries no tenant scoping.
+            const status = await getDeploymentStatus(resolvedId)
+            if (status.projectId && status.projectId !== tenant.vercelProjectId) {
+              return {
+                content: [{ type: "text" as const, text: `❌ Deployment '${resolvedId}' bukan milik workspace ini.` }],
+                structuredContent: { ok: false, code: "FORBIDDEN", message: "Deployment does not belong to this workspace." },
+                isError: true,
+              }
+            }
+          } else {
+            const latest = await getLatestDeployment(tenant.vercelProjectId)
+            if (!latest) {
+              return {
+                content: [{ type: "text" as const, text: "❌ Tidak ditemukan riwayat deployment untuk workspace ini di Vercel." }],
+                structuredContent: { ok: false, code: "NOT_FOUND", message: "No deployment history found." },
+                isError: true,
+              }
+            }
+            resolvedId = latest.id
+          }
+
+          const result = await getDeploymentFiles(resolvedId, maxFiles ?? 100)
+          const structured = { deploymentId: resolvedId, ...result }
+
+          return {
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            structuredContent: structured,
+          }
+        } catch (err: any) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal membaca source deployment: ${err.message}` }],
+            structuredContent: { ok: false, code: "VERIFICATION_FAILED", message: err.message },
             isError: true,
           }
         }
@@ -2715,6 +2881,10 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           "guessing a name or asking the user to paste the secret into chat — if it's already set, just " +
           "reference process.env.<KEY> in the generated code.",
         inputSchema: {},
+        outputSchema: {
+          systemVars: z.array(z.object({ key: z.string(), note: z.string() })),
+          customVars: z.array(z.object({ key: z.string() })),
+        },
       },
       async () => {
         const auth = authContext.getStore()
@@ -2724,14 +2894,14 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         const { SYSTEM_ENV_VARS, getTenantCustomEnvVarList } = await import("@/lib/infrastructure/frontend-env")
         const customVars = auth.tenantId ? await getTenantCustomEnvVarList(auth.tenantId) : []
 
+        const structured = {
+          systemVars: SYSTEM_ENV_VARS.map((v) => ({ key: v.key, note: v.note })),
+          customVars: customVars.map((v) => ({ key: v.key })),
+        }
+
         return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              systemVars: SYSTEM_ENV_VARS.map((v) => ({ key: v.key, note: v.note })),
-              customVars: customVars.map((v) => ({ key: v.key })),
-            }, null, 2),
-          }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
         }
       },
     )
@@ -2915,7 +3085,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.8.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.9.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

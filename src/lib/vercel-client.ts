@@ -216,6 +216,55 @@ export async function deployToVercel(
  * as "frozen at the original deployment" rather than "always live", so this
  * passes the just-resolved values explicitly to guarantee they win.
  */
+/**
+ * Resolve the most recent production deployment for a project — shared by
+ * `redeployLatest` (needs to throw with a specific message when there's
+ * none) and `getLatestDeployment` below (used by the MCP
+ * get_deployment_status/get_deployment_source fallback for when a caller
+ * doesn't have a deploymentId handy, e.g. a lost deploy_to_sacms response).
+ */
+async function fetchLatestProductionDeployment(
+  projectId: string,
+): Promise<{ uid: string; url?: string; readyState?: string } | null> {
+  const headers = await getVercelHeaders()
+  const teamId = await getVercelTeamId()
+  const listParams = new URLSearchParams({ projectId, target: "production", limit: "1" })
+  if (teamId) listParams.set("teamId", teamId)
+  const listRes = await fetch(`${VERCEL_API_BASE}/v7/deployments?${listParams.toString()}`, { headers })
+  if (!listRes.ok) {
+    const error = await listRes.json().catch(() => ({ message: listRes.statusText }))
+    throw new Error(`Gagal mengambil riwayat deployment dari Vercel: ${error.error?.message || error.message || listRes.statusText}`)
+  }
+  const listData = await listRes.json().catch(() => ({}))
+  const latest = Array.isArray(listData.deployments) ? listData.deployments[0] : null
+  return latest?.uid ? latest : null
+}
+
+/**
+ * Read-only counterpart to `redeployLatest`'s own lookup — lets a caller
+ * find "the current deployment" for a project without needing a
+ * deploymentId at all. Never throws: returns `null` on any failure
+ * (no token, no previous deployment, Vercel API error) so callers can
+ * treat it as "nothing to report" rather than a hard error.
+ */
+export async function getLatestDeployment(
+  projectId: string,
+): Promise<{ id: string; url: string; state: string } | null> {
+  const token = await getVercelToken()
+  if (!token) return null
+  try {
+    const latest = await fetchLatestProductionDeployment(projectId)
+    if (!latest) return null
+    return {
+      id: latest.uid,
+      url: latest.url ? `https://${latest.url}` : "",
+      state: latest.readyState || "UNKNOWN",
+    }
+  } catch {
+    return null
+  }
+}
+
 export async function redeployLatest(
   projectId: string,
   projectName: string,
@@ -236,18 +285,9 @@ export async function redeployLatest(
   }
 
   const headers = await getVercelHeaders()
-  const teamId = await getVercelTeamId()
 
-  const listParams = new URLSearchParams({ projectId, target: "production", limit: "1" })
-  if (teamId) listParams.set("teamId", teamId)
-  const listRes = await fetch(`${VERCEL_API_BASE}/v7/deployments?${listParams.toString()}`, { headers })
-  if (!listRes.ok) {
-    const error = await listRes.json().catch(() => ({ message: listRes.statusText }))
-    throw new Error(`Gagal mengambil riwayat deployment dari Vercel: ${error.error?.message || error.message || listRes.statusText}`)
-  }
-  const listData = await listRes.json().catch(() => ({}))
-  const latest = Array.isArray(listData.deployments) ? listData.deployments[0] : null
-  if (!latest?.uid) {
+  const latest = await fetchLatestProductionDeployment(projectId)
+  if (!latest) {
     throw new Error("Belum ada deployment sebelumnya untuk di-redeploy. Deploy terlebih dahulu lewat deploy_to_sacms.")
   }
 
@@ -303,6 +343,99 @@ export async function getDeploymentStatus(deploymentId: string): Promise<{ state
     url: data.url ? `https://${data.url}` : "",
     projectId: data.projectId || undefined,
   }
+}
+
+interface VercelFileNode {
+  name: string
+  type: "file" | "directory" | "lambda"
+  uid?: string
+  children?: VercelFileNode[]
+}
+
+const SKIP_DEPLOYMENT_DIRS = new Set(["node_modules", ".git", ".next", ".vercel"])
+const SKIP_DEPLOYMENT_FILE_RE = /\.(png|jpe?g|gif|webp|avif|ico|svg|woff2?|ttf|eot|mp4|mp3|zip|pdf|lockb?)$/i
+
+/**
+ * Reads back the actual source files of a deployment — the one thing the
+ * MCP deploy tools never exposed before: `deploy_to_sacms` only ever pushed
+ * `files[]` to Vercel, it never persisted them anywhere in SaCMS's own DB,
+ * so an agent asked to make a targeted revision ("ubah warna header") had
+ * no way to recover the current source once it fell out of its own
+ * conversation context. Vercel already stores the exact files it was given
+ * (same `{name, content}` shape `deployToVercel` uploads), so this just
+ * reads them back via Vercel's own deployment-files API instead of SaCMS
+ * inventing a second copy to keep in sync.
+ *
+ * Best-effort per file: an individual file that fails to fetch or decode is
+ * reported in `skipped` rather than failing the whole read. Binary-looking
+ * extensions and build-noise directories are skipped outright — this is
+ * for reading back *source*, not shipping assets back out.
+ */
+export async function getDeploymentFiles(
+  deploymentId: string,
+  maxFiles = 100,
+): Promise<{ files: { name: string; content: string }[]; skipped: string[]; truncated: boolean }> {
+  const token = await getVercelToken()
+  if (!token) return { files: [], skipped: [], truncated: false }
+
+  const headers = await getVercelHeaders()
+  const teamQuery = await getTeamQuery()
+
+  const treeRes = await fetch(`${VERCEL_API_BASE}/v6/deployments/${deploymentId}/files${teamQuery}`, { headers })
+  if (!treeRes.ok) {
+    const error = await treeRes.json().catch(() => ({ message: treeRes.statusText }))
+    throw new Error(`Gagal mengambil daftar file deployment dari Vercel: ${error.error?.message || error.message || treeRes.statusText}`)
+  }
+  const tree: VercelFileNode[] = await treeRes.json().catch(() => [])
+
+  const leaves: { path: string; uid: string }[] = []
+  const walk = (nodes: VercelFileNode[], prefix: string) => {
+    for (const node of nodes) {
+      if (!node?.name) continue
+      const path = prefix ? `${prefix}/${node.name}` : node.name
+      if (node.type === "directory") {
+        if (SKIP_DEPLOYMENT_DIRS.has(node.name)) continue
+        if (node.children) walk(node.children, path)
+      } else if (node.type === "file" && node.uid) {
+        leaves.push({ path, uid: node.uid })
+      }
+    }
+  }
+  walk(Array.isArray(tree) ? tree : [], "")
+
+  const files: { name: string; content: string }[] = []
+  const skipped: string[] = []
+  let truncated = false
+
+  for (const leaf of leaves) {
+    if (files.length >= maxFiles) {
+      truncated = true
+      break
+    }
+    if (SKIP_DEPLOYMENT_FILE_RE.test(leaf.path)) {
+      skipped.push(leaf.path)
+      continue
+    }
+    try {
+      const fileRes = await fetch(`${VERCEL_API_BASE}/v7/deployments/${deploymentId}/files/${leaf.uid}${teamQuery}`, { headers })
+      if (!fileRes.ok) {
+        skipped.push(leaf.path)
+        continue
+      }
+      const data = await fileRes.json().catch(() => null)
+      const raw = typeof data?.data === "string" ? data.data : null
+      if (raw === null) {
+        skipped.push(leaf.path)
+        continue
+      }
+      const content = data.encoding === "base64" ? Buffer.from(raw, "base64").toString("utf-8") : raw
+      files.push({ name: leaf.path, content })
+    } catch {
+      skipped.push(leaf.path)
+    }
+  }
+
+  return { files, skipped, truncated }
 }
 
 /**
