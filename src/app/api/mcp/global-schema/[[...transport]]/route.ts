@@ -153,6 +153,16 @@ function invalidSchema(error: z.ZodError) {
   }
 }
 
+/** Shared slug-collision-retry loop — used by create_schema_template and create_website_template's own slug, and (new) a Schema Template auto-created inline by create_website_template. */
+async function dedupeSlug(baseSlug: string, exists: (slug: string) => Promise<unknown>): Promise<string> {
+  let slug = baseSlug
+  let suffix = 1
+  while (await exists(slug)) {
+    slug = `${baseSlug}-${++suffix}`
+  }
+  return slug
+}
+
 // ─── MCP Handler ─────────────────────────────────────────────────────────
 
 const handler = createMcpHandler(
@@ -331,12 +341,7 @@ const handler = createMcpHandler(
         const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
         if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
 
-        const baseSlug = slugify(name)
-        let slug = baseSlug
-        let suffix = 1
-        while (await db.schemaTemplate.findUnique({ where: { slug } })) {
-          slug = `${baseSlug}-${++suffix}`
-        }
+        const slug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
 
         const template = await db.schemaTemplate.create({
           data: {
@@ -515,10 +520,12 @@ const handler = createMcpHandler(
         title: "Create Website Template",
         description:
           "Create a new Website Template — a frontend source bundle (Next.js app files, text/code only, no " +
-          "binary assets) that follows an existing Schema Template's structure. Call list_schema_templates " +
-          "first to get the right schemaTemplateId, and get_schema_template to see exactly what Content " +
-          "Types/Single Types/Components/fields this frontend needs to render. Call list_website_templates " +
-          "first to avoid creating a near-duplicate for the same Schema Template. IMPORTANT: include a " +
+          "binary assets) PLUS the CMS schema it renders, built together in one call. Pass `schema` to define " +
+          "a brand-new structure for this frontend (the common case — SaCMS auto-creates the backing Schema " +
+          "Template for you, you never need to call create_schema_template separately). Pass `schemaTemplateId` " +
+          "instead only when deliberately reusing an EXISTING Schema Template for a second frontend skin — " +
+          "call list_schema_templates/get_schema_template first to find it. Exactly one of the two is required. " +
+          "Call list_website_templates first either way, to avoid creating a near-duplicate. IMPORTANT: include a " +
           "`.env.example` file in `files` listing every env var the frontend reads from process.env — " +
           "\"Terapkan\" parses it and auto-creates matching custom env vars on the workspace's Environment " +
           "tab at apply time. If your frontend doesn't use SaCMS's own fixed names (NEXT_PUBLIC_SACMS_API_URL / " +
@@ -528,7 +535,13 @@ const handler = createMcpHandler(
           "the customer to guess. Any other var (e.g. NEXT_PUBLIC_SITE_NAME=) is created with its literal " +
           "default value, editable later on the Environment tab.",
         inputSchema: {
-          schemaTemplateId: z.string().describe("The Schema Template this frontend follows (id or slug)"),
+          schemaTemplateId: z.string().optional().describe("Reuse an EXISTING Schema Template's structure (id or slug) instead of defining a new one via `schema`. Mutually exclusive with `schema`."),
+          schema: schemaTemplateBundleSchema.optional().describe(
+            "Define this frontend's CMS structure inline — { groups?: [...], contentTypes: [...], singleTypes: [...], components: [...] }, same shape as create_schema_template's own `schema`. " +
+            "Call list_field_types FIRST — it has the real options/relationSlug shape and entry-value shape per field type, and flags options that look plausible but are silently ignored. Never guess one. " +
+            "SaCMS auto-creates the backing Schema Template for you (named/categorized from this call's `name`/`category`). Mutually exclusive with `schemaTemplateId`.",
+          ),
+          category: z.string().min(1).max(100).optional().describe("Catalog category for the auto-created backing Schema Template when `schema` is given (e.g. 'Business', 'Blog & News'). Ignored when `schemaTemplateId` is given. Defaults to 'Custom'."),
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
           description: z.string().max(500).optional(),
@@ -546,30 +559,58 @@ const handler = createMcpHandler(
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
         },
       },
-      async ({ schemaTemplateId, name, icon, description, files, published }) => {
+      async ({ schemaTemplateId, schema, category, name, icon, description, files, published }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const schemaTemplate = await db.schemaTemplate.findFirst({
-          where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
-          select: { id: true, slug: true, name: true, schema: true, demoTenantId: true },
-        })
-        if (!schemaTemplate) {
+        if (!schemaTemplateId && !schema) {
           return {
-            content: [{ type: "text" as const, text: `❌ Schema Template '${schemaTemplateId}' tidak ditemukan. Panggil list_schema_templates untuk melihat id/slug yang valid.` }],
+            content: [{ type: "text" as const, text: "❌ Berikan salah satu: `schemaTemplateId` (pakai Schema Template yang sudah ada) ATAU `schema` (buat Schema Template baru otomatis untuk frontend ini)." }],
             isError: true,
           }
+        }
+        if (schemaTemplateId && schema) {
+          return {
+            content: [{ type: "text" as const, text: "❌ Berikan HANYA salah satu dari `schemaTemplateId` atau `schema`, bukan keduanya — keduanya menyatakan maksud yang berbeda (pakai schema lama vs buat schema baru)." }],
+            isError: true,
+          }
+        }
+
+        let schemaTemplate: { id: string; slug: string; name: string; schema: unknown; demoTenantId: string | null }
+        if (schemaTemplateId) {
+          const found = await db.schemaTemplate.findFirst({
+            where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
+            select: { id: true, slug: true, name: true, schema: true, demoTenantId: true },
+          })
+          if (!found) {
+            return {
+              content: [{ type: "text" as const, text: `❌ Schema Template '${schemaTemplateId}' tidak ditemukan. Panggil list_schema_templates untuk melihat id/slug yang valid.` }],
+              isError: true,
+            }
+          }
+          schemaTemplate = found
+        } else {
+          const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
+          if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
+          const schemaSlug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
+          const createdSchemaTemplate = await db.schemaTemplate.create({
+            data: {
+              name,
+              slug: schemaSlug,
+              category: category || "Custom",
+              icon: icon || "📦",
+              description: null,
+              schema: parsedBundle.data,
+              published: false,
+            },
+          })
+          schemaTemplate = createdSchemaTemplate
         }
 
         const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
         if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
 
-        const baseSlug = slugify(name)
-        let slug = baseSlug
-        let suffix = 1
-        while (await db.websiteTemplate.findUnique({ where: { slug } })) {
-          slug = `${baseSlug}-${++suffix}`
-        }
+        const slug = await dedupeSlug(slugify(name), (s) => db.websiteTemplate.findUnique({ where: { slug: s } }))
 
         const template = await db.websiteTemplate.create({
           data: {
@@ -609,12 +650,14 @@ const handler = createMcpHandler(
       {
         title: "Update Website Template",
         description:
-          "Update an existing Website Template's metadata, files, and/or published status. For a TARGETED " +
-          "edit (\"ubah warna header\", \"ganti font\"), prefer changedFiles/deletedFiles over files — call " +
-          "get_website_template first if you don't already have the current bundle in this conversation, " +
+          "Update an existing Website Template's metadata, files, schema, and/or published status. For a " +
+          "TARGETED edit (\"ubah warna header\", \"ganti font\"), prefer changedFiles/deletedFiles over files — " +
+          "call get_website_template first if you don't already have the current bundle in this conversation, " +
           "then send only what actually changed; SaCMS merges it onto the full stored bundle so you never risk " +
           "silently dropping an untouched file. Passing `files` instead REPLACES the whole bundle wholesale — " +
-          "only use that for a full rewrite, and include every file you want to keep.",
+          "only use that for a full rewrite, and include every file you want to keep. Pass `schema` to revise " +
+          "the backing Schema Template's structure in the same call as a frontend edit (e.g. adding a field the " +
+          "new UI needs) — full replacement like `files`, include every model you want to keep.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
           name: z.string().min(1).max(150).optional(),
@@ -623,6 +666,7 @@ const handler = createMcpHandler(
           files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle. Do not combine with changedFiles/deletedFiles — pick one."),
           changedFiles: z.array(z.object({ path: z.string().trim().min(1).max(300), content: z.string().max(200_000) })).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is."),
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
+          schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
           published: z.boolean().optional(),
         },
         outputSchema: {
@@ -630,7 +674,7 @@ const handler = createMcpHandler(
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional(),
         },
       },
-      async ({ id, name, icon, description, files, changedFiles, deletedFiles, published }) => {
+      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -668,6 +712,14 @@ const handler = createMcpHandler(
           filesData = parsedFiles.data
         }
 
+        let schemaUpdated = false
+        if (schema !== undefined) {
+          const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
+          if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
+          await db.schemaTemplate.update({ where: { id: existing.schemaTemplate.id }, data: { schema: parsedBundle.data } })
+          schemaUpdated = true
+        }
+
         const template = await db.websiteTemplate.update({
           where: { id: existing.id },
           data: {
@@ -679,15 +731,22 @@ const handler = createMcpHandler(
           },
         })
 
-        // Only a real file change warrants a redeploy — a metadata-only
-        // edit (name/icon/description/published) shouldn't rebuild the demo.
-        if (filesData !== undefined) {
+        // A real file OR schema change warrants a redeploy (the demo needs
+        // to reflect either) — a metadata-only edit (name/icon/description/
+        // published) shouldn't rebuild it.
+        if (filesData !== undefined || schemaUpdated) {
+          // Re-fetch rather than reuse `existing.schemaTemplate` — that
+          // closure is stale the moment `schemaUpdated` just wrote a new
+          // schema blob, and the demo must seed against the NEW one.
+          const freshSchemaTemplate = schemaUpdated
+            ? await db.schemaTemplate.findUnique({ where: { id: existing.schemaTemplate.id } })
+            : existing.schemaTemplate
           const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
           const demo = await deployWebsiteTemplateDemo({
             id: template.id,
             slug: template.slug,
-            files: filesData,
-            schemaTemplate: existing.schemaTemplate,
+            files: filesData ?? (template.files as unknown as { path: string; content: string }[]),
+            schemaTemplate: freshSchemaTemplate || existing.schemaTemplate,
           })
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
           const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
@@ -734,25 +793,26 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.4.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.5.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
       "that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, " +
       "or settings; for that, connect to a workspace's own MCP server at /api/mcp instead. Call " +
-      "list_field_types before writing any Schema Template field (it has the real options/relationSlug shape " +
-      "per type, and flags options that are silently ignored — never guess one), and list_schema_templates / " +
-      "list_website_templates before creating a new one, to avoid a near-duplicate. To build a Website " +
-      "Template: get_schema_template first to see exactly what structure the frontend needs to render, " +
-      "develop it like any other SaCMS frontend (same conventions as deploy_to_sacms on the per-workspace " +
-      "server), then create_website_template with every source file as plain text. Every " +
-      "create_website_template and update_website_template(files/changedFiles: ...) call automatically " +
+      "list_field_types before writing any schema field (it has the real options/relationSlug shape per type, " +
+      "and flags options that are silently ignored — never guess one), and list_website_templates before " +
+      "creating a new one, to avoid a near-duplicate. BUILD SCHEMA AND FRONTEND TOGETHER in one call: pass " +
+      "`schema` directly to create_website_template — it auto-creates the backing Schema Template for you, no " +
+      "separate create_schema_template step needed for the common case. Only use `schemaTemplateId` (and the " +
+      "standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template " +
+      "tools) when deliberately reusing an existing structure for a second frontend skin. Every " +
+      "create_website_template and update_website_template(files/changedFiles/schema: ...) call automatically " +
       "(re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a " +
       "real customer's data — so you can test in a real browser before publishing. The response's " +
       "`demoDeployment` reports `status` (ok/failed/skipped), `verified` (SaCMS actually fetched the URL and " +
       "confirmed it renders — Vercel accepting the build is NOT the same as it working), and `error`/" +
       "`verificationError` when something's wrong; `status: \"ok\"` alone doesn't mean verified is true, check " +
-      "both before telling a human the preview is ready. A metadata-only update (no files/changedFiles) " +
+      "both before telling a human the preview is ready. A metadata-only update (no files/changedFiles/schema) " +
       "returns `demoDeployment.status: \"skipped\"` and does not redeploy. For a TARGETED revision of an " +
       "existing template (\"ubah warna header\"), call get_website_template to see the current bundle, then " +
       "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`.",

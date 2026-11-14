@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import { getFrontendDeployToken, resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
+import { assertSchemaEditable } from "@/lib/schema-lock"
+import { wipeTenantSchema } from "@/lib/schema-wipe"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
@@ -172,6 +174,50 @@ export const POST = withStaffAuth(
       ])
 
       return NextResponse.json({ success: true })
+    }
+
+    // ── ACTION: RESET WEBSITE (delete-project + wipe schema + clear
+    // sourceWebsiteTemplateId in one action) — lets a tenant cleanly "start
+    // over" and apply a different Website Template, instead of the two
+    // disconnected manual steps (Hapus Project + Hapus Semua Schema) this
+    // replaces. Vercel deletion runs first since it's the one step that can
+    // fail against an external system — on failure nothing is written to
+    // the DB yet, so a retry is always safe. ──────────────────────────────
+    if (action === "reset-website") {
+      if (access.isGlobal) {
+        return apiError("forbidden", { message: "Reset website tidak tersedia untuk workspace SaCMS Global." })
+      }
+
+      const lockError = await assertSchemaEditable(tenantId)
+      if (lockError) return apiError("forbidden", { message: lockError.error })
+
+      const existingProjectId = await db.setting.findUnique({ where: { key: `${tenantId}_vercelProjectId` } })
+      const projectId = existingProjectId?.value || (tenant as any).vercelProjectId
+
+      if (projectId) {
+        const result = await deleteVercelProject(projectId)
+        if (!result.ok) {
+          return NextResponse.json(
+            { error: result.error || "Gagal menghapus project di Vercel — reset dibatalkan, schema tidak disentuh." },
+            { status: 400 },
+          )
+        }
+      }
+
+      await Promise.all([
+        db.tenant.update({
+          where: { id: tenantId },
+          data: { vercelDeploymentUrl: null, vercelProjectId: null, customDomain: null, sourceWebsiteTemplateId: null },
+        }).catch((err) => console.warn("Failed to clear tenant fields during reset-website:", err)),
+        db.setting.deleteMany({
+          where: { key: { in: [`${tenantId}_vercelDeploymentUrl`, `${tenantId}_vercelProjectId`, `${tenantId}_customDomain`] } },
+        }).catch(() => null),
+      ])
+
+      const tenantDb = await getTenantDb(tenantSlug)
+      const deletedSchema = await wipeTenantSchema(tenantDb, tenantId)
+
+      return NextResponse.json({ success: true, deletedSchema })
     }
 
     // ── ACTION: LINK / UPDATE VERCEL DEPLOYMENT URL ─────────────────────────

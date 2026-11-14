@@ -81,4 +81,34 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(routeSource).toMatch(/verified:\s*z\.boolean\(\)\.optional\(\)/)
     expect(routeSource).toMatch(/verificationError:\s*z\.boolean\(\)\.optional\(\)|verificationError:\s*z\.string\(\)\.optional\(\)/)
   })
+
+  // ── Schema + Website Template merge ─────────────────────────────────────
+
+  it("create_website_template accepts schema inline as an alternative to schemaTemplateId, and rejects neither/both", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/schemaTemplateId:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/schema:\s*schemaTemplateBundleSchema\.optional\(\)/)
+    expect(scoped).toMatch(/category:\s*z\.string\(\)\.min\(1\)\.max\(100\)\.optional\(\)/)
+    expect(scoped).toMatch(/Berikan salah satu/)
+    expect(scoped).toMatch(/Berikan HANYA salah satu/)
+  })
+
+  it("create_website_template auto-creates a backing Schema Template when schema is given, reusing the shared slug-dedup helper", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/dedupeSlug/)
+    expect(scoped).toMatch(/db\.schemaTemplate\.create/)
+    expect(scoped).toMatch(/published:\s*false/)
+  })
+
+  it("update_website_template accepts an optional schema param and redeploys the demo when it (or files) changed", () => {
+    const scoped = toolBlockOf("update_website_template")
+    expect(scoped).toMatch(/schema:\s*schemaTemplateBundleSchema\.optional\(\)/)
+    expect(scoped).toMatch(/schemaUpdated/)
+    expect(scoped).toMatch(/filesData !== undefined \|\| schemaUpdated/)
+  })
+
+  it("create_schema_template and create_website_template share one slug-dedup helper instead of duplicating the collision loop", () => {
+    const occurrences = routeSource.match(/async function dedupeSlug/g) || []
+    expect(occurrences).toHaveLength(1)
+  })
 })

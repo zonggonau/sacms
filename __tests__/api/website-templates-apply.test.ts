@@ -13,7 +13,10 @@ const { fakeTenantDb } = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/database", () => ({
-  db: { websiteTemplate: { findUnique: vi.fn() } },
+  db: {
+    websiteTemplate: { findUnique: vi.fn() },
+    tenant: { update: vi.fn().mockResolvedValue({}) },
+  },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
 
@@ -125,6 +128,19 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(body.deployment.url).toBe("https://acme.sites.sacms.cloud")
     expect(setTenantCustomEnvVars).not.toHaveBeenCalled()
     expect(body.envVarsApplied).toEqual([])
+    expect(db.tenant.update).toHaveBeenCalledWith({
+      where: { id: "tenant1" },
+      data: { sourceWebsiteTemplateId: "wt1" },
+    })
+  })
+
+  it("still reports success even if persisting sourceWebsiteTemplateId fails — informational only, never gates the apply", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
+    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
+    vi.mocked(db.tenant.update).mockRejectedValueOnce(new Error("db hiccup"))
+
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(res.status).toBe(200)
   })
 
   it("merges the template's resolved env vars into the Environment tab BEFORE deploying", async () => {
@@ -152,5 +168,9 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(200)
     expect(materializeSchemaIntoTenant).toHaveBeenCalled()
+    expect(db.tenant.update).toHaveBeenCalledWith({
+      where: { id: "tenant1" },
+      data: { sourceWebsiteTemplateId: "wt1" },
+    })
   })
 })

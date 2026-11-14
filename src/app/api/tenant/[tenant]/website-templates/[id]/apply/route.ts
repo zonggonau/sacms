@@ -91,6 +91,16 @@ export const POST = withStaffAuth(
     const files = templateFiles.map((f) => ({ name: f.path, content: f.content }))
     const deployResult = await deployTenantFrontend(tenant.id, tenant.slug, resolveApiOrigin(), files)
 
+    // Informational only (Hosting tab banner / the new reset-website action)
+    // — never gates anything, so a failure here must not fail an apply that
+    // already succeeded. Only THIS route sets it; ordinary revisions via
+    // deploy_to_sacms/deploy_website_patch/the dashboard's own deploy button
+    // must not overwrite it, and only the reset-website action clears it.
+    await db.tenant.update({
+      where: { id: tenant.id },
+      data: { sourceWebsiteTemplateId: websiteTemplate.id },
+    }).catch((err) => console.warn("Failed to set sourceWebsiteTemplateId after apply:", err))
+
     return NextResponse.json({
       success: true,
       imported,

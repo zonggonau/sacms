@@ -9,8 +9,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search } from "lucide-react"
+import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search, AlertTriangle } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
 
 interface WebsiteTemplateItem {
@@ -28,13 +29,20 @@ interface WebsiteTemplateItem {
 interface WebsiteTemplatesTabProps {
   tenantSlug: string
   isGlobal: boolean
+  /** Whether this workspace currently has no Content Type/Single Type/Component at all — mirrors the
+   *  same empty-workspace check the apply route itself gates on. When false, a regular tenant needs to
+   *  reset before a NEW template can be applied. */
+  isWorkspaceEmpty: boolean
   /** Called after a successful "Terapkan" — parent switches to Diagram Schema and refreshes live schema. */
   onApplied?: () => void
+  /** Called after a successful reset — parent just refreshes live schema; does NOT switch tabs, since the
+   *  user's next action is picking a new template right here. */
+  onReset?: () => void
 }
 
 const ALL_SCHEMAS = "__all__"
 
-export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: WebsiteTemplatesTabProps) {
+export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<WebsiteTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -47,6 +55,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
   const [reviewId, setReviewId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"card" | "table">("card")
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
 
   const fetchTemplates = () => {
     setIsLoading(true)
@@ -125,6 +135,26 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
       toast({ variant: "destructive", title: "Gagal Menerapkan", description: err.message })
     } finally {
       setApplyingId(null)
+    }
+  }
+
+  const handleReset = async () => {
+    setIsResetting(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset-website" }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal reset website")
+      toast({ title: "Website Direset", description: "Project hosting dan schema lama sudah dihapus — silakan pilih Website Template baru." })
+      onReset?.()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Reset", description: err.message })
+    } finally {
+      setIsResetting(false)
+      setConfirmResetOpen(false)
     }
   }
 
@@ -369,11 +399,47 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
   const published = templates.filter((t) => t.published)
   const visibleTemplates = (schemaFilter === ALL_SCHEMAS ? published : published.filter((t) => t.schemaTemplate.slug === schemaFilter)).filter(matchesSearch)
 
+  const ResetBanner = () => (
+    <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
+      <CardContent className="p-4 flex items-start gap-3">
+        <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className="text-xs font-bold text-foreground">Workspace ini sudah punya schema dan/atau website aktif</p>
+          <p className="text-[11px] text-muted-foreground">
+            Menerapkan Website Template baru memerlukan reset total dulu — project hosting dan semua Content Type/Single Type/Component beserta kontennya akan dihapus permanen.
+            Kalau cuma mau mengubah sebagian website yang sudah diterapkan, tidak perlu reset — langsung edit lewat ChatGPT/MCP di tab{" "}
+            <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="font-semibold underline underline-offset-2 hover:text-foreground">Server MCP</a>.
+          </p>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setConfirmResetOpen(true)}
+            className="h-7 mt-1 rounded-lg text-[11px] font-bold gap-1.5"
+          >
+            <Trash2 className="h-3 w-3" /> Reset &amp; Pilih Template Lain
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   if (published.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 py-20 text-center text-muted-foreground">
-        <LayoutTemplate className="h-6 w-6 opacity-50" />
-        <p className="text-xs">Belum ada Website Template tersedia.</p>
+      <div className="space-y-3">
+        {!isWorkspaceEmpty && <ResetBanner />}
+        <div className="flex flex-col items-center justify-center gap-2 py-20 text-center text-muted-foreground">
+          <LayoutTemplate className="h-6 w-6 opacity-50" />
+          <p className="text-xs">Belum ada Website Template tersedia.</p>
+        </div>
+        <ConfirmDialog
+          open={confirmResetOpen}
+          onOpenChange={setConfirmResetOpen}
+          title="Reset total workspace ini?"
+          description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Tindakan ini tidak bisa dibatalkan."
+          confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
+          variant="destructive"
+          onConfirm={handleReset}
+        />
       </div>
     )
   }
@@ -403,6 +469,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
 
   return (
     <div className="space-y-3">
+      {!isWorkspaceEmpty && <ResetBanner />}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>
@@ -470,7 +537,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
                   <Button
                     size="sm"
                     onClick={() => handleApply(t)}
-                    disabled={applyingId === t.id}
+                    disabled={applyingId === t.id || !isWorkspaceEmpty}
+                    title={!isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
                     className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
                   >
                     {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
@@ -523,7 +591,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
                         <Button
                           size="sm"
                           onClick={() => handleApply(t)}
-                          disabled={applyingId === t.id}
+                          disabled={applyingId === t.id || !isWorkspaceEmpty}
+                          title={!isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
                           className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
                         >
                           {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
@@ -538,6 +607,16 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, onApplied }: Website
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={confirmResetOpen}
+        onOpenChange={setConfirmResetOpen}
+        title="Reset total workspace ini?"
+        description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
+        variant="destructive"
+        onConfirm={handleReset}
+      />
     </div>
   )
 }

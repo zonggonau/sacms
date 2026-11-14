@@ -18,7 +18,7 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
   const pathname = usePathname()
 
   const builderNavItems = [
-    { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/schema`, icon: Bot, badge: "AI" },
+    { title: "Website Template", href: `/dashboard/${tenantId}/developer/schema`, icon: Bot, badge: "AI" },
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/components`, icon: Puzzle },

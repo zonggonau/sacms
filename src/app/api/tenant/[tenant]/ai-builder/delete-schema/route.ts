@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { assertSchemaEditable } from "@/lib/schema-lock"
+import { wipeTenantSchema } from "@/lib/schema-wipe"
 
 /**
  * Nuclear option: wipes every Content Type, Single Type, and Component this
@@ -27,21 +28,9 @@ export const POST = withStaffAuth(
     if (lockError) return apiError("forbidden", { message: lockError.error })
 
     const tenantDb = await getTenantDb(access.tenant.slug)
+    const deleted = await wipeTenantSchema(tenantDb, access.tenantId)
 
-    const [contentTypes, singleTypes, components] = await Promise.all([
-      tenantDb.contentType.deleteMany({ where: { tenantId: access.tenantId } }),
-      tenantDb.singleType.deleteMany({ where: { tenantId: access.tenantId } }),
-      tenantDb.component.deleteMany({ where: { tenantId: access.tenantId } }),
-    ])
-
-    return NextResponse.json({
-      success: true,
-      deleted: {
-        contentTypes: contentTypes.count,
-        singleTypes: singleTypes.count,
-        components: components.count,
-      },
-    })
+    return NextResponse.json({ success: true, deleted })
   },
   { minRole: "admin" },
 )
