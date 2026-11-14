@@ -3,11 +3,11 @@ import { readFileSync } from "fs"
 import { join } from "path"
 
 // Static source-text contract checks for the MCP audit's P0 fixes
-// (chatgpt.md): no tool should claim to be "the first step" except
-// get_agent_playbook, and the tools driving the deploy/revise flow must
-// declare outputSchema and the new optional params. These assert against
-// the route file's own source rather than importing/executing it: the
-// module registers all its tools through `createMcpHandler`'s factory,
+// (chatgpt.md, chatgpt1.md): no tool should claim to be "the first step"
+// except get_agent_playbook, and the tools driving the deploy/revise flow
+// must declare outputSchema and the new optional params. These assert
+// against the route file's own source rather than importing/executing it:
+// the module registers all its tools through `createMcpHandler`'s factory,
 // which the underlying SDK only invokes lazily per-request — there is no
 // reliable way to mock that interception in this test environment, so a
 // behavioral/integration test would exercise nothing. A source-text check
@@ -18,6 +18,24 @@ const routeSource = readFileSync(
   join(__dirname, "../../src/app/api/mcp/[[...transport]]/route.ts"),
   "utf-8",
 )
+
+/**
+ * Locates a tool's ACTUAL `server.registerTool("name", { ... })` call and
+ * returns just that block's source, up to the next registration. A plain
+ * `indexOf('"name",')` is not safe once a tool's name can also appear as a
+ * plain string value elsewhere (e.g. start_website_build's `nextAction`
+ * referencing `"get_deployment_source"` as a suggested next tool to call) —
+ * that would find the wrong occurrence and scope the slice incorrectly.
+ * Anchoring on the exact registration indentation avoids that.
+ */
+function toolBlockOf(tool: string): string {
+  const anchor = `server.registerTool(\n      "${tool}",`
+  const start = routeSource.indexOf(anchor)
+  expect(start, `${tool} should be registered via server.registerTool`).toBeGreaterThan(-1)
+  const rest = routeSource.slice(start + anchor.length)
+  const nextRegisterTool = rest.indexOf("server.registerTool(")
+  return nextRegisterTool === -1 ? rest : rest.slice(0, nextRegisterTool)
+}
 
 describe("MCP workspace server route — source contract", () => {
   it("no longer has get_full_schema claiming to be the first step to call", () => {
@@ -34,6 +52,9 @@ describe("MCP workspace server route — source contract", () => {
       "get_full_schema",
       "list_deployment_env",
       "deploy_to_sacms",
+      "deploy_website_patch",
+      "list_website_versions",
+      "rollback_website",
       "get_deployment_status",
       "get_deployment_source",
       "get_deployment_build_logs",
@@ -41,17 +62,12 @@ describe("MCP workspace server route — source contract", () => {
       "start_website_build",
       "get_build_run",
     ]) {
-      const toolBlock = routeSource.slice(routeSource.indexOf(`"${tool}",`))
-      const nextRegisterTool = toolBlock.indexOf("server.registerTool(", 1)
-      const scoped = nextRegisterTool === -1 ? toolBlock : toolBlock.slice(0, nextRegisterTool)
-      expect(scoped, `${tool} should be registered`).toMatch(new RegExp(`"${tool}"`))
-      expect(scoped, `${tool} should declare an outputSchema`).toMatch(/outputSchema:/)
+      expect(toolBlockOf(tool), `${tool} should declare an outputSchema`).toMatch(/outputSchema:/)
     }
   })
 
   it("get_deployment_status's deploymentId is optional, with a fallback to the latest deployment", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_status",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("get_deployment_status")
     expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/resolveDeploymentId/)
   })
@@ -63,63 +79,117 @@ describe("MCP workspace server route — source contract", () => {
   })
 
   it("deploy_to_sacms exposes intent/confirmOverwrite and a TARGET_CONFLICT guard", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"deploy_to_sacms",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("deploy_to_sacms")
     expect(scoped).toMatch(/intent:\s*z\.enum/)
     expect(scoped).toMatch(/confirmOverwrite:\s*z\.boolean\(\)\.optional\(\)/)
     expect(scoped).toMatch(/TARGET_CONFLICT/)
   })
 
   it("registers get_deployment_source as a new tool reading back real deployed files, encoding included", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_source",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("get_deployment_source")
     expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/getDeploymentFiles/)
     expect(scoped).toMatch(/encoding:\s*z\.enum\(\["utf-8", "base64"\]\)/)
   })
 
   it("deploy_to_sacms's files accept a per-file encoding for binary assets", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"deploy_to_sacms",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("deploy_to_sacms")
     expect(scoped).toMatch(/encoding:\s*z\.enum\(\["utf-8", "base64"\]\)\.optional\(\)/)
   })
 
   it("registers get_deployment_build_logs reading real Vercel build output", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"get_deployment_build_logs",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("get_deployment_build_logs")
     expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/resolveDeploymentId/)
     expect(scoped).toMatch(/getDeploymentBuildLogs/)
   })
 
   it("registers verify_deployment_url to actually fetch the live site, not just trust Vercel's status", () => {
-    const toolBlock = routeSource.slice(routeSource.indexOf('"verify_deployment_url",'))
-    const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+    const scoped = toolBlockOf("verify_deployment_url")
     expect(scoped).toMatch(/expectedText:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/safeFetch/)
     expect(scoped).toMatch(/containsExpectedText/)
   })
 
   it("registers start_website_build and get_build_run for a resumable entry point", () => {
-    const startBlock = routeSource.slice(routeSource.indexOf('"start_website_build",'))
-    const scopedStart = startBlock.slice(0, startBlock.indexOf("server.registerTool(", 1))
+    const scopedStart = toolBlockOf("start_website_build")
     expect(scopedStart).toMatch(/startOrResumeBuildRun/)
     expect(scopedStart).toMatch(/TARGET_CONFLICT|conflict/)
     // Deliberately doesn't claim to be "the first step" the same way
     // get_agent_playbook does — see the single-FIRST-claim test above.
     expect(scopedStart).not.toMatch(/call this first/i)
 
-    const getBlock = routeSource.slice(routeSource.indexOf('"get_build_run",'))
-    const scopedGet = getBlock.slice(0, getBlock.indexOf("server.registerTool(", 1))
+    const scopedGet = toolBlockOf("get_build_run")
     expect(scopedGet).toMatch(/getBuildRun/)
   })
 
   it("deploy_to_sacms and verify_deployment_url accept a runId to advance the build run", () => {
     for (const tool of ["deploy_to_sacms", "verify_deployment_url"]) {
-      const toolBlock = routeSource.slice(routeSource.indexOf(`"${tool}",`))
-      const scoped = toolBlock.slice(0, toolBlock.indexOf("server.registerTool(", 1))
+      const scoped = toolBlockOf(tool)
       expect(scoped, `${tool} should accept runId`).toMatch(/runId:\s*z\.string\(\)\.optional\(\)/)
       expect(scoped, `${tool} should advance the build run`).toMatch(/advanceBuildRun/)
     }
+  })
+
+  // ── chatgpt1.md round ────────────────────────────────────────────────────
+
+  it("get_deployment_status returns productionUrl and deploymentUrl as separate fields, not a single collapsed url", () => {
+    const scoped = toolBlockOf("get_deployment_status")
+    expect(scoped).toMatch(/productionUrl:\s*z\.string\(\)\.nullable\(\)/)
+    expect(scoped).toMatch(/deploymentUrl:\s*z\.string\(\)/)
+  })
+
+  it("deploy_to_sacms persists a source snapshot and returns sourceRevision/productionUrl/deploymentUrl", () => {
+    const scoped = toolBlockOf("deploy_to_sacms")
+    expect(scoped).toMatch(/saveDeploymentSource/)
+    expect(scoped).toMatch(/sourceRevision:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/productionUrl:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/deploymentUrl:\s*z\.string\(\)\.optional\(\)/)
+  })
+
+  it("get_deployment_source prefers a persisted snapshot and supports paths/manifestOnly", () => {
+    const scoped = toolBlockOf("get_deployment_source")
+    expect(scoped).toMatch(/getLatestDeploymentSource|getDeploymentSourceByDeploymentId/)
+    expect(scoped).toMatch(/paths:\s*z\.array\(z\.string\(\)\)\.optional\(\)/)
+    expect(scoped).toMatch(/manifestOnly:\s*z\.boolean\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/checksum:\s*z\.string\(\)/)
+    expect(scoped).toMatch(/sourceRevision:\s*z\.string\(\)\.optional\(\)/)
+  })
+
+  it("registers deploy_website_patch with baseSourceRevision conflict detection", () => {
+    const scoped = toolBlockOf("deploy_website_patch")
+    expect(scoped).toMatch(/baseSourceRevision:\s*z\.string\(\)/)
+    expect(scoped).toMatch(/changedFiles:/)
+    expect(scoped).toMatch(/deletedFiles:/)
+    expect(scoped).toMatch(/getDeploymentSourceByRevision/)
+    expect(scoped).toMatch(/CONFLICT/)
+  })
+
+  it("registers list_website_versions and rollback_website", () => {
+    expect(toolBlockOf("list_website_versions")).toMatch(/listDeploymentSources/)
+
+    const scopedRollback = toolBlockOf("rollback_website")
+    expect(scopedRollback).toMatch(/sourceRevision:\s*z\.string\(\)/)
+    expect(scopedRollback).toMatch(/getDeploymentSourceByRevision/)
+  })
+
+  it("verify_deployment_url supports multiple required checks and documents the HTTP-only limitation", () => {
+    const scoped = toolBlockOf("verify_deployment_url")
+    expect(scoped).toMatch(/checks:\s*z\.array/)
+    expect(scoped).toMatch(/KNOWN LIMITATION/)
+    expect(scoped).toMatch(/ALL.*must pass/i)
+  })
+
+  it("start_website_build returns a structured nextAction, intent-aware for a revision", () => {
+    const scoped = toolBlockOf("start_website_build")
+    expect(scoped).toMatch(/nextAction:/)
+    expect(scoped).toMatch(/get_deployment_source/)
+  })
+
+  it("get_api_info's sample code reads the real injected env var name, not a hardcoded SACMS_TOKEN", () => {
+    const scoped = toolBlockOf("get_api_info")
+    expect(scoped).not.toMatch(/SACMS_TOKEN/)
+    expect(scoped).toMatch(/SYSTEM_ENV_VARS/)
+    expect(scoped).toMatch(/tokenEnvKey/)
   })
 })

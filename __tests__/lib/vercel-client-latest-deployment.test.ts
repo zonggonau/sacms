@@ -15,7 +15,7 @@ vi.mock("@/lib/dev-mode", () => ({
   requireCredentialOutsideMock: vi.fn(),
 }))
 
-const { getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs } = await import("@/lib/vercel-client")
+const { getLatestDeployment, getDeploymentStatus, getDeploymentFiles, getDeploymentBuildLogs } = await import("@/lib/vercel-client")
 
 describe("getLatestDeployment", () => {
   const originalFetch = global.fetch
@@ -24,14 +24,35 @@ describe("getLatestDeployment", () => {
     global.fetch = originalFetch
   })
 
-  it("returns the latest production deployment's id/url/state", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ deployments: [{ uid: "dpl_abc", url: "my-site.vercel.app", readyState: "READY" }] }),
+  it("returns BOTH urls distinctly — deploymentUrl (this build's own hostname) and productionUrl (the project's real domain, null when none is verified yet)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/domains")) return Promise.resolve({ ok: true, json: async () => ({ domains: [] }) })
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ deployments: [{ uid: "dpl_abc", url: "my-site.vercel.app", readyState: "READY" }] }),
+      })
     }) as any
 
     const latest = await getLatestDeployment("prj_1")
-    expect(latest).toEqual({ id: "dpl_abc", url: "https://my-site.vercel.app", state: "READY" })
+    expect(latest).toEqual({ id: "dpl_abc", deploymentUrl: "https://my-site.vercel.app", productionUrl: null, state: "READY" })
+  })
+
+  it("resolves productionUrl from the project's verified domains when one exists", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/domains")) {
+        return Promise.resolve({ ok: true, json: async () => ({ domains: [{ name: "acme.sites.sacms.cloud", verified: true }] }) })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ deployments: [{ uid: "dpl_abc", url: "my-site-xyz.vercel.app", readyState: "READY" }] }),
+      })
+    }) as any
+
+    const latest = await getLatestDeployment("prj_1")
+    expect(latest?.productionUrl).toBe("https://acme.sites.sacms.cloud")
+    expect(latest?.deploymentUrl).toBe("https://my-site-xyz.vercel.app")
   })
 
   it("returns null when the project has no deployment history", async () => {
@@ -45,6 +66,32 @@ describe("getLatestDeployment", () => {
   })
 })
 
+describe("getDeploymentStatus", () => {
+  const originalFetch = global.fetch
+  beforeEach(() => vi.clearAllMocks())
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it("returns productionUrl and deploymentUrl as separate fields instead of collapsing them into one `url` (chatgpt1.md P0)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/domains")) {
+        return Promise.resolve({ ok: true, json: async () => ({ domains: [{ name: "acme.sites.sacms.cloud", verified: true }] }) })
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ readyState: "READY", url: "project-abc123-team.vercel.app", projectId: "prj_1" }),
+      })
+    }) as any
+
+    const status = await getDeploymentStatus("dpl_1")
+    expect(status.deploymentUrl).toBe("https://project-abc123-team.vercel.app")
+    expect(status.productionUrl).toBe("https://acme.sites.sacms.cloud")
+    expect(status.state).toBe("READY")
+  })
+})
+
 describe("getDeploymentFiles", () => {
   const originalFetch = global.fetch
   beforeEach(() => vi.clearAllMocks())
@@ -52,7 +99,7 @@ describe("getDeploymentFiles", () => {
     global.fetch = originalFetch
   })
 
-  it("flattens the file tree, reads each file's content, and skips build-noise/node_modules", async () => {
+  it("flattens the file tree, reads each file's content incl. checksum, and only skips node_modules/.git-style noise dirs", async () => {
     global.fetch = vi.fn((url: any) => {
       const u = String(url)
       if (u.includes("/v6/deployments/dpl_1/files")) {
@@ -62,10 +109,7 @@ describe("getDeploymentFiles", () => {
             {
               name: "app",
               type: "directory",
-              children: [
-                { name: "page.tsx", type: "file", uid: "file_1" },
-                { name: "bun.lockb", type: "file", uid: "file_2" },
-              ],
+              children: [{ name: "page.tsx", type: "file", uid: "file_1" }],
             },
             { name: "node_modules", type: "directory", children: [{ name: "x.js", type: "file", uid: "file_3" }] },
           ],
@@ -78,9 +122,27 @@ describe("getDeploymentFiles", () => {
     }) as any
 
     const result = await getDeploymentFiles("dpl_1")
-    expect(result.files).toEqual([{ name: "app/page.tsx", content: "export default function Page() {}", encoding: "utf-8" }])
-    expect(result.skipped).toEqual(["app/bun.lockb"])
+    expect(result.files).toHaveLength(1)
+    expect(result.files[0].name).toBe("app/page.tsx")
+    expect(result.files[0].content).toBe("export default function Page() {}")
+    expect(result.files[0].encoding).toBe("utf-8")
+    expect(result.files[0].checksum).toMatch(/^[0-9a-f]{64}$/)
+    expect(result.skipped).toEqual([])
     expect(result.truncated).toBe(false)
+  })
+
+  it("no longer skips lockfiles — a revision deploy must redeploy the exact same lockfile, not a freshly regenerated one (chatgpt1.md P0)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "bun.lockb", type: "file", uid: "file_2" }] })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: "lockfile-contents" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files.map((f) => f.name)).toEqual(["bun.lockb"])
+    expect(result.skipped).toEqual([])
   })
 
   it("reads binary assets back as base64 instead of skipping them — deploy_to_sacms can now redeploy them", async () => {
@@ -94,7 +156,8 @@ describe("getDeploymentFiles", () => {
     }) as any
 
     const result = await getDeploymentFiles("dpl_1")
-    expect(result.files).toEqual([{ name: "favicon.png", content: encoded, encoding: "base64" }])
+    expect(result.files).toHaveLength(1)
+    expect(result.files[0]).toMatchObject({ name: "favicon.png", content: encoded, encoding: "base64" })
     expect(result.skipped).toEqual([])
   })
 
@@ -108,7 +171,8 @@ describe("getDeploymentFiles", () => {
     }) as any
 
     const result = await getDeploymentFiles("dpl_1")
-    expect(result.files).toEqual([{ name: "index.html", content: "<html></html>", encoding: "utf-8" }])
+    expect(result.files).toHaveLength(1)
+    expect(result.files[0]).toMatchObject({ name: "index.html", content: "<html></html>", encoding: "utf-8" })
   })
 
   it("skips a file over the per-file size cap even if it isn't a known noise extension", async () => {

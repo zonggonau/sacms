@@ -159,6 +159,7 @@ model Tenant {
   apiRequests                     ApiRequest[]
   apiTokens                       ApiToken[]
   mcpBuildRuns                    McpBuildRun[]
+  mcpDeploymentSources            McpDeploymentSource[]
   auditLogs                       AuditLog[]
   components                      Component[]
   contentEntries                  ContentEntry[]
@@ -807,6 +808,33 @@ model McpBuildRun {
 
   @@index([tenantId, createdAt])
   @@map("mcp_build_runs")
+}
+
+// Persisted snapshot of a deploy_to_sacms/deploy_website_patch/
+// rollback_website payload — the fix for chatgpt1.md's P0 finding that
+// get_deployment_source (reading straight from Vercel's own files API)
+// silently skipped lockfiles and mislabeled binary content as "utf-8",
+// so an agent "reusing" a revision's source could redeploy a subtly
+// different byte stream than what's actually live. Vercel is no longer the
+// source of truth for round-tripping a workspace's source: every successful
+// deploy saves its own full file set + a per-file checksum manifest here,
+// scoped to the tenant, so get_website source reads and deploy_website_patch's
+// `baseSourceRevision` conflict check are both answered from SaCMS's own
+// data instead of re-derived from Vercel each time. Pruned to the most
+// recent rows per tenant on write (see mcp-deployment-source.ts) — this is
+// a rolling window for agent round-tripping, not a permanent archive.
+model McpDeploymentSource {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deploymentId String
+  projectId    String?
+  manifest     Json // [{ path, size, encoding, checksum }]
+  files        Json // [{ name, content, encoding }] — full snapshot, same shape deployToVercel/deploy_to_sacms take
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@map("mcp_deployment_sources")
 }
 
 // Platform-wide schema template catalog, authored in the SaCMS Global

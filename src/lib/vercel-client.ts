@@ -4,6 +4,7 @@
  * Docs: https://vercel.com/docs/rest-api
  */
 
+import { createHash } from "crypto"
 import { getPlatformSettings } from "./settings"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
 import { ROOT_DOMAIN } from "./portal-urls"
@@ -80,7 +81,15 @@ export interface VercelDeploymentFile {
 
 export interface VercelDeploymentResult {
   id: string
+  /** The best public URL to show a visitor — a custom/branded domain if one
+   *  is attached, else the project's *.vercel.app alias. Prefer this one. */
   url: string
+  /** The immutable per-build URL Vercel assigned THIS specific deployment
+   *  (e.g. project-abc123-team.vercel.app) — distinct from `url` on
+   *  purpose: it never changes as the project's production alias moves to
+   *  a newer deploy, but it's gated by Vercel's "Vercel Authentication"
+   *  deployment protection by default, so it's not safe to hand a visitor. */
+  deploymentUrl?: string
   state: string
   projectId?: string
   projectName?: string
@@ -194,9 +203,11 @@ export async function deployToVercel(
   }
   const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
   const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
+  const deploymentUrl = data.url ? `https://${data.url}` : undefined
   return {
     id: data.id,
-    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (data.url ? `https://${data.url}` : "")),
+    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (deploymentUrl || "")),
+    deploymentUrl,
     state: data.readyState || data.state || "BUILDING",
     projectId: data.projectId,
     projectName: data.name
@@ -249,18 +260,26 @@ async function fetchLatestProductionDeployment(
  * deploymentId at all. Never throws: returns `null` on any failure
  * (no token, no previous deployment, Vercel API error) so callers can
  * treat it as "nothing to report" rather than a hard error.
+ *
+ * Returns BOTH urls, deliberately not collapsed into one `url` field (see
+ * chatgpt1.md's P0 finding): `deploymentUrl` is this specific build's own
+ * immutable hostname, `productionUrl` is the project's actual public
+ * domain — the two can differ, and a caller that only sees one tends to
+ * hand a visitor a deployment-protection-gated link by mistake.
  */
 export async function getLatestDeployment(
   projectId: string,
-): Promise<{ id: string; url: string; state: string } | null> {
+): Promise<{ id: string; deploymentUrl: string; productionUrl: string | null; state: string } | null> {
   const token = await getVercelToken()
   if (!token) return null
   try {
     const latest = await fetchLatestProductionDeployment(projectId)
     if (!latest) return null
+    const productionUrl = await getProjectPrimaryDomain(projectId)
     return {
       id: latest.uid,
-      url: latest.url ? `https://${latest.url}` : "",
+      deploymentUrl: latest.url ? `https://${latest.url}` : "",
+      productionUrl,
       state: latest.readyState || "UNKNOWN",
     }
   } catch {
@@ -316,9 +335,11 @@ export async function redeployLatest(
   const data = await res.json()
   const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
   const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
+  const deploymentUrl = data.url ? `https://${data.url}` : undefined
   return {
     id: data.id,
-    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (data.url ? `https://${data.url}` : "")),
+    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (deploymentUrl || "")),
+    deploymentUrl,
     state: data.readyState || data.state || "BUILDING",
     projectId: data.projectId || projectId,
     projectName: data.name,
@@ -326,13 +347,20 @@ export async function redeployLatest(
 }
 
 /**
- * Get deployment status
+ * Get deployment status by id. Returns both `deploymentUrl` (this build's
+ * own immutable, protection-gated hostname) and `productionUrl` (the
+ * project's real public domain, resolved separately) — collapsing these
+ * into one `url` field was the exact P0 bug chatgpt1.md flagged: a caller
+ * that only saw one couldn't tell whether it was looking at something a
+ * real visitor can open or not.
  */
-export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string; projectId?: string; simulated?: boolean }> {
+export async function getDeploymentStatus(
+  deploymentId: string,
+): Promise<{ state: string; deploymentUrl: string; productionUrl: string | null; projectId?: string; simulated?: boolean }> {
   const token = await getVercelToken()
   if (!token) {
     if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
-    return { state: "READY", url: `https://sacms-site.vercel.app`, simulated: true }
+    return { state: "READY", deploymentUrl: `https://sacms-site.vercel.app`, productionUrl: null, simulated: true }
   }
 
   const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}${await getTeamQuery()}`, {
@@ -341,10 +369,13 @@ export async function getDeploymentStatus(deploymentId: string): Promise<{ state
 
   if (!res.ok) throw new Error("Failed to get deployment status")
   const data = await res.json()
+  const projectId: string | undefined = data.projectId || undefined
+  const productionUrl = projectId ? await getProjectPrimaryDomain(projectId) : null
   return {
     state: data.readyState || data.state || "BUILDING",
-    url: data.url ? `https://${data.url}` : "",
-    projectId: data.projectId || undefined,
+    deploymentUrl: data.url ? `https://${data.url}` : "",
+    productionUrl,
+    projectId,
   }
 }
 
@@ -357,11 +388,13 @@ interface VercelFileNode {
 }
 
 const SKIP_DEPLOYMENT_DIRS = new Set(["node_modules", ".git", ".next", ".vercel"])
-// Build noise / lockfiles — never meaningful to read back or round-trip,
-// unlike a binary ASSET (a PNG icon, a font) which deploy_to_sacms can now
-// redeploy via its own `encoding: "base64"` support, so those are no
-// longer skipped outright here.
-const SKIP_DEPLOYMENT_FILE_NAME_RE = /^(package-lock\.json|bun\.lockb|yarn\.lock|pnpm-lock\.yaml)$/i
+// Large non-source media only — a lockfile (package-lock.json, bun.lockb,
+// yarn.lock, pnpm-lock.yaml) used to be skipped here too on the theory that
+// it's "build noise, never meaningful to round-trip". Confirmed live by a
+// real ChatGPT test (chatgpt1.md) that this was wrong: a revision deploy
+// that reads this back and redeploys it needs the EXACT lockfile the
+// original build used, not a freshly regenerated one that may resolve
+// different dependency versions — so lockfiles are no longer skipped.
 const SKIP_DEPLOYMENT_EXT_RE = /\.(mp4|mov|avi|mp3|zip|pdf)$/i
 const MAX_DEPLOYMENT_FILE_BYTES = 2 * 1024 * 1024
 
@@ -380,14 +413,17 @@ const MAX_DEPLOYMENT_FILE_BYTES = 2 * 1024 * 1024
  * via deploy_to_sacms's matching per-file `encoding`.
  *
  * Best-effort per file: an individual file that fails to fetch is reported
- * in `skipped` rather than failing the whole read, as are build-noise
- * lockfiles, large non-source media, and anything over the per-file size
- * cap (reading back a multi-megabyte video isn't what this is for).
+ * in `skipped` rather than failing the whole read, as are large non-source
+ * media and anything over the per-file size cap (reading back a
+ * multi-megabyte video isn't what this is for) — lockfiles are NOT skipped,
+ * see the comment on SKIP_DEPLOYMENT_EXT_RE. Each returned file also
+ * carries a sha256 `checksum` of its content, so a caller can confirm a
+ * deploy → read-back → redeploy cycle produced byte-identical files.
  */
 export async function getDeploymentFiles(
   deploymentId: string,
   maxFiles = 100,
-): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64" }[]; skipped: string[]; truncated: boolean }> {
+): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64"; checksum: string }[]; skipped: string[]; truncated: boolean }> {
   const token = await getVercelToken()
   if (!token) return { files: [], skipped: [], truncated: false }
 
@@ -416,7 +452,7 @@ export async function getDeploymentFiles(
   }
   walk(Array.isArray(tree) ? tree : [], "")
 
-  const files: { name: string; content: string; encoding: "utf-8" | "base64" }[] = []
+  const files: { name: string; content: string; encoding: "utf-8" | "base64"; checksum: string }[] = []
   const skipped: string[] = []
   let truncated = false
 
@@ -425,8 +461,7 @@ export async function getDeploymentFiles(
       truncated = true
       break
     }
-    const basename = leaf.path.split("/").pop() || leaf.path
-    if (SKIP_DEPLOYMENT_FILE_NAME_RE.test(basename) || SKIP_DEPLOYMENT_EXT_RE.test(leaf.path)) {
+    if (SKIP_DEPLOYMENT_EXT_RE.test(leaf.path)) {
       skipped.push(leaf.path)
       continue
     }
@@ -447,7 +482,7 @@ export async function getDeploymentFiles(
         continue
       }
       const encoding: "utf-8" | "base64" = data.encoding === "base64" ? "base64" : "utf-8"
-      files.push({ name: leaf.path, content: raw, encoding })
+      files.push({ name: leaf.path, content: raw, encoding, checksum: createHash("sha256").update(raw).digest("hex") })
     } catch {
       skipped.push(leaf.path)
     }

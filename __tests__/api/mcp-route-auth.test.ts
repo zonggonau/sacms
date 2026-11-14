@@ -32,6 +32,16 @@ vi.mock("@/lib/infrastructure/mcp-build-run", () => ({
   advanceBuildRun: vi.fn(),
 }))
 
+// Same reason as mcp-build-run above.
+vi.mock("@/lib/infrastructure/mcp-deployment-source", () => ({
+  saveDeploymentSource: vi.fn(),
+  getLatestDeploymentSource: vi.fn(),
+  getDeploymentSourceByRevision: vi.fn(),
+  getDeploymentSourceByDeploymentId: vi.fn(),
+  listDeploymentSources: vi.fn(),
+  buildManifest: vi.fn(),
+}))
+
 vi.mock("@/lib/field-types", () => ({
   FIELD_TYPES: [],
   FIELD_CATEGORIES: [],
