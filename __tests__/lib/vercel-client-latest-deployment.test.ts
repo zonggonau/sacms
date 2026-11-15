@@ -254,6 +254,84 @@ describe("getDeploymentFiles", () => {
 
     await expect(getDeploymentFiles("dpl_missing")).rejects.toThrow(/Deployment not found/)
   })
+
+  // ── chatgpt3.md round ───────────────────────────────────────────────────
+
+  it("strips a wrapper directory ahead of the real project root, proven by package.json's own location (chatgpt3.md P0 — a live import brought back src/public/icon-192.png instead of public/icon-192.png)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { name: "src", type: "directory", children: [
+              { name: "package.json", type: "file", uid: "f1" },
+              { name: "public", type: "directory", children: [{ name: "icon-192.png", type: "file", uid: "f2" }] },
+            ] },
+          ],
+        })
+      }
+      if (u.includes("/files/f1")) return Promise.resolve({ ok: true, json: async () => ({ data: "{}" }) })
+      // Real (tiny) PNG signature so the asset also passes its own check.
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 1])
+      return Promise.resolve({ ok: true, json: async () => ({ data: png.toString("base64"), encoding: "base64" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    const names = result.files.map((f) => f.name).sort()
+    expect(names).toEqual(["package.json", "public/icon-192.png"])
+    expect(result.skipped).toEqual([])
+  })
+
+  it("does NOT strip a legitimate src/ directory — package.json already at root is proof there's no wrapper", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => [
+            { name: "package.json", type: "file", uid: "f1" },
+            { name: "src", type: "directory", children: [{ name: "app", type: "directory", children: [{ name: "page.tsx", type: "file", uid: "f2" }] }] },
+          ],
+        })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: "x" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    const names = result.files.map((f) => f.name).sort()
+    expect(names).toEqual(["package.json", "src/app/page.tsx"])
+  })
+
+  it("reports a binary asset whose decoded bytes don't match its own format's signature as an invalid asset, instead of silently importing a corrupted file (chatgpt3.md P0 — an HTTP 200 alone let a corrupted icon pass)", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "icon.png", type: "file", uid: "f1" }] })
+      }
+      // Not a real PNG signature — just arbitrary bytes, but still reported as base64 with HTTP 200.
+      const notAPng = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8])
+      return Promise.resolve({ ok: true, json: async () => ({ data: notAPng.toString("base64"), encoding: "base64" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files).toHaveLength(1) // still returned — the caller decides whether to trust it
+    expect(result.invalidAssets).toEqual(["icon.png"])
+  })
+
+  it("leaves a valid PNG icon out of invalidAssets", async () => {
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "icon.png", type: "file", uid: "f1" }] })
+      }
+      const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 1, 2])
+      return Promise.resolve({ ok: true, json: async () => ({ data: png.toString("base64"), encoding: "base64" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.invalidAssets).toEqual([])
+  })
 })
 
 describe("getDeploymentBuildLogs", () => {

@@ -118,9 +118,21 @@ export async function findOrClaimByIdempotencyKey(
   }
 }
 
-/** Whether a claimed-but-not-yet-completed idempotency key should still block a fresh deploy. */
+/**
+ * Whether a claimed-but-not-yet-completed idempotency key should still
+ * block a fresh deploy. A run already marked "failed" is NEVER in flight,
+ * regardless of how recently it was touched — this is what makes a retry
+ * safe immediately after a rejection (a rate limit, a validation error)
+ * that happened BEFORE anything was sent to Vercel (chatgpt3.md: a retry
+ * with the same idempotencyKey right after a rate-limited submission was
+ * wrongly getting DEPLOY_IN_PROGRESS, because the claimed run was still
+ * within this window with no deploymentId yet). Every rejection path that
+ * claims a run via resolveIdempotency must advance it to "failed" before
+ * returning, precisely so this check lets the very next retry through.
+ */
 export function isIdempotencyClaimStillInFlight(run: McpBuildRunRecord): boolean {
   if (run.deploymentId) return false
+  if (run.stage === "failed") return false
   return Date.now() - run.updatedAt.getTime() < IDEMPOTENCY_IN_FLIGHT_WINDOW_MS
 }
 

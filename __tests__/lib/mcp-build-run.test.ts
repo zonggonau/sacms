@@ -132,6 +132,11 @@ describe("isIdempotencyClaimStillInFlight", () => {
     const run = { id: "r1", tenantId: "t1", intent: "update", stage: "discover", hostingProjectId: null, deploymentId: null, sourceRevision: null, lastError: null, idempotencyKey: "k", createdAt: new Date(), updatedAt: new Date(Date.now() - 5 * 60 * 1000) }
     expect(isIdempotencyClaimStillInFlight(run)).toBe(false)
   })
+
+  it("is false for a run already marked failed, even if it was just touched — a rate-limit rejection (or any other failure) must let the very next same-key retry through instead of reading it as still in progress (chatgpt3.md P0)", () => {
+    const run = { id: "r1", tenantId: "t1", intent: "update", stage: "failed", hostingProjectId: null, deploymentId: null, sourceRevision: null, lastError: "RATE_LIMITED", idempotencyKey: "k", createdAt: new Date(), updatedAt: new Date() }
+    expect(isIdempotencyClaimStillInFlight(run)).toBe(false)
+  })
 })
 
 describe("advanceBuildRun", () => {

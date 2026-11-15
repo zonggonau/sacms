@@ -229,4 +229,53 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/PRODUCTION_VERSION_MISMATCH/)
     expect(scoped).toMatch(/getLatestDeployment/)
   })
+
+  // ── chatgpt3.md round ────────────────────────────────────────────────────
+
+  it("deploy_to_sacms, deploy_website_patch and rollback_website return RATE_LIMITED with retryAfterSeconds instead of a bare error", () => {
+    for (const tool of ["deploy_to_sacms", "deploy_website_patch", "rollback_website"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should return code RATE_LIMITED`).toMatch(/code:\s*"RATE_LIMITED"/)
+      expect(scoped, `${tool} should return retryAfterSeconds`).toMatch(/retryAfterSeconds/)
+    }
+  })
+
+  it("deploy_to_sacms and deploy_website_patch release their idempotency claim on a rate-limit rejection, so a same-key retry isn't misread as still in progress", () => {
+    for (const tool of ["deploy_to_sacms", "deploy_website_patch"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should mark the claimed run failed on rate limit`).toMatch(/stage:\s*"failed",\s*lastError:\s*"RATE_LIMITED"/)
+    }
+  })
+
+  it("deploy_website_patch and rollback_website refuse a corrupted stored revision (SOURCE_CORRUPTED) instead of redeploying it", () => {
+    const patch = toolBlockOf("deploy_website_patch")
+    expect(patch).toMatch(/findSourceIssues\(base\.files\)/)
+    expect(patch).toMatch(/SOURCE_CORRUPTED/)
+
+    const rollback = toolBlockOf("rollback_website")
+    expect(rollback).toMatch(/findSourceIssues\(target\.files\)/)
+    expect(rollback).toMatch(/SOURCE_CORRUPTED/)
+  })
+
+  it("get_deployment_source re-validates a persisted snapshot and reports invalidAssets/SOURCE_INVALID/SOURCE_REPAIRED/SOURCE_NEEDS_REIMPORT", () => {
+    const scoped = toolBlockOf("get_deployment_source")
+    expect(scoped).toMatch(/findSourceIssues\(persistedRaw\.files\)/)
+    expect(scoped).toMatch(/invalidAssets/)
+    expect(scoped).toMatch(/SOURCE_INVALID/)
+    expect(scoped).toMatch(/SOURCE_REPAIRED/)
+    expect(scoped).toMatch(/SOURCE_NEEDS_REIMPORT/)
+  })
+
+  it("verify_deployment_url's checks accept expectedSignature/expectedChecksum/expectedContentType for binary assets, not just an HTTP 200", () => {
+    const scoped = toolBlockOf("verify_deployment_url")
+    expect(scoped).toMatch(/expectedSignature:\s*z\.enum/)
+    expect(scoped).toMatch(/expectedChecksum:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/expectedContentType:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/matchesSignature/)
+  })
+
+  it("verify_deployment_url clears lastError when a re-verification succeeds instead of leaving a stale error on a done run", () => {
+    const scoped = toolBlockOf("verify_deployment_url")
+    expect(scoped).toMatch(/stage:\s*"done",\s*lastError:\s*null/)
+  })
 })

@@ -36,6 +36,7 @@ import {
   listDeploymentSources,
   type DeploymentSourceFile,
 } from "@/lib/infrastructure/mcp-deployment-source"
+import { findSourceIssues, matchesSignature } from "@/lib/infrastructure/deployment-source-guard"
 import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 import { safeFetch } from "@/lib/safe-url"
@@ -2361,10 +2362,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
 ## Phase 4 — Ship it
 12. For a BRAND-NEW build, call \`deploy_to_sacms\` with the full \`files\` set (pass the \`runId\` from Phase 0, and consider passing \`idempotencyKey\` — a string unique to this submission — so a retry after a lost response returns the same deployment instead of a second one) to publish to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true. Binary assets (a PNG icon, a font) go in \`files\` with \`encoding: "base64"\`. The response includes a \`sourceRevision\` — keep it for the next step.
-12b. For a REVISION of a site that's already live ("ubah warna header", "ganti logo", "tambahkan dark mode"), call \`get_deployment_source\` first (manifestOnly: true if you just need to see what's there) to get a \`sourceRevision\` — if none is persisted yet (a deployment from before this feature, or made outside these tools), a full read automatically imports it so you get a real one back. If it comes back with \`code: "SOURCE_INCOMPLETE"\` instead, the read was truncated/partial — raise maxFiles and try again before patching. Make the targeted change, then call \`deploy_website_patch\` with \`baseSourceRevision\` and only the \`changedFiles\`/\`deletedFiles\` — never resend the whole project for a small ask, and never invent what the current file looks like. If it rejects with CONFLICT (or \`SOURCE_IMPORT_REQUIRED\` when the base was never persisted), re-read the source and retry. \`list_website_versions\`/\`rollback_website\` exist if the user wants to go back to an earlier revision instead.
+12b. For a REVISION of a site that's already live ("ubah warna header", "ganti logo", "tambahkan dark mode"), call \`get_deployment_source\` first (manifestOnly: true if you just need to see what's there) to get a \`sourceRevision\` — if none is persisted yet (a deployment from before this feature, or made outside these tools), a full read automatically imports it so you get a real one back. A stored snapshot is re-validated on every read too — if an older one turns out corrupted (a wrapper-directory path, a bad binary asset), it's transparently repaired via a fresh import and comes back with \`code: "SOURCE_REPAIRED"\`, or \`code: "SOURCE_NEEDS_REIMPORT"\` if you asked for specific \`paths\` so no repair ran. If a full read comes back with \`code: "SOURCE_INCOMPLETE"\` (truncated/partial — raise maxFiles) or \`code: "SOURCE_INVALID"\` (a binary asset failed its own format's signature check, listed in \`invalidAssets\`), don't treat it as a usable base yet. Make the targeted change, then call \`deploy_website_patch\` with \`baseSourceRevision\` and only the \`changedFiles\`/\`deletedFiles\` — never resend the whole project for a small ask, and never invent what the current file looks like. If it rejects with CONFLICT (\`SOURCE_IMPORT_REQUIRED\` when the base was never persisted, or \`SOURCE_CORRUPTED\` when the stored revision itself fails validation), re-read the source with \`get_deployment_source\` and retry with the fresh \`sourceRevision\` it gives you. \`list_website_versions\`/\`rollback_website\` exist if the user wants to go back to an earlier revision instead — \`rollback_website\` runs the same validation and refuses a corrupted target with \`SOURCE_CORRUPTED\` too, so it never reproduces an old bug.
 13. Call \`get_deployment_status\` to confirm it's READY before telling the user it's done — never report success just because deploy_to_sacms/deploy_website_patch returned. It returns \`productionUrl\` (the real public domain — use THIS one) and \`deploymentUrl\` (this specific build's own gated hostname — don't hand this to the user) as separate fields; don't conflate them. You can omit deploymentId to auto-check the latest deployment. If the state comes back errored/failed, call \`get_deployment_build_logs\` to see WHY before trying again. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
-14. Once READY, call \`verify_deployment_url\` (pass the \`runId\` too, and \`deploymentId\` if you have one specific build in mind) to actually fetch the live site over HTTP and confirm it renders AND that production is actually serving THAT deployment — a "ready" build can still sit unpromoted behind an older one, which comes back as \`code: "PRODUCTION_VERSION_MISMATCH"\` (retry shortly, it's usually just propagation lag, not a real failure). For a multi-page build, pass \`checks: [{path, expectedText}, ...]\` covering every page/feed/manifest file that matters (home, a detail page, an RSS/JSON feed, a PWA manifest) — ALL must pass before the \`runId\` is marked done, not just the homepage. This tool only performs HTTP-level checks: it cannot confirm real browser rendering or that a PWA actually installs on a device — say so plainly if the user asked about either rather than claiming they were verified. Only report the website as done to the user after this comes back \`ok: true\`.
+14. Once READY, call \`verify_deployment_url\` (pass the \`runId\` too, and \`deploymentId\` if you have one specific build in mind) to actually fetch the live site over HTTP and confirm it renders AND that production is actually serving THAT deployment — a "ready" build can still sit unpromoted behind an older one, which comes back as \`code: "PRODUCTION_VERSION_MISMATCH"\` (retry shortly, it's usually just propagation lag, not a real failure). For a multi-page build, pass \`checks: [{path, expectedText}, ...]\` covering every page/feed/manifest file that matters (home, a detail page, an RSS/JSON feed, a PWA manifest) — ALL must pass before the \`runId\` is marked done, not just the homepage. For a binary asset (a PWA icon), don't rely on status 200 alone — add \`expectedSignature\` (its format) and/or \`expectedChecksum\` (sha256 of the exact bytes you deployed) to that check so a corrupted file is actually caught. This tool only performs HTTP-level checks: it cannot confirm real browser rendering or that a PWA actually installs on a device — say so plainly if the user asked about either rather than claiming they were verified. Only report the website as done to the user after this comes back \`ok: true\`.
 15. If a deploy_to_sacms/deploy_website_patch response never arrives (network drop, tool timeout), do NOT blindly resubmit — call \`get_build_run\` with the \`runId\` (or the \`idempotencyKey\` you submitted with, if you used one) to see what actually happened before deciding whether to retry.
+16. If deploy_to_sacms/deploy_website_patch/rollback_website rejects with \`code: "RATE_LIMITED"\`, wait \`retryAfterSeconds\` before retrying — and if you passed an \`idempotencyKey\`, retry with that EXACT SAME key (it's safe to immediately after a rate-limit rejection specifically, unlike a genuinely in-flight submission).
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically. The env var a deployed frontend reads to call the SaCMS API is \`SACMS_API_KEY\` (confirm via \`get_api_info\`/\`list_deployment_env\`, never assume a name).
@@ -2665,6 +2667,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           projectName: z.string().optional(),
           envKeysSent: z.array(z.string()).optional(),
           simulated: z.boolean().optional(),
+          retryAfterSeconds: z.number().optional(),
           message: z.string(),
         },
       },
@@ -2747,8 +2750,17 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         // hosting/build cost even within the general limit's budget.
         const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
         if (!deployLimit.success) {
+          // This request was rejected BEFORE anything was sent to Vercel —
+          // release the idempotency claim (if any) back to "retryable"
+          // instead of leaving it stuck in a state the next identical-key
+          // retry would misread as still in progress (chatgpt3.md).
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, { stage: "failed", lastError: "RATE_LIMITED" })
+          }
+          const retryAfterSeconds = Math.max(1, Math.ceil((deployLimit.resetAt - Date.now()) / 1000))
           return {
-            content: [{ type: "text" as const, text: "❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi sebentar." }],
+            content: [{ type: "text" as const, text: `❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi dalam ${retryAfterSeconds} detik, dengan idempotencyKey yang SAMA kalau kamu memberikan satu.` }],
+            structuredContent: { ok: false, code: "RATE_LIMITED", retryAfterSeconds, message: "Too many deploy submissions in this window." },
             isError: true,
           }
         }
@@ -2829,6 +2841,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               deploymentId: result.id,
               sourceRevision: sourceRevision || result.id,
               hostingProjectId: result.projectId || undefined,
+              lastError: null,
             })
           }
 
@@ -2897,6 +2910,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           deletedCount: z.number().optional(),
           unchangedCount: z.number().optional(),
           state: z.string().optional(),
+          issues: z.array(z.string()).optional(),
+          retryAfterSeconds: z.number().optional(),
           message: z.string(),
         },
       },
@@ -2917,6 +2932,20 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           return {
             content: [{ type: "text" as const, text: `❌ baseSourceRevision '${baseSourceRevision}' tidak ditemukan untuk workspace ini — mungkin sudah terlalu lama (hanya revisi terbaru yang disimpan), atau belum pernah diimpor. Panggil get_deployment_source untuk mendapatkan sourceRevision terbaru (membaca source akan otomatis mengimpornya kalau belum tersimpan).` }],
             structuredContent: { ok: false, code: "SOURCE_IMPORT_REQUIRED", message: "baseSourceRevision not found." },
+            isError: true,
+          }
+        }
+
+        // Never patch onto a base that fails the same validation import
+        // applies (chatgpt3.md) — a revision persisted before the
+        // path-normalization/signature fix can carry either bug, and
+        // merging changedFiles onto it would just redeploy the corruption
+        // under a new sourceRevision instead of fixing it.
+        const baseIssues = findSourceIssues(base.files)
+        if (baseIssues.length > 0) {
+          return {
+            content: [{ type: "text" as const, text: `❌ baseSourceRevision '${baseSourceRevision}' gagal validasi (${baseIssues.join(", ")}) — kemungkinan diimpor sebelum perbaikan normalisasi path/validasi aset biner. Panggil get_deployment_source TANPA paths untuk mendapatkan sourceRevision baru yang sudah divalidasi/diperbaiki, lalu gunakan itu sebagai baseSourceRevision.` }],
+            structuredContent: { ok: false, code: "SOURCE_CORRUPTED", issues: baseIssues, message: "This stored source revision failed validation — re-import before patching." },
             isError: true,
           }
         }
@@ -2961,8 +2990,16 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
         const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
         if (!deployLimit.success) {
+          // Same reasoning as deploy_to_sacms's identical block — release
+          // the idempotency claim so a same-key retry isn't wrongly read
+          // as still in progress (chatgpt3.md).
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, { stage: "failed", lastError: "RATE_LIMITED" })
+          }
+          const retryAfterSeconds = Math.max(1, Math.ceil((deployLimit.resetAt - Date.now()) / 1000))
           return {
-            content: [{ type: "text" as const, text: "❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi sebentar." }],
+            content: [{ type: "text" as const, text: `❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi dalam ${retryAfterSeconds} detik, dengan idempotencyKey yang SAMA kalau kamu memberikan satu.` }],
+            structuredContent: { ok: false, code: "RATE_LIMITED", retryAfterSeconds, message: "Too many deploy submissions in this window." },
             isError: true,
           }
         }
@@ -3023,6 +3060,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               deploymentId: result.id,
               sourceRevision: sourceRevision || result.id,
               hostingProjectId: result.projectId || undefined,
+              lastError: null,
             })
           }
 
@@ -3110,6 +3148,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           productionUrl: z.string().optional(),
           deploymentUrl: z.string().optional(),
           state: z.string().optional(),
+          issues: z.array(z.string()).optional(),
+          retryAfterSeconds: z.number().optional(),
           message: z.string(),
         },
       },
@@ -3134,10 +3174,23 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           }
         }
 
+        // Rolling back to a corrupted revision would just redeploy the
+        // same bug (chatgpt3.md) — same validation import/patch apply.
+        const targetIssues = findSourceIssues(target.files)
+        if (targetIssues.length > 0) {
+          return {
+            content: [{ type: "text" as const, text: `❌ sourceRevision '${sourceRevision}' gagal validasi (${targetIssues.join(", ")}) — rollback ke revisi ini akan mereproduksi masalah yang sama. Pilih revisi lain dari list_website_versions, atau panggil get_deployment_source dulu untuk mendapatkan revisi yang sudah tervalidasi.` }],
+            structuredContent: { ok: false, code: "SOURCE_CORRUPTED", issues: targetIssues, message: "This source revision failed validation." },
+            isError: true,
+          }
+        }
+
         const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
         if (!deployLimit.success) {
+          const retryAfterSeconds = Math.max(1, Math.ceil((deployLimit.resetAt - Date.now()) / 1000))
           return {
-            content: [{ type: "text" as const, text: "❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi sebentar." }],
+            content: [{ type: "text" as const, text: `❌ Terlalu banyak percobaan deploy. Maksimal 3 deploy per 5 menit per workspace — coba lagi dalam ${retryAfterSeconds} detik.` }],
+            structuredContent: { ok: false, code: "RATE_LIMITED", retryAfterSeconds, message: "Too many deploy submissions in this window." },
             isError: true,
           }
         }
@@ -3262,7 +3315,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "get_deployment_source",
       {
         title: "Get Current Deployed Source Files",
-        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned instead — raise maxFiles or ask about the skipped paths before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import, since it's a deliberately partial read), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Omit deploymentId to read the latest production deployment.",
+        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API — but a persisted snapshot is re-validated every time (wrapper-directory paths, corrupted binary assets) before being trusted; a snapshot that fails falls through to a fresh live re-import automatically (the old one is kept for history, not deleted) and the result comes back with `code: \"SOURCE_REPAIRED\"`. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete AND validated read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned; if it came back complete but a binary asset failed its own format's signature check, no import happens and `code: \"SOURCE_INVALID\"` is returned with the bad paths in `invalidAssets` — in either case raise maxFiles, ask about the skipped paths, or regenerate the broken asset before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import/repair, since it's a deliberately partial read; if the persisted snapshot needed repair, this returns `code: \"SOURCE_NEEDS_REIMPORT\"` instead of silently serving known-bad paths), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Omit deploymentId to read the latest production deployment.",
         inputSchema: {
           deploymentId: z.string().optional().describe("Specific deployment to read from. Omit to use the latest production deployment for this workspace."),
           maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100) when reading the full set. Ignored when paths is given."),
@@ -3277,6 +3330,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           files: z.array(z.object({ name: z.string(), content: z.string(), encoding: z.enum(["utf-8", "base64"]), size: z.number(), checksum: z.string() })),
           skipped: z.array(z.string()),
           truncated: z.boolean(),
+          invalidAssets: z.array(z.string()),
           missingPaths: z.array(z.string()),
           code: z.string().optional(),
         },
@@ -3293,14 +3347,22 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           // Prefer SaCMS's own persisted snapshot (exact bytes, lockfiles
           // included) over re-deriving it from Vercel's files API — only a
           // deployment made before this feature existed, or outside
-          // deploy_to_sacms entirely, falls through to the live read.
-          const persisted = deploymentId
+          // deploy_to_sacms entirely, falls through to the live read. But
+          // a snapshot persisted before the path-normalization/signature
+          // fix (chatgpt3.md) can itself carry either bug — never trust it
+          // at face value; a snapshot that fails re-validation is treated
+          // as if none existed, so the code below repairs it via a fresh
+          // live read. The old row is left exactly as it was, for history.
+          const persistedRaw = deploymentId
             ? await getDeploymentSourceByDeploymentId(auth.tenantId, resolved.id)
             : await getLatestDeploymentSource(auth.tenantId)
+          const persisted = persistedRaw && findSourceIssues(persistedRaw.files).length === 0 ? persistedRaw : null
+          const persistedNeedsRepair = !!persistedRaw && !persisted
 
           let files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[]
           let skipped: string[] = []
           let truncated = false
+          let invalidAssets: string[] = []
           let source: "persisted" | "vercel-live"
           let sourceRevision: string | undefined
           let code: string | undefined
@@ -3324,33 +3386,43 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             files = base.map((f) => ({ ...f, content: manifestOnly ? "" : f.content }))
             skipped = live.skipped
             truncated = live.truncated
+            invalidAssets = live.invalidAssets
 
             // Auto-import: a deployment-made-before-this-feature (or made
-            // outside deploy_to_sacms entirely) has no persisted source —
-            // without this, get_deployment_source could read it but
-            // deploy_website_patch would have no baseSourceRevision to work
-            // from, exactly the gap that blocked a patch from a fresh
-            // conversation (chatgpt2.md). Only import on a deliberate
-            // full-project read (no `paths`) that came back complete —
-            // persisting a truncated/partially-skipped read as "the full
-            // source" would silently drop those files on the next patch.
+            // outside deploy_to_sacms entirely), or a persisted snapshot
+            // that just failed re-validation above, has no TRUSTWORTHY
+            // persisted source — without this, get_deployment_source could
+            // read it but deploy_website_patch would have no
+            // baseSourceRevision to work from, exactly the gap that
+            // blocked a patch from a fresh conversation (chatgpt2.md).
+            // Only import on a deliberate full-project read (no `paths`)
+            // that came back complete AND passed its own validation —
+            // persisting a truncated/partially-skipped/corrupted read as
+            // "the full source" would just reproduce the same bug under a
+            // new sourceRevision.
             if (!paths) {
-              if (!truncated && skipped.length === 0) {
+              if (!truncated && skipped.length === 0 && invalidAssets.length === 0) {
                 try {
                   const saved = await saveDeploymentSource(auth.tenantId, resolved.id, resolved.status?.projectId, live.files)
                   sourceRevision = saved.id
+                  if (persistedNeedsRepair) code = "SOURCE_REPAIRED"
                   if (runId) advanceBuildRun(auth.tenantId, runId, { sourceRevision: saved.id })
                 } catch (e) {
                   console.warn("[MCP get_deployment_source] Failed to auto-import live read into source history:", e)
                 }
               } else {
-                code = "SOURCE_INCOMPLETE"
+                code = invalidAssets.length > 0 ? "SOURCE_INVALID" : "SOURCE_INCOMPLETE"
               }
+            } else if (persistedNeedsRepair) {
+              // A paths-scoped read never triggers import/repair — surface
+              // WHY the known-bad persisted snapshot was bypassed instead
+              // of silently serving a live read with no sourceRevision.
+              code = "SOURCE_NEEDS_REIMPORT"
             }
           }
 
           const missingPaths = paths ? paths.filter((p) => !files.some((f) => f.name === p)) : []
-          const structured = { deploymentId: resolved.id, sourceRevision, source, files, skipped, truncated, missingPaths, code }
+          const structured = { deploymentId: resolved.id, sourceRevision, source, files, skipped, truncated, invalidAssets, missingPaths, code }
 
           return {
             content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -3412,14 +3484,17 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "verify_deployment_url",
       {
         title: "Verify the Live Deployment Actually Works",
-        description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data, AND the production domain can still be serving an OLDER deployment if Vercel hasn't finished promoting the new one. Pass deploymentId (or a runId that has one recorded) to bind this check to that SPECIFIC build — if the production domain isn't actually serving it yet, this returns PRODUCTION_VERSION_MISMATCH instead of a false pass. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
+        description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data, AND the production domain can still be serving an OLDER deployment if Vercel hasn't finished promoting the new one. Pass deploymentId (or a runId that has one recorded) to bind this check to that SPECIFIC build — if the production domain isn't actually serving it yet, this returns PRODUCTION_VERSION_MISMATCH instead of a false pass. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. For a binary asset (a PWA icon, a favicon) a plain HTTP 200 can still be a corrupted file — pass expectedSignature (\"png\"/\"jpeg\"/\"gif\"/\"ico\") to confirm its bytes match that format's own magic number, expectedChecksum (sha256 hex of the real bytes you deployed, from deploy_to_sacms/get_deployment_source) for an exact match, and/or expectedContentType to check the response header. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring + binary signature/checksum) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
         inputSchema: {
           path: z.string().optional().describe("Shorthand for a single check: path on this workspace's own live deployment domain, e.g. \"/\" (default) or \"/artikel/contoh-slug\". Ignored if checks is provided."),
           expectedText: z.string().optional().describe("Shorthand for a single check's expectedText. Ignored if checks is provided."),
           checks: z.array(z.object({
-            path: z.string().describe("Path to check, e.g. \"/\", \"/artikel/contoh-slug\", \"/feed.xml\", \"/manifest.json\"."),
+            path: z.string().describe("Path to check, e.g. \"/\", \"/artikel/contoh-slug\", \"/feed.xml\", \"/manifest.json\", \"/icon-192.png\"."),
             expectedText: z.string().optional().describe("A substring expected in that path's rendered HTML/body."),
-          })).max(10).optional().describe("One or more required checks — e.g. home, a detail page, a content feed, and a PWA manifest file. ALL must pass for runId to be marked done. Never pass a full URL to a different host — every check is against THIS workspace's own deployment."),
+            expectedContentType: z.string().optional().describe("Substring expected in the response's Content-Type header, e.g. \"image/png\"."),
+            expectedSignature: z.enum(["png", "jpeg", "gif", "ico"]).optional().describe("Confirms the response body's raw bytes start with this format's own magic number — catches a binary asset that returns HTTP 200 but isn't actually valid image data (chatgpt3.md)."),
+            expectedChecksum: z.string().optional().describe("sha256 hex of the exact bytes expected (from deploy_to_sacms/get_deployment_source's checksum for that file) — the strictest check, confirms byte-for-byte."),
+          })).max(10).optional().describe("One or more required checks — e.g. home, a detail page, a content feed, and a PWA manifest/icon. ALL must pass for runId to be marked done. Never pass a full URL to a different host — every check is against THIS workspace's own deployment."),
           deploymentId: z.string().optional().describe("Bind this verification to a SPECIFIC deployment — fails with PRODUCTION_VERSION_MISMATCH if the production domain isn't actually serving it yet. Defaults to the runId's recorded deploymentId if omitted, else no binding (just checks whatever's currently live)."),
           runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — marks that run done only once every check (and the deployment binding, if any) passes, or failed/verifying with the reason."),
         },
@@ -3435,6 +3510,10 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             htmlLength: z.number(),
             containsExpectedText: z.boolean().optional(),
             looksLikeErrorPage: z.boolean(),
+            contentType: z.string().optional(),
+            contentTypeOk: z.boolean().optional(),
+            signatureOk: z.boolean().optional(),
+            checksumOk: z.boolean().optional(),
           })),
           // Back-compat mirror of checks[0], for callers using the old single-check shape.
           url: z.string(),
@@ -3492,16 +3571,30 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
                 signal: controller.signal,
                 headers: { "User-Agent": "SaCMS-MCP-Verify/1.0" },
               })
-              const html = await res.text().catch(() => "")
+              // Read raw bytes once — needed for a binary signature/checksum
+              // check, and HTML substring matching works the same off the
+              // decoded text either way.
+              const bytes = Buffer.from(await res.arrayBuffer().catch(() => new ArrayBuffer(0)))
+              const html = bytes.toString("utf-8")
               const containsExpectedText = check.expectedText ? html.includes(check.expectedText) : undefined
+              const contentType = res.headers.get("content-type") || ""
+              const contentTypeOk = check.expectedContentType ? contentType.includes(check.expectedContentType) : undefined
+              // A 200 alone doesn't mean a binary asset is actually valid —
+              // confirmed live (chatgpt3.md): a corrupted icon still passed
+              // a plain status check.
+              const signatureOk = check.expectedSignature ? matchesSignature(check.expectedSignature, bytes) : undefined
+              const checksumOk = check.expectedChecksum
+                ? createHash("sha256").update(bytes).digest("hex") === check.expectedChecksum
+                : undefined
               // Heuristic only, not exhaustive — catches Vercel's own protection/
               // not-found boilerplate; the frontend's OWN 404/error page (if it
               // has one) is a real rendered page and isn't flagged by this, by
               // design — that's a route the caller itself built and should check
               // with its own expectedText instead.
               const looksLikeErrorPage = /DEPLOYMENT_NOT_FOUND|This deployment is protected|Authentication Required/i.test(html)
-              const ok = res.ok && !looksLikeErrorPage && (containsExpectedText ?? true)
-              return { path: check.path || "/", url: targetUrl, status: res.status, ok, htmlLength: html.length, containsExpectedText, looksLikeErrorPage }
+              const ok = res.ok && !looksLikeErrorPage
+                && (containsExpectedText ?? true) && (contentTypeOk ?? true) && (signatureOk ?? true) && (checksumOk ?? true)
+              return { path: check.path || "/", url: targetUrl, status: res.status, ok, htmlLength: html.length, containsExpectedText, looksLikeErrorPage, contentType, contentTypeOk, signatureOk, checksumOk }
             } catch (err: any) {
               return { path: check.path || "/", url: targetUrl, status: 0, ok: false, htmlLength: 0, looksLikeErrorPage: false, error: err.message }
             } finally {
@@ -3521,7 +3614,10 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             } else {
               const firstFailure = results.find((r) => !r.ok)
               advanceBuildRun(auth.tenantId, runId, allChecksOk
-                ? { stage: "done" }
+                // Clear any lastError left over from an earlier failed
+                // attempt — re-verifying successfully must not leave a
+                // stale error sitting on an otherwise-done run (chatgpt3.md).
+                ? { stage: "done", lastError: null }
                 : { stage: "failed", lastError: `Verification failed for ${firstFailure?.url} (status ${firstFailure?.status})` })
             }
           }
@@ -3959,7 +4055,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "3.2.0" },
+    serverInfo: { name: "sacms-mcp", version: "3.3.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

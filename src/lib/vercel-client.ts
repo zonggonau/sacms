@@ -8,6 +8,7 @@ import { createHash } from "crypto"
 import { getPlatformSettings } from "./settings"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
 import { ROOT_DOMAIN } from "./portal-urls"
+import { stripWrapperPrefix, findInvalidBinaryAssets } from "./infrastructure/deployment-source-guard"
 
 const VERCEL_API_BASE = "https://api.vercel.com"
 
@@ -445,9 +446,9 @@ function isTextFile(path: string, bytes: Buffer): boolean {
 export async function getDeploymentFiles(
   deploymentId: string,
   maxFiles = 100,
-): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[]; skipped: string[]; truncated: boolean }> {
+): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[]; skipped: string[]; truncated: boolean; invalidAssets: string[] }> {
   const token = await getVercelToken()
-  if (!token) return { files: [], skipped: [], truncated: false }
+  if (!token) return { files: [], skipped: [], truncated: false, invalidAssets: [] }
 
   const headers = await getVercelHeaders()
   const teamQuery = await getTeamQuery()
@@ -474,11 +475,17 @@ export async function getDeploymentFiles(
   }
   walk(Array.isArray(tree) ? tree : [], "")
 
+  // Strip a wrapper directory ahead of the real project root, proven only
+  // by package.json's own location — see deployment-source-guard.ts. A
+  // leaf outside the detected root is dropped into `skipped` rather than
+  // kept at its original, structurally-wrong path.
+  const { leaves: rootedLeaves, dropped: wrapperDropped } = stripWrapperPrefix(leaves)
+
   const files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[] = []
-  const skipped: string[] = []
+  const skipped: string[] = [...wrapperDropped]
   let truncated = false
 
-  for (const leaf of leaves) {
+  for (const leaf of rootedLeaves) {
     if (files.length >= maxFiles) {
       truncated = true
       break
@@ -513,7 +520,12 @@ export async function getDeploymentFiles(
     }
   }
 
-  return { files, skipped, truncated }
+  // Catches a corrupted binary asset that still returned HTTP 200 (chatgpt3.md:
+  // an icon whose bytes don't match its own PNG/JPEG/GIF/ICO signature) —
+  // a read containing one of these must not be auto-imported as trustworthy.
+  const invalidAssets = findInvalidBinaryAssets(files)
+
+  return { files, skipped, truncated, invalidAssets }
 }
 
 /**
