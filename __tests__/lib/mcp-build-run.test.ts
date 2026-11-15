@@ -12,10 +12,11 @@ vi.mock("server-only", () => ({}))
 const findFirst = vi.fn()
 const findUnique = vi.fn()
 const create = vi.fn()
+const update = vi.fn()
 const updateMany = vi.fn()
 
 vi.mock("@/lib/database", () => ({
-  db: { mcpBuildRun: { findFirst, findUnique, create, updateMany } },
+  db: { mcpBuildRun: { findFirst, findUnique, create, update, updateMany } },
 }))
 
 const {
@@ -29,12 +30,25 @@ const {
 describe("startOrResumeBuildRun", () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it("resumes the tenant's existing non-terminal run instead of creating a new one", async () => {
-    const existing = { id: "run_1", tenantId: "t1", intent: "create", stage: "deploying" }
+  it("resumes the tenant's existing non-terminal run instead of creating a new one when the intent is unchanged", async () => {
+    const existing = { id: "run_1", tenantId: "t1", intent: "update", stage: "deploying" }
     findFirst.mockResolvedValue(existing)
 
     const result = await startOrResumeBuildRun("t1", "update")
     expect(result).toEqual({ run: existing, resumed: true })
+    expect(create).not.toHaveBeenCalled()
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it("syncs the stored intent when resuming a run started under a different one, so get_build_run doesn't keep reporting a stale value for the same runId start_website_build just echoed a fresh intent for (a real finding: start_website_build returned intent: update for a revision while get_build_run kept reporting intent: create for that runId)", async () => {
+    const existing = { id: "run_1", tenantId: "t1", intent: "create", stage: "deploying" }
+    const updated = { ...existing, intent: "update" }
+    findFirst.mockResolvedValue(existing)
+    update.mockResolvedValue(updated)
+
+    const result = await startOrResumeBuildRun("t1", "update")
+    expect(update).toHaveBeenCalledWith({ where: { id: "run_1" }, data: { intent: "update" } })
+    expect(result).toEqual({ run: updated, resumed: true })
     expect(create).not.toHaveBeenCalled()
   })
 

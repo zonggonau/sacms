@@ -278,4 +278,27 @@ describe("MCP workspace server route — source contract", () => {
     const scoped = toolBlockOf("verify_deployment_url")
     expect(scoped).toMatch(/stage:\s*"done",\s*lastError:\s*null/)
   })
+
+  // ── 4th-party findings round (encoding normalization, intent sync) ───────
+
+  it("deploy_to_sacms normalizes a missing per-file encoding to utf-8 before both deploying and persisting", () => {
+    const scoped = toolBlockOf("deploy_to_sacms")
+    expect(scoped).toMatch(/normalizedFiles/)
+    expect(scoped).toMatch(/f\.encoding \|\| \("utf-8" as const\)/)
+  })
+
+  it("deploy_website_patch normalizes carried-over base files' encoding, not just changedFiles", () => {
+    const scoped = toolBlockOf("deploy_website_patch")
+    expect(scoped).toMatch(/base\.files\.map\(\(f\) => \[f\.name, \{ \.\.\.f, encoding: f\.encoding \|\| \("utf-8" as const\) \}\]/)
+  })
+
+  it("rollback_website normalizes the restored revision's encoding before redeploying and re-persisting it", () => {
+    const scoped = toolBlockOf("rollback_website")
+    expect(scoped).toMatch(/normalizedTargetFiles/)
+  })
+
+  it("get_deployment_source's persisted branch defaults a missing encoding to utf-8 on read-back of an old revision", () => {
+    const scoped = toolBlockOf("get_deployment_source")
+    expect(scoped).toMatch(/encoding: f\.encoding \|\| "utf-8"/)
+  })
 })

@@ -128,30 +128,39 @@ export async function processAutoSlugs(
         options = typeof field.options === "string" ? JSON.parse(field.options) : (field.options || {})
       } catch (e) {}
 
-      if (options.autoGenerate && options.sourceField) {
-        const sourceValue = data[options.sourceField]
-        const currentSlug = data[field.slug]
-        
-        if (!currentSlug && sourceValue) {
-          if (mode === 'content') {
-            updatedData[field.slug] = await generateUniqueContentSlug(
-              tenantId,
-              typeId,
-              field.slug,
-              sourceValue,
-              entityId,
-              prisma
-            )
-          } else {
-            updatedData[field.slug] = await generateUniqueSingleTypeSlug(
-              tenantId,
-              typeId,
-              field.slug,
-              sourceValue,
-              entityId,
-              prisma
-            )
-          }
+      const currentSlug = data[field.slug]
+      // The schema builder's options.autoGenerate/sourceField never actually
+      // drive the UI the user sees (field-type-guide.ts: "no effect, don't
+      // bother setting them") — the dashboard's create/edit entry form
+      // instead fills the slug client-side by looking at a sibling field
+      // literally named title/judul/name as the user types, so by the time
+      // it submits, `data[field.slug]` is already non-empty and this
+      // function never has anything to do. A direct API/MCP write skips
+      // that browser-only step entirely, so mirror the same lookup here —
+      // explicit options.sourceField still wins when actually configured.
+      const sourceValue = (options.autoGenerate && options.sourceField)
+        ? data[options.sourceField]
+        : (data.title ?? data.judul ?? data.name)
+
+      if (!currentSlug && sourceValue) {
+        if (mode === 'content') {
+          updatedData[field.slug] = await generateUniqueContentSlug(
+            tenantId,
+            typeId,
+            field.slug,
+            sourceValue,
+            entityId,
+            prisma
+          )
+        } else {
+          updatedData[field.slug] = await generateUniqueSingleTypeSlug(
+            tenantId,
+            typeId,
+            field.slug,
+            sourceValue,
+            entityId,
+            prisma
+          )
         }
       }
     }

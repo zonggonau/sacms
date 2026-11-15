@@ -2766,6 +2766,18 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         }
 
         try {
+          // Normalize a missing per-file encoding to "utf-8" up front — a
+          // caller omitting it entirely (not just a plain text file) must
+          // not leave `undefined` sitting in what gets persisted. deployToVercel
+          // already defaults this internally for the Vercel call itself, but
+          // it was never applied to what saveDeploymentSource stores, so a
+          // later read-back failed validating files[].encoding against its
+          // required enum. One normalized array, used for both calls below.
+          const normalizedFiles = (files as { name: string; content: string; encoding?: "utf-8" | "base64" }[]).map((f) => ({
+            ...f,
+            encoding: f.encoding || ("utf-8" as const),
+          }))
+
           // Assemble the workspace's full frontend env (saved Environment
           // vars + fixed SACMS_* connection vars), then let the caller's
           // envVars override any non-reserved key.
@@ -2783,7 +2795,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           // add_deployment_env/make_deployment_public, which only ever
           // resolve the workspace's *current* vercelProjectId.
           const lockedProjectName = `sacms-${auth.tenantSlug}`
-          const result = await deployToVercel(lockedProjectName, files, mergedEnv, auth.tenantSlug)
+          const result = await deployToVercel(lockedProjectName, normalizedFiles, mergedEnv, auth.tenantSlug)
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>
@@ -2828,7 +2840,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               auth.tenantId,
               result.id,
               result.projectId,
-              files as DeploymentSourceFile[],
+              normalizedFiles as DeploymentSourceFile[],
             )
             sourceRevision = saved.id
           } catch (e) {
@@ -3005,7 +3017,12 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         }
 
         try {
-          const fileMap = new Map(base.files.map((f) => [f.name, f] as const))
+          // Normalize the carried-over base files' encoding too — a row
+          // persisted before this fix (or by a caller that omitted
+          // encoding on an unchanged file) could still have `undefined`
+          // sitting there, which fails files[].encoding's required enum
+          // on the next read-back.
+          const fileMap = new Map(base.files.map((f) => [f.name, { ...f, encoding: f.encoding || ("utf-8" as const) }] as const))
           for (const f of changedFiles) {
             fileMap.set(f.name, { name: f.name, content: f.content, encoding: f.encoding || "utf-8" })
           }
@@ -3196,12 +3213,17 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         }
 
         try {
+          // Same encoding normalization as deploy_to_sacms/deploy_website_patch
+          // — a revision persisted before that fix could still carry an
+          // undefined encoding forward into this new rollback snapshot.
+          const normalizedTargetFiles = target.files.map((f) => ({ ...f, encoding: f.encoding || ("utf-8" as const) }))
+
           const { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } = await import(
             "@/lib/infrastructure/frontend-env"
           )
           const resolvedEnv = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, resolveApiOrigin())
           const lockedProjectName = `sacms-${auth.tenantSlug}`
-          const result = await deployToVercel(lockedProjectName, target.files, resolvedEnv, auth.tenantSlug)
+          const result = await deployToVercel(lockedProjectName, normalizedTargetFiles, resolvedEnv, auth.tenantSlug)
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, resolvedEnv).catch((e) =>
@@ -3217,7 +3239,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
           let newSourceRevision: string | undefined
           try {
-            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, target.files)
+            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, normalizedTargetFiles)
             newSourceRevision = saved.id
           } catch (e) {
             console.warn("[MCP rollback_website] Failed to persist source snapshot:", e)
@@ -3375,7 +3397,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             files = base.map((f) => ({
               name: f.name,
               content: manifestOnly ? "" : f.content,
-              encoding: f.encoding,
+              // A row persisted before encoding was normalized at write-time
+              // could still have it undefined — default it here too so this
+              // never fails the outputSchema's required encoding enum on
+              // read-back of an old revision.
+              encoding: f.encoding || "utf-8",
               size: manifestByPath.get(f.name)?.size ?? f.content.length,
               checksum: manifestByPath.get(f.name)?.checksum ?? "",
             }))
@@ -4055,7 +4081,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "3.3.0" },
+    serverInfo: { name: "sacms-mcp", version: "3.4.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

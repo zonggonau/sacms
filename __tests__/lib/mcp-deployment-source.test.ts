@@ -51,6 +51,13 @@ describe("checksumOf / buildManifest", () => {
     ])
     expect(manifest[1].size).toBe(4) // not 8 (the base64 string's own length) — the real bug this fixes
   })
+
+  it("normalizes a missing per-file encoding to utf-8 instead of leaving it undefined in the manifest (a real finding: deploy_to_sacms accepted a file with no explicit encoding, but reading it back later failed validating files[].encoding against its required enum)", () => {
+    const manifest = buildManifest([{ name: "index.html", content: "<html></html>" } as any])
+    expect(manifest).toEqual([
+      { path: "index.html", size: "<html></html>".length, encoding: "utf-8", checksum: checksumOf("<html></html>") },
+    ])
+  })
 })
 
 describe("saveDeploymentSource", () => {

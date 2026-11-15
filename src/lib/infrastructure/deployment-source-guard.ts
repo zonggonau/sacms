@@ -74,7 +74,10 @@ export function stripWrapperPrefix<T extends { path: string }>(
   return { leaves: kept, dropped }
 }
 
-function decodeBytes(content: string, encoding: "utf-8" | "base64"): Buffer {
+function decodeBytes(content: string, encoding: "utf-8" | "base64" | undefined): Buffer {
+  // A file set from before encoding normalization was applied at every
+  // write path can still have it missing — treat that as "utf-8" rather
+  // than letting it reach Buffer.from's own implicit default silently.
   return encoding === "base64" ? Buffer.from(content, "base64") : Buffer.from(content, "utf-8")
 }
 

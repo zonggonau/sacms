@@ -38,17 +38,21 @@ export function checksumOf(content: string): string {
  *  string directly (a real bug, confirmed live: a PNG icon reported 2544
  *  bytes — its base64 length — instead of its real 1908) silently produces
  *  the wrong size and a checksum of the wrong thing. */
-function decodedBytes(content: string, encoding: "utf-8" | "base64"): Buffer {
+function decodedBytes(content: string, encoding: "utf-8" | "base64" | undefined): Buffer {
+  // A row written before encoding normalization was applied at every write
+  // path can still have it missing — treat that the same as "utf-8" rather
+  // than letting it fall through to Buffer.from's own default silently.
   return encoding === "base64" ? Buffer.from(content, "base64") : Buffer.from(content, "utf-8")
 }
 
 export function buildManifest(files: DeploymentSourceFile[]): DeploymentSourceManifestEntry[] {
   return files.map((f) => {
-    const bytes = decodedBytes(f.content, f.encoding)
+    const encoding: "utf-8" | "base64" = f.encoding || "utf-8"
+    const bytes = decodedBytes(f.content, encoding)
     return {
       path: f.name,
       size: bytes.length,
-      encoding: f.encoding,
+      encoding,
       checksum: createHash("sha256").update(bytes).digest("hex"),
     }
   })

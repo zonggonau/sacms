@@ -53,7 +53,19 @@ export async function startOrResumeBuildRun(
     },
     orderBy: { createdAt: "desc" },
   })
-  if (existing) return { run: existing, resumed: true }
+  if (existing) {
+    // Keep the stored intent in sync with what THIS call resolved to —
+    // resuming a run must not leave it reporting a stale intent from
+    // whenever it was first created. Without this, start_website_build's
+    // own response (which always echoes its freshly-resolved intent) could
+    // say "update" for the very same runId get_build_run still reports
+    // "create" for, since resuming never touched the stored value.
+    if (existing.intent !== intent) {
+      const updated = await db.mcpBuildRun.update({ where: { id: existing.id }, data: { intent } })
+      return { run: updated, resumed: true }
+    }
+    return { run: existing, resumed: true }
+  }
 
   const run = await db.mcpBuildRun.create({
     data: { tenantId, intent, stage: "discover" },
