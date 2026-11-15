@@ -113,7 +113,10 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
   })
 
   it("the server's top-level instructions warn that richText needs dangerouslySetInnerHTML and markdown needs a Markdown renderer, not plain-text interpolation (a real finding: a template rendering richText as plain text only looked fine with unwrapped test prose)", () => {
-    expect(routeSource).toMatch(/richText.*dangerouslySetInnerHTML/s)
-    expect(routeSource).toMatch(/markdown.*Markdown renderer/is)
+    // [\s\S]* instead of a dotAll `.*` — the project's tsconfig targets
+    // ES2017, where TS rejects the `/s` regex flag at compile time even
+    // though it'd work fine at runtime.
+    expect(routeSource).toMatch(/richText[\s\S]*dangerouslySetInnerHTML/)
+    expect(routeSource).toMatch(/markdown[\s\S]*Markdown renderer/i)
   })
 })
