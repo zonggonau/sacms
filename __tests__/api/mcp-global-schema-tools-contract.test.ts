@@ -111,4 +111,9 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     const occurrences = routeSource.match(/async function dedupeSlug/g) || []
     expect(occurrences).toHaveLength(1)
   })
+
+  it("the server's top-level instructions warn that richText needs dangerouslySetInnerHTML and markdown needs a Markdown renderer, not plain-text interpolation (a real finding: a template rendering richText as plain text only looked fine with unwrapped test prose)", () => {
+    expect(routeSource).toMatch(/richText.*dangerouslySetInnerHTML/s)
+    expect(routeSource).toMatch(/markdown.*Markdown renderer/is)
+  })
 })

@@ -793,14 +793,20 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.5.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.5.1" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
       "that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, " +
       "or settings; for that, connect to a workspace's own MCP server at /api/mcp instead. Call " +
       "list_field_types before writing any schema field (it has the real options/relationSlug shape per type, " +
-      "and flags options that are silently ignored — never guess one), and list_website_templates before " +
+      "and flags options that are silently ignored — never guess one). Its entry for richText/markdown also " +
+      "tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from " +
+      "a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never `{value}`/string interpolation — " +
+      "confirmed live, a template that renders it as plain text only looks fine with unwrapped test prose and " +
+      "shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw " +
+      "Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink. And " +
+      "list_website_templates before " +
       "creating a new one, to avoid a near-duplicate. BUILD SCHEMA AND FRONTEND TOGETHER in one call: pass " +
       "`schema` directly to create_website_template — it auto-creates the backing Schema Template for you, no " +
       "separate create_schema_template step needed for the common case. Only use `schemaTemplateId` (and the " +
