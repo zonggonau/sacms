@@ -2355,7 +2355,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
 ## Phase 3 — Scaffold the frontend
 7. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
-8. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`/\`markdown\`→rendered HTML, \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
+8. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`→sanitized dangerouslySetInnerHTML (its value is REAL HTML from the dashboard's WYSIWYG editor — rendering it as plain text shows the literal <p>/<strong>/<ul> tags to visitors, confirmed live), \`markdown\`→a Markdown renderer (react-markdown or equivalent — its value is raw Markdown source, not HTML), \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
 9. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
 10. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
@@ -4081,7 +4081,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "3.4.0" },
+    serverInfo: { name: "sacms-mcp", version: "3.4.1" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

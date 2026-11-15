@@ -301,4 +301,11 @@ describe("MCP workspace server route — source contract", () => {
     const scoped = toolBlockOf("get_deployment_source")
     expect(scoped).toMatch(/encoding: f\.encoding \|\| "utf-8"/)
   })
+
+  // ── richText/markdown rendering-contract finding ──────────────────────────
+
+  it("get_agent_playbook warns richText needs sanitized dangerouslySetInnerHTML and markdown needs a Markdown renderer, not plain-text interpolation", () => {
+    expect(routeSource).toMatch(/richText.*dangerouslySetInnerHTML/)
+    expect(routeSource).toMatch(/markdown.*Markdown renderer/i)
+  })
 })

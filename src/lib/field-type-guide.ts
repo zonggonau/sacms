@@ -32,6 +32,14 @@ export interface FieldTypeGuideEntry {
 }
 
 export const FIELD_TYPE_GUIDE: Record<string, FieldTypeGuideEntry> = {
+  richText: {
+    entryValue: "A raw HTML string (e.g. '<p><strong>Espresso</strong> dengan susu kukus.</p><ul><li>adsf</li></ul>') — this is exactly what the dashboard's own WYSIWYG editor (Quill) produces and saves, real markup, not plain text.",
+    note: "The frontend you scaffold MUST render this as HTML — a sanitized dangerouslySetInnerHTML (or an equivalent HTML-aware renderer), never `{value}`/string interpolation. Confirmed live: a frontend that renders richText as plain text shows the literal tags (<p>, <strong>, <ul>, &nbsp;, …) to visitors instead of formatted text — this only stays hidden by accident when test content happens to be unwrapped plain prose with no real markup in it.",
+  },
+  markdown: {
+    entryValue: "Raw Markdown source text (e.g. '**bold** and a [link](https://...)'), NOT HTML — the dashboard's own editor keeps it as plain Markdown and only renders a preview tab from it.",
+    note: "The frontend you scaffold must run this through a Markdown renderer (e.g. react-markdown/remark) before display — showing the raw Markdown source as the page content is the same class of bug as not rendering a richText field's HTML.",
+  },
   slug: {
     entryValue: "Auto-generated — do not set directly when creating a content entry.",
     note: "Auto-slug generation looks for a sibling field literally named 'title', 'judul', or 'name' — always include one of those alongside a slug field. The dashboard builder's options.sourceField/autoGenerate have NO effect, don't bother setting them.",
