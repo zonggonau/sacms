@@ -20,6 +20,7 @@ import {
   generateDocumentId,
   normalizeScheduledAt,
   createContentEntry,
+  updateContentEntry,
   deleteContentEntry,
   restoreContentEntry,
   permanentlyDeleteContentEntry,
@@ -49,6 +50,8 @@ function makeClient(overrides: any = {}) {
         contentEntry: {
           create: vi.fn().mockResolvedValue({ id: "e1", data: { title: "Hi" }, status: "DRAFT" }),
           update: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT", locale: "en" }),
+          findUnique: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT", locale: "en" }),
+          findMany: vi.fn().mockResolvedValue([]),
         },
         contentVersion: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
       }),
@@ -121,6 +124,68 @@ describe("createContentEntry", () => {
     const res = await createContentEntry(ctx(client), { kind: "system" }, { contentTypeSlug: "ghost", data: { title: "x" } })
     expect(res.ok).toBe(false)
     if (!res.ok) expect(res.code).toBe("not_found")
+  })
+})
+
+describe("updateContentEntry — status-only transitions must still validate the effective data", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  // A real, confirmed bug (chatgpt6.md): UpdateEntryInput.data is
+  // documented as "Omit to change only the status", and the validation
+  // block used to be gated entirely on `input.data` being truthy — so a
+  // DRAFT entry missing a required field (allowed while it's a draft)
+  // could be pushed straight to PUBLISHED via a status-only call with no
+  // `data` at all, never re-validated against PUBLISHED's stricter rules.
+
+  function makeExistingDraftEntry(data: Record<string, unknown>) {
+    return makeClient({
+      contentEntry: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "e1",
+          documentId: "e1",
+          contentTypeId: "ct1",
+          tenantId: "t1",
+          locale: "en",
+          status: "DRAFT",
+          data,
+          createdBy: null,
+          updatedAt: new Date(),
+        }),
+        update: vi.fn(),
+      },
+    })
+  }
+
+  it("rejects a status-only PUBLISHED transition when the existing draft is missing a required field", async () => {
+    const client = makeExistingDraftEntry({}) // "title" (required) was never filled in
+    const res = await updateContentEntry(ctx(client), { kind: "system" }, {
+      contentTypeSlug: "posts",
+      entryId: "e1",
+      status: "PUBLISHED",
+      // No `data` — status-only, per this field's own documented contract.
+    })
+    expect(res.ok).toBe(false)
+    if (!res.ok) expect(res.code).toBe("validation")
+  })
+
+  it("allows a status-only PUBLISHED transition when the existing data already satisfies required fields", async () => {
+    const client = makeExistingDraftEntry({ title: "Already valid" })
+    const res = await updateContentEntry(ctx(client), { kind: "system" }, {
+      contentTypeSlug: "posts",
+      entryId: "e1",
+      status: "PUBLISHED",
+    })
+    expect(res.ok).toBe(true)
+  })
+
+  it("does not require validation for a status-only transition that stays within DRAFT-tier requirements (e.g. DRAFT -> DRAFT)", async () => {
+    const client = makeExistingDraftEntry({}) // still missing "title", but enforceRequired is false for DRAFT
+    const res = await updateContentEntry(ctx(client), { kind: "system" }, {
+      contentTypeSlug: "posts",
+      entryId: "e1",
+      status: "DRAFT",
+    })
+    expect(res.ok).toBe(true)
   })
 })
 

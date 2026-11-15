@@ -385,7 +385,7 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "create_webhook", category: "webhook", description: "Mendaftarkan endpoint webhook baru untuk menerima notifikasi event CMS (mis. 'content.created', 'content.published').", inputs: ["name", "url", "events", "secret", "enabled"] },
   { name: "update_webhook", category: "webhook", description: "Memperbarui konfigurasi webhook yang ada (nama, URL, event yang di-subscribe, status aktif).", inputs: ["id", "name", "url", "events", "enabled"] },
   { name: "delete_webhook", category: "webhook", description: "Menghapus permanen sebuah konfigurasi webhook beserta riwayat log-nya.", inputs: ["id"] },
-  { name: "test_webhook", category: "webhook", description: "Mengirimkan event test tiruan ke sebuah endpoint webhook untuk verifikasi konektivitas dan status respons.", inputs: ["id"] },
+  { name: "test_webhook", category: "webhook", description: "Mengirimkan event test tiruan ke sebuah endpoint webhook. Mengembalikan `delivered` (true HANYA untuk respons 2xx) dan `httpStatus` terpisah dari keberhasilan panggilan tool itu sendiri — endpoint yang menolak dengan 405/5xx dilaporkan sebagai pengiriman GAGAL, bukan sukses semu.", inputs: ["id"] },
 
   { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa izin API key aktif (read, write, delete, schema, webhooks) untuk menentukan apakah membangun komponen read-only atau interaktif.", inputs: [] },
   { name: "get_api_info", category: "webhook", description: "Mengambil dokumentasi REST API lengkap, daftar endpoint, sintaks filtering, dan contoh kode integrasi untuk workspace ini.", inputs: ["baseUrl?"] },

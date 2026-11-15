@@ -2200,9 +2200,17 @@ const handler = createMcpHandler(
       "test_webhook",
       {
         title: "Test Webhook",
-        description: "Dispatch a mock test event to a webhook endpoint to verify its connectivity and response status.",
+        description: "Dispatch a mock test event to a webhook endpoint to verify its connectivity and response status. Check `delivered` (true only for an HTTP 2xx response), not just that this tool call itself succeeded — a real, confirmed bug: an endpoint that rejected the test with HTTP 405 used to come back looking like a success (no isError, a ✅ message) with no structured field distinguishing \"the endpoint responded\" from \"the endpoint actually accepted it\".",
         inputSchema: {
           id: z.string().describe("ID of the webhook to test"),
+        },
+        outputSchema: {
+          ok: z.boolean(),
+          delivered: z.boolean(),
+          httpStatus: z.number().optional(),
+          httpStatusText: z.string().optional(),
+          durationMs: z.number(),
+          message: z.string(),
         },
       },
       async ({ id }) => {
@@ -2238,20 +2246,44 @@ const handler = createMcpHandler(
             },
             body: JSON.stringify(testPayload),
           })
-          const duration = Date.now() - start
+          const durationMs = Date.now() - start
+          // `res.ok` (2xx) is DELIVERY success — a 405/5xx means the
+          // endpoint responded but rejected the test, which must not be
+          // reported the same way as actually accepting it.
+          const delivered = res.ok
+          const structured = {
+            ok: true,
+            delivered,
+            httpStatus: res.status,
+            httpStatusText: res.statusText,
+            durationMs,
+            message: delivered
+              ? `Webhook test delivered successfully in ${durationMs}ms (HTTP ${res.status} ${res.statusText}).`
+              : `Webhook endpoint responded but did NOT accept the test — HTTP ${res.status} ${res.statusText} after ${durationMs}ms. This is a failed delivery, not a success.`,
+          }
 
           return {
             content: [{
               type: "text" as const,
-              text: `✅ Webhook test completed in ${duration}ms with HTTP Status ${res.status} (${res.statusText}).`
-            }]
+              text: `${delivered ? "✅" : "⚠️"} ${structured.message}`
+            }],
+            structuredContent: structured,
+            isError: !delivered,
           }
         } catch (error: any) {
+          const durationMs = Date.now() - start
           return {
             content: [{
               type: "text" as const,
               text: `❌ Webhook test failed: ${error.message || "Endpoint unreachable"}`
-            }]
+            }],
+            structuredContent: {
+              ok: false,
+              delivered: false,
+              durationMs,
+              message: error.message || "Endpoint unreachable",
+            },
+            isError: true,
           }
         }
       }
@@ -4329,7 +4361,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.0.0" },
+    serverInfo: { name: "sacms-mcp", version: "4.1.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

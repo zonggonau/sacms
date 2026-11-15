@@ -141,9 +141,21 @@ export async function reorderContentTypeGroups(
   const siblingIds = new Set(siblings.map((s: { id: string }) => s.id))
   if (orderedIds.some((id) => !siblingIds.has(id))) return { error: "Daftar grup tidak valid" }
 
-  await tenantDb.$transaction(
-    orderedIds.map((id, index) => tenantDb.contentTypeGroup.update({ where: { id }, data: { order: index } })),
-  )
+  // The interactive/callback form, not a batched $transaction([...]) array
+  // — a real, confirmed bug: a dedicated-tenant client is wrapped in a
+  // connection-fallback Proxy whose .catch() wrapping strips the
+  // PrismaPromise branding the array form requires, so SOME updates could
+  // land individually before the batch call itself throws — the reported
+  // symptom was the group order changing and THEN getting a transaction
+  // error back. The callback form gets a real `tx` handle from the engine
+  // directly: genuinely atomic, so a failure partway through rolls back
+  // every update already applied in this same call instead of leaving the
+  // order half-changed.
+  await tenantDb.$transaction(async (tx: any) => {
+    for (const [index, id] of orderedIds.entries()) {
+      await tx.contentTypeGroup.update({ where: { id }, data: { order: index } })
+    }
+  })
   return { success: true }
 }
 

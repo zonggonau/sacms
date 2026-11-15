@@ -530,14 +530,22 @@ export async function updateContentEntry(
 
   const enforceRequired = targetStatus !== "DRAFT"
 
-  // Validate the merged data if data was supplied.
+  // Validate whenever data actually changes OR the target status demands
+  // it — a real, confirmed bug without the `enforceRequired` half of this:
+  // a status-only transition ("Omit [data] to change only the status")
+  // never ran this block at all, so a DRAFT missing a required field, or
+  // carrying a `select` value outside its own declared choices, could be
+  // pushed straight to PUBLISHED just by touching status with no `data`.
+  // Publishing must re-check the FULL effective data (existing + whatever
+  // this call touches), not only what this particular call happens to
+  // send.
   let mergedData: Record<string, unknown> | undefined
-  if (input.data) {
+  if (input.data || enforceRequired) {
     const existingData =
       existingLocaleEntry?.data && typeof existingLocaleEntry.data === "object"
         ? (existingLocaleEntry.data as Record<string, unknown>)
         : {}
-    const candidate = { ...existingData, ...input.data }
+    const candidate = { ...existingData, ...(input.data || {}) }
     const withSlugs = await processAutoSlugs(
       tenantId,
       contentType.id,
@@ -561,7 +569,13 @@ export async function updateContentEntry(
       if (!dynamic.success) return fail("validation", "Validation failed", dynamic.errors ?? undefined)
     }
 
-    mergedData = { ...withSlugs, ...(schemaValidation.data ?? {}) }
+    // Only actually persist a (possibly auto-slugged/coerced) data
+    // rewrite when the caller intended to change data — a pure status
+    // transition must not silently rewrite `data` just because
+    // validation needed to run against it.
+    if (input.data) {
+      mergedData = { ...withSlugs, ...(schemaValidation.data ?? {}) }
+    }
   }
 
   const uid = actorUserId(actor)

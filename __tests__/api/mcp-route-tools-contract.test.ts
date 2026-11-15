@@ -406,4 +406,25 @@ describe("MCP workspace server route — source contract", () => {
     const playbookMatches = routeSource.match(/promote_deployment/g) || []
     expect(playbookMatches.length).toBeGreaterThan(2) // appears in the playbook text, the instructions string, AND the tool's own registration
   })
+
+  // ── chatgpt6.md round ──────────────────────────────────────────────────────
+
+  it("test_webhook reports delivered/httpStatus distinctly from the tool call's own success, and flags isError on a non-2xx response", () => {
+    const scoped = toolBlockOf("test_webhook")
+    expect(scoped).toMatch(/delivered: z\.boolean\(\)/)
+    expect(scoped).toMatch(/httpStatus: z\.number\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/const delivered = res\.ok/)
+    expect(scoped).toMatch(/isError: !delivered/)
+  })
+
+  it("reorder_content_type_groups' underlying service uses the interactive $transaction callback form, never the array form that strips PrismaPromise branding on a dedicated-tenant Proxy client", () => {
+    const groupServiceSource = readFileSync(
+      join(__dirname, "../../src/lib/content-type-group-service.ts"),
+      "utf-8",
+    )
+    const fnStart = groupServiceSource.indexOf("export async function reorderContentTypeGroups")
+    const fnBlock = groupServiceSource.slice(fnStart, groupServiceSource.indexOf("\n}\n", fnStart))
+    expect(fnBlock).toMatch(/\$transaction\(async/)
+    expect(fnBlock).not.toMatch(/\$transaction\(\s*orderedIds\.map/)
+  })
 })

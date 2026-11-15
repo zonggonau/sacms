@@ -225,9 +225,12 @@ describe("reorderContentTypeGroupsAction", () => {
 
   it("re-sequences order for valid siblings", async () => {
     mockDb.contentTypeGroup.findMany.mockResolvedValue([{ id: "g1" }, { id: "g4" }])
-    const tx = vi.fn().mockResolvedValue(undefined)
-    ;(mockDb as any).$transaction = vi.fn(async (ops: any[]) => Promise.all(ops))
     mockDb.contentTypeGroup.update.mockResolvedValue({})
+    // Interactive callback form, not the array form — a dedicated-tenant
+    // Proxy client strips the PrismaPromise branding the array form
+    // needs, so reorderContentTypeGroups uses $transaction(async (tx) =>
+    // ...) instead. The callback receives a real tx handle.
+    ;(mockDb as any).$transaction = vi.fn(async (cb: any) => cb(mockDb))
 
     const res = await reorderContentTypeGroupsAction("tenant1", null, ["g4", "g1"])
 

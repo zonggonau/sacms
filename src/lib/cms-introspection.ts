@@ -199,9 +199,18 @@ export async function queryContentForTenant(
     idx += 2
     const whereSql = whereParts.join(" AND ")
 
-    const [rows, countRows] = await Promise.all([
-      tenantDb.$queryRawUnsafe<any[]>(
-        `SELECT * FROM "content_entries" WHERE ${whereSql} ORDER BY "createdAt" ${safeSortOrder} LIMIT $${idx} OFFSET $${idx + 1}`,
+    // `SELECT *` would include "searchVector" (an Unsupported("tsvector")
+    // column) — Prisma can't deserialize it, so $queryRawUnsafe throws the
+    // moment a row is actually returned (a real, confirmed regression: the
+    // zero-match case looked fixed since there was nothing to deserialize,
+    // but any term that actually matched something broke). Select only
+    // the matching ids via raw SQL — used for tsvector filtering/ordering,
+    // never returned directly — then re-fetch the real rows through
+    // Prisma's own typed client, which already knows to skip Unsupported
+    // columns. Same two-step pattern the legacy global content API uses.
+    const [idRows, countRows] = await Promise.all([
+      tenantDb.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT "id" FROM "content_entries" WHERE ${whereSql} ORDER BY "createdAt" ${safeSortOrder} LIMIT $${idx} OFFSET $${idx + 1}`,
         ...params,
         safeLimit,
         (safePage - 1) * safeLimit,
@@ -211,7 +220,13 @@ export async function queryContentForTenant(
         ...params,
       ),
     ])
-    entries = rows
+    const matchedIds = idRows.map((r) => r.id)
+    const unsortedEntries = matchedIds.length > 0
+      ? await tenantDb.contentEntry.findMany({ where: { id: { in: matchedIds } } })
+      : []
+    // findMany({ id: { in: [...] } }) doesn't preserve the raw query's
+    // order — restore it so ORDER BY/pagination still means what it says.
+    entries = matchedIds.map((id) => unsortedEntries.find((e) => e.id === id)).filter((e): e is NonNullable<typeof e> => !!e)
     total = Number(countRows[0].count)
   } else {
     const whereClause: any = {

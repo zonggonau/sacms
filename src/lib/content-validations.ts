@@ -9,6 +9,19 @@ interface FieldDefinition {
   options?: any
 }
 
+/** The field-builder's declared `options.choices` values, or null when
+ *  none are configured (nothing to validate membership against). */
+function parseChoiceValues(options: unknown): string[] | null {
+  try {
+    const parsed = typeof options === "string" ? JSON.parse(options) : options
+    const choices = (parsed as any)?.choices
+    if (Array.isArray(choices) && choices.length > 0) {
+      return choices.map((c: any) => String(c?.value)).filter((v) => v !== "undefined")
+    }
+  } catch {}
+  return null
+}
+
 /**
  * Generates a dynamic Zod schema based on Content Type fields.
  *
@@ -35,7 +48,6 @@ export function generateContentSchema(
       case "textarea":
       case "richText":
       case "richtext":
-      case "select":
       case "slug":
       case "uid":
       case "url":
@@ -47,6 +59,46 @@ export function generateContentSchema(
             : z.string().optional().nullable()
         )
         break
+
+      case "select": {
+        // A real, confirmed bug: this used to share the plain "any
+        // non-empty string" branch above, so a value outside the field's
+        // own declared options.choices (e.g. a typo, or a stale value
+        // left over from an edited schema) silently passed — including on
+        // a direct create straight to PUBLISHED. No choices configured at
+        // all means nothing to validate membership against.
+        const choices = parseChoiceValues(field.options)
+        fieldSchema = z.preprocess(
+          (val) => (val === "" || val === null || val === undefined ? undefined : String(val)),
+          isRequired
+            ? z.string(requiredParams).min(1, { message: `${field.name} is required` })
+            : z.string().optional().nullable()
+        )
+        if (choices) {
+          fieldSchema = fieldSchema.refine(
+            (val) => val === undefined || val === null || choices.includes(val as string),
+            { message: `${field.name} must be one of: ${choices.join(", ")}` },
+          )
+        }
+        break
+      }
+
+      case "multiselect": {
+        const choices = parseChoiceValues(field.options)
+        fieldSchema = z.any().optional().nullable()
+        fieldSchema = fieldSchema.refine((val) => {
+          if (val === null || val === undefined) return !isRequired
+          if (!Array.isArray(val)) return false
+          if (isRequired && val.length === 0) return false
+          if (choices) return val.every((v) => choices.includes(String(v)))
+          return true
+        }, {
+          message: choices
+            ? `${field.name} must only contain: ${choices.join(", ")}`
+            : `${field.name} is required`,
+        })
+        break
+      }
 
       case "phone":
         fieldSchema = z.preprocess(
@@ -132,7 +184,6 @@ export function generateContentSchema(
       case "tags":
       case "file":
       case "repeater":
-      case "multiselect":
       case "button":
       case "location":
       case "seo":
