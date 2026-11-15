@@ -153,7 +153,7 @@ export async function queryContentForTenant(
   tenantId: string,
   opts: QueryContentOptions
 ): Promise<Record<string, any> | null> {
-  const { contentTypeSlug, limit, page, status, locale, sortOrder } = opts
+  const { contentTypeSlug, limit, page, status, search, locale, sortOrder } = opts
 
   const ct = await tenantDb.contentType.findFirst({
     where: {
@@ -168,28 +168,76 @@ export async function queryContentForTenant(
 
   const safeLimit = Math.min(limit ?? 10, 100)
   const safePage = Math.max(page ?? 1, 1)
+  const safeSortOrder = sortOrder === "asc" ? "ASC" : "DESC"
 
-  const whereClause: any = {
-    contentTypeId: ct.id,
-    tenantId,
-    deletedAt: null,
-  }
-  if (status && status !== "ALL") {
-    whereClause.status = status
-  }
-  if (locale) {
-    whereClause.locale = locale
-  }
+  let entries: any[]
+  let total: number
 
-  const [entries, total] = await Promise.all([
-    tenantDb.contentEntry.findMany({
-      where: whereClause,
-      skip: (safePage - 1) * safeLimit,
-      take: safeLimit,
-      orderBy: { createdAt: sortOrder ?? "desc" },
-    }),
-    tenantDb.contentEntry.count({ where: whereClause }),
-  ])
+  const trimmedSearch = search?.trim()
+  if (trimmedSearch) {
+    // Prisma has no native "search anywhere in this JSON column" filter —
+    // same raw-SQL approach the public content API already uses (tsvector
+    // first, ILIKE fallback for substrings tsvector's stemming might miss).
+    // A real, confirmed bug without this: `search` was accepted by the tool
+    // but silently never applied, so a term matching nothing still
+    // returned the whole unfiltered, paginated collection.
+    const whereParts = [`"contentTypeId" = $1`, `"tenantId" = $2`, `"deletedAt" IS NULL`]
+    const params: unknown[] = [ct.id, tenantId]
+    let idx = 3
+    if (status && status !== "ALL") {
+      whereParts.push(`"status"::text = $${idx}`)
+      params.push(status)
+      idx++
+    }
+    if (locale) {
+      whereParts.push(`"locale" = $${idx}`)
+      params.push(locale)
+      idx++
+    }
+    whereParts.push(`("searchVector" @@ plainto_tsquery('english', $${idx}) OR "data"::text ILIKE $${idx + 1})`)
+    params.push(trimmedSearch, `%${trimmedSearch}%`)
+    idx += 2
+    const whereSql = whereParts.join(" AND ")
+
+    const [rows, countRows] = await Promise.all([
+      tenantDb.$queryRawUnsafe<any[]>(
+        `SELECT * FROM "content_entries" WHERE ${whereSql} ORDER BY "createdAt" ${safeSortOrder} LIMIT $${idx} OFFSET $${idx + 1}`,
+        ...params,
+        safeLimit,
+        (safePage - 1) * safeLimit,
+      ),
+      tenantDb.$queryRawUnsafe<[{ count: bigint }]>(
+        `SELECT COUNT(*) as count FROM "content_entries" WHERE ${whereSql}`,
+        ...params,
+      ),
+    ])
+    entries = rows
+    total = Number(countRows[0].count)
+  } else {
+    const whereClause: any = {
+      contentTypeId: ct.id,
+      tenantId,
+      deletedAt: null,
+    }
+    if (status && status !== "ALL") {
+      whereClause.status = status
+    }
+    if (locale) {
+      whereClause.locale = locale
+    }
+
+    const [rows, count] = await Promise.all([
+      tenantDb.contentEntry.findMany({
+        where: whereClause,
+        skip: (safePage - 1) * safeLimit,
+        take: safeLimit,
+        orderBy: { createdAt: sortOrder ?? "desc" },
+      }),
+      tenantDb.contentEntry.count({ where: whereClause }),
+    ])
+    entries = rows
+    total = count
+  }
 
   return {
     contentType: ct.slug,

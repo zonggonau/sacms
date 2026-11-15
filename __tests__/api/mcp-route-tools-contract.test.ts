@@ -308,4 +308,46 @@ describe("MCP workspace server route — source contract", () => {
     expect(routeSource).toMatch(/richText.*dangerouslySetInnerHTML/)
     expect(routeSource).toMatch(/markdown.*Markdown renderer/i)
   })
+
+  // ── chatgpt5.md round — error-contract consistency ────────────────────────
+
+  it("every get_component/get_webhook not-found response sets isError and a consistent NOT_FOUND code (chatgpt5.md P1 — get_component returned plain 'not found' text with no isError at all)", () => {
+    for (const tool of ["get_component", "update_component", "delete_component", "get_webhook", "update_webhook", "delete_webhook", "test_webhook"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should set isError on its not-found path`).toMatch(/not found\.`[^}]*\}\],\s*structuredContent: \{ ok: false, code: "NOT_FOUND"/)
+    }
+  })
+
+  it("content-type/single-type/content-entry not-found responses also carry a consistent NOT_FOUND code", () => {
+    for (const tool of ["get_content_type", "update_content_type", "delete_content_type", "query_content", "get_content_entry", "update_content_entry", "delete_content_entry", "update_single_type_content", "update_single_type", "delete_single_type", "get_single_type"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should carry code: "NOT_FOUND"`).toMatch(/code: "NOT_FOUND"/)
+    }
+  })
+
+  it("create_webhook and update_webhook's SSRF-rejected URL response sets isError too, not just a bare error message", () => {
+    for (const tool of ["create_webhook", "update_webhook"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should mark a rejected webhook URL isError`).toMatch(/Webhook URL rejected:[\s\S]*?\}\], isError: true/)
+    }
+  })
+
+  // ── chatgpt5.md round — tenant isolation (test-coverage gap, not a found leak) ─
+
+  it("every get-by-id/slug tool scopes its lookup to auth.tenantId, so a valid token for tenant A structurally cannot reach tenant B's row by guessing an id", () => {
+    for (const tool of ["get_content_entry", "get_component", "get_webhook", "get_single_type", "get_content_type"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should scope its lookup by auth.tenantId`).toMatch(/auth\.tenantId/)
+    }
+  })
+
+  it("call_external_api and create_webhook/update_webhook route every outbound URL through the SSRF guard (safeFetch/assertPublicUrl), never a bare fetch", () => {
+    const callExternal = toolBlockOf("call_external_api")
+    expect(callExternal).toMatch(/safeFetch\(/)
+
+    for (const tool of ["create_webhook", "update_webhook"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should validate the URL via assertPublicUrl`).toMatch(/assertPublicUrl/)
+    }
+  })
 })

@@ -660,7 +660,7 @@ const handler = createMcpHandler(
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const result = await getContentTypeForTenant(tenantDb, auth.tenantId, slug)
 
-        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
+        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content Type not found." }, isError: true }
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -788,7 +788,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
+        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content Type not found." }, isError: true }
 
         // Update fields if provided — an explicit empty array clears them.
         if (fields !== undefined) {
@@ -859,7 +859,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }] }
+        if (!ct) return { content: [{ type: "text" as const, text: `❌ Content Type '${slug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content Type not found." }, isError: true }
 
         const dependent = await checkRelationDependents(tenantDb, auth.tenantId, ct.slug, { contentTypeId: ct.id })
         if (dependent) {
@@ -1084,7 +1084,7 @@ const handler = createMcpHandler(
         const result = await queryContentForTenant(tenantDb, auth.tenantId, {
           contentTypeSlug, limit, page, status, search, locale, sortOrder,
         })
-        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }] }
+        if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content Type not found." }, isError: true }
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
       }
@@ -1117,6 +1117,7 @@ const handler = createMcpHandler(
         if (!entry) {
           return {
             content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }],
+            structuredContent: { ok: false, code: "NOT_FOUND", message: "Content entry not found." },
             isError: true,
           }
         }
@@ -1201,7 +1202,7 @@ const handler = createMcpHandler(
           where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: { contentType: { select: { slug: true } } },
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content entry not found." }, isError: true }
 
         const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
         const result = await updateContentEntry(ctx, actor, {
@@ -1246,7 +1247,7 @@ const handler = createMcpHandler(
           where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: { contentType: { select: { slug: true } } },
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], isError: true }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Content entry with ID '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content entry not found." }, isError: true }
 
         const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
         const result = await deleteContentEntry(ctx, actor, {
@@ -1345,7 +1346,7 @@ const handler = createMcpHandler(
             tenants: { where: { tenantId: auth.tenantId } }
           },
         })
-        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], isError: true }
+        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
         const matchingAssignment = st.tenants.find(t => t.locale === targetLocale) || st.tenants[0]
 
@@ -1477,7 +1478,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }] }
+        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
         const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
           where: {
@@ -1545,7 +1546,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }] }
+        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
         // Update fields if provided — an explicit empty array clears them.
         if (fields !== undefined) {
@@ -1613,7 +1614,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }] }
+        if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
         const dependent = await checkRelationDependents(tenantDb, auth.tenantId, st.slug, { singleTypeId: st.id })
         if (dependent) {
@@ -1759,7 +1760,7 @@ const handler = createMcpHandler(
           },
           include: { schemaFields: { orderBy: { order: "asc" } } },
         })
-        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }] }
+        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Component not found." }, isError: true }
 
         const result = {
           id: c.id,
@@ -1818,7 +1819,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }] }
+        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Component not found." }, isError: true }
 
         // Update fields if provided — an explicit empty array clears them.
         if (fields !== undefined) {
@@ -1886,7 +1887,7 @@ const handler = createMcpHandler(
             ]
           }
         })
-        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }] }
+        if (!c) return { content: [{ type: "text" as const, text: `❌ Component '${componentSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Component not found." }, isError: true }
 
         const usedByCount = await countComponentDependents(tenantDb, auth.tenantId, c.slug)
         if (usedByCount > 0) {
@@ -1961,6 +1962,7 @@ const handler = createMcpHandler(
         if (!webhook) {
           return {
             content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }],
+            structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." },
             isError: true,
           }
         }
@@ -1998,7 +2000,7 @@ const handler = createMcpHandler(
           const { assertPublicUrl } = await import("@/lib/safe-url")
           await assertPublicUrl(url.trim())
         } catch (e: any) {
-          return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }] }
+          return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }], isError: true }
         }
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
@@ -2056,14 +2058,14 @@ const handler = createMcpHandler(
         const existing = await tenantDb.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], isError: true }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }
 
         if (url) {
           try {
             const { assertPublicUrl } = await import("@/lib/safe-url")
             await assertPublicUrl(url.trim())
           } catch (e: any) {
-            return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }] }
+            return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }], isError: true }
           }
         }
 
@@ -2106,7 +2108,7 @@ const handler = createMcpHandler(
         const existing = await tenantDb.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
-        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], isError: true }
+        if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }
 
         await tenantDb.webhook.delete({ where: { id, tenantId: auth.tenantId } })
 
@@ -2138,7 +2140,7 @@ const handler = createMcpHandler(
         const webhook = await tenantDb.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
-        if (!webhook) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }] }
+        if (!webhook) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }
 
         const testPayload = {
           event: "webhook.test",
@@ -4081,7 +4083,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "3.4.1" },
+    serverInfo: { name: "sacms-mcp", version: "3.5.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
