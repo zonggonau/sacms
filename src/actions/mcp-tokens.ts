@@ -126,7 +126,7 @@ export async function createMcpTokenAction(
       },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
 
     return {
       success: true,
@@ -171,7 +171,7 @@ export async function regenerateMcpTokenAction(tenantSlug: string, tokenId: stri
       data: { token: hashedToken },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
 
     return {
       success: true,
@@ -216,7 +216,7 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
       where: { id: tokenId },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
 
     return { success: true }
   } catch (error) {

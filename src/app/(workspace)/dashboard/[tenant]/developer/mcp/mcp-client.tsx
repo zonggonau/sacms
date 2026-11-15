@@ -17,9 +17,12 @@ import {
   Lock, AlertTriangle, ArrowUpRight, HardDrive, Download, FileCode, BookOpen
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
-import { recallMcpTokenPlain } from "@/lib/mcp-token-storage"
 import {
+  createMcpTokenAction,
+  regenerateMcpTokenAction,
+  deleteMcpTokenAction,
   createGlobalSchemaMcpTokenAction,
   regenerateGlobalSchemaMcpTokenAction,
   deleteGlobalSchemaMcpTokenAction,
@@ -31,7 +34,7 @@ interface MCPDashboardClientProps {
   plan?: string
   isPaid?: boolean
   subscriptionStatus?: string
-  /** The tenant's MCP token row, if one exists — never its plaintext (see src/lib/mcp-token-storage.ts). */
+  /** The tenant's MCP token row, if one exists — never its plaintext (only ever known here right after create/regenerate). */
   activeMcpToken?: { id: string; name: string } | null
   /** True only when viewing the SaCMS Global workspace's own Developer > MCP page. */
   isGlobal?: boolean
@@ -413,7 +416,6 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
 
 export function MCPDashboardClient({
   tenantSlug,
-  tenantId,
   plan = "free",
   isPaid = false,
   subscriptionStatus = "inactive",
@@ -422,6 +424,7 @@ export function MCPDashboardClient({
   activeGlobalSchemaToken = null,
 }: MCPDashboardClientProps) {
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   // Protocol MCP Base URL
   const [mcpUrl, setMcpUrl] = useState("")
@@ -493,23 +496,78 @@ export function MCPDashboardClient({
     }
   }
 
-  // Token itself is created/regenerated/deleted from /developer/api-keys'
-  // "MCP Token" tab. The server only ever stores a hash of it, so the
-  // plaintext can only be known here if it was just created/regenerated
-  // in THIS browser tab — picked up from sessionStorage (see
-  // src/lib/mcp-token-storage.ts). Otherwise there is nothing to
-  // auto-fill and the setup snippets fall back to a placeholder.
-  const [selectedTokenValue, setSelectedTokenValue] = useState<string>("")
-  useEffect(() => {
-    if (!activeMcpToken) {
-      setSelectedTokenValue("")
-      return
-    }
-    setSelectedTokenValue(recallMcpTokenPlain(tenantId, activeMcpToken.id) || "")
-  }, [tenantId, activeMcpToken])
-  const hasRealToken = selectedTokenValue.length > 0
+  // The per-workspace MCP token — create/regenerate/revoke all happen
+  // inline right here now (previously split off to a separate "MCP
+  // Token" tab on /developer/api-keys, which meant leaving this page,
+  // creating the token there, then coming back to actually use it). The
+  // server only ever stores a hash, so the plaintext can only be known
+  // here if it was just created/regenerated in THIS page view — never
+  // sessionStorage, same as the Global Schema Template token below.
+  const [mcpToken, setMcpToken] = useState(activeMcpToken)
+  const [mcpPlainToken, setMcpPlainToken] = useState("")
+  const [mcpNameInput, setMcpNameInput] = useState("")
+  const [mcpBusy, setMcpBusy] = useState(false)
   const [copiedToken, setCopiedToken] = useState(false)
   const [activePlatform, setActivePlatform] = useState("claude")
+
+  const handleCreateMcpToken = async () => {
+    setMcpBusy(true)
+    try {
+      const res = await createMcpTokenAction(tenantSlug, { name: mcpNameInput.trim() || "MCP Server Integration" })
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal membuat token" })
+        return
+      }
+      setMcpToken(res.token)
+      setMcpPlainToken(res.plainToken)
+      toast({ title: "Token dibuat", description: "Simpan nilainya sekarang — tidak akan ditampilkan lagi." })
+    } finally {
+      setMcpBusy(false)
+    }
+  }
+
+  const handleRegenerateMcpToken = async () => {
+    if (!mcpToken) return
+    setMcpBusy(true)
+    try {
+      const res = await regenerateMcpTokenAction(tenantSlug, mcpToken.id)
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal generate ulang token" })
+        return
+      }
+      setMcpToken(res.token)
+      setMcpPlainToken(res.plainToken)
+      toast({ title: "Token di-generate ulang", description: "Nilai lama tidak berlaku lagi — simpan nilai baru ini sekarang." })
+    } finally {
+      setMcpBusy(false)
+    }
+  }
+
+  const handleDeleteMcpToken = async () => {
+    if (!mcpToken) return
+    if (
+      !(await confirm({
+        title: "Hapus token MCP ini?",
+        description: "AI agent atau editor yang menggunakan token ini akan kehilangan akses ke workspace.",
+        confirmLabel: "Hapus token",
+        variant: "destructive",
+      }))
+    )
+      return
+    setMcpBusy(true)
+    try {
+      const res = await deleteMcpTokenAction(tenantSlug, mcpToken.id)
+      if (res.error || !res.success) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal menghapus token" })
+        return
+      }
+      setMcpToken(null)
+      setMcpPlainToken("")
+      toast({ title: "Token dihapus" })
+    } finally {
+      setMcpBusy(false)
+    }
+  }
 
   const handleCopy = async (text: string, label: string) => {
     if (!text) return
@@ -552,10 +610,11 @@ export function MCPDashboardClient({
   }
 
   const currentPlatformInfo = PLATFORMS.find(p => p.id === activePlatform) || PLATFORMS[0]
-  const effectiveToken = selectedTokenValue || "YOUR_MCP_TOKEN"
+  const effectiveToken = mcpPlainToken || "YOUR_MCP_TOKEN"
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
@@ -584,7 +643,7 @@ export function MCPDashboardClient({
                 variant="outline"
                 className="font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0 border-border/80"
               >
-                <Key className="mr-1.5 h-3.5 w-3.5" /> Kelola Token MCP
+                <Key className="mr-1.5 h-3.5 w-3.5" /> REST API Key
               </Button>
             </Link>
           </div>
@@ -705,8 +764,11 @@ export function MCPDashboardClient({
 
           </div>
 
-          {/* Active Token & Key Status Bar */}
-          <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Active Token & Key Status Bar — create/regenerate/delete all happen
+              right here now, so connecting an agent never requires leaving
+              this page (previously split off to /developer/api-keys' "MCP
+              Token" tab). */}
+          <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 space-y-3">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
                 <Key className="h-4 w-4" />
@@ -719,35 +781,45 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {!activeMcpToken
-                    ? "Belum ada token MCP — buat satu dulu, lalu nilainya otomatis muncul di sini dan di semua contoh konfigurasi di bawah."
-                    : hasRealToken
+                  {!mcpToken
+                    ? "Belum ada token MCP — buat satu di bawah, lalu nilainya otomatis terpakai di semua contoh konfigurasi di bawah."
+                    : mcpPlainToken
                     ? "Otomatis terinjeksi pada contoh konfigurasi di bawah."
-                    : `Token "${activeMcpToken.name}" sudah dibuat, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — generate ulang untuk mendapat salinan baru yang bisa dipakai di sini.`}
+                    : `Token "${mcpToken.name}" sudah dibuat, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — generate ulang untuk mendapat salinan baru.`}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              {!activeMcpToken ? (
-                <Link href={`/dashboard/${tenantSlug}/developer/api-keys`}>
-                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
-                    <Key className="mr-1.5 h-3.5 w-3.5" /> Buat Token MCP
-                  </Button>
-                </Link>
-              ) : hasRealToken ? (
-                <>
-                  <Input
-                    value={selectedTokenValue}
-                    readOnly
-                    className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground w-48 sm:w-64"
-                  />
+            {!mcpToken ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={mcpNameInput}
+                  onChange={(e) => setMcpNameInput(e.target.value)}
+                  placeholder="Nama klien/editor (mis. VS Code, Claude Desktop)"
+                  className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 max-w-xs"
+                />
+                <Button
+                  onClick={handleCreateMcpToken}
+                  disabled={mcpBusy}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0"
+                >
+                  <Key className="mr-1.5 h-3.5 w-3.5" /> Buat Token MCP
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <Input
+                  value={mcpPlainToken || "••••••••••••••••••••••• (nilai lama, tidak ditampilkan lagi)"}
+                  readOnly
+                  className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground flex-1"
+                />
+                {mcpPlainToken && (
                   <Button
                     variant="secondary"
                     size="icon"
                     title="Salin token"
                     onClick={() => {
-                      handleCopy(effectiveToken, "Token Otorisasi")
+                      handleCopy(mcpPlainToken, "Token Otorisasi")
                       setCopiedToken(true)
                       setTimeout(() => setCopiedToken(false), 2000)
                     }}
@@ -759,15 +831,27 @@ export function MCPDashboardClient({
                       <Copy className="h-3.5 w-3.5" />
                     )}
                   </Button>
-                </>
-              ) : (
-                <Link href={`/dashboard/${tenantSlug}/developer/api-keys`}>
-                  <Button variant="outline" className="font-bold rounded-xl h-9 px-4 text-xs shadow-xs border-border/80">
-                    Generate Ulang
-                  </Button>
-                </Link>
-              )}
-            </div>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={mcpBusy}
+                  onClick={handleRegenerateMcpToken}
+                  className="font-bold rounded-xl h-9 px-3 text-xs shadow-xs border-border/80 shrink-0"
+                >
+                  Generate Ulang
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={mcpBusy}
+                  onClick={handleDeleteMcpToken}
+                  className="font-bold rounded-xl h-9 px-3 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                >
+                  Hapus
+                </Button>
+              </div>
+            )}
           </Card>
 
           {/* SaCMS Global — Schema Template MCP (visible only on the Global workspace) */}

@@ -15,12 +15,12 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   const tenantSummary = access.tenant
 
-  // MCP token creation/regeneration/deletion happens at /developer/
-  // api-keys' "MCP Token" tab — this page only needs to know WHETHER one
-  // exists (its id, to key the sessionStorage hand-off in
-  // src/lib/mcp-token-storage.ts) plus tenant/subscription status to
-  // render the config/setup guides. The plaintext itself is never stored
-  // server-side (only its SHA-256 hash), so it can't be fetched here.
+  // MCP token creation/regeneration/deletion happens inline on this page's
+  // client component now — the server-rendered query here only needs to
+  // know whether one already exists (its id/name), plus tenant/subscription
+  // status to render the config/setup guides. The plaintext itself is never
+  // stored server-side (only its SHA-256 hash), so it can't be fetched here;
+  // it's only ever known client-side right after a create/regenerate call.
   const [tenant, subscription, mcpToken, globalSchemaToken] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },

@@ -16,7 +16,7 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
 
   const tenant = access.tenant
 
-  const [tokensData, settings, legacyApiKeys, mcpTokens] = await Promise.all([
+  const [tokensData, settings, legacyApiKeys] = await Promise.all([
     getApiTokensAction(tenantSlug),
     db.setting.findMany({
       where: {
@@ -33,15 +33,8 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
       orderBy: { createdAt: "desc" },
       select: { id: true, name: true, createdAt: true, expiresAt: true },
     }),
-    // MCP token — separate from the REST/GraphQL API keys above (only
-    // type "mcp" rows authenticate against the MCP server, see
-    // api/mcp/[[...transport]]/route.ts's resolveToken()). Managed from
-    // this page's "MCP Token" tab now, not from /developer/mcp anymore.
-    db.apiToken.findMany({
-      where: { tenantId: tenant.id, type: "mcp" },
-      select: { id: true, name: true, description: true, type: true, createdAt: true, lastUsedAt: true },
-      orderBy: { createdAt: "desc" },
-    }),
+    // MCP token management lives on /developer/mcp now — nothing to
+    // fetch here anymore (see mcp-client.tsx's self-contained token card).
   ])
 
   const settingsMap: Record<string, string> = {}
@@ -66,13 +59,6 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
         name: k.name,
         createdAt: k.createdAt,
         expiresAt: k.expiresAt,
-      }))}
-      initialMcpTokens={mcpTokens.map(t => ({
-        id: t.id,
-        name: t.name,
-        description: t.description,
-        createdAt: t.createdAt.toISOString(),
-        lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
       }))}
       tenantSlug={tenantSlug}
       initialSettings={initialSettings}

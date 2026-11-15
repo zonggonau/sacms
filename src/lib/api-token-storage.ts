@@ -8,8 +8,7 @@
  * The server only ever stores a SHA-256 hash of the key (see
  * src/actions/api-keys.ts) — the plaintext is irretrievable once this
  * session forgets it. sessionStorage is the right place for that: it never
- * reaches the server, and disappears when the tab/browser closes. Mirrors
- * src/lib/mcp-token-storage.ts for the MCP token hand-off.
+ * reaches the server, and disappears when the tab/browser closes.
  */
 
 function key(tenantId: string, tokenId: string): string {
