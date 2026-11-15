@@ -96,8 +96,25 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
   it("create_website_template auto-creates a backing Schema Template when schema is given, reusing the shared slug-dedup helper", () => {
     const scoped = toolBlockOf("create_website_template")
     expect(scoped).toMatch(/dedupeSlug/)
-    expect(scoped).toMatch(/db\.schemaTemplate\.create/)
+    expect(scoped).toMatch(/tx\.schemaTemplate\.create/)
     expect(scoped).toMatch(/published:\s*false/)
+  })
+
+  it("create_website_template creates the backing Schema Template and the Website Template in ONE transaction, so an invalid files payload or a failed create never orphans the Schema Template", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/db\.\$transaction\(async \(tx\)/)
+    // Files must be validated BEFORE the transaction even starts.
+    const filesValidationIdx = scoped.indexOf("websiteTemplateFilesSchema.safeParse(files)")
+    const transactionIdx = scoped.indexOf("db.$transaction(async (tx)")
+    expect(filesValidationIdx).toBeGreaterThan(-1)
+    expect(transactionIdx).toBeGreaterThan(filesValidationIdx)
+  })
+
+  it("create_website_template supports idempotencyKey — replays an existing template instead of creating a duplicate, and recovers from a concurrent-claim race (P2002) instead of surfacing the raw DB error", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/idempotencyKey: z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/db\.websiteTemplate\.findUnique\(\{ where: \{ idempotencyKey \} \}\)/)
+    expect(scoped).toMatch(/err\?\.code === "P2002"/)
   })
 
   it("update_website_template accepts an optional schema param and redeploys the demo when it (or files) changed", () => {
@@ -118,5 +135,58 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     // though it'd work fine at runtime.
     expect(routeSource).toMatch(/richText[\s\S]*dangerouslySetInnerHTML/)
     expect(routeSource).toMatch(/markdown[\s\S]*Markdown renderer/i)
+  })
+
+  // ── chatgpt7.md round ──────────────────────────────────────────────────────
+
+  it("get_website_template/update_website_template/delete_website_template report the correct entity name and a NOT_FOUND code — the shared notFound() helper used to hardcode 'Schema Template' for all six callers", () => {
+    for (const tool of ["get_website_template", "update_website_template", "delete_website_template"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should call notFound(\"Website Template\", ...)`).toMatch(/notFound\("Website Template", id\)/)
+    }
+    for (const tool of ["get_schema_template", "update_schema_template", "delete_schema_template"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should call notFound(\"Schema Template\", ...)`).toMatch(/notFound\("Schema Template", id\)/)
+    }
+    expect(routeSource).toMatch(/function notFound\(entity: "Schema Template" \| "Website Template"/)
+  })
+
+  it("create_schema_template, update_schema_template, create_website_template, and update_website_template all gate on validateBundleReferences before writing a schema bundle", () => {
+    for (const tool of ["create_schema_template", "update_schema_template", "create_website_template", "update_website_template"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should validate cross-references before saving`).toMatch(/validateBundleReferences/)
+      expect(scoped, `${tool} should refuse on reference issues`).toMatch(/referenceIssuesResponse/)
+    }
+  })
+
+  it("create_website_template's dryRun validates everything (files, bundle shape, cross-references, schemaTemplateId existence) without writing anything or deploying a demo", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/dryRun: z\.boolean\(\)\.optional\(\)/)
+    // The dryRun branch must return before the transaction/demo-deploy
+    // code that actually writes/deploys anything.
+    const dryRunIdx = scoped.indexOf("if (dryRun) {")
+    const transactionIdx = scoped.indexOf("db.$transaction(async (tx)")
+    const demoDeployIdx = scoped.indexOf("deployWebsiteTemplateDemo(")
+    expect(dryRunIdx).toBeGreaterThan(-1)
+    expect(dryRunIdx).toBeLessThan(transactionIdx)
+    expect(dryRunIdx).toBeLessThan(demoDeployIdx)
+    expect(scoped).toMatch(/valid: true/)
+  })
+
+  it("delete_schema_template refuses to cascade-delete dependent Website Templates by default, listing them, instead of silently deleting them too (WebsiteTemplate.schemaTemplateId cascades on delete at the DB level)", () => {
+    const scoped = toolBlockOf("delete_schema_template")
+    expect(scoped).toMatch(/confirmCascade/)
+    expect(scoped).toMatch(/HAS_DEPENDENTS/)
+    expect(scoped).toMatch(/db\.websiteTemplate\.findMany\(\{\s*where: \{ schemaTemplateId: existing\.id \}/)
+    // The dependents check must come before the actual delete call.
+    expect(scoped.indexOf("websiteTemplate.findMany")).toBeLessThan(scoped.indexOf("schemaTemplate.delete"))
+  })
+
+  it("invalidSchema reports each zod issue with a bracket-indexed path and a structured VALIDATION_FAILED code, not just a flattened text message", () => {
+    expect(routeSource).toMatch(/function invalidSchema/)
+    const fnStart = routeSource.indexOf("function invalidSchema")
+    const fnBlock = routeSource.slice(fnStart, routeSource.indexOf("\n}\n", fnStart))
+    expect(fnBlock).toMatch(/formatZodPath/)
+    expect(fnBlock).toMatch(/code: "VALIDATION_FAILED"/)
   })
 })

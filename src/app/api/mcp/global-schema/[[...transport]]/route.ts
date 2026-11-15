@@ -45,6 +45,7 @@ import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
 import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
+import { formatZodPath, validateBundleReferences } from "@/lib/schema-template-validation"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -95,8 +96,27 @@ const UNAUTHORIZED = {
   }],
 }
 
-function notFound(id: string) {
-  return { content: [{ type: "text" as const, text: `❌ Schema Template '${id}' tidak ditemukan.` }], isError: true }
+// Thrown from inside create_website_template's db.$transaction callback
+// when a caller-supplied schemaTemplateId doesn't resolve — lets the
+// outer catch distinguish "ordinary not-found" from a genuine DB error
+// after the transaction has already rolled back.
+class SchemaTemplateNotFoundError extends Error {
+  constructor(public readonly id: string) {
+    super(`Schema Template '${id}' not found`)
+  }
+}
+
+// A real, confirmed bug (chatgpt7.md): this used to hardcode "Schema
+// Template" regardless of which entity was actually missing — looking up
+// a nonexistent Website Template by slug came back saying "Schema
+// Template '...' tidak ditemukan", and with no structured `code` at all
+// (an agent checking for NOT_FOUND specifically had nothing to match on).
+function notFound(entity: "Schema Template" | "Website Template", id: string) {
+  return {
+    content: [{ type: "text" as const, text: `❌ ${entity} '${id}' tidak ditemukan.` }],
+    structuredContent: { ok: false, code: "NOT_FOUND", message: `${entity} not found.` },
+    isError: true,
+  }
 }
 
 /**
@@ -144,11 +164,21 @@ function describeDemoDeployment(demo: { url: string | null; deploymentId?: strin
 }
 
 function invalidSchema(error: z.ZodError) {
+  const issues = error.issues.map((i) => ({ path: formatZodPath(i.path), message: i.message }))
   return {
     content: [{
       type: "text" as const,
-      text: `❌ Schema tidak valid: ${error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ")}`,
+      text: `❌ Schema tidak valid:\n${issues.map((i) => `- ${i.path}: ${i.message}`).join("\n")}`,
     }],
+    structuredContent: { ok: false, code: "VALIDATION_FAILED", issues, message: `${issues.length} validation issue(s) found.` },
+    isError: true,
+  }
+}
+
+function referenceIssuesResponse(issues: { path: string; message: string }[]) {
+  return {
+    content: [{ type: "text" as const, text: `❌ Ditemukan ${issues.length} masalah referensi/opsi:\n${issues.map((i) => `- ${i.path}: ${i.message}`).join("\n")}` }],
+    structuredContent: { ok: false, code: "VALIDATION_FAILED", issues, message: `${issues.length} validation issue(s) found.` },
     isError: true,
   }
 }
@@ -290,7 +320,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
-        if (!template) return notFound(id)
+        if (!template) return notFound("Schema Template", id)
         const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -340,6 +370,9 @@ const handler = createMcpHandler(
 
         const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
         if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
+
+        const refIssues = validateBundleReferences(parsedSchema.data)
+        if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
 
         const slug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
 
@@ -394,12 +427,14 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
 
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
-        if (!existing) return notFound(id)
+        if (!existing) return notFound("Schema Template", id)
 
         let schemaData: z.infer<typeof schemaTemplateBundleSchema> | undefined
         if (schema !== undefined) {
           const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
+          const refIssues = validateBundleReferences(parsedSchema.data)
+          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
           schemaData = parsedSchema.data
         }
 
@@ -426,20 +461,49 @@ const handler = createMcpHandler(
       "delete_schema_template",
       {
         title: "Delete Schema Template",
-        description: "Permanently delete a Schema Template from the catalog.",
+        description: "Permanently delete a Schema Template from the catalog. WARNING: WebsiteTemplate.schemaTemplateId cascades on delete at the database level — any Website Template built on this Schema Template would be permanently deleted too, not just left dangling. This refuses by default when dependents exist, listing them, instead of silently cascading; pass confirmCascade: true only after telling the user exactly what else will be deleted.",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
+          confirmCascade: z.boolean().optional().describe("Required (after confirming with the user) when this Schema Template still has one or more Website Templates built on it — deleting it WILL cascade-delete those too."),
         },
       },
-      async ({ id }) => {
+      async ({ id, confirmCascade }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
-        if (!existing) return notFound(id)
+        if (!existing) return notFound("Schema Template", id)
+
+        const dependents = await db.websiteTemplate.findMany({
+          where: { schemaTemplateId: existing.id },
+          select: { id: true, name: true, slug: true },
+        })
+        if (dependents.length > 0 && !confirmCascade) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ '${existing.name}' masih dipakai oleh ${dependents.length} Website Template: ${dependents.map((d) => `'${d.name}' (${d.slug})`).join(", ")}. Menghapus Schema Template ini akan ikut MENGHAPUS PERMANEN semua Website Template tersebut (cascade di level database, bukan sekadar menjadi dangling). Konfirmasi dulu ke pengguna persis apa yang akan terhapus, lalu panggil lagi dengan confirmCascade: true.`,
+            }],
+            structuredContent: {
+              ok: false,
+              code: "HAS_DEPENDENTS",
+              dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
+              message: "This Schema Template still has Website Templates built on it — deleting it would cascade-delete them too.",
+            },
+            isError: true,
+          }
+        }
 
         await db.schemaTemplate.delete({ where: { id: existing.id } })
-        return { content: [{ type: "text" as const, text: `✅ Template '${existing.name}' dihapus.` }] }
+        return {
+          content: [{
+            type: "text" as const,
+            text: dependents.length > 0
+              ? `✅ Template '${existing.name}' dan ${dependents.length} Website Template yang memakainya ikut terhapus.`
+              : `✅ Template '${existing.name}' dihapus.`,
+          }],
+          structuredContent: { ok: true, deletedDependents: dependents.length },
+        }
       },
     )
 
@@ -505,7 +569,7 @@ const handler = createMcpHandler(
           where: { OR: [{ id }, { slug: id }] },
           include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
         })
-        if (!template) return notFound(id)
+        if (!template) return notFound("Website Template", id)
         const structured = serializeWebsiteTemplate(template)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -553,15 +617,39 @@ const handler = createMcpHandler(
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
+          idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template instead of a duplicate (and, when `schema` was given, a second orphaned backing Schema Template). Ignored when dryRun is true."),
+          dryRun: z.boolean().optional().describe("Validate everything (files, schema shape, relationSlug/componentSlug/allowedComponents references, select/multiselect choices, schemaTemplateId existence) WITHOUT creating anything or deploying a demo. Returns the same validation errors a real call would reject with, each with an exact path like \"schema.contentTypes[2].fields[4].options.choices\" — call this first for anything non-trivial instead of discovering a mistake only after it's already saved."),
         },
         outputSchema: {
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
         },
       },
-      async ({ schemaTemplateId, schema, category, name, icon, description, files, published }) => {
+      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        // Idempotent replay — before anything else, so a lost response's
+        // retry never creates a second template (or, worse, a second
+        // orphaned backing Schema Template when `schema` was given). A
+        // dry run never writes anything, so it has no idempotency state
+        // to consult or consume.
+        if (!dryRun && idempotencyKey) {
+          const already = await db.websiteTemplate.findUnique({ where: { idempotencyKey } })
+          if (already) {
+            // No fresh deploy call was made on this replay — describe the
+            // demo status from whatever is already persisted on the row.
+            const demoDeployment = describeDemoDeployment({
+              url: already.demoUrl,
+              deploymentId: already.demoDeploymentId ?? undefined,
+            })
+            const structured = { ...serializeWebsiteTemplate(already), demoDeployment }
+            return {
+              content: [{ type: "text" as const, text: `🔁 Replay idempoten — Website Template '${already.id}' sudah dibuat untuk idempotencyKey ini.\n${JSON.stringify(structured, null, 2)}` }],
+              structuredContent: structured,
+            }
+          }
+        }
 
         if (!schemaTemplateId && !schema) {
           return {
@@ -576,53 +664,120 @@ const handler = createMcpHandler(
           }
         }
 
-        let schemaTemplate: { id: string; slug: string; name: string; schema: unknown; demoTenantId: string | null }
-        if (schemaTemplateId) {
-          const found = await db.schemaTemplate.findFirst({
-            where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
-            select: { id: true, slug: true, name: true, schema: true, demoTenantId: true },
-          })
-          if (!found) {
-            return {
-              content: [{ type: "text" as const, text: `❌ Schema Template '${schemaTemplateId}' tidak ditemukan. Panggil list_schema_templates untuk melihat id/slug yang valid.` }],
-              isError: true,
-            }
-          }
-          schemaTemplate = found
-        } else {
-          const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
-          if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          const schemaSlug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
-          const createdSchemaTemplate = await db.schemaTemplate.create({
-            data: {
-              name,
-              slug: schemaSlug,
-              category: category || "Custom",
-              icon: icon || "📦",
-              description: null,
-              schema: parsedBundle.data,
-              published: false,
-            },
-          })
-          schemaTemplate = createdSchemaTemplate
-        }
-
+        // Validate EVERYTHING before writing anything — files used to be
+        // validated only after a `schema`-given call had already created
+        // its backing Schema Template, so an invalid `files` payload left
+        // that Schema Template permanently orphaned (a real, confirmed
+        // bug class: schema+website creation must be all-or-nothing).
         const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
         if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
 
-        const slug = await dedupeSlug(slugify(name), (s) => db.websiteTemplate.findUnique({ where: { slug: s } }))
+        let bundleData: z.infer<typeof schemaTemplateBundleSchema> | undefined
+        if (!schemaTemplateId) {
+          const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
+          if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
+          const refIssues = validateBundleReferences(parsedBundle.data)
+          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+          bundleData = parsedBundle.data
+        }
 
-        const template = await db.websiteTemplate.create({
-          data: {
-            name,
-            slug,
-            schemaTemplateId: schemaTemplate.id,
-            icon: icon || "🖥️",
-            description: description || null,
-            files: parsedFiles.data,
-            published: published ?? false,
-          },
-        })
+        if (dryRun) {
+          // Read-only existence check — the real path's lookup happens
+          // INSIDE the transaction below and stays authoritative; this is
+          // just early feedback for a call that's never going to write
+          // anything regardless.
+          if (schemaTemplateId) {
+            const found = await db.schemaTemplate.findFirst({ where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] }, select: { id: true } })
+            if (!found) return notFound("Schema Template", schemaTemplateId)
+          }
+          const hasEnvExample = parsedFiles.data.some((f) => f.path === ".env.example" || f.path.endsWith("/.env.example"))
+          const warnings = hasEnvExample
+            ? []
+            : [{ path: "files", message: "No .env.example found — this is advisory only (it won't block a real save), but env vars won't be auto-declared on the workspace's Environment tab when a customer applies this template." }]
+          return {
+            content: [{
+              type: "text" as const,
+              text: warnings.length > 0
+                ? `✅ Valid, dengan catatan:\n${warnings.map((w) => `- ${w.path}: ${w.message}`).join("\n")}`
+                : "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan.",
+            }],
+            structuredContent: { ok: true, valid: true, issues: [], warnings },
+          }
+        }
+
+        let schemaTemplate: { id: string; slug: string; name: string; schema: unknown; demoTenantId: string | null }
+        let template: Awaited<ReturnType<typeof db.websiteTemplate.create>>
+        try {
+          const result = await db.$transaction(async (tx) => {
+            let resolvedSchemaTemplate: typeof schemaTemplate
+            if (schemaTemplateId) {
+              const found = await tx.schemaTemplate.findFirst({
+                where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
+                select: { id: true, slug: true, name: true, schema: true, demoTenantId: true },
+              })
+              if (!found) throw new SchemaTemplateNotFoundError(schemaTemplateId)
+              resolvedSchemaTemplate = found
+            } else {
+              const schemaSlug = await dedupeSlug(slugify(name), (s) => tx.schemaTemplate.findUnique({ where: { slug: s } }))
+              resolvedSchemaTemplate = await tx.schemaTemplate.create({
+                data: {
+                  name,
+                  slug: schemaSlug,
+                  category: category || "Custom",
+                  icon: icon || "📦",
+                  description: null,
+                  schema: bundleData!,
+                  published: false,
+                },
+              })
+            }
+
+            // Same transaction as the Schema Template create above (when
+            // one happened) — a failure here (including the idempotencyKey
+            // unique-constraint race below) rolls BOTH back together,
+            // instead of leaving that Schema Template orphaned.
+            const slug = await dedupeSlug(slugify(name), (s) => tx.websiteTemplate.findUnique({ where: { slug: s } }))
+            const createdTemplate = await tx.websiteTemplate.create({
+              data: {
+                name,
+                slug,
+                schemaTemplateId: resolvedSchemaTemplate.id,
+                icon: icon || "🖥️",
+                description: description || null,
+                files: parsedFiles.data,
+                published: published ?? false,
+                idempotencyKey: idempotencyKey || null,
+              },
+            })
+            return { schemaTemplate: resolvedSchemaTemplate, template: createdTemplate }
+          })
+          schemaTemplate = result.schemaTemplate
+          template = result.template
+        } catch (err: any) {
+          if (err instanceof SchemaTemplateNotFoundError) {
+            return {
+              content: [{ type: "text" as const, text: `❌ Schema Template '${err.id}' tidak ditemukan. Panggil list_schema_templates untuk melihat id/slug yang valid.` }],
+              structuredContent: { ok: false, code: "NOT_FOUND", message: "Schema Template not found." },
+              isError: true,
+            }
+          }
+          // A concurrent call claimed this exact idempotencyKey between
+          // our own check at the top of this handler and this transaction
+          // — re-read and return the winning row as a replay, same as the
+          // check at the top, instead of surfacing the raw P2002 error.
+          if (idempotencyKey && err?.code === "P2002") {
+            const winner = await db.websiteTemplate.findUnique({ where: { idempotencyKey } })
+            if (winner) {
+              const demoDeployment = describeDemoDeployment({ url: winner.demoUrl, deploymentId: winner.demoDeploymentId ?? undefined })
+              const structured = { ...serializeWebsiteTemplate(winner), demoDeployment }
+              return {
+                content: [{ type: "text" as const, text: `🔁 Replay idempoten — Website Template '${winner.id}' sudah dibuat untuk idempotencyKey ini.\n${JSON.stringify(structured, null, 2)}` }],
+                structuredContent: structured,
+              }
+            }
+          }
+          throw err
+        }
 
         const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
         const demo = await deployWebsiteTemplateDemo({
@@ -690,7 +845,7 @@ const handler = createMcpHandler(
           where: { OR: [{ id }, { slug: id }] },
           include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
         })
-        if (!existing) return notFound(id)
+        if (!existing) return notFound("Website Template", id)
 
         let filesData: z.infer<typeof websiteTemplateFilesSchema> | undefined
         if (files !== undefined) {
@@ -713,22 +868,33 @@ const handler = createMcpHandler(
         }
 
         let schemaUpdated = false
+        let parsedBundleData: z.infer<typeof schemaTemplateBundleSchema> | undefined
         if (schema !== undefined) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          await db.schemaTemplate.update({ where: { id: existing.schemaTemplate.id }, data: { schema: parsedBundle.data } })
+          const refIssues = validateBundleReferences(parsedBundle.data)
+          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+          parsedBundleData = parsedBundle.data
           schemaUpdated = true
         }
 
-        const template = await db.websiteTemplate.update({
-          where: { id: existing.id },
-          data: {
-            ...(name !== undefined ? { name } : {}),
-            ...(icon !== undefined ? { icon } : {}),
-            ...(description !== undefined ? { description } : {}),
-            ...(filesData !== undefined ? { files: filesData } : {}),
-            ...(published !== undefined ? { published } : {}),
-          },
+        // One transaction when both are changing — a website-metadata
+        // write failing right after the schema write landed would
+        // otherwise leave the two inconsistent with each other.
+        const template = await db.$transaction(async (tx) => {
+          if (parsedBundleData) {
+            await tx.schemaTemplate.update({ where: { id: existing.schemaTemplate.id }, data: { schema: parsedBundleData } })
+          }
+          return tx.websiteTemplate.update({
+            where: { id: existing.id },
+            data: {
+              ...(name !== undefined ? { name } : {}),
+              ...(icon !== undefined ? { icon } : {}),
+              ...(description !== undefined ? { description } : {}),
+              ...(filesData !== undefined ? { files: filesData } : {}),
+              ...(published !== undefined ? { published } : {}),
+            },
+          })
         })
 
         // A real file OR schema change warrants a redeploy (the demo needs
@@ -768,7 +934,7 @@ const handler = createMcpHandler(
       "delete_website_template",
       {
         title: "Delete Website Template",
-        description: "Permanently delete a Website Template from the catalog. The Schema Template it followed is unaffected.",
+        description: "Permanently delete a Website Template from the catalog. The Schema Template it followed is unaffected (deleting a Website Template never cascades the other way). If it has a live demo deployment, that Vercel project is deleted too (best-effort — a failure there is logged but never blocks the Website Template's own deletion).",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },
@@ -778,7 +944,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
 
         const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
-        if (!existing) return notFound(id)
+        if (!existing) return notFound("Website Template", id)
 
         if (existing.demoVercelProjectId) {
           const { deleteVercelProject } = await import("@/lib/vercel-client")
@@ -793,7 +959,7 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.5.1" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.6.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -811,7 +977,15 @@ const handler = createMcpHandler(
       "`schema` directly to create_website_template — it auto-creates the backing Schema Template for you, no " +
       "separate create_schema_template step needed for the common case. Only use `schemaTemplateId` (and the " +
       "standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template " +
-      "tools) when deliberately reusing an existing structure for a second frontend skin. Every " +
+      "tools) when deliberately reusing an existing structure for a second frontend skin. For anything " +
+      "non-trivial, call create_website_template with dryRun: true FIRST — it validates files, schema shape, " +
+      "every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, and " +
+      "select/multiselect choices, returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" " +
+      "for anything wrong, without creating or deploying anything. Pass idempotencyKey to create_website_template " +
+      "if you want a lost response's retry to resolve to the same template instead of a duplicate (and, worse, a " +
+      "second orphaned backing Schema Template). delete_schema_template refuses with HAS_DEPENDENTS (listing " +
+      "them) instead of silently cascade-deleting every Website Template built on it — only pass " +
+      "confirmCascade: true after telling the user exactly what else will be deleted. Every " +
       "create_website_template and update_website_template(files/changedFiles/schema: ...) call automatically " +
       "(re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a " +
       "real customer's data — so you can test in a real browser before publishing. The response's " +

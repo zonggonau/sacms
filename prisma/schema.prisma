@@ -920,6 +920,15 @@ model WebsiteTemplate {
   // "latest" one (same distinction the per-workspace MCP server's
   // get_deployment_status/get_deployment_build_logs rely on).
   demoDeploymentId    String?
+  // Caller-supplied dedup key for create_website_template (chatgpt7.md
+  // P0): if a create response never arrives, retrying with the SAME key
+  // must resolve to the SAME template instead of creating a duplicate
+  // (and, when `schema` was given, a second orphaned backing
+  // SchemaTemplate). Nullable + unique — every caller that never passes
+  // one stays NULL, and Postgres treats every NULL as distinct so they
+  // never collide with each other. No tenant scoping needed here (unlike
+  // McpBuildRun.idempotencyKey) — this catalog has no tenant dimension.
+  idempotencyKey      String?  @unique
 
   @@index([schemaTemplateId])
   @@map("website_templates")
