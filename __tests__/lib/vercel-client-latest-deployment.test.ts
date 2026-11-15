@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { createHash } from "crypto"
 
 // getLatestDeployment and getDeploymentFiles back two of the MCP audit's
 // P0 fixes: get_deployment_status can now resolve "the current deployment"
@@ -173,6 +174,41 @@ describe("getDeploymentFiles", () => {
     const result = await getDeploymentFiles("dpl_1")
     expect(result.files).toHaveLength(1)
     expect(result.files[0]).toMatchObject({ name: "index.html", content: "<html></html>", encoding: "utf-8" })
+  })
+
+  it("decodes a genuinely textual file back to readable utf-8 even when Vercel's content endpoint LABELS it base64 (chatgpt2.md P0 — confirmed live for theme.js/package-lock.json/a PNG icon all coming back as encoding:\"base64\" regardless of real type)", async () => {
+    const jsSource = "export const theme = { color: 'blue' }"
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "theme.js", type: "file", uid: "file_1" }] })
+      }
+      // Vercel reports base64 even though this is real source text.
+      return Promise.resolve({ ok: true, json: async () => ({ data: Buffer.from(jsSource, "utf-8").toString("base64"), encoding: "base64" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files).toHaveLength(1)
+    // Must come back as real, readable source — not the still-encoded base64 blob.
+    expect(result.files[0]).toMatchObject({ name: "theme.js", content: jsSource, encoding: "utf-8" })
+  })
+
+  it("computes size and checksum from the REAL decoded bytes, not Vercel's inflated base64 TEXT length (chatgpt2.md P0 — a 1908-byte PNG was reported as 2544, its base64 string length)", async () => {
+    const realBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, 3, 4, 5]) // 10 real bytes
+    const base64Text = realBytes.toString("base64") // longer than 10 chars as text
+    global.fetch = vi.fn((url: any) => {
+      const u = String(url)
+      if (u.includes("/v6/deployments/dpl_1/files")) {
+        return Promise.resolve({ ok: true, json: async () => [{ name: "icon.png", type: "file", uid: "file_1" }] })
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ data: base64Text, encoding: "base64" }) })
+    }) as any
+
+    const result = await getDeploymentFiles("dpl_1")
+    expect(result.files).toHaveLength(1)
+    expect(result.files[0].size).toBe(10)
+    expect(result.files[0].size).not.toBe(base64Text.length)
+    expect(result.files[0].checksum).toBe(createHash("sha256").update(realBytes).digest("hex"))
   })
 
   it("skips a file over the per-file size cap even if it isn't a known noise extension", async () => {

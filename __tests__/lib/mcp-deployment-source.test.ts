@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createHash } from "crypto"
 
 // mcp-deployment-source.ts starts with `import "server-only"` — not an npm
 // package vitest's plain Node resolution can see, same stub used elsewhere.
@@ -38,15 +39,17 @@ describe("checksumOf / buildManifest", () => {
     expect(checksumOf("hello World")).not.toBe(sum)
   })
 
-  it("builds one manifest entry per file with size/encoding/checksum", () => {
+  it("builds one manifest entry per file with size/checksum computed from REAL bytes, not the base64 text", () => {
+    const decodedIconBytes = Buffer.from("ZmFrZQ==", "base64") // "fake" — 4 real bytes, not the 8-char base64 string
     const manifest = buildManifest([
       { name: "index.html", content: "<html></html>", encoding: "utf-8" },
       { name: "icon.png", content: "ZmFrZQ==", encoding: "base64" },
     ])
     expect(manifest).toEqual([
       { path: "index.html", size: "<html></html>".length, encoding: "utf-8", checksum: checksumOf("<html></html>") },
-      { path: "icon.png", size: "ZmFrZQ==".length, encoding: "base64", checksum: checksumOf("ZmFrZQ==") },
+      { path: "icon.png", size: decodedIconBytes.length, encoding: "base64", checksum: createHash("sha256").update(decodedIconBytes).digest("hex") },
     ])
+    expect(manifest[1].size).toBe(4) // not 8 (the base64 string's own length) — the real bug this fixes
   })
 })
 

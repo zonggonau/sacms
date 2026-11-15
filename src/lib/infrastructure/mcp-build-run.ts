@@ -20,9 +20,17 @@ export interface McpBuildRunRecord {
   deploymentId: string | null
   sourceRevision: string | null
   lastError: string | null
+  idempotencyKey: string | null
   createdAt: Date
   updatedAt: Date
 }
+
+/** A claimed-but-unresolved idempotency key older than this is treated as
+ *  abandoned (the original caller crashed or never got a second chance to
+ *  finish) rather than something still genuinely in flight — a fresh
+ *  submit with the same key is then allowed to proceed instead of being
+ *  stuck behind a dead claim forever. */
+const IDEMPOTENCY_IN_FLIGHT_WINDOW_MS = 2 * 60 * 1000
 
 /**
  * The resumable work unit behind start_website_build/get_build_run — lets
@@ -55,19 +63,65 @@ export async function startOrResumeBuildRun(
 
 /**
  * Fetch a run by id (tenant-scoped — a runId alone carries no isolation of
- * its own) or, when omitted, the tenant's own most recent run regardless of
- * stage (unlike startOrResumeBuildRun, a plain status check should surface
- * a terminal run too, not just an in-flight one).
+ * its own), or by the idempotencyKey a deploy submission was made with (so
+ * "my response never arrived" can be resolved via either handle — see
+ * findOrClaimByIdempotencyKey), or, when neither is given, the tenant's
+ * most recent run regardless of stage (unlike startOrResumeBuildRun, a
+ * plain status check should surface a terminal run too, not just an
+ * in-flight one).
  */
 export async function getBuildRun(
   tenantId: string,
   runId?: string,
+  idempotencyKey?: string,
 ): Promise<McpBuildRunRecord | null> {
   if (runId) {
     const run = await db.mcpBuildRun.findUnique({ where: { id: runId } })
     return run && run.tenantId === tenantId ? run : null
   }
+  if (idempotencyKey) {
+    return db.mcpBuildRun.findFirst({ where: { tenantId, idempotencyKey } })
+  }
   return db.mcpBuildRun.findFirst({ where: { tenantId }, orderBy: { createdAt: "desc" } })
+}
+
+/**
+ * Submission-level idempotency for deploy_to_sacms/deploy_website_patch
+ * (chatgpt2.md P1): if the caller's first response never arrived and it
+ * retries with the SAME idempotencyKey, this must resolve to the SAME
+ * build run instead of letting a second deploy happen. Claims the key via
+ * an atomic insert — the DB's own unique constraint on (tenantId,
+ * idempotencyKey) is what actually makes two concurrent claims race-safe,
+ * not the find-then-create order here (a P2002 on create means someone
+ * else won the race between our check and our insert; re-reading in that
+ * case still returns the correct, single winning row).
+ */
+export async function findOrClaimByIdempotencyKey(
+  tenantId: string,
+  idempotencyKey: string,
+  intent: McpBuildRunIntent,
+): Promise<{ run: McpBuildRunRecord; isNew: boolean }> {
+  const existing = await db.mcpBuildRun.findFirst({ where: { tenantId, idempotencyKey } })
+  if (existing) return { run: existing, isNew: false }
+
+  try {
+    const created = await db.mcpBuildRun.create({
+      data: { tenantId, intent, stage: "discover", idempotencyKey },
+    })
+    return { run: created, isNew: true }
+  } catch {
+    // Unique constraint race — another request claimed this exact key
+    // between our read and our write. Re-read to get the winning row.
+    const winner = await db.mcpBuildRun.findFirst({ where: { tenantId, idempotencyKey } })
+    if (winner) return { run: winner, isNew: false }
+    throw new Error("Failed to claim idempotency key — no row found after a create conflict.")
+  }
+}
+
+/** Whether a claimed-but-not-yet-completed idempotency key should still block a fresh deploy. */
+export function isIdempotencyClaimStillInFlight(run: McpBuildRunRecord): boolean {
+  if (run.deploymentId) return false
+  return Date.now() - run.updatedAt.getTime() < IDEMPOTENCY_IN_FLIGHT_WINDOW_MS
 }
 
 /**

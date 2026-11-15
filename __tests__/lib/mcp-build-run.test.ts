@@ -18,7 +18,13 @@ vi.mock("@/lib/database", () => ({
   db: { mcpBuildRun: { findFirst, findUnique, create, updateMany } },
 }))
 
-const { startOrResumeBuildRun, getBuildRun, advanceBuildRun } = await import("@/lib/infrastructure/mcp-build-run")
+const {
+  startOrResumeBuildRun,
+  getBuildRun,
+  advanceBuildRun,
+  findOrClaimByIdempotencyKey,
+  isIdempotencyClaimStillInFlight,
+} = await import("@/lib/infrastructure/mcp-build-run")
 
 describe("startOrResumeBuildRun", () => {
   beforeEach(() => vi.clearAllMocks())
@@ -68,6 +74,63 @@ describe("getBuildRun", () => {
     const run = await getBuildRun("t1")
     expect(run).toEqual({ id: "run_3", tenantId: "t1", stage: "failed" })
     expect(findFirst).toHaveBeenCalledWith({ where: { tenantId: "t1" }, orderBy: { createdAt: "desc" } })
+  })
+
+  it("looks up by idempotencyKey when given instead of runId — the recovery path for a lost deploy response", async () => {
+    findFirst.mockResolvedValue({ id: "run_4", tenantId: "t1", idempotencyKey: "key-abc" })
+    const run = await getBuildRun("t1", undefined, "key-abc")
+    expect(run).toEqual({ id: "run_4", tenantId: "t1", idempotencyKey: "key-abc" })
+    expect(findFirst).toHaveBeenCalledWith({ where: { tenantId: "t1", idempotencyKey: "key-abc" } })
+  })
+})
+
+describe("findOrClaimByIdempotencyKey", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("returns the existing run when this key was already claimed", async () => {
+    const existing = { id: "run_1", tenantId: "t1", idempotencyKey: "key-1", deploymentId: "dpl_1" }
+    findFirst.mockResolvedValue(existing)
+
+    const result = await findOrClaimByIdempotencyKey("t1", "key-1", "update")
+    expect(result).toEqual({ run: existing, isNew: false })
+    expect(create).not.toHaveBeenCalled()
+  })
+
+  it("atomically claims a fresh key by creating a new run", async () => {
+    findFirst.mockResolvedValue(null)
+    const created = { id: "run_2", tenantId: "t1", idempotencyKey: "key-2", stage: "discover" }
+    create.mockResolvedValue(created)
+
+    const result = await findOrClaimByIdempotencyKey("t1", "key-2", "create")
+    expect(result).toEqual({ run: created, isNew: true })
+    expect(create).toHaveBeenCalledWith({ data: { tenantId: "t1", intent: "create", stage: "discover", idempotencyKey: "key-2" } })
+  })
+
+  it("re-reads and returns the winning row when two claims race on the same key (unique constraint conflict)", async () => {
+    findFirst.mockResolvedValueOnce(null) // initial check: not claimed yet
+    create.mockRejectedValue(new Error("Unique constraint failed on the fields: (`tenantId`,`idempotencyKey`)"))
+    const winner = { id: "run_3", tenantId: "t1", idempotencyKey: "key-3" }
+    findFirst.mockResolvedValueOnce(winner) // re-read after the race
+
+    const result = await findOrClaimByIdempotencyKey("t1", "key-3", "update")
+    expect(result).toEqual({ run: winner, isNew: false })
+  })
+})
+
+describe("isIdempotencyClaimStillInFlight", () => {
+  it("is false once a deploymentId has been recorded — the submission completed", () => {
+    const run = { id: "r1", tenantId: "t1", intent: "update", stage: "deploying", hostingProjectId: null, deploymentId: "dpl_1", sourceRevision: null, lastError: null, idempotencyKey: "k", createdAt: new Date(), updatedAt: new Date() }
+    expect(isIdempotencyClaimStillInFlight(run)).toBe(false)
+  })
+
+  it("is true for a claim with no deploymentId yet, updated moments ago", () => {
+    const run = { id: "r1", tenantId: "t1", intent: "update", stage: "discover", hostingProjectId: null, deploymentId: null, sourceRevision: null, lastError: null, idempotencyKey: "k", createdAt: new Date(), updatedAt: new Date() }
+    expect(isIdempotencyClaimStillInFlight(run)).toBe(true)
+  })
+
+  it("is false for a claim with no deploymentId that's old enough to be treated as abandoned", () => {
+    const run = { id: "r1", tenantId: "t1", intent: "update", stage: "discover", hostingProjectId: null, deploymentId: null, sourceRevision: null, lastError: null, idempotencyKey: "k", createdAt: new Date(), updatedAt: new Date(Date.now() - 5 * 60 * 1000) }
+    expect(isIdempotencyClaimStillInFlight(run)).toBe(false)
   })
 })
 

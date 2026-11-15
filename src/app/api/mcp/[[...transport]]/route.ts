@@ -20,7 +20,14 @@ import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
-import { startOrResumeBuildRun, getBuildRun, advanceBuildRun } from "@/lib/infrastructure/mcp-build-run"
+import {
+  startOrResumeBuildRun,
+  getBuildRun,
+  advanceBuildRun,
+  findOrClaimByIdempotencyKey,
+  isIdempotencyClaimStillInFlight,
+  type McpBuildRunRecord,
+} from "@/lib/infrastructure/mcp-build-run"
 import {
   saveDeploymentSource,
   getLatestDeploymentSource,
@@ -347,6 +354,38 @@ async function resolveDeploymentId(
     id: latest.id,
     status: { state: latest.state, deploymentUrl: latest.deploymentUrl, productionUrl: latest.productionUrl, projectId: tenant.vercelProjectId },
   }
+}
+
+/**
+ * Shared idempotency pre-check for deploy_to_sacms/deploy_website_patch
+ * (chatgpt2.md P1) — three outcomes:
+ * - "proceed": no key given, or a fresh/abandoned claim — caller should
+ *   deploy normally, advancing `effectiveRunId` (falls back to the
+ *   caller's own `runId` if one was also given) once it has a result.
+ * - "replay": this exact key already completed a deploy — return that
+ *   recorded result instead of deploying again.
+ * - "in_progress": another request with this exact key is still mid-flight
+ *   (claimed recently, no deploymentId yet) — don't start a second deploy.
+ */
+async function resolveIdempotency(
+  auth: AuthContext,
+  idempotencyKey: string | undefined,
+  intent: "create" | "update",
+): Promise<
+  | { kind: "proceed"; effectiveRunId: string | undefined }
+  | { kind: "replay"; run: McpBuildRunRecord; status: { state: string; deploymentUrl: string; productionUrl: string | null } | null }
+  | { kind: "in_progress"; run: McpBuildRunRecord }
+> {
+  if (!idempotencyKey) return { kind: "proceed", effectiveRunId: undefined }
+
+  const { run, isNew } = await findOrClaimByIdempotencyKey(auth.tenantId, idempotencyKey, intent)
+  if (isNew) return { kind: "proceed", effectiveRunId: run.id }
+  if (run.deploymentId) {
+    const status = await getDeploymentStatus(run.deploymentId).catch(() => null)
+    return { kind: "replay", run, status }
+  }
+  if (isIdempotencyClaimStillInFlight(run)) return { kind: "in_progress", run }
+  return { kind: "proceed", effectiveRunId: run.id }
 }
 
 // ─── Content entry write context ───────────────────────────────────────────
@@ -2321,10 +2360,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
 ## Phase 4 — Ship it
-12. For a BRAND-NEW build, call \`deploy_to_sacms\` with the full \`files\` set (pass the \`runId\` from Phase 0) to publish to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true. Binary assets (a PNG icon, a font) go in \`files\` with \`encoding: "base64"\`. The response includes a \`sourceRevision\` — keep it for the next step.
-12b. For a REVISION of a site that's already live ("ubah warna header", "ganti logo", "tambahkan dark mode"), call \`get_deployment_source\` first (manifestOnly: true if you just need to see what's there) to get a \`sourceRevision\`, make the targeted change, then call \`deploy_website_patch\` with \`baseSourceRevision\` and only the \`changedFiles\`/\`deletedFiles\` — never resend the whole project for a small ask, and never invent what the current file looks like. If it rejects with CONFLICT, someone deployed in between — re-read the source and retry. \`list_website_versions\`/\`rollback_website\` exist if the user wants to go back to an earlier revision instead.
+12. For a BRAND-NEW build, call \`deploy_to_sacms\` with the full \`files\` set (pass the \`runId\` from Phase 0, and consider passing \`idempotencyKey\` — a string unique to this submission — so a retry after a lost response returns the same deployment instead of a second one) to publish to this workspace's managed hosting (one Vercel project per workspace, idempotent — safe to call again after edits, and safe to call again blindly if a previous response never arrived). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true. Binary assets (a PNG icon, a font) go in \`files\` with \`encoding: "base64"\`. The response includes a \`sourceRevision\` — keep it for the next step.
+12b. For a REVISION of a site that's already live ("ubah warna header", "ganti logo", "tambahkan dark mode"), call \`get_deployment_source\` first (manifestOnly: true if you just need to see what's there) to get a \`sourceRevision\` — if none is persisted yet (a deployment from before this feature, or made outside these tools), a full read automatically imports it so you get a real one back. If it comes back with \`code: "SOURCE_INCOMPLETE"\` instead, the read was truncated/partial — raise maxFiles and try again before patching. Make the targeted change, then call \`deploy_website_patch\` with \`baseSourceRevision\` and only the \`changedFiles\`/\`deletedFiles\` — never resend the whole project for a small ask, and never invent what the current file looks like. If it rejects with CONFLICT (or \`SOURCE_IMPORT_REQUIRED\` when the base was never persisted), re-read the source and retry. \`list_website_versions\`/\`rollback_website\` exist if the user wants to go back to an earlier revision instead.
 13. Call \`get_deployment_status\` to confirm it's READY before telling the user it's done — never report success just because deploy_to_sacms/deploy_website_patch returned. It returns \`productionUrl\` (the real public domain — use THIS one) and \`deploymentUrl\` (this specific build's own gated hostname — don't hand this to the user) as separate fields; don't conflate them. You can omit deploymentId to auto-check the latest deployment. If the state comes back errored/failed, call \`get_deployment_build_logs\` to see WHY before trying again. Use \`configure_deployment_domain\` for a custom domain, \`add_deployment_env\`/\`list_deployment_env\` to manage env vars, and \`make_deployment_public\` if a preview URL needs to be opened up.
-14. Once READY, call \`verify_deployment_url\` (pass the \`runId\` too) to actually fetch the live site over HTTP and confirm it renders — a "ready" build can still show a login wall, an error page, or empty data. For a multi-page build, pass \`checks: [{path, expectedText}, ...]\` covering every page/feed/manifest file that matters (home, a detail page, an RSS/JSON feed, a PWA manifest) — ALL must pass before the \`runId\` is marked done, not just the homepage. This tool only performs HTTP-level checks: it cannot confirm real browser rendering or that a PWA actually installs on a device — say so plainly if the user asked about either rather than claiming they were verified. Only report the website as done to the user after this comes back \`ok: true\`.
+14. Once READY, call \`verify_deployment_url\` (pass the \`runId\` too, and \`deploymentId\` if you have one specific build in mind) to actually fetch the live site over HTTP and confirm it renders AND that production is actually serving THAT deployment — a "ready" build can still sit unpromoted behind an older one, which comes back as \`code: "PRODUCTION_VERSION_MISMATCH"\` (retry shortly, it's usually just propagation lag, not a real failure). For a multi-page build, pass \`checks: [{path, expectedText}, ...]\` covering every page/feed/manifest file that matters (home, a detail page, an RSS/JSON feed, a PWA manifest) — ALL must pass before the \`runId\` is marked done, not just the homepage. This tool only performs HTTP-level checks: it cannot confirm real browser rendering or that a PWA actually installs on a device — say so plainly if the user asked about either rather than claiming they were verified. Only report the website as done to the user after this comes back \`ok: true\`.
+15. If a deploy_to_sacms/deploy_website_patch response never arrives (network drop, tool timeout), do NOT blindly resubmit — call \`get_build_run\` with the \`runId\` (or the \`idempotencyKey\` you submitted with, if you used one) to see what actually happened before deciding whether to retry.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically. The env var a deployed frontend reads to call the SaCMS API is \`SACMS_API_KEY\` (confirm via \`get_api_info\`/\`list_deployment_env\`, never assume a name).
@@ -2537,9 +2577,10 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "get_build_run",
       {
         title: "Get Build Run Status (Resume After an Interruption)",
-        description: "Fetch a build run's current state — call this at the start of a new conversation when the user refers back to a build/revision you (or another session) started earlier (\"lanjutkan website kemarin\", \"continue the site we were building\"), instead of starting over from scratch. Omit runId to get this workspace's most recent run.",
+        description: "Fetch a build run's current state — call this at the start of a new conversation when the user refers back to a build/revision you (or another session) started earlier (\"lanjutkan website kemarin\", \"continue the site we were building\"), instead of starting over from scratch. Also the recovery path when a deploy_to_sacms/deploy_website_patch response was lost: pass the SAME idempotencyKey you submitted with to find out what actually happened, instead of guessing or resubmitting blind. Omit both to get this workspace's most recent run.",
         inputSchema: {
           runId: z.string().optional().describe("A specific run's id, from start_website_build. Omit to fetch this workspace's most recent run."),
+          idempotencyKey: z.string().optional().describe("Look up the run by the idempotencyKey you passed to deploy_to_sacms/deploy_website_patch instead of a runId — use this when that call's response never arrived."),
         },
         outputSchema: {
           runId: z.string(),
@@ -2552,16 +2593,16 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           updatedAt: z.string(),
         },
       },
-      async ({ runId }) => {
+      async ({ runId, idempotencyKey }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         try {
-          const run = await getBuildRun(auth.tenantId, runId)
+          const run = await getBuildRun(auth.tenantId, runId, idempotencyKey)
           if (!run) {
             return {
-              content: [{ type: "text" as const, text: runId ? `❌ Build run '${runId}' tidak ditemukan untuk workspace ini.` : "❌ Belum ada build run untuk workspace ini — mulai dengan start_website_build." }],
+              content: [{ type: "text" as const, text: runId || idempotencyKey ? `❌ Build run tidak ditemukan untuk workspace ini.` : "❌ Belum ada build run untuk workspace ini — mulai dengan start_website_build." }],
               structuredContent: { ok: false, code: "NOT_FOUND", message: "No matching build run." },
               isError: true,
             }
@@ -2609,6 +2650,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           intent: z.enum(["create", "update"]).optional().describe("Set to \"create\" when the user wants a brand-new website and this ISN'T a revision of whatever is already deployed. When omitted/\"update\", behaves exactly as before (always deploys, no conflict check) — for backward compatibility with callers that don't know about this field."),
           confirmOverwrite: z.boolean().optional().describe("Set to true to proceed with intent: \"create\" even though a deployment already exists — only after the user has explicitly confirmed they want to replace it."),
           runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — advances that run's recorded stage/deploymentId so get_build_run reflects reality even if this conversation gets interrupted right after."),
+          idempotencyKey: z.string().optional().describe("A key unique to THIS submission (e.g. a hash of the files+intent). If this tool's response is ever lost, retry with the SAME key — you'll get back the already-completed deployment instead of a second one. Omit if you don't need this (default behavior is unchanged)."),
         },
         outputSchema: {
           ok: z.boolean(),
@@ -2626,7 +2668,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           message: z.string(),
         },
       },
-      async ({ files, envVars, intent, confirmOverwrite, runId }) => {
+      async ({ files, envVars, intent, confirmOverwrite, runId, idempotencyKey }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2668,6 +2710,36 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             }
           }
         }
+
+        // Idempotency check — before the rate limit, since a replay/
+        // in-progress outcome never triggers a real deploy and shouldn't
+        // consume that budget.
+        const idem = await resolveIdempotency(auth, idempotencyKey, intent === "create" ? "create" : "update")
+        if (idem.kind === "in_progress") {
+          return {
+            content: [{ type: "text" as const, text: `⏳ Deploy dengan idempotencyKey ini masih berjalan (runId: ${idem.run.id}) — jangan kirim ulang, cek get_build_run atau tunggu sebentar.` }],
+            structuredContent: { ok: false, code: "DEPLOY_IN_PROGRESS", message: "A deploy with this idempotencyKey is already in progress." },
+            isError: true,
+          }
+        }
+        if (idem.kind === "replay") {
+          const structured = {
+            ok: true,
+            deploymentId: idem.run.deploymentId || undefined,
+            sourceRevision: idem.run.sourceRevision || undefined,
+            productionUrl: idem.status?.productionUrl || undefined,
+            deploymentUrl: idem.status?.deploymentUrl || undefined,
+            url: idem.status?.productionUrl || undefined,
+            state: idem.status?.state || "UNKNOWN",
+            projectId: idem.run.hostingProjectId || "",
+            message: "Idempotent replay: this idempotencyKey already completed a deploy — returning that result instead of deploying again.",
+          }
+          return {
+            content: [{ type: "text" as const, text: `🔁 Replay idempoten — deployment ${structured.deploymentId} sudah ada untuk idempotencyKey ini.` }],
+            structuredContent: structured,
+          }
+        }
+        const effectiveRunId = runId || idem.effectiveRunId
 
         // A dedicated cooldown, separate from the general per-tenant MCP
         // rate limit (shared with cheap read calls) — each deploy triggers
@@ -2751,8 +2823,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             console.warn("[MCP deploy_to_sacms] Failed to persist source snapshot:", e)
           }
 
-          if (runId) {
-            advanceBuildRun(auth.tenantId, runId, {
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, {
               stage: "deploying",
               deploymentId: result.id,
               sourceRevision: sourceRevision || result.id,
@@ -2781,8 +2853,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             },
           }
         } catch (err: any) {
-          if (runId) {
-            advanceBuildRun(auth.tenantId, runId, { stage: "failed", lastError: err.message })
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, { stage: "failed", lastError: err.message })
           }
           return {
             content: [{
@@ -2812,6 +2884,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the base source entirely."),
           envVars: z.record(z.string(), z.string()).optional().describe("Extra env vars for this deploy, same as deploy_to_sacms."),
           runId: z.string().optional().describe("The runId from start_website_build, if you have one for this request."),
+          idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key to get back the already-completed deployment instead of patching twice."),
         },
         outputSchema: {
           ok: z.boolean(),
@@ -2827,7 +2900,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           message: z.string(),
         },
       },
-      async ({ baseSourceRevision, changedFiles, deletedFiles, envVars, runId }) => {
+      async ({ baseSourceRevision, changedFiles, deletedFiles, envVars, runId, idempotencyKey }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2842,8 +2915,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
         const base = await getDeploymentSourceByRevision(auth.tenantId, baseSourceRevision)
         if (!base) {
           return {
-            content: [{ type: "text" as const, text: `❌ baseSourceRevision '${baseSourceRevision}' tidak ditemukan untuk workspace ini — mungkin sudah terlalu lama (hanya revisi terbaru yang disimpan). Panggil get_deployment_source untuk mendapatkan sourceRevision terbaru.` }],
-            structuredContent: { ok: false, code: "NOT_FOUND", message: "baseSourceRevision not found." },
+            content: [{ type: "text" as const, text: `❌ baseSourceRevision '${baseSourceRevision}' tidak ditemukan untuk workspace ini — mungkin sudah terlalu lama (hanya revisi terbaru yang disimpan), atau belum pernah diimpor. Panggil get_deployment_source untuk mendapatkan sourceRevision terbaru (membaca source akan otomatis mengimpornya kalau belum tersimpan).` }],
+            structuredContent: { ok: false, code: "SOURCE_IMPORT_REQUIRED", message: "baseSourceRevision not found." },
             isError: true,
           }
         }
@@ -2859,6 +2932,32 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             isError: true,
           }
         }
+
+        // Idempotency check — before the rate limit, same reasoning as deploy_to_sacms.
+        const idem = await resolveIdempotency(auth, idempotencyKey, "update")
+        if (idem.kind === "in_progress") {
+          return {
+            content: [{ type: "text" as const, text: `⏳ Patch dengan idempotencyKey ini masih berjalan (runId: ${idem.run.id}) — jangan kirim ulang, cek get_build_run atau tunggu sebentar.` }],
+            structuredContent: { ok: false, code: "DEPLOY_IN_PROGRESS", message: "A patch with this idempotencyKey is already in progress." },
+            isError: true,
+          }
+        }
+        if (idem.kind === "replay") {
+          const structured = {
+            ok: true,
+            deploymentId: idem.run.deploymentId || undefined,
+            sourceRevision: idem.run.sourceRevision || undefined,
+            productionUrl: idem.status?.productionUrl || undefined,
+            deploymentUrl: idem.status?.deploymentUrl || undefined,
+            state: idem.status?.state || "UNKNOWN",
+            message: "Idempotent replay: this idempotencyKey already completed a patch deploy — returning that result instead of patching again.",
+          }
+          return {
+            content: [{ type: "text" as const, text: `🔁 Replay idempoten — deployment ${structured.deploymentId} sudah ada untuk idempotencyKey ini.` }],
+            structuredContent: structured,
+          }
+        }
+        const effectiveRunId = runId || idem.effectiveRunId
 
         const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
         if (!deployLimit.success) {
@@ -2900,6 +2999,16 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             }).catch((e) => console.warn("[MCP deploy_website_patch] Failed to persist deployment:", e))
           }
 
+          // Re-check immediately before persisting — narrows (does not
+          // eliminate) the race where a second concurrent patch against the
+          // same baseSourceRevision slips in while THIS deploy was running
+          // against Vercel (the dominant real-world collision window,
+          // since that call takes seconds — the gap before it is much
+          // shorter). The Vercel deploy itself already happened and can't
+          // be undone at this point, so this can only warn, not prevent it.
+          const stillLatest = await getLatestDeploymentSource(auth.tenantId)
+          const concurrentChangeDetected = !!stillLatest && stillLatest.id !== baseSourceRevision
+
           let sourceRevision: string | undefined
           try {
             const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, mergedFiles as DeploymentSourceFile[])
@@ -2908,8 +3017,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             console.warn("[MCP deploy_website_patch] Failed to persist source snapshot:", e)
           }
 
-          if (runId) {
-            advanceBuildRun(auth.tenantId, runId, {
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, {
               stage: "deploying",
               deploymentId: result.id,
               sourceRevision: sourceRevision || result.id,
@@ -2919,6 +3028,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
           const structured = {
             ok: true,
+            code: concurrentChangeDetected ? "CONCURRENT_CHANGE_DURING_DEPLOY" : undefined,
             deploymentId: result.id,
             sourceRevision,
             productionUrl: result.url,
@@ -2927,15 +3037,17 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             deletedCount: (deletedFiles || []).length,
             unchangedCount: mergedFiles.length - changedFiles.length,
             state: result.state,
-            message: `Next step: call get_deployment_status to confirm it's READY, then verify_deployment_url before telling the user it's done.`,
+            message: concurrentChangeDetected
+              ? "This deploy succeeded, but another deploy happened WHILE it was running — its changes may have just been overwritten. Call get_deployment_source to check the current state before telling the user this is done."
+              : `Next step: call get_deployment_status to confirm it's READY, then verify_deployment_url before telling the user it's done.`,
           }
           return {
-            content: [{ type: "text" as const, text: `🚀 Patch Deploy Sukses!\n- Deployment ID: ${result.id}\n- sourceRevision: ${sourceRevision}\n- Live URL: ${result.url}\n- File diubah: ${changedFiles.length}, dihapus: ${(deletedFiles || []).length}, tidak berubah: ${structured.unchangedCount}` }],
+            content: [{ type: "text" as const, text: `🚀 Patch Deploy Sukses!\n- Deployment ID: ${result.id}\n- sourceRevision: ${sourceRevision}\n- Live URL: ${result.url}\n- File diubah: ${changedFiles.length}, dihapus: ${(deletedFiles || []).length}, tidak berubah: ${structured.unchangedCount}${concurrentChangeDetected ? "\n⚠️ Perubahan bersamaan terdeteksi selama deploy ini — cek get_deployment_source." : ""}` }],
             structuredContent: structured,
           }
         } catch (err: any) {
-          if (runId) {
-            advanceBuildRun(auth.tenantId, runId, { stage: "failed", lastError: err.message })
+          if (effectiveRunId) {
+            advanceBuildRun(auth.tenantId, effectiveRunId, { stage: "failed", lastError: err.message })
           }
           return {
             content: [{ type: "text" as const, text: `❌ Gagal deploy patch: ${err.message}` }],
@@ -3150,12 +3262,13 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "get_deployment_source",
       {
         title: "Get Current Deployed Source Files",
-        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API, falling back to Vercel only for a deployment made before this existed. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need), or manifestOnly: true to see just the file list/sizes/checksums with no content at all — use that first on a large project instead of pulling everything. Omit deploymentId to read the latest production deployment.",
+        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned instead — raise maxFiles or ask about the skipped paths before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import, since it's a deliberately partial read), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Omit deploymentId to read the latest production deployment.",
         inputSchema: {
           deploymentId: z.string().optional().describe("Specific deployment to read from. Omit to use the latest production deployment for this workspace."),
           maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100) when reading the full set. Ignored when paths is given."),
-          paths: z.array(z.string()).optional().describe("Return only these file paths instead of the whole project — cheaper when you already know which files you need to re-edit."),
+          paths: z.array(z.string()).optional().describe("Return only these file paths instead of the whole project — cheaper when you already know which files you need to re-edit. Any path not found comes back in missingPaths. Never triggers an auto-import (deliberately partial)."),
           manifestOnly: z.boolean().optional().describe("Return just name/size/encoding/checksum for every file, with content left empty — use this first to see what's there before deciding which files to actually fetch."),
+          runId: z.string().optional().describe("The runId from start_website_build, if you have one — updates its recorded sourceRevision when this call establishes or confirms one."),
         },
         outputSchema: {
           deploymentId: z.string(),
@@ -3164,9 +3277,11 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           files: z.array(z.object({ name: z.string(), content: z.string(), encoding: z.enum(["utf-8", "base64"]), size: z.number(), checksum: z.string() })),
           skipped: z.array(z.string()),
           truncated: z.boolean(),
+          missingPaths: z.array(z.string()),
+          code: z.string().optional(),
         },
       },
-      async ({ deploymentId, maxFiles, paths, manifestOnly }) => {
+      async ({ deploymentId, maxFiles, paths, manifestOnly, runId }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
@@ -3188,6 +3303,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           let truncated = false
           let source: "persisted" | "vercel-live"
           let sourceRevision: string | undefined
+          let code: string | undefined
 
           if (persisted) {
             source = "persisted"
@@ -3205,12 +3321,36 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             source = "vercel-live"
             const live = await getDeploymentFiles(resolved.id, maxFiles ?? 100)
             const base = paths ? live.files.filter((f) => paths.includes(f.name)) : live.files
-            files = base.map((f) => ({ ...f, content: manifestOnly ? "" : f.content, size: f.content.length }))
+            files = base.map((f) => ({ ...f, content: manifestOnly ? "" : f.content }))
             skipped = live.skipped
             truncated = live.truncated
+
+            // Auto-import: a deployment-made-before-this-feature (or made
+            // outside deploy_to_sacms entirely) has no persisted source —
+            // without this, get_deployment_source could read it but
+            // deploy_website_patch would have no baseSourceRevision to work
+            // from, exactly the gap that blocked a patch from a fresh
+            // conversation (chatgpt2.md). Only import on a deliberate
+            // full-project read (no `paths`) that came back complete —
+            // persisting a truncated/partially-skipped read as "the full
+            // source" would silently drop those files on the next patch.
+            if (!paths) {
+              if (!truncated && skipped.length === 0) {
+                try {
+                  const saved = await saveDeploymentSource(auth.tenantId, resolved.id, resolved.status?.projectId, live.files)
+                  sourceRevision = saved.id
+                  if (runId) advanceBuildRun(auth.tenantId, runId, { sourceRevision: saved.id })
+                } catch (e) {
+                  console.warn("[MCP get_deployment_source] Failed to auto-import live read into source history:", e)
+                }
+              } else {
+                code = "SOURCE_INCOMPLETE"
+              }
+            }
           }
 
-          const structured = { deploymentId: resolved.id, sourceRevision, source, files, skipped, truncated }
+          const missingPaths = paths ? paths.filter((p) => !files.some((f) => f.name === p)) : []
+          const structured = { deploymentId: resolved.id, sourceRevision, source, files, skipped, truncated, missingPaths, code }
 
           return {
             content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -3272,7 +3412,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
       "verify_deployment_url",
       {
         title: "Verify the Live Deployment Actually Works",
-        description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
+        description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data, AND the production domain can still be serving an OLDER deployment if Vercel hasn't finished promoting the new one. Pass deploymentId (or a runId that has one recorded) to bind this check to that SPECIFIC build — if the production domain isn't actually serving it yet, this returns PRODUCTION_VERSION_MISMATCH instead of a false pass. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
         inputSchema: {
           path: z.string().optional().describe("Shorthand for a single check: path on this workspace's own live deployment domain, e.g. \"/\" (default) or \"/artikel/contoh-slug\". Ignored if checks is provided."),
           expectedText: z.string().optional().describe("Shorthand for a single check's expectedText. Ignored if checks is provided."),
@@ -3280,10 +3420,13 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             path: z.string().describe("Path to check, e.g. \"/\", \"/artikel/contoh-slug\", \"/feed.xml\", \"/manifest.json\"."),
             expectedText: z.string().optional().describe("A substring expected in that path's rendered HTML/body."),
           })).max(10).optional().describe("One or more required checks — e.g. home, a detail page, a content feed, and a PWA manifest file. ALL must pass for runId to be marked done. Never pass a full URL to a different host — every check is against THIS workspace's own deployment."),
-          runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — marks that run done only once every check passes, or failed with the first failing check's reason."),
+          deploymentId: z.string().optional().describe("Bind this verification to a SPECIFIC deployment — fails with PRODUCTION_VERSION_MISMATCH if the production domain isn't actually serving it yet. Defaults to the runId's recorded deploymentId if omitted, else no binding (just checks whatever's currently live)."),
+          runId: z.string().optional().describe("The runId from start_website_build, if you called it for this request — marks that run done only once every check (and the deployment binding, if any) passes, or failed/verifying with the reason."),
         },
         outputSchema: {
           ok: z.boolean(),
+          code: z.string().optional(),
+          verifiedDeploymentId: z.string().optional(),
           checks: z.array(z.object({
             path: z.string(),
             url: z.string(),
@@ -3301,13 +3444,13 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           looksLikeErrorPage: z.boolean(),
         },
       },
-      async ({ path, expectedText, checks, runId }) => {
+      async ({ path, expectedText, checks, deploymentId, runId }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         try {
-          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelDeploymentUrl: true } })
+          const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelDeploymentUrl: true, vercelProjectId: true } })
           if (!tenant?.vercelDeploymentUrl) {
             return {
               content: [{ type: "text" as const, text: "❌ Belum ada deployment untuk workspace ini. Deploy dulu dengan deploy_to_sacms sebelum verifikasi URL." }],
@@ -3315,6 +3458,26 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
               isError: true,
             }
           }
+
+          // Resolve which deployment this check is bound to — explicit
+          // param wins, else fall back to the runId's own recorded one.
+          let targetDeploymentId = deploymentId
+          if (!targetDeploymentId && runId) {
+            const run = await getBuildRun(auth.tenantId, runId)
+            targetDeploymentId = run?.deploymentId || undefined
+          }
+
+          // If bound to a specific deployment, confirm production is
+          // ACTUALLY serving it — a provider-reported READY build can sit
+          // unpromoted while the domain keeps serving the previous one.
+          let productionVersionMismatch = false
+          if (targetDeploymentId && tenant.vercelProjectId) {
+            const latest = await getLatestDeployment(tenant.vercelProjectId)
+            if (latest && latest.id !== targetDeploymentId) {
+              productionVersionMismatch = true
+            }
+          }
+
           const base = tenant.vercelDeploymentUrl.replace(/\/$/, "")
 
           const effectiveChecks = checks && checks.length > 0 ? checks : [{ path, expectedText }]
@@ -3346,17 +3509,27 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
             }
           }))
 
-          const allOk = results.every((r) => r.ok)
+          const allChecksOk = results.every((r) => r.ok)
+          const allOk = allChecksOk && !productionVersionMismatch
 
           if (runId) {
-            const firstFailure = results.find((r) => !r.ok)
-            advanceBuildRun(auth.tenantId, runId, allOk
-              ? { stage: "done" }
-              : { stage: "failed", lastError: `Verification failed for ${firstFailure?.url} (status ${firstFailure?.status})` })
+            if (productionVersionMismatch) {
+              // Not a failure — likely just Vercel still propagating the
+              // alias. Leave the run "verifying" (not done, not failed) so
+              // a short retry is the expected next step, not a restart.
+              advanceBuildRun(auth.tenantId, runId, { stage: "verifying", lastError: `Production domain is not yet serving deployment ${targetDeploymentId}.` })
+            } else {
+              const firstFailure = results.find((r) => !r.ok)
+              advanceBuildRun(auth.tenantId, runId, allChecksOk
+                ? { stage: "done" }
+                : { stage: "failed", lastError: `Verification failed for ${firstFailure?.url} (status ${firstFailure?.status})` })
+            }
           }
 
           const structured = {
             ok: allOk,
+            code: productionVersionMismatch ? "PRODUCTION_VERSION_MISMATCH" : undefined,
+            verifiedDeploymentId: targetDeploymentId,
             checks: results.map(({ error, ...r }: any) => r),
             url: results[0].url,
             status: results[0].status,
@@ -3366,7 +3539,12 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
           }
 
           return {
-            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            content: [{
+              type: "text" as const,
+              text: productionVersionMismatch
+                ? `⏳ PRODUCTION_VERSION_MISMATCH — domain produksi belum menyajikan deployment ${targetDeploymentId}. Coba get_deployment_status sebentar lagi lalu verifikasi ulang, jangan dianggap gagal permanen.\n${JSON.stringify(structured, null, 2)}`
+                : JSON.stringify(structured, null, 2),
+            }],
             structuredContent: structured,
           }
         } catch (err: any) {
@@ -3781,7 +3959,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "3.1.0" },
+    serverInfo: { name: "sacms-mcp", version: "3.2.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
@@ -3792,7 +3970,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy → verify). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
+      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy → verify). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
   }
 )
 

@@ -803,10 +803,18 @@ model McpBuildRun {
   deploymentId     String?
   sourceRevision   String?
   lastError        String?
+  // Caller-supplied dedup key for deploy_to_sacms/deploy_website_patch
+  // (chatgpt2.md P1): if a submit's response never arrives, retrying with
+  // the SAME key must resolve to the SAME deployment rather than creating
+  // a second one. Nullable + a compound unique index — Postgres treats
+  // every NULL as distinct, so callers that never pass a key never collide
+  // with each other.
+  idempotencyKey   String?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   @@index([tenantId, createdAt])
+  @@unique([tenantId, idempotencyKey])
   @@map("mcp_build_runs")
 }
 

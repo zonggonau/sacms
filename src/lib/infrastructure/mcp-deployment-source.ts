@@ -33,13 +33,25 @@ export function checksumOf(content: string): string {
   return createHash("sha256").update(content).digest("hex")
 }
 
+/** Decodes a file's stored content to its real bytes — for "base64" entries
+ *  `f.content` is base64 TEXT, not the actual bytes, so hashing/sizing the
+ *  string directly (a real bug, confirmed live: a PNG icon reported 2544
+ *  bytes — its base64 length — instead of its real 1908) silently produces
+ *  the wrong size and a checksum of the wrong thing. */
+function decodedBytes(content: string, encoding: "utf-8" | "base64"): Buffer {
+  return encoding === "base64" ? Buffer.from(content, "base64") : Buffer.from(content, "utf-8")
+}
+
 export function buildManifest(files: DeploymentSourceFile[]): DeploymentSourceManifestEntry[] {
-  return files.map((f) => ({
-    path: f.name,
-    size: f.content.length,
-    encoding: f.encoding,
-    checksum: checksumOf(f.content),
-  }))
+  return files.map((f) => {
+    const bytes = decodedBytes(f.content, f.encoding)
+    return {
+      path: f.name,
+      size: bytes.length,
+      encoding: f.encoding,
+      checksum: createHash("sha256").update(bytes).digest("hex"),
+    }
+  })
 }
 
 /**

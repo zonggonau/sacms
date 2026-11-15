@@ -398,6 +398,26 @@ const SKIP_DEPLOYMENT_DIRS = new Set(["node_modules", ".git", ".next", ".vercel"
 const SKIP_DEPLOYMENT_EXT_RE = /\.(mp4|mov|avi|mp3|zip|pdf)$/i
 const MAX_DEPLOYMENT_FILE_BYTES = 2 * 1024 * 1024
 
+// Vercel's deployment-files CONTENT endpoint (v7/.../files/{uid}) always
+// base64-encodes `data` regardless of the underlying file's real type —
+// confirmed live (chatgpt2.md): a PNG icon, theme.js, AND package-lock.json
+// all came back with `encoding: "base64"`. Trusting that label at face
+// value (as this used to) leaves genuinely textual files unreadable
+// (base64 instead of real source) and reports binary files' SIZE/checksum
+// against the inflated base64 TEXT instead of their real bytes. Decode
+// first, unconditionally, then decide for ourselves whether the real bytes
+// are text or genuinely binary.
+const KNOWN_BINARY_EXT_RE = /\.(png|jpe?g|gif|webp|ico|bmp|woff2?|ttf|eot|otf|pdf|zip|gz|tgz|tar|mp4|mov|avi|mp3|wav|lockb)$/i
+
+function isTextFile(path: string, bytes: Buffer): boolean {
+  if (KNOWN_BINARY_EXT_RE.test(path)) return false
+  // Valid-UTF-8 check via round-trip: decoding invalid bytes replaces them
+  // with U+FFFD rather than throwing, so re-encoding and comparing against
+  // the original bytes is what actually detects corruption/binary data.
+  const text = bytes.toString("utf-8")
+  return Buffer.from(text, "utf-8").equals(bytes)
+}
+
 /**
  * Reads back the actual files of a deployment — the one thing the MCP
  * deploy tools never exposed before: `deploy_to_sacms` only ever pushed
@@ -417,13 +437,15 @@ const MAX_DEPLOYMENT_FILE_BYTES = 2 * 1024 * 1024
  * media and anything over the per-file size cap (reading back a
  * multi-megabyte video isn't what this is for) — lockfiles are NOT skipped,
  * see the comment on SKIP_DEPLOYMENT_EXT_RE. Each returned file also
- * carries a sha256 `checksum` of its content, so a caller can confirm a
- * deploy → read-back → redeploy cycle produced byte-identical files.
+ * carries its real byte `size` and a sha256 `checksum` of those real bytes
+ * (not of Vercel's base64 text — see KNOWN_BINARY_EXT_RE's comment), so a
+ * caller can confirm a deploy → read-back → redeploy cycle produced
+ * byte-identical files.
  */
 export async function getDeploymentFiles(
   deploymentId: string,
   maxFiles = 100,
-): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64"; checksum: string }[]; skipped: string[]; truncated: boolean }> {
+): Promise<{ files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[]; skipped: string[]; truncated: boolean }> {
   const token = await getVercelToken()
   if (!token) return { files: [], skipped: [], truncated: false }
 
@@ -452,7 +474,7 @@ export async function getDeploymentFiles(
   }
   walk(Array.isArray(tree) ? tree : [], "")
 
-  const files: { name: string; content: string; encoding: "utf-8" | "base64"; checksum: string }[] = []
+  const files: { name: string; content: string; encoding: "utf-8" | "base64"; size: number; checksum: string }[] = []
   const skipped: string[] = []
   let truncated = false
 
@@ -481,8 +503,11 @@ export async function getDeploymentFiles(
         skipped.push(leaf.path)
         continue
       }
-      const encoding: "utf-8" | "base64" = data.encoding === "base64" ? "base64" : "utf-8"
-      files.push({ name: leaf.path, content: raw, encoding, checksum: createHash("sha256").update(raw).digest("hex") })
+      const bytes = data.encoding === "base64" ? Buffer.from(raw, "base64") : Buffer.from(raw, "utf-8")
+      const isText = isTextFile(leaf.path, bytes)
+      const encoding: "utf-8" | "base64" = isText ? "utf-8" : "base64"
+      const content = isText ? bytes.toString("utf-8") : bytes.toString("base64")
+      files.push({ name: leaf.path, content, encoding, size: bytes.length, checksum: createHash("sha256").update(bytes).digest("hex") })
     } catch {
       skipped.push(leaf.path)
     }

@@ -192,4 +192,41 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/SYSTEM_ENV_VARS/)
     expect(scoped).toMatch(/tokenEnvKey/)
   })
+
+  // ── chatgpt2.md round ────────────────────────────────────────────────────
+
+  it("get_deployment_source reports missingPaths and auto-imports a complete live read into persisted source history", () => {
+    const scoped = toolBlockOf("get_deployment_source")
+    expect(scoped).toMatch(/missingPaths/)
+    expect(scoped).toMatch(/saveDeploymentSource/)
+    expect(scoped).toMatch(/SOURCE_INCOMPLETE/)
+  })
+
+  it("deploy_website_patch's NOT_FOUND-for-missing-base now surfaces as SOURCE_IMPORT_REQUIRED, and re-checks for a concurrent change right before persisting", () => {
+    const scoped = toolBlockOf("deploy_website_patch")
+    expect(scoped).toMatch(/SOURCE_IMPORT_REQUIRED/)
+    expect(scoped).toMatch(/concurrentChangeDetected/)
+    expect(scoped).toMatch(/CONCURRENT_CHANGE_DURING_DEPLOY/)
+  })
+
+  it("deploy_to_sacms and deploy_website_patch accept idempotencyKey and resolve it via resolveIdempotency", () => {
+    for (const tool of ["deploy_to_sacms", "deploy_website_patch"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should accept idempotencyKey`).toMatch(/idempotencyKey:\s*z\.string\(\)\.optional\(\)/)
+      expect(scoped, `${tool} should resolve idempotency`).toMatch(/resolveIdempotency/)
+      expect(scoped, `${tool} should handle an in-progress replay`).toMatch(/DEPLOY_IN_PROGRESS/)
+    }
+  })
+
+  it("get_build_run accepts an idempotencyKey as an alternative lookup to runId", () => {
+    const scoped = toolBlockOf("get_build_run")
+    expect(scoped).toMatch(/idempotencyKey:\s*z\.string\(\)\.optional\(\)/)
+  })
+
+  it("verify_deployment_url binds to a specific deploymentId and flags PRODUCTION_VERSION_MISMATCH instead of a false pass", () => {
+    const scoped = toolBlockOf("verify_deployment_url")
+    expect(scoped).toMatch(/deploymentId:\s*z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/PRODUCTION_VERSION_MISMATCH/)
+    expect(scoped).toMatch(/getLatestDeployment/)
+  })
 })
