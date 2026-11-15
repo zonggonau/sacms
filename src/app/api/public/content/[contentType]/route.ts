@@ -14,6 +14,7 @@ import {
   parseSort,
   applyFieldSelection,
 } from "@/lib/filters"
+import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 
 /**
  * Public API for Global Content Types (Managed by Super Admin)
@@ -226,10 +227,11 @@ export async function GET(
       }
 
       const shaped = applyFieldSelection(parsedData, selectedFields)
+      const publicShaped = entry.status === "PUBLISHED" ? rewritePublicMediaUrls(shaped) : shaped
 
       return {
         id: entry.id,
-        ...shaped,
+        ...publicShaped,
         status: entry.status,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,

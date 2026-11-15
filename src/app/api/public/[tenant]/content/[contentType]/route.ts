@@ -13,6 +13,7 @@ import {
   serviceErrorStatus,
 } from "@/lib/public-api-actor"
 import { createContentEntry } from "@/lib/content/entry-service"
+import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 import {
   parseFilters,
   buildFilterSQL,
@@ -494,10 +495,15 @@ export async function GET(
       }
 
       const shaped = applyFieldSelection(populatedData, selectedFields)
+      // Media URLs embedded in this entry's data are only ever safe to
+      // rewrite to a publicly-fetchable one when the entry itself is
+      // actually PUBLISHED — `status` here is the single value this whole
+      // batch was queried with (see baseWhere/whereClause above).
+      const publicShaped = status === "PUBLISHED" ? rewritePublicMediaUrls(shaped) : shaped
 
       return {
         id: entry.id,
-        ...shaped,
+        ...publicShaped,
         locale: entry.locale,
         availableLocales: entry.documentId ? (localesByDoc.get(entry.documentId) ?? [entry.locale]) : [entry.locale],
         status: entry.status,

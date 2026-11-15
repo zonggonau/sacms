@@ -21,6 +21,7 @@ import {
   deleteContentEntry,
   type ContentActor,
 } from "@/lib/content/entry-service"
+import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 
 /**
  * A member role may opt into owner-scoping via `conditions.owner === true` on the
@@ -459,6 +460,11 @@ export async function GET(
     }
 
     const shapedData = applyFieldSelection(populatedData, selectedFields)
+    // Only rewrite embedded media URLs to the public, unauthenticated form
+    // when this specific entry is actually PUBLISHED — a full-access token
+    // can fetch a DRAFT entry through this same code path, and a draft's
+    // media must not become fetchable without a login.
+    const publicShapedData = entry.status === "PUBLISHED" ? rewritePublicMediaUrls(shapedData) : shapedData
 
     // 12. Update token last used — only applies to API-token actors
     if (actor.kind === "api-token") {
@@ -473,7 +479,7 @@ export async function GET(
       data: {
         id: entry.id,
         documentId: entry.documentId,
-        ...shapedData,
+        ...publicShapedData,
         locale: entry.locale,
         availableLocales: availableLocales.length > 0 ? availableLocales : [entry.locale],
         status: entry.status,

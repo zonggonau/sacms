@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { resolveContentData } from "@/lib/content-resolver"
+import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 import { logApiRequest } from "@/lib/monitoring"
 import { getCache, setCache, invalidatePattern } from "@/lib/cache"
 import { createHash } from "crypto"
@@ -258,10 +259,14 @@ export async function GET(
       rawData,
       singleType.schemaFields
     )
+    // Only a full-access token can reach this with an unpublished
+    // assignment (see the publishedAt check above) — a draft's media must
+    // not become publicly fetchable without a login.
+    const publicData = assignment.publishedAt ? rewritePublicMediaUrls(resolvedData) : resolvedData
 
     const responsePayload = {
       data: {
-        ...resolvedData,
+        ...publicData,
         publishedAt: assignment.publishedAt,
         updatedAt: assignment.updatedAt,
       },
