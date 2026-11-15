@@ -69,6 +69,8 @@ describe("deployWebsiteTemplateDemo", () => {
       "sacms-demo-modern-dark",
       [{ name: "app/page.tsx", content: "export default function Page() {}" }],
       {},
+      undefined,
+      "production",
     )
     expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
     expect(result).toEqual({ url: "https://demo-modern-dark.sites.sacms.cloud", deploymentId: "dpl_1", verified: true, verificationError: undefined })

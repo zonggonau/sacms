@@ -44,7 +44,11 @@ export async function deployTenantFrontend(
   const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i.test(origin)
   const projectName = `sacms-${tenantSlug}`
   const envVars = await resolveFrontendEnv(tenantId, tenantSlug, isLocalOrigin ? resolveApiOrigin() : origin)
-  const deployResult = await deployToVercel(projectName, files, envVars, tenantSlug)
+  // Explicit "production" — this backs the dashboard's own Deploy button
+  // and AI Site's Publish action, where a human clicking the button
+  // expects it to go live immediately, unlike the MCP deploy tools (which
+  // default to a staging candidate an agent must explicitly promote).
+  const deployResult = await deployToVercel(projectName, files, envVars, tenantSlug, "production")
 
   return persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
 }

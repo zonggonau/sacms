@@ -3,7 +3,12 @@ import "server-only"
 import { db } from "@/lib/database"
 
 export type McpBuildRunIntent = "create" | "update"
-export type McpBuildRunStage = "discover" | "deploying" | "verifying" | "done" | "failed"
+// "staged": deployed to a staging candidate, not yet promoted to
+// production — sits between "deploying" (in flight) and "verifying"
+// (checking the already-promoted production domain). promote_deployment
+// moves a "staged" run to "done" once its own checks pass and the Vercel
+// promote call succeeds.
+export type McpBuildRunStage = "discover" | "deploying" | "staged" | "verifying" | "done" | "failed"
 
 /** A run is still "in flight" below this age — older ones are treated as
  *  abandoned rather than resumed, so start_website_build doesn't hand back

@@ -53,9 +53,11 @@ describe("redeployLatest", () => {
     expect(result).toEqual({
       id: "dpl_new456",
       url: "https://bangparjo.shop",
+      deploymentUrl: undefined,
       state: "QUEUED",
       projectId: "prj_1",
       projectName: undefined,
+      target: "production",
     })
 
     const createCall = calls.find((c) => c.url.includes("/v13/deployments"))

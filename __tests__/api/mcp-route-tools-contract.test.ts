@@ -107,8 +107,16 @@ describe("MCP workspace server route — source contract", () => {
   it("registers verify_deployment_url to actually fetch the live site, not just trust Vercel's status", () => {
     const scoped = toolBlockOf("verify_deployment_url")
     expect(scoped).toMatch(/expectedText:\s*z\.string\(\)\.optional\(\)/)
-    expect(scoped).toMatch(/safeFetch/)
-    expect(scoped).toMatch(/containsExpectedText/)
+    expect(scoped).toMatch(/runHttpChecks/)
+  })
+
+  it("runHttpChecks (shared by verify_deployment_url and promote_deployment) actually fetches via the SSRF-safe client and checks binary signatures", () => {
+    expect(routeSource).toMatch(/async function runHttpChecks/)
+    const fnStart = routeSource.indexOf("async function runHttpChecks")
+    const fnBlock = routeSource.slice(fnStart, routeSource.indexOf("\n}\n", fnStart))
+    expect(fnBlock).toMatch(/safeFetch/)
+    expect(fnBlock).toMatch(/matchesSignature/)
+    expect(fnBlock).toMatch(/containsExpectedText/)
   })
 
   it("registers start_website_build and get_build_run for a resumable entry point", () => {
@@ -271,7 +279,7 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/expectedSignature:\s*z\.enum/)
     expect(scoped).toMatch(/expectedChecksum:\s*z\.string\(\)\.optional\(\)/)
     expect(scoped).toMatch(/expectedContentType:\s*z\.string\(\)\.optional\(\)/)
-    expect(scoped).toMatch(/matchesSignature/)
+    expect(scoped).toMatch(/runHttpChecks/)
   })
 
   it("verify_deployment_url clears lastError when a re-verification succeeds instead of leaving a stale error on a done run", () => {
@@ -349,5 +357,53 @@ describe("MCP workspace server route — source contract", () => {
       const scoped = toolBlockOf(tool)
       expect(scoped, `${tool} should validate the URL via assertPublicUrl`).toMatch(/assertPublicUrl/)
     }
+  })
+
+  // ── chatgpt5.md round — staged deploy / promote (P0) ──────────────────────
+
+  it("deploy_to_sacms and deploy_website_patch deploy to a STAGING candidate, not production directly", () => {
+    for (const tool of ["deploy_to_sacms", "deploy_website_patch"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should deploy with target: "staging"`).toMatch(/deployToVercel\([^)]*"staging"\)/)
+      expect(scoped, `${tool} should signal AWAITING_PROMOTION`).toMatch(/AWAITING_PROMOTION/)
+      expect(scoped, `${tool} should NOT write vercelDeploymentUrl itself`).not.toMatch(/vercelDeploymentUrl: result\.url/)
+    }
+  })
+
+  it("rollback_website still deploys straight to production — it's the emergency-recovery path, not gated behind promote_deployment", () => {
+    const scoped = toolBlockOf("rollback_website")
+    expect(scoped).toMatch(/deployToVercel\([^)]*"production"\)/)
+  })
+
+  it("registers promote_deployment as the only path from a staging candidate to production, gated on its own HTTP checks", () => {
+    const scoped = toolBlockOf("promote_deployment")
+    expect(scoped).toMatch(/deploymentId: z\.string\(\)/)
+    expect(scoped).toMatch(/runHttpChecks/)
+    expect(scoped).toMatch(/CHECKS_FAILED/)
+    expect(scoped).toMatch(/promoteDeployment\(/)
+    expect(scoped).toMatch(/promoted: true/)
+    // A failed check must never reach Vercel's actual promote call —
+    // assert the early return precedes the promoteDeployment call in
+    // source order, which is what prevents that.
+    expect(scoped.indexOf("CHECKS_FAILED")).toBeLessThan(scoped.indexOf("promoteDeployment("))
+  })
+
+  it("promote_deployment never promotes fully blind — defaults to checking '/' when no checks are given", () => {
+    const scoped = toolBlockOf("promote_deployment")
+    expect(scoped).toMatch(/effectiveChecks = checks && checks\.length > 0 \? checks : \[\{ path: "\/" \}\]/)
+  })
+
+  it("registers get_deployment_runtime_logs as a separate tool from get_deployment_build_logs, for diagnosing a runtime HTTP 500 a build log would never show", () => {
+    const scoped = toolBlockOf("get_deployment_runtime_logs")
+    expect(scoped).toMatch(/getRuntimeLogs\(/)
+    expect(scoped).toMatch(/resolveDeploymentId/)
+    expect(scoped).toMatch(/errorLines/)
+    expect(scoped).toMatch(/truncated/)
+  })
+
+  it("get_agent_playbook and the server's top-level instructions both describe the stage -> promote flow, not a direct-to-production one", () => {
+    expect(routeSource).toMatch(/promote_deployment/)
+    const playbookMatches = routeSource.match(/promote_deployment/g) || []
+    expect(playbookMatches.length).toBeGreaterThan(2) // appears in the playbook text, the instructions string, AND the tool's own registration
   })
 })

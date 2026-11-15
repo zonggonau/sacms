@@ -98,6 +98,11 @@ export interface VercelDeploymentResult {
    *  non-functional result — callers MUST surface this, never present it as a
    *  real deployment. */
   simulated?: boolean
+  /** Echoes the `target` this was deployed with — "production" means it's
+   *  already live (the old, pre-staged-rollout behavior); "staging" means
+   *  it is NOT aliased to the production domain and needs an explicit
+   *  promoteDeployment call before a visitor would ever see it. */
+  target: "production" | "staging"
 }
 
 export interface VercelDomainResult {
@@ -116,7 +121,17 @@ export interface VercelDomainResult {
 }
 
 /**
- * Create a deployment on Vercel from a set of files
+ * Create a deployment on Vercel from a set of files.
+ *
+ * `target` defaults to "staging" — a candidate deployment that gets its own
+ * stable, immutable URL but is NOT aliased to the project's production
+ * domain. A Vercel build succeeding only means the code compiled; it says
+ * nothing about whether the deployed app actually serves correctly at
+ * runtime (confirmed live: a rich-text patch reported READY while the
+ * production domain itself returned HTTP 500 on every request). Promoting
+ * a verified candidate to production is a separate, explicit step — see
+ * `promoteDeployment` — so a broken deploy never reaches a real visitor
+ * just because Vercel accepted the build.
  */
 export async function deployToVercel(
   projectName: string,
@@ -126,9 +141,10 @@ export async function deployToVercel(
    *  (see ensureBrandedSubdomain) — omit to skip that and fall back to
    *  the project's existing alias/custom domain/*.vercel.app only. */
   tenantSlug?: string,
+  target: "production" | "staging" = "staging",
 ): Promise<VercelDeploymentResult> {
   const token = await getVercelToken()
-  
+
   // Fallback for local dev without a token: fabricate a result so the flow is
   // exercisable end-to-end, but it MUST be flagged `simulated` — callers are
   // expected to reject/warn on this in any environment that isn't local dev,
@@ -144,6 +160,7 @@ export async function deployToVercel(
       projectId: `prj_${Date.now()}`,
       projectName: sanitizedName,
       simulated: true,
+      target,
     }
   }
 
@@ -165,7 +182,7 @@ export async function deployToVercel(
     projectSettings: {
       framework: "nextjs",
     },
-    target: "production"
+    target,
   }
 
   if (envVars && Object.keys(envVars).length > 0) {
@@ -202,16 +219,29 @@ export async function deployToVercel(
   if (data.projectId && tenantSlug) {
     await ensureBrandedSubdomain(data.projectId, tenantSlug)
   }
-  const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
-  const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
   const deploymentUrl = data.url ? `https://${data.url}` : undefined
+  // For a staging candidate, the project's current primary domain still
+  // points at whatever was LAST promoted — reporting it as `url` here would
+  // misleadingly suggest THIS deploy is what a visitor now sees. Only a
+  // production-target deploy (the pre-staged-rollout behavior, still used
+  // by rollback_website) resolves `url` to the public alias; otherwise
+  // `url` is this candidate's own immutable hostname.
+  let url: string
+  if (target === "production") {
+    const publicUrl = data.projectId ? await getProjectPrimaryDomain(data.projectId) : null
+    const fallbackAlias: string | undefined = Array.isArray(data.alias) ? data.alias[0] : undefined
+    url = publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (deploymentUrl || ""))
+  } else {
+    url = deploymentUrl || ""
+  }
   return {
     id: data.id,
-    url: publicUrl || (fallbackAlias ? `https://${fallbackAlias}` : (deploymentUrl || "")),
+    url,
     deploymentUrl,
     state: data.readyState || data.state || "BUILDING",
     projectId: data.projectId,
-    projectName: data.name
+    projectName: data.name,
+    target,
   }
 }
 
@@ -304,6 +334,7 @@ export async function redeployLatest(
       projectId,
       projectName: sanitizedName,
       simulated: true,
+      target: "production",
     }
   }
 
@@ -344,6 +375,7 @@ export async function redeployLatest(
     state: data.readyState || data.state || "BUILDING",
     projectId: data.projectId || projectId,
     projectName: data.name,
+    target: "production",
   }
 }
 
@@ -562,6 +594,153 @@ export async function getDeploymentBuildLogs(
   }
   const errorLines = lines.filter((l) => /error|fail|exception/i.test(l))
   return { lines, errorLines }
+}
+
+/**
+ * Point a project's production domain at an already-existing deployment —
+ * the explicit "go live" step a staging candidate needs after it's been
+ * verified (see deployToVercel's `target` param). Does NOT rebuild
+ * anything; Vercel just re-points the alias. Never throws for a rejected
+ * promotion — the caller decides what to do with `ok: false`.
+ */
+export async function promoteDeployment(
+  projectId: string,
+  deploymentId: string,
+): Promise<{ ok: boolean; status: number; message?: string }> {
+  const token = await getVercelToken()
+  if (!token) {
+    if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
+    return { ok: true, status: 201 }
+  }
+
+  const headers = await getVercelHeaders()
+  const res = await fetch(`${VERCEL_API_BASE}/v10/projects/${projectId}/promote/${deploymentId}${await getTeamQuery()}`, {
+    method: "POST",
+    headers,
+  })
+  if (res.ok) return { ok: true, status: res.status }
+  const error = await res.json().catch(() => ({ message: res.statusText }))
+  return { ok: false, status: res.status, message: error.error?.message || error.message || res.statusText }
+}
+
+export interface RuntimeLogLine {
+  level: string
+  message: string
+  requestMethod?: string
+  requestPath?: string
+  responseStatusCode?: number
+  source?: string
+  timestampInMs?: number
+}
+
+/**
+ * Reads a deployment's RUNTIME logs (actual request/response activity from
+ * serving traffic) — a SEPARATE Vercel API from getDeploymentBuildLogs'
+ * build-time output, and the one that actually explains an HTTP 500 a real
+ * request hit (a build reporting READY says nothing about runtime
+ * behavior; confirmed live — see deployToVercel's doc comment). Vercel
+ * streams this endpoint (`application/stream+json`, newline-delimited) with
+ * no documented end-of-stream signal for a deployment that's still live, so
+ * this reads for at most `timeoutMs` and returns whatever arrived in that
+ * window rather than risking an indefinite hang — `truncated: true` means
+ * there may be more than what's returned here.
+ */
+export async function getRuntimeLogs(
+  projectId: string,
+  deploymentId: string,
+  opts: { timeoutMs?: number; maxLines?: number } = {},
+): Promise<{ lines: RuntimeLogLine[]; errorLines: RuntimeLogLine[]; truncated: boolean }> {
+  const { timeoutMs = 8000, maxLines = 500 } = opts
+  const token = await getVercelToken()
+  if (!token) return { lines: [], errorLines: [], truncated: false }
+
+  const headers = await getVercelHeaders()
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  const lines: RuntimeLogLine[] = []
+  let truncated = false
+  try {
+    const res = await fetch(
+      `${VERCEL_API_BASE}/v1/projects/${projectId}/deployments/${deploymentId}/runtime-logs${await getTeamQuery()}`,
+      { headers, signal: controller.signal },
+    )
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: res.statusText }))
+      throw new Error(`Gagal mengambil runtime log dari Vercel: ${error.error?.message || error.message || res.statusText}`)
+    }
+    if (!res.body) return { lines: [], errorLines: [], truncated: false }
+
+    const reader = (res.body as any).getReader ? (res.body as any).getReader() : null
+    if (!reader) {
+      // Environment without a readable-stream body (some test/polyfill
+      // fetches) — fall back to reading it as plain text.
+      const text = await res.text()
+      parseRuntimeLogLines(text, lines, maxLines)
+    } else {
+      let buffer = ""
+      readLoop: while (true) {
+        // Checked BEFORE reading more — hitting the cap here means there
+        // may well be additional lines we never asked for, which is
+        // exactly what `truncated` is for (a cap reached at the same
+        // moment the stream would have ended anyway still counts: safer
+        // to report "maybe more" than to assert "definitely no more").
+        if (lines.length >= maxLines) { truncated = true; break }
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += Buffer.from(value).toString("utf-8")
+        const parts = buffer.split("\n")
+        buffer = parts.pop() || ""
+        for (const part of parts) {
+          if (lines.length >= maxLines) { truncated = true; break readLoop }
+          const parsed = parseOneRuntimeLogLine(part)
+          if (parsed) lines.push(parsed)
+        }
+      }
+      if (buffer.trim()) {
+        const parsed = parseOneRuntimeLogLine(buffer)
+        if (parsed && lines.length < maxLines) lines.push(parsed)
+      }
+      try { reader.cancel() } catch {}
+    }
+  } catch (err: any) {
+    if (err?.name !== "AbortError") throw err
+    truncated = true
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  const errorLines = lines.filter(
+    (l) => (l.responseStatusCode ?? 0) >= 500 || l.level === "error" || l.level === "fatal",
+  )
+  return { lines, errorLines, truncated }
+}
+
+function parseOneRuntimeLogLine(raw: string): RuntimeLogLine | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  try {
+    const obj = JSON.parse(trimmed)
+    return {
+      level: obj.level || "info",
+      message: obj.message || "",
+      requestMethod: obj.requestMethod,
+      requestPath: obj.requestPath,
+      responseStatusCode: typeof obj.responseStatusCode === "string" ? parseInt(obj.responseStatusCode, 10) : obj.responseStatusCode,
+      source: obj.source,
+      timestampInMs: obj.timestampInMs,
+    }
+  } catch {
+    return null
+  }
+}
+
+function parseRuntimeLogLines(text: string, out: RuntimeLogLine[], maxLines: number) {
+  for (const line of text.split("\n")) {
+    if (out.length >= maxLines) break
+    const parsed = parseOneRuntimeLogLine(line)
+    if (parsed) out.push(parsed)
+  }
 }
 
 /**

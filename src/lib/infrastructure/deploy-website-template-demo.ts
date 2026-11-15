@@ -81,7 +81,10 @@ export async function deployWebsiteTemplateDemo(
     const envVars = Object.fromEntries(resolvedEnvVars.map((v) => [v.key, v.value]))
 
     const projectName = `sacms-demo-${websiteTemplate.slug}`
-    const deployResult = await deployToVercel(projectName, files, envVars)
+    // Explicit "production" — this demo preview is meant to be immediately
+    // viewable at its own live URL (that's the whole point of a preview),
+    // unlike the MCP deploy tools' new staged-by-default behavior.
+    const deployResult = await deployToVercel(projectName, files, envVars, undefined, "production")
 
     if (deployResult.projectId) {
       await ensureDemoSubdomain(deployResult.projectId, websiteTemplate.slug)

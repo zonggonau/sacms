@@ -798,7 +798,7 @@ model McpBuildRun {
   tenantId         String
   tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   intent           String // "create" | "update"
-  stage            String    @default("discover") // discover|deploying|verifying|done|failed
+  stage            String    @default("discover") // discover|deploying|staged|verifying|done|failed
   hostingProjectId String?
   deploymentId     String?
   sourceRevision   String?
