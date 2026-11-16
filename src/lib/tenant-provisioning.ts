@@ -1,5 +1,6 @@
 import { db, getTenantDbById } from "./database"
 import { STARTER_KITS } from "./starter-kits"
+import { ensureSiteSettings } from "./infrastructure/site-settings"
 
 /**
  * Provision a new tenant with starter content types and demo data.
@@ -344,6 +345,11 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
         }
       })
     }
+
+    // 5.5 Guarantee a `site-settings` Single Type (brand/logo/favicon/colors)
+    // exists for every workspace, regardless of which starter kit (if any)
+    // was used above — idempotent, never touches an existing one.
+    await ensureSiteSettings(tenantId, tenant.name)
 
     console.log(`[Provisioning] Completed for tenant: ${tenantId}`)
 

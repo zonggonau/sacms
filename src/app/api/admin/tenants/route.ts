@@ -7,6 +7,7 @@ import { slugify } from "@/lib/slug"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { assertPublicHost, SsrfError } from "@/lib/safe-url"
+import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
 
 const MASK = "••••••••"
 
@@ -220,6 +221,10 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
 
       return newTenant
     })
+
+    await ensureSiteSettings(tenant.id, tenant.name).catch((err) =>
+      console.warn(`[admin/tenants] Failed to ensure site-settings for ${tenant.id}:`, err)
+    )
 
     logAudit({
       userId: session.user.id,

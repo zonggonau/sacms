@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   let slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
@@ -71,6 +72,10 @@ export async function POST(request: NextRequest) {
 
       return newTenant
     })
+
+    await ensureSiteSettings(tenant.id, tenant.name).catch((err) =>
+      console.warn(`[tenant/create] Failed to ensure site-settings for ${tenant.id}:`, err)
+    )
 
     return NextResponse.json({
       success: true,
