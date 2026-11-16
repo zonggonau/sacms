@@ -37,7 +37,9 @@ export interface DeployWebsiteTemplateDemoResult {
  *  not-found boilerplate, not every possible broken state. */
 const LOOKS_LIKE_ERROR_PAGE_RE = /DEPLOYMENT_NOT_FOUND|This deployment is protected|Authentication Required/i
 
-async function verifyDemoUrl(url: string): Promise<{ verified: boolean; error?: string }> {
+/** Exported for get_website_template_demo_status — a fresh, on-demand
+ *  check of a demo's CURRENT state, independent of redeploying it. */
+export async function verifyDemoUrl(url: string): Promise<{ verified: boolean; error?: string }> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 10000)
   try {

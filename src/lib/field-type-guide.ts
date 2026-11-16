@@ -64,24 +64,32 @@ export const FIELD_TYPE_GUIDE: Record<string, FieldTypeGuideEntry> = {
     entryValue: "Must be one of a fixed ~52-name Lucide icon set (see AVAILABLE_ICONS in icon-field.tsx), e.g. 'Home', 'Star', 'Heart' — an arbitrary name renders as unset.",
     note: "Despite this type's own label ('Lucide / Web Icons'), only Lucide icon names actually work — there is no separate web-icon set.",
   },
-  media: { note: "No schema options — allowedTypes/maxFileSizeMb are not enforced; accepted file kind is implied by choosing 'media' (image) vs 'file' as the type itself." },
-  mediaMultiple: { note: "No schema options, same as 'media'.", entryValue: "Array of media URL strings." },
-  file: { note: "No schema options, same dead-option pattern as 'media'.", entryValue: "Single file URL string." },
+  media: {
+    note: "No schema options — allowedTypes/maxFileSizeMb are not enforced; accepted file kind is implied by choosing 'media' (image) vs 'file' as the type itself.",
+    entryValue: "A single URL string, e.g. 'https://sacms.cloud/api/public/media?key=tenant-x/abc123.jpg'. The CMS stores a private, session-gated proxy path internally, but the public content API (GET /api/public/[tenant]/content/[contentType]) rewrites it to this public, unauthenticated form for any PUBLISHED entry before responding — your frontend fetch gets a plain URL it can drop straight into an <img src>, never the private form.",
+  },
+  mediaMultiple: { note: "No schema options, same as 'media'.", entryValue: "Array of the same public URL strings 'media' describes, e.g. ['https://sacms.cloud/api/public/media?key=.../1.jpg', '.../2.jpg']." },
+  file: { note: "No schema options, same dead-option pattern as 'media'.", entryValue: "Single file URL string, same public-URL rewriting as 'media'." },
   relation: {
     options: "{ relationType: 'oneToOne'|'oneToMany'|'manyToOne'|'manyToMany', targetModel?: 'content-type'|'single-type'|'member' }",
     exampleOptions: { relationType: "oneToMany" },
     relationSlug: "string — target Content Type/Single Type slug, e.g. 'categories'. Omit relationSlug and set options.targetModel: 'member' instead to relate to this tenant's own end-user Members table (a real, separate capability, easy to miss).",
-    entryValue: "A related record's id (or an array of ids when relationType is a *-to-many).",
+    entryValue:
+      "RAW (default): just the related record's id string (or an array of id strings for a *-to-many) — e.g. { \"category\": \"cmt8x...\" }. POPULATED: the public content API only expands a relation when the request explicitly asks for it — add `?populate=<fieldSlug>` (or `?populate=*` for every relation field on that Content Type) to the URL. A populated field then becomes the related record's own fields spread flat alongside its id, e.g. { \"category\": { \"id\": \"cmt8x...\", \"name\": \"Kopi\", \"slug\": \"kopi\", \"locale\": \"id\", \"status\": \"PUBLISHED\" } } — NOT Strapi's { data: { id, attributes: {...} } } wrapper, this project's shape is flat. A *-to-many populated relation is an array of these same flat objects. A relation with options.targetModel: 'member' resolves from the Members table instead and is populated the same way, but only ever returns { id, name, email, avatar, role, status, createdAt } — never a password hash or other credential material.",
   },
   component: {
     options: "{ componentSlug: string, repeatable?: boolean }",
     exampleOptions: { componentSlug: "hero_section" },
     note: "repeatable: true repeats this ONE component as an array. For a zone that mixes several DIFFERENT component types, use 'repeater' instead.",
+    entryValue:
+      "A plain embedded object with that component's own fields already inline — e.g. { \"heading\": \"Kopi Terbaik di Nabire\", \"subheading\": \"Dipanggang setiap hari\", \"cta\": { \"text\": \"Lihat Menu\", \"url\": \"/menu\" } } for a hero_section component with heading/subheading/cta fields. With repeatable: true, the value is an array of these objects, e.g. [{...}, {...}]. Unlike 'relation', there's no id to resolve — the full data is always already there. CAVEAT: if a component itself contains a 'relation' field, the public content API's `?populate=` only expands TOP-LEVEL relation fields on the Content Type — a relation nested inside a component (or inside a repeater item, see below) always comes back as a raw id, never auto-expanded, regardless of `populate`.",
   },
   repeater: {
     options: "{ allowedComponents?: string[] }",
     exampleOptions: { allowedComponents: ["hero_section", "cta_banner", "testimonial_card"] },
     note: "The real key is `allowedComponents` — do not use `componentSlugs` (an older version of this guide documented that name by mistake; it silently allows every component instead of erroring). Omitted/empty allowedComponents = every component is allowed.",
+    entryValue:
+      "An array of objects, each carrying a `__component` discriminator naming which of the allowed components that item is, with that component's own fields spread alongside it — e.g. [{ \"__component\": \"hero_banner\", \"heading\": \"Promo Akhir Tahun\" }, { \"__component\": \"testimonial_card\", \"quote\": \"Enak sekali!\", \"author\": \"Budi\" }]. Always render by switching on `__component`, the same way the CMS editor's own dynamic-zone UI builds these items. Same caveat as 'component': a relation field nested inside one of these items is never auto-populated by `?populate=` — it stays a raw id.",
   },
   location: {
     entryValue: "{ lat: number, lng: number } only.",
@@ -100,4 +108,51 @@ export const FIELD_TYPE_GUIDE: Record<string, FieldTypeGuideEntry> = {
     options: "{ templateUrl: string, fileName?: string }",
     note: "templateUrl must point at an ALREADY-UPLOADED .docx file in this workspace's storage — you can create the field definition, but you cannot fabricate a working templateUrl yourself. Tell the user to upload the real .docx via the dashboard first.",
   },
+}
+
+/**
+ * Real request/response payloads for the public, tenant-facing Content API
+ * a deployed Website Template's frontend actually fetches from
+ * (GET/POST/PUT/DELETE /api/public/[tenant]/content/[contentType][/id],
+ * and /api/public/[tenant]/single/[singleType] for a Single Type) —
+ * chatgpt7.md P1: "complete the frontend contract examples with actual API
+ * payloads." These are shapes verified directly against that route's code
+ * (src/app/api/public/[tenant]/content/[contentType]/route.ts and its
+ * [id] sibling), not invented.
+ */
+export const CONTENT_API_CONTRACT_EXAMPLES = {
+  collection: {
+    request: "GET /api/public/acme-coffee/content/articles?pagination[pageSize]=10&populate=category&sort=createdAt:desc",
+    response: {
+      data: [
+        {
+          id: "cmt8xabc123",
+          documentId: "doc_abc123",
+          title: "Kopi Terbaik di Nabire",
+          slug: "kopi-terbaik-di-nabire",
+          cover: "https://sacms.cloud/api/public/media?key=acme-coffee/cover.jpg",
+          category: { id: "cmt8xcat01", name: "Kopi", slug: "kopi", locale: "id", status: "PUBLISHED" },
+          locale: "id",
+          availableLocales: ["id"],
+          status: "PUBLISHED",
+          publishedAt: "2026-10-01T03:00:00.000Z",
+          createdAt: "2026-10-01T03:00:00.000Z",
+          updatedAt: "2026-10-01T03:00:00.000Z",
+        },
+      ],
+      meta: { contentType: { name: "Articles", slug: "articles" }, pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 } },
+    },
+    note: "`category` is populated (a full object) ONLY because `?populate=category` was on the URL — drop it and `category` comes back as just an id string. `data` is a flat array, no Strapi-style `attributes` wrapper.",
+  },
+  singleEntry: {
+    request: "GET /api/public/acme-coffee/content/articles/doc_abc123",
+    response: { data: { id: "cmt8xabc123", documentId: "doc_abc123", title: "Kopi Terbaik di Nabire", slug: "kopi-terbaik-di-nabire", locale: "id", availableLocales: ["id"], status: "PUBLISHED", publishedAt: "2026-10-01T03:00:00.000Z", createdAt: "2026-10-01T03:00:00.000Z", updatedAt: "2026-10-01T03:00:00.000Z" }, meta: { contentType: { name: "Articles", slug: "articles" } } },
+    note: "Addressable by either the row id OR documentId (the locale-stable id that stays the same across that same document's translations).",
+  },
+  singleType: {
+    request: "GET /api/public/acme-coffee/single/homepage",
+    note: "Single Types (Homepage, Site Settings, …) use their OWN endpoint shape, /api/public/[tenant]/single/[singleType] — not /content/. Read src/app/api/public/[tenant]/single/[singleType]/route.ts if the exact response envelope matters; either way, relation/component/repeater fields on a Single Type follow the exact same value shapes documented per-type above.",
+  },
+  testingAgainstTheDemoFixture:
+    "Every Website Template gets an auto-deployed demo at https://demo-<slug>.sites.sacms.cloud, seeded from a dedicated internal demo tenant with sample content — BUT that seeding deliberately SKIPS 'media', 'mediaMultiple', 'file', 'relation', 'component', and 'repeater' fields (no sensible synthetic value exists for a real media asset, a real related record, or a real nested component shape). This means the demo preview will show those specific fields EMPTY even when everything else renders real sample text. To actually see one of these types populated: have the tenant apply the template from the dashboard's /developer/schema page (applying is a human-driven dashboard action, there is no MCP tool for it), then use the per-workspace MCP server's create_content_entry to add a real value — e.g. upload a real media asset first, or create a related record before writing a relation's id. Don't mistake an empty demo field for a broken template.",
 }

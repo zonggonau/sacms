@@ -189,4 +189,45 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(fnBlock).toMatch(/formatZodPath/)
     expect(fnBlock).toMatch(/code: "VALIDATION_FAILED"/)
   })
+
+  // ── chatgpt7.md P1 round ────────────────────────────────────────────────────
+
+  it("update_schema_template and update_website_template accept expectedVersion and reject a stale write with CONFLICT instead of silently overwriting", () => {
+    for (const tool of ["update_schema_template", "update_website_template"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should accept expectedVersion`).toMatch(/expectedVersion: z\.string\(\)\.optional\(\)/)
+      expect(scoped, `${tool} should compare it against the live row`).toMatch(/existing\.updatedAt\.toISOString\(\) !== expectedVersion/)
+      expect(scoped, `${tool} should reject with CONFLICT`).toMatch(/code: "CONFLICT"/)
+    }
+  })
+
+  it("a structural schema change on update_schema_template or update_website_template refuses with HAS_DEPENDENTS when another Website Template shares the same backing Schema Template", () => {
+    const schemaTpl = toolBlockOf("update_schema_template")
+    expect(schemaTpl).toMatch(/confirmSharedUpdate/)
+    expect(schemaTpl).toMatch(/HAS_DEPENDENTS/)
+    expect(schemaTpl).toMatch(/db\.websiteTemplate\.findMany\(\{\s*where: \{ schemaTemplateId: existing\.id \}/)
+
+    const websiteTpl = toolBlockOf("update_website_template")
+    expect(websiteTpl).toMatch(/confirmSharedUpdate/)
+    expect(websiteTpl).toMatch(/HAS_DEPENDENTS/)
+    expect(websiteTpl).toMatch(/schemaTemplateId: existing\.schemaTemplate\.id, id: \{ not: existing\.id \}/)
+  })
+
+  it("registers get_website_template_demo_status (read-only, never deploys) and redeploy_website_template_demo as separate operations from create/update", () => {
+    const statusTool = toolBlockOf("get_website_template_demo_status")
+    expect(statusTool).toMatch(/verifyDemoUrl/)
+    expect(statusTool).not.toMatch(/deployWebsiteTemplateDemo/)
+
+    const redeployTool = toolBlockOf("redeploy_website_template_demo")
+    expect(redeployTool).toMatch(/deployWebsiteTemplateDemo/)
+    expect(redeployTool).toMatch(/existing\.files/)
+    expect(redeployTool).toMatch(/existing\.schemaTemplate/)
+  })
+
+  it("list_field_types returns contentApiContract with real Content API request/response examples, not just field-shape docs", () => {
+    const scoped = toolBlockOf("list_field_types")
+    expect(scoped).toMatch(/CONTENT_API_CONTRACT_EXAMPLES/)
+    expect(scoped).toMatch(/contentApiContract:/)
+    expect(routeSource).toMatch(/import \{ FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES \} from "@\/lib\/field-type-guide"/)
+  })
 })

@@ -44,7 +44,7 @@ import { rateLimit } from "@/lib/rate-limit"
 import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
 import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
-import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
+import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
 import { formatZodPath, validateBundleReferences } from "@/lib/schema-template-validation"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
@@ -206,7 +206,10 @@ const handler = createMcpHandler(
           "`relationSlug` shape and entry-value shape — call this BEFORE writing any field into " +
           "create_schema_template/update_schema_template. Several options look plausible but are silently " +
           "ignored at render time once a tenant applies the template (e.g. currency's currencyCode, media's " +
-          "allowedTypes) — this flags those explicitly so you don't guess an options shape that does nothing.",
+          "allowedTypes) — this flags those explicitly so you don't guess an options shape that does nothing. " +
+          "Also returns `contentApiContract`: real request/response examples for the frontend's actual Content " +
+          "API calls (a collection list, a single entry, a populated relation) and what the demo fixture does " +
+          "and doesn't seed — read that before scaffolding any fetch call in the frontend you're building.",
         inputSchema: {
           category: z.enum([
             "Basic", "Number", "Date & Time", "Selection", "Boolean",
@@ -218,6 +221,7 @@ const handler = createMcpHandler(
           categories: z.array(z.string()),
           fieldTypes: z.array(z.any()),
           usageNote: z.string(),
+          contentApiContract: z.any(),
         },
       },
       async ({ category }) => {
@@ -253,6 +257,7 @@ const handler = createMcpHandler(
           categories: FIELD_CATEGORIES,
           fieldTypes: fieldDocs,
           usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
+          contentApiContract: CONTENT_API_CONTRACT_EXAMPLES,
         }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -402,7 +407,11 @@ const handler = createMcpHandler(
         description:
           "Update an existing Schema Template's metadata, full schema, and/or published status. Passing " +
           "`schema` REPLACES the whole blob (contentTypes/singleTypes/components) — it is not merged field by " +
-          "field, so include every model you want to keep.",
+          "field, so include every model you want to keep. This Schema Template may be shared by more than one " +
+          "Website Template (a second frontend skin reusing it via schemaTemplateId) — changing `schema` here " +
+          "changes what ALL of them render from, immediately, since they all point at this same row. Call " +
+          "list_website_templates with schemaTemplateId first to see who's affected; if any exist, a structural " +
+          "`schema` change refuses with code HAS_DEPENDENTS (listing them) unless confirmSharedUpdate: true.",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
           name: z.string().min(1).max(150).optional(),
@@ -415,6 +424,8 @@ const handler = createMcpHandler(
             "too (template-local slugs, Content Types only).",
           ),
           published: z.boolean().optional(),
+          expectedVersion: z.string().optional().describe("The `updatedAt` you last read for this template (from get_schema_template). If someone else updated it since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
+          confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
         },
         outputSchema: {
           id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
@@ -422,12 +433,20 @@ const handler = createMcpHandler(
           demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
         },
       },
-      async ({ id, name, category, icon, description, schema, published }) => {
+      async ({ id, name, category, icon, description, schema, published, expectedVersion, confirmSharedUpdate }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Schema Template", id)
+
+        if (expectedVersion && existing.updatedAt.toISOString() !== expectedVersion) {
+          return {
+            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.updatedAt.toISOString()}. Panggil get_schema_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
+            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.updatedAt.toISOString(), message: "This template was updated since expectedVersion was read." },
+            isError: true,
+          }
+        }
 
         let schemaData: z.infer<typeof schemaTemplateBundleSchema> | undefined
         if (schema !== undefined) {
@@ -435,6 +454,25 @@ const handler = createMcpHandler(
           if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
           const refIssues = validateBundleReferences(parsedSchema.data)
           if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+
+          if (!confirmSharedUpdate) {
+            const dependents = await db.websiteTemplate.findMany({ where: { schemaTemplateId: existing.id }, select: { id: true, name: true, slug: true } })
+            if (dependents.length > 0) {
+              return {
+                content: [{
+                  type: "text" as const,
+                  text: `❌ '${existing.name}' dipakai oleh ${dependents.length} Website Template: ${dependents.map((d) => `'${d.name}' (${d.slug})`).join(", ")}. Mengubah struktur schema ini langsung mengubah apa yang ditampilkan SEMUANYA, karena mereka berbagi row yang sama. Konfirmasi dulu ke pengguna, lalu panggil lagi dengan confirmSharedUpdate: true.`,
+                }],
+                structuredContent: {
+                  ok: false,
+                  code: "HAS_DEPENDENTS",
+                  dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
+                  message: "This Schema Template is shared by one or more Website Templates — a structural change affects all of them.",
+                },
+                isError: true,
+              }
+            }
+          }
           schemaData = parsedSchema.data
         }
 
@@ -812,7 +850,10 @@ const handler = createMcpHandler(
           "silently dropping an untouched file. Passing `files` instead REPLACES the whole bundle wholesale — " +
           "only use that for a full rewrite, and include every file you want to keep. Pass `schema` to revise " +
           "the backing Schema Template's structure in the same call as a frontend edit (e.g. adding a field the " +
-          "new UI needs) — full replacement like `files`, include every model you want to keep.",
+          "new UI needs) — full replacement like `files`, include every model you want to keep. That Schema " +
+          "Template may be shared by another Website Template (a second frontend skin reusing it via " +
+          "schemaTemplateId) — changing `schema` here changes what BOTH render from. A structural `schema` " +
+          "change refuses with code HAS_DEPENDENTS (listing the others) unless confirmSharedUpdate: true.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
           name: z.string().min(1).max(150).optional(),
@@ -823,13 +864,15 @@ const handler = createMcpHandler(
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
           published: z.boolean().optional(),
+          expectedVersion: z.string().optional().describe("The `updatedAt` you last read for this template (from get_website_template). If someone else updated it since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
+          confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
         },
         outputSchema: {
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional(),
         },
       },
-      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published }) => {
+      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -846,6 +889,36 @@ const handler = createMcpHandler(
           include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
         })
         if (!existing) return notFound("Website Template", id)
+
+        if (expectedVersion && existing.updatedAt.toISOString() !== expectedVersion) {
+          return {
+            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.updatedAt.toISOString()}. Panggil get_website_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
+            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.updatedAt.toISOString(), message: "This template was updated since expectedVersion was read." },
+            isError: true,
+          }
+        }
+
+        if (schema !== undefined && !confirmSharedUpdate) {
+          const siblings = await db.websiteTemplate.findMany({
+            where: { schemaTemplateId: existing.schemaTemplate.id, id: { not: existing.id } },
+            select: { id: true, name: true, slug: true },
+          })
+          if (siblings.length > 0) {
+            return {
+              content: [{
+                type: "text" as const,
+                text: `❌ Schema Template '${existing.schemaTemplate.name}' juga dipakai oleh ${siblings.length} Website Template lain: ${siblings.map((d) => `'${d.name}' (${d.slug})`).join(", ")}. Mengubah struktur schema di sini langsung mengubah apa yang mereka tampilkan juga, karena semuanya berbagi row yang sama. Konfirmasi dulu ke pengguna, lalu panggil lagi dengan confirmSharedUpdate: true.`,
+              }],
+              structuredContent: {
+                ok: false,
+                code: "HAS_DEPENDENTS",
+                dependents: siblings.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
+                message: "The backing Schema Template is shared by another Website Template — a structural change affects it too.",
+              },
+              isError: true,
+            }
+          }
+        }
 
         let filesData: z.infer<typeof websiteTemplateFilesSchema> | undefined
         if (files !== undefined) {
@@ -957,9 +1030,120 @@ const handler = createMcpHandler(
         return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }] }
       },
     )
+
+    server.registerTool(
+      "get_website_template_demo_status",
+      {
+        title: "Get Website Template Demo Status (Read-Only)",
+        description: "Read a Website Template's demo deployment status WITHOUT redeploying anything — the build stage of its most recent deploy, a FRESH HTTP check of the demo URL right now (not just whatever was recorded at deploy time), and, when the build errored, a summary of the build log's error lines. Call this instead of create_website_template/update_website_template just to check on an existing demo, and before deciding whether redeploy_website_template_demo is actually needed.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+        },
+        outputSchema: {
+          deployed: z.boolean(),
+          demoUrl: z.string().nullable(),
+          deploymentId: z.string().nullable(),
+          state: z.string().optional(),
+          verified: z.boolean().optional(),
+          verificationError: z.string().optional(),
+          buildErrorLines: z.array(z.string()).optional(),
+          message: z.string(),
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!existing) return notFound("Website Template", id)
+
+        if (!existing.demoVercelProjectId) {
+          const structured = {
+            deployed: false,
+            demoUrl: null,
+            deploymentId: null,
+            message: "No demo has ever been deployed for this template. Call create_website_template/update_website_template with files, or redeploy_website_template_demo, to deploy one.",
+          }
+          return { content: [{ type: "text" as const, text: structured.message }], structuredContent: structured }
+        }
+
+        const { getDeploymentStatus, getLatestDeployment, getDeploymentBuildLogs } = await import("@/lib/vercel-client")
+        const { verifyDemoUrl } = await import("@/lib/infrastructure/deploy-website-template-demo")
+
+        const status = existing.demoDeploymentId
+          ? await getDeploymentStatus(existing.demoDeploymentId).catch(() => null)
+          : await getLatestDeployment(existing.demoVercelProjectId).catch(() => null)
+
+        const verification = existing.demoUrl ? await verifyDemoUrl(existing.demoUrl) : { verified: false, error: "No demo URL recorded." }
+
+        let buildErrorLines: string[] | undefined
+        const deploymentIdForLogs = existing.demoDeploymentId || (status as any)?.id
+        if (status?.state && /ERROR|FAILED/i.test(status.state) && deploymentIdForLogs) {
+          const logs = await getDeploymentBuildLogs(deploymentIdForLogs).catch(() => null)
+          if (logs) buildErrorLines = logs.errorLines.slice(-20)
+        }
+
+        const structured = {
+          deployed: true,
+          demoUrl: existing.demoUrl,
+          deploymentId: existing.demoDeploymentId,
+          state: status?.state,
+          verified: verification.verified,
+          verificationError: verification.error,
+          buildErrorLines,
+          message: verification.verified
+            ? `Demo is live and rendering at ${existing.demoUrl}.`
+            : `Demo is NOT currently verified: ${verification.error || "unknown reason"}. Call redeploy_website_template_demo to try a fresh deploy.`,
+        }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
+      },
+    )
+
+    server.registerTool(
+      "redeploy_website_template_demo",
+      {
+        title: "Redeploy Website Template Demo",
+        description: "Re-deploy a Website Template's demo using its CURRENTLY STORED files and schema — no need to resend anything. Use this to retry after a failed demo build (check get_website_template_demo_status / get_deployment_build_logs-equivalent info first to see why), or just to force a fresh deploy+verification without changing anything about the template itself.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+        },
+        outputSchema: {
+          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.websiteTemplate.findFirst({
+          where: { OR: [{ id }, { slug: id }] },
+          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
+        })
+        if (!existing) return notFound("Website Template", id)
+
+        const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
+        const demo = await deployWebsiteTemplateDemo({
+          id: existing.id,
+          slug: existing.slug,
+          files: existing.files as unknown as { path: string; content: string }[],
+          schemaTemplate: existing.schemaTemplate,
+        })
+
+        const saved = (await db.websiteTemplate.findUnique({ where: { id: existing.id } })) || existing
+        const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
+      },
+    )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.6.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.7.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -995,7 +1179,19 @@ const handler = createMcpHandler(
       "both before telling a human the preview is ready. A metadata-only update (no files/changedFiles/schema) " +
       "returns `demoDeployment.status: \"skipped\"` and does not redeploy. For a TARGETED revision of an " +
       "existing template (\"ubah warna header\"), call get_website_template to see the current bundle, then " +
-      "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`.",
+      "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`. " +
+      "list_field_types's `contentApiContract` has real request/response examples for the frontend's actual " +
+      "Content API calls (collection list, single entry, a populated relation) — read it before writing any " +
+      "fetch call, and note it also explains why the demo preview shows media/relation/component/repeater " +
+      "fields EMPTY (the demo fixture deliberately never seeds those). get_website_template_demo_status reads " +
+      "a demo's current build state and does a FRESH live check of its URL without triggering any deploy; " +
+      "redeploy_website_template_demo re-deploys using the template's already-stored files/schema — use it to " +
+      "retry after a failed build instead of resending files through update_website_template. " +
+      "update_schema_template/update_website_template both accept expectedVersion (the `updatedAt` you last " +
+      "read) and reject with CONFLICT if the row changed since — re-read and retry on that. A structural " +
+      "`schema` change to either tool refuses with HAS_DEPENDENTS when another Website Template shares that " +
+      "same backing Schema Template, unless confirmSharedUpdate/confirmCascade (as applicable) is set after " +
+      "confirming with the user what else will be affected.",
   },
 )
 
