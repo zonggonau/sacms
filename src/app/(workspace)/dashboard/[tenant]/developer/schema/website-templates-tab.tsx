@@ -499,7 +499,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
                 {t.demoUrl ? (
                   <iframe
                     src={t.demoUrl}
-                    className="w-full h-full border-0 pointer-events-none bg-white"
+                    scrolling="no"
+                    className="absolute top-0 left-0 w-[400%] h-[400%] origin-top-left scale-[0.25] border-0 pointer-events-none bg-white"
                     loading="lazy"
                     tabIndex={-1}
                     title={`Pratinjau ${t.name}`}
