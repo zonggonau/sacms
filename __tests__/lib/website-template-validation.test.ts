@@ -20,6 +20,22 @@ describe("websiteTemplateFileSchema", () => {
     const huge = "x".repeat(200_001)
     expect(websiteTemplateFileSchema.safeParse({ path: "app/page.tsx", content: huge }).success).toBe(false)
   })
+
+  // chatgpt8.md P1: these paths used to reach deployToVercel unchecked.
+  it("rejects a path with a '..' traversal segment", () => {
+    expect(websiteTemplateFileSchema.safeParse({ path: "../../.env", content: "x" }).success).toBe(false)
+    expect(websiteTemplateFileSchema.safeParse({ path: "app/../../.env", content: "x" }).success).toBe(false)
+    expect(websiteTemplateFileSchema.safeParse({ path: "..", content: "x" }).success).toBe(false)
+  })
+
+  it("rejects an absolute path", () => {
+    expect(websiteTemplateFileSchema.safeParse({ path: "/etc/passwd", content: "x" }).success).toBe(false)
+  })
+
+  it("accepts an ordinary filename that merely contains two dots", () => {
+    expect(websiteTemplateFileSchema.safeParse({ path: "app/..weird-file.ts", content: "x" }).success).toBe(true)
+    expect(websiteTemplateFileSchema.safeParse({ path: ".env.example", content: "x" }).success).toBe(true)
+  })
 })
 
 describe("websiteTemplateFilesSchema", () => {
@@ -38,6 +54,18 @@ describe("websiteTemplateFilesSchema", () => {
       { path: "app/page.tsx", content: "export default function Page() { return null }" },
     ]
     expect(websiteTemplateFilesSchema.safeParse(files).success).toBe(true)
+  })
+
+  it("rejects two files sharing the same path", () => {
+    const files = [
+      { path: "app/page.tsx", content: "a" },
+      { path: "app/page.tsx", content: "b" },
+    ]
+    const result = websiteTemplateFilesSchema.safeParse(files)
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0].message).toMatch(/Duplicate file path/)
+    }
   })
 })
 

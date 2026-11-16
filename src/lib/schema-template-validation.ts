@@ -32,8 +32,15 @@ export interface BundleFieldRef {
 export interface BundleModelRef {
   slug: string
   fields?: BundleFieldRef[]
+  /** Content Types only — a synthetic, template-local key into `bundle.groups[].slug` (see schema-template.ts's own doc comment). Ignored for singleTypes/components. */
+  group?: string
+}
+export interface BundleGroupRef {
+  slug: string
+  parentSlug?: string
 }
 export interface SchemaBundleRef {
+  groups?: BundleGroupRef[]
   contentTypes?: BundleModelRef[]
   singleTypes?: BundleModelRef[]
   components?: BundleModelRef[]
@@ -56,6 +63,22 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
     ...(bundle.singleTypes || []).map((m) => m.slug),
   ])
   const componentSlugs = new Set((bundle.components || []).map((c) => c.slug))
+  const groupSlugs = new Set((bundle.groups || []).map((g) => g.slug))
+
+  // chatgpt8.md P1: a typo'd contentTypes[].group or groups[].parentSlug
+  // used to be silently dropped at materialize time (schema-template-sync.ts
+  // resolves an unknown slug to `null`/top-level instead of erroring) —
+  // the content type just ends up ungrouped with no feedback anywhere.
+  ;(bundle.groups || []).forEach((g, i) => {
+    if (g.parentSlug && !groupSlugs.has(g.parentSlug)) {
+      issues.push({ path: `groups[${i}].parentSlug`, message: `parentSlug '${g.parentSlug}' does not match any groups[].slug in this bundle.` })
+    }
+  })
+  ;(bundle.contentTypes || []).forEach((ct, i) => {
+    if (ct.group && !groupSlugs.has(ct.group)) {
+      issues.push({ path: `contentTypes[${i}].group`, message: `group '${ct.group}' does not match any groups[].slug in this bundle.` })
+    }
+  })
 
   const checkFields = (fields: BundleFieldRef[] | undefined, basePath: string) => {
     (fields || []).forEach((f, idx) => {

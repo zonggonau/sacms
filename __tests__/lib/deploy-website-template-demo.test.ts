@@ -27,8 +27,16 @@ vi.mock("@/lib/vercel-client", () => ({
 }))
 
 const resolveWebsiteTemplateEnvVars = vi.fn().mockResolvedValue([])
+const resolveFrontendEnv = vi.fn().mockResolvedValue({
+  NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud",
+  NEXT_PUBLIC_SACMS_TENANT: "demo-company-profile",
+  SACMS_API_KEY: "sacms_live_demo_token",
+})
+const resolveApiOrigin = vi.fn().mockReturnValue("https://sacms.cloud")
 vi.mock("@/lib/infrastructure/frontend-env", () => ({
   resolveWebsiteTemplateEnvVars: (...args: any[]) => resolveWebsiteTemplateEnvVars(...args),
+  resolveFrontendEnv: (...args: any[]) => resolveFrontendEnv(...args),
+  resolveApiOrigin: (...args: any[]) => resolveApiOrigin(...args),
 }))
 
 const ensureDemoTenantForSchemaTemplate = vi.fn()
@@ -68,7 +76,11 @@ describe("deployWebsiteTemplateDemo", () => {
     expect(deployToVercel).toHaveBeenCalledWith(
       "sacms-demo-modern-dark",
       [{ name: "app/page.tsx", content: "export default function Page() {}" }],
-      {},
+      {
+        NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud",
+        NEXT_PUBLIC_SACMS_TENANT: "demo-company-profile",
+        SACMS_API_KEY: "sacms_live_demo_token",
+      },
       undefined,
       "production",
     )
@@ -85,14 +97,22 @@ describe("deployWebsiteTemplateDemo", () => {
     })
   })
 
-  it("reports verified: false (never throws) when Vercel accepted the deploy but the URL doesn't actually render — accepted is not the same as working", async () => {
+  it("reports verified: false (never throws) when Vercel accepted the deploy but the URL doesn't actually render — accepted is not the same as working, even after retrying through the alias-cutover window", async () => {
     deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_1" })
     getProjectPrimaryDomain.mockResolvedValue("https://demo-x.sites.sacms.cloud")
     global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "DEPLOYMENT_NOT_FOUND" }) as any
 
-    const result = await deployWebsiteTemplateDemo(websiteTemplate)
+    vi.useFakeTimers()
+    const pending = deployWebsiteTemplateDemo(websiteTemplate)
+    // 2 retries at 2.5s each — advance past both without a real wall-clock wait.
+    await vi.advanceTimersByTimeAsync(2500)
+    await vi.advanceTimersByTimeAsync(2500)
+    const result = await pending
+    vi.useRealTimers()
+
     expect(result.verified).toBe(false)
     expect(result.verificationError).toMatch(/error\/protection page/)
+    expect(global.fetch).toHaveBeenCalledTimes(3)
   })
 
   it("resolves env vars against the demo tenant, not any real tenant", async () => {
@@ -103,6 +123,51 @@ describe("deployWebsiteTemplateDemo", () => {
     await deployWebsiteTemplateDemo(websiteTemplate)
 
     expect(resolveWebsiteTemplateEnvVars).toHaveBeenCalledWith("demo-tenant-1", "demo-company-profile", websiteTemplate.files)
+  })
+
+  // chatgpt8.md P0: the demo deploy used to call ONLY
+  // resolveWebsiteTemplateEnvVars, which deliberately excludes the three
+  // fixed SACMS_* names — so a deployed demo had no way to reach the CMS at
+  // all (confirmed live: articles/Single Types/components never rendered).
+  it("injects the fixed NEXT_PUBLIC_SACMS_API_URL/_TENANT/SACMS_API_KEY system vars via resolveFrontendEnv, so the demo can actually reach the CMS", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_1" })
+    getProjectPrimaryDomain.mockResolvedValue("https://x.vercel.app")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html></html>" }) as any
+
+    await deployWebsiteTemplateDemo(websiteTemplate)
+
+    expect(resolveFrontendEnv).toHaveBeenCalledWith("demo-tenant-1", "demo-company-profile", "https://sacms.cloud")
+    expect(deployToVercel).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({
+        NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud",
+        NEXT_PUBLIC_SACMS_TENANT: "demo-company-profile",
+        SACMS_API_KEY: "sacms_live_demo_token",
+      }),
+      undefined,
+      "production",
+    )
+  })
+
+  it("lets a template-specific {{SACMS_*}} placeholder (a custom var name) override the system vars on top", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_1" })
+    getProjectPrimaryDomain.mockResolvedValue("https://x.vercel.app")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html></html>" }) as any
+    resolveWebsiteTemplateEnvVars.mockResolvedValueOnce([{ key: "NEXT_PUBLIC_API_URL", value: "https://sacms.cloud" }])
+
+    await deployWebsiteTemplateDemo(websiteTemplate)
+
+    expect(deployToVercel).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(Array),
+      expect.objectContaining({
+        NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud",
+        NEXT_PUBLIC_API_URL: "https://sacms.cloud",
+      }),
+      undefined,
+      "production",
+    )
   })
 
   it("never throws — returns a soft error when the demo tenant can't be provisioned", async () => {

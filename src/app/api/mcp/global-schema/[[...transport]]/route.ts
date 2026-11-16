@@ -89,11 +89,20 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
   return { tenantId: token.tenantId }
 }
 
+// chatgpt8.md P1 ("use one consistent error code"): this used to carry
+// neither `structuredContent` nor `isError: true` — on any tool that
+// declares an outputSchema (effectively every tool in this file), the MCP
+// SDK's validateToolOutput treats a result with no structuredContent AND no
+// isError as a malformed SUCCESS and throws its own generic
+// "Output validation error: ... no structured content was provided"
+// instead of surfacing this unauthorized message at all.
 const UNAUTHORIZED = {
   content: [{
     type: "text" as const,
     text: "❌ Unauthorized: Invalid or missing API token for the SaCMS Global Schema Template MCP server.",
   }],
+  structuredContent: { ok: false, code: "UNAUTHORIZED", message: "Invalid or missing API token." },
+  isError: true,
 }
 
 // Thrown from inside create_website_template's db.$transaction callback
@@ -162,6 +171,25 @@ function describeDemoDeployment(demo: { url: string | null; deploymentId?: strin
     ? { status: "ok" as const, deploymentId: demo.deploymentId, verified: demo.verified, verificationError: demo.verificationError }
     : { status: "failed" as const, error: demo.error, deploymentId: demo.deploymentId }
 }
+
+// chatgpt8.md P0: create_website_template's `dryRun: true` branch never
+// creates or deploys anything, so its response shares no real fields with a
+// genuine create's row — it used to be validated against
+// WEBSITE_TEMPLATE_OUTPUT_SHAPE (id/name/slug/files/...) regardless, so the
+// MCP SDK's output-schema check (server/mcp.js's validateToolOutput, which
+// only skips validation when isError is true) rejected EVERY valid dry-run
+// result at the protocol layer before it ever reached the calling agent. A
+// separate shape — unioned into create_website_template's own outputSchema
+// below — instead of cramming both shapes into one object with every field
+// optional, which would have let a REAL create response silently pass
+// validation while missing fields it's supposed to always have.
+const DRY_RUN_OUTPUT_SHAPE = z.object({
+  mode: z.literal("dry_run"),
+  ok: z.literal(true),
+  valid: z.literal(true),
+  issues: z.array(z.object({ path: z.string(), message: z.string() })),
+  warnings: z.array(z.object({ path: z.string(), message: z.string() })),
+})
 
 function invalidSchema(error: z.ZodError) {
   const issues = error.issues.map((i) => ({ path: formatZodPath(i.path), message: i.message }))
@@ -658,10 +686,10 @@ const handler = createMcpHandler(
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template instead of a duplicate (and, when `schema` was given, a second orphaned backing Schema Template). Ignored when dryRun is true."),
           dryRun: z.boolean().optional().describe("Validate everything (files, schema shape, relationSlug/componentSlug/allowedComponents references, select/multiselect choices, schemaTemplateId existence) WITHOUT creating anything or deploying a demo. Returns the same validation errors a real call would reject with, each with an exact path like \"schema.contentTypes[2].fields[4].options.choices\" — call this first for anything non-trivial instead of discovering a mistake only after it's already saved."),
         },
-        outputSchema: {
-          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
-          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
-        },
+        outputSchema: z.union([
+          DRY_RUN_OUTPUT_SHAPE,
+          z.object({ ...WEBSITE_TEMPLATE_OUTPUT_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
+        ]),
       },
       async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun }) => {
         const auth = authContext.getStore()
@@ -692,12 +720,14 @@ const handler = createMcpHandler(
         if (!schemaTemplateId && !schema) {
           return {
             content: [{ type: "text" as const, text: "❌ Berikan salah satu: `schemaTemplateId` (pakai Schema Template yang sudah ada) ATAU `schema` (buat Schema Template baru otomatis untuk frontend ini)." }],
+            structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "Provide exactly one of schemaTemplateId or schema." },
             isError: true,
           }
         }
         if (schemaTemplateId && schema) {
           return {
             content: [{ type: "text" as const, text: "❌ Berikan HANYA salah satu dari `schemaTemplateId` atau `schema`, bukan keduanya — keduanya menyatakan maksud yang berbeda (pakai schema lama vs buat schema baru)." }],
+            structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "schemaTemplateId and schema are mutually exclusive." },
             isError: true,
           }
         }
@@ -739,7 +769,7 @@ const handler = createMcpHandler(
                 ? `✅ Valid, dengan catatan:\n${warnings.map((w) => `- ${w.path}: ${w.message}`).join("\n")}`
                 : "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan.",
             }],
-            structuredContent: { ok: true, valid: true, issues: [], warnings },
+            structuredContent: { mode: "dry_run" as const, ok: true as const, valid: true as const, issues: [] as { path: string; message: string }[], warnings },
           }
         }
 
@@ -1143,7 +1173,7 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.7.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.8.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -1191,7 +1221,13 @@ const handler = createMcpHandler(
       "read) and reject with CONFLICT if the row changed since — re-read and retry on that. A structural " +
       "`schema` change to either tool refuses with HAS_DEPENDENTS when another Website Template shares that " +
       "same backing Schema Template, unless confirmSharedUpdate/confirmCascade (as applicable) is set after " +
-      "confirming with the user what else will be affected.",
+      "confirming with the user what else will be affected. create_website_template's dryRun: true returns " +
+      "{ mode: \"dry_run\", ok, valid, issues, warnings } — a DIFFERENT shape from a real create's response, " +
+      "don't expect id/slug/files/demoDeployment on a dry run. Every demo deploy injects the three fixed " +
+      "NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose " +
+      "frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom " +
+      "name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, " +
+      "CONFLICT, HAS_DEPENDENTS, INVALID_ARGUMENT, UNAUTHORIZED) uses the same `structuredContent.code` field.",
   },
 )
 

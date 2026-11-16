@@ -230,4 +230,52 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(scoped).toMatch(/contentApiContract:/)
     expect(routeSource).toMatch(/import \{ FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES \} from "@\/lib\/field-type-guide"/)
   })
+
+  // ── chatgpt8.md round ───────────────────────────────────────────────────────
+
+  it("create_website_template's dryRun response has its own output shape, unioned onto the real outputSchema, instead of being validated against the create-result shape (id/slug/files/...) it can never satisfy", () => {
+    expect(routeSource).toMatch(/const DRY_RUN_OUTPUT_SHAPE = z\.object\(\{/)
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/outputSchema: z\.union\(\[\s*DRY_RUN_OUTPUT_SHAPE,/)
+    // The dryRun success return must conform to DRY_RUN_OUTPUT_SHAPE's own
+    // fields (mode/ok/valid/issues/warnings), not the create-result fields.
+    const dryRunIdx = scoped.indexOf("if (dryRun) {")
+    const dryRunBlock = scoped.slice(dryRunIdx, scoped.indexOf("\n        }\n\n        let schemaTemplate", dryRunIdx))
+    expect(dryRunBlock).toMatch(/mode: "dry_run" as const/)
+    expect(dryRunBlock).toMatch(/ok: true as const/)
+  })
+
+  it("UNAUTHORIZED carries structuredContent + isError so a tool with an outputSchema doesn't throw a generic 'no structured content' error instead of surfacing the real unauthorized message", () => {
+    expect(routeSource).toMatch(/const UNAUTHORIZED = \{[\s\S]*?structuredContent: \{ ok: false, code: "UNAUTHORIZED"/)
+    expect(routeSource).toMatch(/const UNAUTHORIZED = \{[\s\S]*?isError: true,\s*\}/)
+  })
+
+  it("create_website_template's schemaTemplateId/schema mutual-exclusivity errors carry structuredContent.code, matching every other validation error in this file", () => {
+    const scoped = toolBlockOf("create_website_template")
+    const occurrences = scoped.match(/code: "INVALID_ARGUMENT"/g) || []
+    expect(occurrences.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it("validateBundleReferences checks contentTypes[].group and groups[].parentSlug against the bundle's own groups[], not just relation/component/choices", () => {
+    const fnStart = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(fnStart).toMatch(/groups\[\$\{i\}\]\.parentSlug/)
+    expect(fnStart).toMatch(/contentTypes\[\$\{i\}\]\.group/)
+  })
+
+  it("deployWebsiteTemplateDemo injects the fixed SACMS system env vars (NEXT_PUBLIC_SACMS_API_URL/_TENANT/SACMS_API_KEY) via resolveFrontendEnv, not only resolveWebsiteTemplateEnvVars which deliberately excludes them", () => {
+    const demoSource = readFileSync(
+      join(__dirname, "../../src/lib/infrastructure/deploy-website-template-demo.ts"),
+      "utf-8",
+    )
+    expect(demoSource).toMatch(/resolveFrontendEnv\(demoTenant\.id, demoTenant\.slug, resolveApiOrigin\(\)\)/)
+    expect(demoSource).toMatch(/\.\.\.systemEnv,/)
+  })
+
+  it("deployWebsiteTemplateDemo retries verifyDemoUrl a limited number of times instead of reporting unverified on the first transient failure right after a fresh domain alias", () => {
+    const demoSource = readFileSync(
+      join(__dirname, "../../src/lib/infrastructure/deploy-website-template-demo.ts"),
+      "utf-8",
+    )
+    expect(demoSource).toMatch(/attempt < 2/)
+  })
 })

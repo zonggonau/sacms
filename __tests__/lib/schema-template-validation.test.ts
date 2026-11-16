@@ -125,4 +125,29 @@ describe("validateBundleReferences", () => {
   it("returns no issues for a completely empty bundle", () => {
     expect(validateBundleReferences({})).toEqual([])
   })
+
+  // chatgpt8.md P1: a contentTypes[].group or groups[].parentSlug typo used
+  // to be silently dropped at materialize time instead of reported here.
+
+  it("passes a contentType whose group matches a declared groups[] slug", () => {
+    const bundle = { groups: [{ slug: "marketing", name: "Marketing" }], contentTypes: [{ slug: "posts", group: "marketing", fields: [] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags a contentType whose group doesn't match any declared groups[] slug", () => {
+    const bundle = { groups: [{ slug: "marketing", name: "Marketing" }], contentTypes: [{ slug: "posts", group: "markting-typo", fields: [] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].group", message: expect.stringContaining("markting-typo") }])
+  })
+
+  it("flags a groups[].parentSlug that doesn't match any other groups[] slug", () => {
+    const bundle = { groups: [{ slug: "child", name: "Child", parentSlug: "ghost-parent" }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "groups[0].parentSlug", message: expect.stringContaining("ghost-parent") }])
+  })
+
+  it("passes a groups[].parentSlug that matches a sibling group", () => {
+    const bundle = { groups: [{ slug: "parent", name: "Parent" }, { slug: "child", name: "Child", parentSlug: "parent" }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
 })

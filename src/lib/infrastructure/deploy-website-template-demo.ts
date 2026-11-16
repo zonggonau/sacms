@@ -2,7 +2,7 @@ import "server-only"
 
 import { db } from "@/lib/database"
 import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain } from "@/lib/vercel-client"
-import { resolveWebsiteTemplateEnvVars } from "./frontend-env"
+import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
 
 export interface WebsiteTemplateDemoInput {
@@ -79,8 +79,29 @@ export async function deployWebsiteTemplateDemo(
     const demoTenant = await ensureDemoTenantForSchemaTemplate(websiteTemplate.schemaTemplate)
 
     const files = websiteTemplate.files.map((f) => ({ name: f.path, content: f.content }))
-    const resolvedEnvVars = await resolveWebsiteTemplateEnvVars(demoTenant.id, demoTenant.slug, websiteTemplate.files)
-    const envVars = Object.fromEntries(resolvedEnvVars.map((v) => [v.key, v.value]))
+
+    // chatgpt8.md P0: this used to call ONLY resolveWebsiteTemplateEnvVars,
+    // which deliberately EXCLUDES the three fixed SYSTEM_ENV_VARS names
+    // (NEXT_PUBLIC_SACMS_API_URL/_TENANT/SACMS_API_KEY — see its own
+    // RESERVED_ENV_KEYS guard) on the assumption that something else injects
+    // them, the way deployTenantFrontend's resolveFrontendEnv call always
+    // does for a REAL tenant deploy. Nothing played that role here, so a
+    // demo's frontend had no way to reach the CMS at all unless its own
+    // .env.example happened to use different, non-canonical var names with a
+    // {{SACMS_*}} placeholder — confirmed live: articles/Single
+    // Types/components never rendered, only ever the sample-data-free shell.
+    // resolveFrontendEnv supplies the three system vars (always win) plus
+    // whatever custom vars the demo tenant itself has (normally none);
+    // resolveWebsiteTemplateEnvVars is still needed on top for a template
+    // that reads a DIFFERENT custom name via a {{SACMS_*}} placeholder.
+    const [systemEnv, resolvedEnvVars] = await Promise.all([
+      resolveFrontendEnv(demoTenant.id, demoTenant.slug, resolveApiOrigin()),
+      resolveWebsiteTemplateEnvVars(demoTenant.id, demoTenant.slug, websiteTemplate.files),
+    ])
+    const envVars = {
+      ...systemEnv,
+      ...Object.fromEntries(resolvedEnvVars.map((v) => [v.key, v.value])),
+    }
 
     const projectName = `sacms-demo-${websiteTemplate.slug}`
     // Explicit "production" — this demo preview is meant to be immediately
@@ -106,7 +127,19 @@ export async function deployWebsiteTemplateDemo(
     if (!url) {
       return { url: null, deploymentId: deployResult.id, verified: false, verificationError: "No URL resolved for the demo deployment." }
     }
-    const verification = await verifyDemoUrl(url)
+    // chatgpt8.md P1: a fresh custom-domain alias (ensureDemoSubdomain just
+    // ran above) can take a few seconds to actually start routing — the
+    // very first check right after a create/update used to come back
+    // ECONNRESET even though the SAME url, checked moments later by hand,
+    // was already a plain HTTP 200. 3 short, limited retries covers that
+    // cutover window without turning this into an open-ended poll — this is
+    // still a single deploy call's own verification step, not a background
+    // job, so it can't wait indefinitely.
+    let verification = await verifyDemoUrl(url)
+    for (let attempt = 0; !verification.verified && attempt < 2; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      verification = await verifyDemoUrl(url)
+    }
     return { url, deploymentId: deployResult.id, verified: verification.verified, verificationError: verification.error }
   } catch (err: any) {
     console.warn(`[deploy-website-template-demo] Failed to deploy demo for ${websiteTemplate.slug}:`, err)
