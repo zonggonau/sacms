@@ -129,7 +129,10 @@ export async function POST(
           include: { tenant: true },
         })
 
-        if (!apiToken) {
+        // tenantId/tenant are only ever null for the separate platform-level
+        // "mcp-global-schema" token type, which this public per-tenant route
+        // never accepts — treat a null tenant here as an invalid token.
+        if (!apiToken || !apiToken.tenantId || !apiToken.tenant) {
           return logResponse(NextResponse.json(
             { errors: [{ message: "Invalid API token" }] },
             { status: 401 }

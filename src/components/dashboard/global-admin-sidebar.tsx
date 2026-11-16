@@ -30,6 +30,9 @@ import {
   Handshake,
   Rocket,
   Layout,
+  Server,
+  LayoutTemplate,
+  ChevronDown,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -67,6 +70,13 @@ const adminNavSections: NavSection[] = [
     label: "KONTEN",
     items: [
       { title: "CMS Frontend", href: "/admin/cms", icon: Layout, superAdminOnly: true },
+    ],
+  },
+  {
+    label: "DEVELOPER",
+    items: [
+      { title: "MCP Server", href: "/admin/developer/mcp", icon: Server, superAdminOnly: true },
+      { title: "Website Template", href: "/admin/developer/templates", icon: LayoutTemplate, superAdminOnly: true },
     ],
   },
   {
@@ -130,8 +140,28 @@ export function GlobalAdminSidebar() {
   const [mounted, setMounted] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [unreadSupportCount, setUnreadSupportCount] = useState(0)
+  // Collapsible nav groups — keyed by section label, explicit true/false
+  // once the admin has toggled it. A section with no explicit entry here
+  // defaults to open only when it contains the current route, so the
+  // sidebar starts decluttered instead of every group wide open.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({})
 
   const userId = session?.user?.id
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("admin-sidebar-open-sections")
+      if (saved) setOpenSections(JSON.parse(saved))
+    } catch {}
+  }, [])
+
+  const toggleSection = (label: string, currentlyOpen: boolean) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [label]: !currentlyOpen }
+      try { localStorage.setItem("admin-sidebar-open-sections", JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
   useEffect(() => {
     setMounted(true)
 
@@ -217,41 +247,52 @@ export function GlobalAdminSidebar() {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
-        <nav className="px-3 space-y-6">
-          {filteredNavSections.map((section) => (
-            <div key={section.label}>
-              <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-                {section.label}
-              </p>
-              <div className="space-y-1">
-                {section.items.map((item) => {
-                  const active = isActive(item)
-                  return (
-                    <Link
-                      key={item.title + item.href}
-                      href={item.href}
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      <div
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 text-xs font-semibold transition-all rounded-xl",
-                          active
-                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                        )}
-                      >
-                        <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground")} />
-                        <span className="truncate">{item.title}</span>
-                        {item.badge && (
-                          <Badge variant={active ? "outline" : "orange"} className={cn("ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold", active && "border-primary-foreground/30 text-primary-foreground")}>{item.badge}</Badge>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
+        <nav className="px-3 space-y-1">
+          {filteredNavSections.map((section) => {
+            const hasActiveItem = section.items.some(isActive)
+            const sectionOpen = section.label in openSections ? openSections[section.label] : hasActiveItem
+            return (
+              <div key={section.label} className="pb-1">
+                <button
+                  type="button"
+                  onClick={() => toggleSection(section.label, sectionOpen)}
+                  className="w-full flex items-center justify-between gap-2 px-2 py-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase hover:text-foreground transition-colors rounded-lg"
+                >
+                  <span>{section.label}</span>
+                  <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", sectionOpen && "rotate-180")} />
+                </button>
+                {sectionOpen && (
+                  <div className="space-y-1 mt-1">
+                    {section.items.map((item) => {
+                      const active = isActive(item)
+                      return (
+                        <Link
+                          key={item.title + item.href}
+                          href={item.href}
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          <div
+                            className={cn(
+                              "flex items-center gap-3 px-3 py-2 text-xs font-semibold transition-all rounded-xl",
+                              active
+                                ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            )}
+                          >
+                            <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                            <span className="truncate">{item.title}</span>
+                            {item.badge && (
+                              <Badge variant={active ? "outline" : "orange"} className={cn("ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold", active && "border-primary-foreground/30 text-primary-foreground")}>{item.badge}</Badge>
+                            )}
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </nav>
       </ScrollArea>
 

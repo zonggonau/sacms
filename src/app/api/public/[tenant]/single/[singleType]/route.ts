@@ -114,7 +114,10 @@ async function resolvePublicToken(request: NextRequest, tenantSlug: string): Pro
 
     return {
       auth: {
-        tenantId: apiToken.tenantId,
+        // apiToken.tenant is already confirmed non-null above (the `if
+        // (apiToken?.tenant)` guard), so .tenant.id is the same value as
+        // .tenantId without the nullable type ApiToken.tenantId now carries.
+        tenantId: apiToken.tenant.id,
         tenantSlug: apiToken.tenant.slug,
         apiTokenType: apiToken.type,
         apiTokenId: apiToken.id,

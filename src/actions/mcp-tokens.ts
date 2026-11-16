@@ -225,29 +225,36 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
   }
 }
 
-// ─── SaCMS Global — Schema Template MCP token ──────────────────────────────
+// ─── Platform "Schema Template" MCP token ──────────────────────────────────
 // A completely separate token type/server (src/app/api/mcp/global-schema)
-// from the regular per-workspace "mcp" token above — only ever issuable
-// from the SaCMS Global workspace itself (access.isGlobal), and only one
-// active at a time, same single-token-per-scope pattern as findMcpToken.
+// from the regular per-workspace "mcp" token above — authenticates against
+// the Website/Schema Template catalog, which has no tenant owner at all
+// (see prisma/schema.prisma), so these tokens are stored with tenantId: null
+// rather than tied to the now-retired "SaCMS Global" workspace. Gated
+// directly on the platform super_admin role instead of tenant membership,
+// and only one active at a time, same single-token-per-scope pattern as
+// findMcpToken.
 
-async function findGlobalSchemaMcpToken(tenantId: string) {
+async function findGlobalSchemaMcpToken() {
   return db.apiToken.findFirst({
-    where: { tenantId, type: "mcp-global-schema" },
+    where: { tenantId: null, type: "mcp-global-schema" },
     orderBy: { createdAt: "asc" },
   })
 }
 
-export async function getGlobalSchemaMcpTokenAction(tenantSlug: string) {
+async function requirePlatformSuperAdmin() {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return { session: null, error: "Unauthorized" as const }
+  if (session.user.role !== "super_admin") return { session: null, error: "Hanya Super Admin yang dapat mengelola token ini" as const }
+  return { session, error: null }
+}
+
+export async function getGlobalSchemaMcpTokenAction() {
+  const { error } = await requirePlatformSuperAdmin()
+  if (error) return { error }
+
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return { error: "Forbidden or Tenant not found" }
-    if (!access.isGlobal) return { error: "Hanya workspace SaCMS Global yang memiliki token ini" }
-
-    const token = await findGlobalSchemaMcpToken(access.tenantId)
+    const token = await findGlobalSchemaMcpToken()
     if (!token) return { token: null }
 
     return {
@@ -260,28 +267,19 @@ export async function getGlobalSchemaMcpTokenAction(tenantSlug: string) {
       },
     }
   } catch (error) {
-    console.error("Error fetching Global Schema Template MCP token:", error)
+    console.error("Error fetching Schema Template MCP token:", error)
     return { error: "Internal server error" }
   }
 }
 
 export async function createGlobalSchemaMcpTokenAction(
-  tenantSlug: string,
   data: z.infer<typeof createMcpTokenSchema>,
 ) {
+  const { session, error } = await requirePlatformSuperAdmin()
+  if (error) return { error }
+
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return { error: "Forbidden or Tenant not found" }
-    if (!access.isGlobal) return { error: "Hanya workspace SaCMS Global yang dapat membuat token ini" }
-
-    if (access.role !== "admin" && access.role !== "owner" && session.user.role !== "super_admin") {
-      return { error: "Hanya Admin dan Owner yang dapat membuat token Schema Template MCP" }
-    }
-
-    const existing = await findGlobalSchemaMcpToken(access.tenantId)
+    const existing = await findGlobalSchemaMcpToken()
     if (existing) {
       return { error: "Sudah ada token Schema Template MCP aktif. Generate ulang token yang ada, atau hapus dulu sebelum membuat yang baru." }
     }
@@ -297,17 +295,17 @@ export async function createGlobalSchemaMcpTokenAction(
 
     const mcpToken = await db.apiToken.create({
       data: {
-        tenantId: access.tenantId,
+        tenantId: null,
         name: name.trim(),
-        description: description?.trim() || "SaCMS Global Schema Template MCP Token",
+        description: description?.trim() || "SaCMS Schema Template MCP Token",
         token: hashedToken,
         type: "mcp-global-schema",
         permissions: ["schema-template"],
-        createdBy: session.user.id,
+        createdBy: session!.user.id,
       },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+    revalidatePath("/admin/developer/mcp")
 
     return {
       success: true,
@@ -321,26 +319,18 @@ export async function createGlobalSchemaMcpTokenAction(
       },
     }
   } catch (error) {
-    console.error("Error creating Global Schema Template MCP token:", error)
+    console.error("Error creating Schema Template MCP token:", error)
     return { error: "Internal server error" }
   }
 }
 
-export async function regenerateGlobalSchemaMcpTokenAction(tenantSlug: string, tokenId: string) {
+export async function regenerateGlobalSchemaMcpTokenAction(tokenId: string) {
+  const { error } = await requirePlatformSuperAdmin()
+  if (error) return { error }
+
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return { error: "Forbidden or Tenant not found" }
-    if (!access.isGlobal) return { error: "Hanya workspace SaCMS Global yang memiliki token ini" }
-
-    if (access.role !== "admin" && access.role !== "owner" && session.user.role !== "super_admin") {
-      return { error: "Hanya Admin dan Owner yang dapat generate ulang token Schema Template MCP" }
-    }
-
     const token = await db.apiToken.findFirst({
-      where: { id: tokenId, tenantId: access.tenantId, type: "mcp-global-schema" },
+      where: { id: tokenId, tenantId: null, type: "mcp-global-schema" },
     })
     if (!token) return { error: "Token Schema Template MCP tidak ditemukan" }
 
@@ -352,7 +342,7 @@ export async function regenerateGlobalSchemaMcpTokenAction(tenantSlug: string, t
       data: { token: hashedToken },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+    revalidatePath("/admin/developer/mcp")
 
     return {
       success: true,
@@ -366,36 +356,28 @@ export async function regenerateGlobalSchemaMcpTokenAction(tenantSlug: string, t
       },
     }
   } catch (error) {
-    console.error("Error regenerating Global Schema Template MCP token:", error)
+    console.error("Error regenerating Schema Template MCP token:", error)
     return { error: "Internal server error" }
   }
 }
 
-export async function deleteGlobalSchemaMcpTokenAction(tenantSlug: string, tokenId: string) {
+export async function deleteGlobalSchemaMcpTokenAction(tokenId: string) {
+  const { error } = await requirePlatformSuperAdmin()
+  if (error) return { error }
+
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return { error: "Forbidden or Tenant not found" }
-    if (!access.isGlobal) return { error: "Hanya workspace SaCMS Global yang memiliki token ini" }
-
-    if (access.role !== "admin" && access.role !== "owner" && session.user.role !== "super_admin") {
-      return { error: "Hanya Admin dan Owner yang dapat menghapus token Schema Template MCP" }
-    }
-
     const token = await db.apiToken.findFirst({
-      where: { id: tokenId, tenantId: access.tenantId, type: "mcp-global-schema" },
+      where: { id: tokenId, tenantId: null, type: "mcp-global-schema" },
     })
     if (!token) return { error: "Token Schema Template MCP tidak ditemukan" }
 
     await db.apiToken.delete({ where: { id: tokenId } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+    revalidatePath("/admin/developer/mcp")
 
     return { success: true }
   } catch (error) {
-    console.error("Error deleting Global Schema Template MCP token:", error)
+    console.error("Error deleting Schema Template MCP token:", error)
     return { error: "Internal server error" }
   }
 }

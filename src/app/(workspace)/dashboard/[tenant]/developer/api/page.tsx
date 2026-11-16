@@ -163,8 +163,12 @@ function ApiExplorerContent() {
         // the API Keys page right after create/regenerate.
         if (tokensData && !tokensData.error && Array.isArray(tokensData.tokens) && tokensData.tokens.length > 0) {
           const t = tokensData.tokens[0]
-          setPrimaryToken({ id: t.id, tenantId: t.tenantId, name: t.name, permissions: Array.isArray(t.permissions) ? t.permissions.filter((p: unknown): p is string => typeof p === "string") : [] })
-          const recalled = recallApiTokenPlain(t.tenantId, t.id)
+          // This page only ever lists a regular, always-tenant-scoped API
+          // key — tenantId is only ever null for the separate platform-level
+          // "mcp-global-schema" token type, which never appears here.
+          const primaryTenantId: string = t.tenantId || ""
+          setPrimaryToken({ id: t.id, tenantId: primaryTenantId, name: t.name, permissions: Array.isArray(t.permissions) ? t.permissions.filter((p: unknown): p is string => typeof p === "string") : [] })
+          const recalled = recallApiTokenPlain(primaryTenantId, t.id)
           if (recalled) setSelectedToken(recalled)
         }
       } catch (err) {

@@ -3,7 +3,6 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { getGlobalWorkspaceId } from "@/lib/settings"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { revalidatePath } from "next/cache"
 import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
@@ -12,15 +11,13 @@ const LANDING_PAGE_SLUG = "sacms-landing-page"
 const BLOG_CONTENT_TYPE_SLUG = "posts"
 
 /**
- * The marketing frontend's actual content lives on `TenantSingleTypeAssignment`/
- * `ContentEntry` rows scoped to the "SaCMS Global" tenant's own id (see
- * scripts/seed/seed-all-global.ts and getLandingData() in public-api.ts) —
- * NOT on `tenantId: null` rows, which is what the older, never-wired-up
- * admin-content.ts actions read/write. Reusing those would silently edit an
- * orphaned copy the live site never reads. Every action below resolves the
- * real global workspace id first and reads/writes exactly where
- * getLandingData() does, so a save here is immediately reflected by the
- * same query the public site uses.
+ * The marketing frontend's actual content lives entirely at `tenantId: null`
+ * — both the schema (SingleType/ContentType rows) AND its data
+ * (TenantSingleTypeAssignment/ContentEntry rows). It has no workspace owner
+ * at all; the "SaCMS Global" tenant that used to anchor the data half of
+ * this was retired once nothing needed a dashboard page to manage it
+ * through anymore (see getLandingData() in public-api.ts, which reads from
+ * the same place).
  */
 async function requireSuperAdmin() {
   const session = await getServerSession(authOptions)
@@ -55,14 +52,13 @@ export async function getCmsLandingDataAction() {
   if (error) return { error }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const singleType = await db.singleType.findFirst({
       where: { slug: LANDING_PAGE_SLUG, tenantId: null },
     })
     if (!singleType) return { error: "Content type sacms-landing-page tidak ditemukan" }
 
     const assignment = await db.tenantSingleTypeAssignment.findFirst({
-      where: { singleTypeId: singleType.id, tenantId: globalWorkspaceId },
+      where: { singleTypeId: singleType.id, tenantId: null },
     })
 
     let lp: Record<string, any> = (assignment?.data as Record<string, any>) || {}
@@ -118,14 +114,13 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
   if (!VALID_SECTIONS.includes(section)) return { error: "Invalid section" }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const singleType = await db.singleType.findFirst({
       where: { slug: LANDING_PAGE_SLUG, tenantId: null },
     })
     if (!singleType) return { error: "Content type sacms-landing-page tidak ditemukan" }
 
     const existing = await db.tenantSingleTypeAssignment.findFirst({
-      where: { singleTypeId: singleType.id, tenantId: globalWorkspaceId },
+      where: { singleTypeId: singleType.id, tenantId: null },
     })
     let lp: Record<string, any> = (existing?.data as Record<string, any>) || {}
     if (typeof lp === "string") {
@@ -148,10 +143,10 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
     }
 
     await db.tenantSingleTypeAssignment.upsert({
-      where: { tenantId_singleTypeId_locale: { tenantId: globalWorkspaceId, singleTypeId: singleType.id, locale: "id" } },
+      where: { tenantId_singleTypeId_locale: { tenantId: null as any, singleTypeId: singleType.id, locale: "id" } },
       update: { data: lp as any, enabled: true, publishedAt: new Date() },
       create: {
-        tenantId: globalWorkspaceId,
+        tenantId: null,
         singleTypeId: singleType.id,
         locale: "id",
         enabled: true,
@@ -163,7 +158,6 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
     revalidateMarketingPages()
 
     logAudit({
-      tenantId: globalWorkspaceId,
       userId: session!.user.id,
       action: AuditAction.CONTENT_UPDATED,
       entity: "landing_page_section",
@@ -187,12 +181,11 @@ export async function listCmsBlogPostsAction() {
   if (error) return { error }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
     if (!contentType) return { error: "Content type posts tidak ditemukan" }
 
     const entries = await db.contentEntry.findMany({
-      where: { contentTypeId: contentType.id, tenantId: globalWorkspaceId, deletedAt: null },
+      where: { contentTypeId: contentType.id, tenantId: null, deletedAt: null },
       orderBy: { createdAt: "desc" },
     })
 
@@ -225,19 +218,18 @@ export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRA
   if (!input.title?.trim() || !input.slug?.trim()) return { error: "Judul dan slug wajib diisi" }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
     if (!contentType) return { error: "Content type posts tidak ditemukan" }
 
     const dup = await db.contentEntry.findFirst({
-      where: { contentTypeId: contentType.id, tenantId: globalWorkspaceId, deletedAt: null, data: { path: ["slug"], equals: input.slug } },
+      where: { contentTypeId: contentType.id, tenantId: null, deletedAt: null, data: { path: ["slug"], equals: input.slug } },
     })
     if (dup) return { error: "Slug sudah digunakan oleh post lain" }
 
     const entry = await db.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
-        tenantId: globalWorkspaceId,
+        tenantId: null,
         locale: "id",
         data: input as any,
         status,
@@ -252,7 +244,6 @@ export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRA
     revalidatePath(`/blog/${input.slug}`)
 
     logAudit({
-      tenantId: globalWorkspaceId,
       userId: session!.user.id,
       action: AuditAction.CONTENT_CREATED,
       entity: "content_entry",
@@ -273,15 +264,14 @@ export async function updateCmsBlogPostAction(id: string, input: BlogPostInput, 
   if (!input.title?.trim() || !input.slug?.trim()) return { error: "Judul dan slug wajib diisi" }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
     if (!contentType) return { error: "Content type posts tidak ditemukan" }
 
-    const existing = await db.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id, tenantId: globalWorkspaceId, deletedAt: null } })
+    const existing = await db.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id, tenantId: null, deletedAt: null } })
     if (!existing) return { error: "Post tidak ditemukan" }
 
     const dup = await db.contentEntry.findFirst({
-      where: { contentTypeId: contentType.id, tenantId: globalWorkspaceId, deletedAt: null, id: { not: id }, data: { path: ["slug"], equals: input.slug } },
+      where: { contentTypeId: contentType.id, tenantId: null, deletedAt: null, id: { not: id }, data: { path: ["slug"], equals: input.slug } },
     })
     if (dup) return { error: "Slug sudah digunakan oleh post lain" }
 
@@ -302,7 +292,6 @@ export async function updateCmsBlogPostAction(id: string, input: BlogPostInput, 
     if (oldSlug && oldSlug !== input.slug) revalidatePath(`/blog/${oldSlug}`)
 
     logAudit({
-      tenantId: globalWorkspaceId,
       userId: session!.user.id,
       action: AuditAction.CONTENT_UPDATED,
       entity: "content_entry",
@@ -322,11 +311,10 @@ export async function deleteCmsBlogPostAction(id: string) {
   if (error) return { error }
 
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
     if (!contentType) return { error: "Content type posts tidak ditemukan" }
 
-    const existing = await db.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id, tenantId: globalWorkspaceId, deletedAt: null } })
+    const existing = await db.contentEntry.findFirst({ where: { id, contentTypeId: contentType.id, tenantId: null, deletedAt: null } })
     if (!existing) return { error: "Post tidak ditemukan" }
 
     // Soft-delete, same convention as every other content entry in this
@@ -339,7 +327,6 @@ export async function deleteCmsBlogPostAction(id: string) {
     if (slug) revalidatePath(`/blog/${slug}`)
 
     logAudit({
-      tenantId: globalWorkspaceId,
       userId: session!.user.id,
       action: AuditAction.CONTENT_DELETED,
       entity: "content_entry",

@@ -10,6 +10,40 @@ import { assertPublicHost, SsrfError } from "@/lib/safe-url"
 
 const MASK = "••••••••"
 
+/**
+ * The former "SaCMS Global" system tenant no longer owns any content of its
+ * own — the marketing site's landing-page Single Type and its blog Posts
+ * were migrated to live at `tenantId: null` directly once nothing needed a
+ * tenant dashboard page to manage them through anymore (see
+ * src/actions/cms-frontend.ts, src/lib/public-api.ts). This is the one-time
+ * move: any row still parked under the old tenant id gets re-pointed to
+ * `tenantId: null` before the tenant row itself is deleted below, so the
+ * live site's content survives the cascade rather than being deleted with
+ * it. A no-op for every other tenant (and a no-op here too once this has
+ * already run once, since there's nothing left to move).
+ */
+async function migrateGlobalContentToPlatformLevel(tenantId: string) {
+  const assignments = await db.tenantSingleTypeAssignment.findMany({ where: { tenantId } })
+  for (const a of assignments) {
+    const clash = await db.tenantSingleTypeAssignment.findFirst({
+      where: { tenantId: null, singleTypeId: a.singleTypeId, locale: a.locale },
+    })
+    if (clash) {
+      // A tenantId:null row already covers this Single Type/locale —
+      // keep that one (it's the one getLandingData() already reads) and
+      // drop this now-redundant tenant-scoped copy instead of violating
+      // the [tenantId, singleTypeId, locale] unique constraint.
+      await db.tenantSingleTypeAssignment.delete({ where: { id: a.id } })
+    } else {
+      await db.tenantSingleTypeAssignment.update({ where: { id: a.id }, data: { tenantId: null } })
+    }
+  }
+
+  // ContentEntry has no such unique constraint on (tenantId, ...), so a
+  // straight bulk move is safe.
+  await db.contentEntry.updateMany({ where: { tenantId }, data: { tenantId: null } })
+}
+
 const updateTenantSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   status: z.enum(["active", "suspended", "deleted"]).optional(),
@@ -144,10 +178,6 @@ export const DELETE = withAdminAuth(async (request, context, { session }) => {
     const tenant = await db.tenant.findUnique({ where: { id: tenantId } })
     if (!tenant) return apiError("not_found", { message: "Tenant not found" })
 
-    if (isGlobalTenant(tenant)) {
-      return apiError("validation", { message: "Cannot delete global tenant" })
-    }
-
     // The client-side confirmation (typing the tenant's name/slug/id) is
     // real UX friction against a mis-click, but it was never re-checked
     // here — a direct DELETE call (devtools/curl/replayed request) with a
@@ -162,6 +192,11 @@ export const DELETE = withAdminAuth(async (request, context, { session }) => {
         confirmation === (tenant.slug || "").trim().toLowerCase())
     if (!validMatch) {
       return apiError("validation", { message: "Confirmation text does not match the tenant's name, slug, or id" })
+    }
+
+    const wasGlobalTenant = isGlobalTenant(tenant)
+    if (wasGlobalTenant) {
+      await migrateGlobalContentToPlatformLevel(tenant.id)
     }
 
     // 1. Delete physical assets from storage (MinIO bucket or local disk)
@@ -202,12 +237,18 @@ export const DELETE = withAdminAuth(async (request, context, { session }) => {
       where: { id: tenantId }
     })
 
+    // The `globalTenantId` setting now points at a deleted row — clear it
+    // so nothing mistakes the dangling id for a still-live workspace.
+    if (wasGlobalTenant) {
+      await db.setting.delete({ where: { key: "globalTenantId" } }).catch(() => {})
+    }
+
     logAudit({
       userId: session.user.id,
       action: AuditAction.TENANT_DELETED,
       entity: "Tenant",
       entityId: tenantId,
-      data: { name: tenant.name, slug: tenant.slug, hadDedicatedDb: !!tenant.databaseUrl, deletedByAdmin: true },
+      data: { name: tenant.name, slug: tenant.slug, hadDedicatedDb: !!tenant.databaseUrl, deletedByAdmin: true, wasGlobalTenant },
     })
 
     return NextResponse.json({ success: true })

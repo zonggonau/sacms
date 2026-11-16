@@ -4,6 +4,12 @@ import { db } from "@/lib/database"
 // Mirrors mcp-route-auth.test.ts's scope for the main server: this targets
 // only the shared auth gate (resolveGlobalSchemaToken), not the tool bodies
 // — those are thin Prisma CRUD wrappers over SchemaTemplate.
+//
+// This token type carries no tenant at all (ApiToken.tenantId: null) since
+// the former "SaCMS Global" workspace it used to be minted under was
+// retired — the Website/Schema Template catalog it authenticates against
+// has no tenant owner either. Auth here is just "does a live
+// mcp-global-schema token with this hash exist".
 
 vi.mock("mcp-handler", () => ({
   createMcpHandler: vi.fn(() => vi.fn()),
@@ -11,10 +17,6 @@ vi.mock("mcp-handler", () => ({
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn().mockResolvedValue({ success: true, remaining: 99, limit: 100, resetAt: Date.now() + 60000 }),
-}))
-
-vi.mock("@/lib/settings", () => ({
-  getGlobalWorkspaceId: vi.fn().mockResolvedValue("global-tenant-1"),
 }))
 
 vi.mock("@/lib/database", () => ({
@@ -50,33 +52,17 @@ describe("Global Schema Template MCP route — resolveGlobalSchemaToken", () => 
     )
   })
 
-  it("authorizes when the token's tenant id matches the configured Global workspace id", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
-      id: "tok-1",
-      tenantId: "global-tenant-1",
-      tenant: { id: "global-tenant-1", slug: "sacms-global" },
-    } as any)
+  it("authorizes whenever a matching token row exists, with no tenant involved", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1" } as any)
     const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    expect(auth).toEqual({ tenantId: "global-tenant-1" })
+    expect(auth).toEqual({ authenticated: true })
   })
 
-  it("authorizes when the Global setting holds the tenant's SLUG instead of its id (the real-world case for this tenant)", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
-      id: "tok-1",
-      tenantId: "cuid-abc-123",
-      tenant: { id: "cuid-abc-123", slug: "global-tenant-1" },
-    } as any)
-    const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    expect(auth).toEqual({ tenantId: "cuid-abc-123" })
-  })
-
-  it("rejects a token whose tenant matches neither the configured id nor slug (defense in depth)", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
-      id: "tok-1",
-      tenantId: "some-other-tenant",
-      tenant: { id: "some-other-tenant", slug: "some-other-slug" },
-    } as any)
-    const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    expect(auth).toBeNull()
+  it("bumps lastUsedAt on a successful match", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1" } as any)
+    await resolveGlobalSchemaToken("mcpglobal_valid")
+    expect(db.apiToken.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ type: "mcp-global-schema" }), data: { lastUsedAt: expect.any(Date) } }),
+    )
   })
 })

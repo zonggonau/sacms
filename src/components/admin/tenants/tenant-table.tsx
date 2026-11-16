@@ -168,10 +168,9 @@ export function TenantTable({ tenants, loading, onEdit, onDelete, onOverride, on
                       </DropdownMenuItem>
                     )}
                     
-                    <DropdownMenuItem 
-                      onClick={() => !isGlobal && onDelete(tenant)} 
-                      disabled={isGlobal}
-                      title={isGlobal ? "Workspace global tidak boleh dihapus" : undefined}
+                    <DropdownMenuItem
+                      onClick={() => onDelete(tenant)}
+                      title={isGlobal ? "Konten situs utama (landing page, blog) akan dipindahkan otomatis sebelum workspace ini dihapus" : undefined}
                       className="text-destructive focus:text-destructive cursor-pointer text-xs rounded-lg"
                     >
                       <Trash2 className="h-3.5 w-3.5 mr-2" /> Hapus Workspace

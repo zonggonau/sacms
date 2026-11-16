@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Search, ChevronLeft, ChevronRight, Loader2, Globe } from "lucide-react"
+import { Building2, Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -44,7 +44,6 @@ export default function AdminTenantsPage() {
   const [isOverrideOpen, setIsOverrideOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [overrideLoading, setOverrideLoading] = useState(false)
-  const [isSettingUpGlobal, setIsSettingUpGlobal] = useState(false)
 
   // Selection States
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
@@ -210,24 +209,6 @@ export default function AdminTenantsPage() {
     }
   }
 
-  const handleSetupGlobalTenant = async () => {
-    setIsSettingUpGlobal(true)
-    try {
-      const res = await fetch("/api/admin/tenants/setup-global", { method: "POST" })
-      if (res.ok) {
-        toast({ title: "Setup Berhasil", description: "Global Tenant & Seed Data berhasil disiapkan." })
-        refetch()
-      } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Setup Gagal", description: err.error || "Gagal menyiapkan global tenant" })
-      }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Setup Error", description: "Terjadi kesalahan saat penyiapan." })
-    } finally {
-      setIsSettingUpGlobal(false)
-    }
-  }
-
   const openEdit = (tenant: Tenant) => {
     setSelectedTenant(tenant)
     setFormData({
@@ -242,10 +223,6 @@ export default function AdminTenantsPage() {
   }
 
   const openDelete = (tenant: Tenant) => {
-    if (tenant.slug === "sacms-global" || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global") {
-      toast({ variant: "destructive", title: "Dilarang", description: "Workspace global sistem tidak boleh dihapus." })
-      return
-    }
     setTenantToDelete(tenant)
     setDeleteConfirmation("")
     setIsDeleteOpen(true)
@@ -305,18 +282,6 @@ export default function AdminTenantsPage() {
               <p className="text-xs text-muted-foreground mt-0.5">
                 Kelola tenant, kuota, dan status akun.
               </p>
-            </div>
-            
-            <div className="flex items-center gap-2.5">
-              <Button 
-                variant="outline"
-                onClick={handleSetupGlobalTenant} 
-                disabled={isSettingUpGlobal}
-                className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80"
-              >
-                {isSettingUpGlobal ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
-                Setup Global Tenant SaCMS
-              </Button>
             </div>
           </div>
 

@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export async function GET() {
   try {
-    const workspaceId = await getGlobalWorkspaceId();
-
-    // Ambil Single Types global (tanpa tenant)
+    // Platform-level content lives entirely at tenantId: null — see
+    // getLandingData() in src/lib/public-api.ts, which reads the same place.
     const singleTypes = await db.singleType.findMany({
       where: { tenantId: null },
       include: {
         tenants: {
-          where: { tenantId: workspaceId }
+          where: { tenantId: null }
         }
       }
     })
@@ -28,7 +26,7 @@ export async function GET() {
     })
 
     const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: workspaceId, status: "PUBLISHED" }
+      where: { tenantId: null, status: "PUBLISHED", deletedAt: null }
     })
 
     const collectionsData = contentTypes.reduce((acc, ct) => {

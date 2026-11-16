@@ -1,5 +1,5 @@
 /**
- * SaCMS Global — Schema Template MCP Server
+ * Platform "Developer" — Schema Template MCP Server
  *
  * A separate, deliberately narrow MCP server for managing the platform-wide
  * template catalog: SchemaTemplate (prisma/schema.prisma's SchemaTemplate
@@ -14,22 +14,18 @@
  *
  * Why a separate server/token type rather than reusing /api/mcp:
  * 1. The per-workspace server's `resolveToken` requires an active paid
- *    Subscription row — the SaCMS Global tenant has none (it was created
- *    directly by the admin "Setup Global Tenant" route, which bypasses the
- *    normal tenant-creation flow that always creates one), so every single
- *    request there — including the initial MCP `initialize` handshake —
- *    gets rejected with HTTP 402 before the protocol layer ever runs. That
- *    is the literal cause of "The server couldn't complete MCP setup" when
- *    trying to add a regular `mcp_...` token for Global to an MCP client:
- *    the client never gets a valid initialize response, just a raw 402
- *    JSON body it can't parse as MCP.
+ *    Subscription row. The catalog this server manages has no tenant
+ *    owner at all (WebsiteTemplate/SchemaTemplate carry no tenantId), so
+ *    gating it behind a workspace subscription makes no sense in the
+ *    first place.
  * 2. Schema Template tools have NO business being callable with every
  *    other workspace's own `mcp_...` token — keeping them on a separate
  *    server with its own `mcpglobal_...` token type means a leaked/misused
  *    workspace token can never reach this catalog, and vice versa.
  *
  * Auth: Standard HTTP Bearer token (Authorization: Bearer <mcpglobal_...>),
- * minted only for the SaCMS Global tenant (see src/actions/mcp-tokens.ts).
+ * minted from /admin/developer/mcp (see src/actions/mcp-tokens.ts) — a
+ * platform-level token with no tenant attached at all.
  * URL:  /api/mcp/global-schema
  */
 
@@ -49,8 +45,14 @@ import { formatZodPath, validateBundleReferences } from "@/lib/schema-template-v
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
+// This token type carries no tenant at all (ApiToken.tenantId: null) — the
+// Website/Schema Template catalog it authenticates against has no tenant
+// owner either (see prisma/schema.prisma). The former "SaCMS Global"
+// workspace this used to be minted under has been retired; auth here is
+// just "does a live mcp-global-schema token with this hash exist", nothing
+// tenant-shaped to re-verify.
 interface GlobalAuthContext {
-  tenantId: string
+  authenticated: true
 }
 
 const authContext = new AsyncLocalStorage<GlobalAuthContext>()
@@ -62,22 +64,9 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
 
   const token = await db.apiToken.findFirst({
     where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
-    select: { id: true, tenantId: true, tenant: { select: { id: true, slug: true } } },
+    select: { id: true },
   })
-  if (!token?.tenant) return null
-
-  // Defense in depth: this token type is only ever minted for the
-  // configured Global tenant (see createGlobalSchemaMcpTokenAction), but
-  // re-verify at request time in case that setting is ever repointed —
-  // this server must never authorize against a non-Global tenant.
-  // `globalTenantId` may be configured as either the tenant's real id OR
-  // its slug (see isGlobal in src/lib/tenant-access.ts, which this must
-  // match) — comparing only against `token.tenantId` (always the real id)
-  // wrongly rejected every token whenever the setting held the slug
-  // instead, which is exactly how the Global tenant was provisioned here.
-  const { getGlobalWorkspaceId } = await import("@/lib/settings")
-  const globalId = await getGlobalWorkspaceId()
-  if (token.tenant.id !== globalId && token.tenant.slug !== globalId) return null
+  if (!token) return null
 
   db.apiToken
     .updateMany({
@@ -86,7 +75,7 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
     })
     .catch(() => {})
 
-  return { tenantId: token.tenantId }
+  return { authenticated: true }
 }
 
 // chatgpt8.md P1 ("use one consistent error code"): this used to carry

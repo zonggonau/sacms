@@ -1,18 +1,20 @@
 import { cache } from "react"
 import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
-import { getGlobalWorkspaceId } from "@/lib/settings"
 import { db } from "@/lib/database"
 
 export const getLandingData = cache(async function getLandingData() {
   try {
-    const globalWorkspaceId = await getGlobalWorkspaceId()
-    
-    // Direct database query instead of HTTP self-fetch to avoid Next.js dev server deadlock
+    // Platform-level content (the "sacms-landing-page" Single Type and the
+    // "posts" Collection) now lives entirely at tenantId: null — it has no
+    // workspace owner at all since the former "SaCMS Global" tenant was
+    // retired. Both the schema rows AND their data assignment are null here,
+    // unlike before when only the schema was null and the data assignment
+    // was scoped to that tenant's id.
     const singleTypes = await db.singleType.findMany({
       where: { tenantId: null },
       include: {
         tenants: {
-          where: { tenantId: globalWorkspaceId }
+          where: { tenantId: null }
         }
       }
     })
@@ -38,7 +40,7 @@ export const getLandingData = cache(async function getLandingData() {
     })
 
     const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: globalWorkspaceId }
+      where: { tenantId: null, deletedAt: null }
     })
 
     const collectionsData = contentTypes.reduce((acc, ct) => {

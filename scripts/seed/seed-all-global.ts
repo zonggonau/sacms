@@ -430,30 +430,6 @@ async function main() {
   console.log("🌱 SaCMS Global Seed — Papua Digital")
   console.log("══════════════════════════════════════════════════\n")
 
-  // ─── STEP 0: Ensure Global Tenant exists ───
-  let globalTenantId = "sacms-global";
-  try {
-    const setting = await prisma.setting.findUnique({ where: { key: "globalTenantId" } });
-    if (setting && setting.value) {
-      globalTenantId = setting.value;
-    }
-  } catch (err) {
-    console.error("Error reading globalTenantId setting", err);
-  }
-
-  let globalTenant = await prisma.tenant.findUnique({ where: { id: globalTenantId } })
-  if (!globalTenant) {
-    globalTenant = await prisma.tenant.create({
-      data: {
-        id: globalTenantId,
-        name: "SaCMS Global",
-        slug: globalTenantId,
-        plan: "ENTERPRISE",
-        status: "active"
-      }
-    })
-  }
-
   // ─── STEP 0.5: Hapus schema lama yang digantikan ───
   console.log("🧹 STEP 0.5: Menghapus schema lama yang digantikan (Pembersihan)...")
   
@@ -496,13 +472,13 @@ async function main() {
     if (!singleType) continue
 
     await prisma.tenantSingleTypeAssignment.deleteMany({
-      where: { singleTypeId: singleType.id, tenantId: globalTenant.id },
+      where: { singleTypeId: singleType.id, tenantId: null },
     })
 
     await prisma.tenantSingleTypeAssignment.create({
       data: {
         singleTypeId: singleType.id,
-        tenantId: globalTenant.id,
+        tenantId: null,
         data: seedData as any,
         publishedAt: new Date(),
       },
@@ -521,14 +497,14 @@ async function main() {
     const entries = Array.isArray(seedData) ? seedData : [seedData]
 
     await prisma.contentEntry.deleteMany({
-      where: { contentTypeId: contentType.id, tenantId: globalTenant.id },
+      where: { contentTypeId: contentType.id, tenantId: null },
     })
 
     for (const entry of entries) {
       const created = await prisma.contentEntry.create({
         data: {
           contentTypeId: contentType.id,
-          tenantId: globalTenant.id,
+          tenantId: null,
           locale: "en",
           status: "PUBLISHED",
           publishedAt: new Date(),

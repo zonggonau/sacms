@@ -771,7 +771,11 @@ model Media {
 
 model ApiToken {
   id          String    @id @default(cuid())
-  tenantId    String
+  // Nullable only for the platform-level "mcp-global-schema" token type
+  // (src/app/api/mcp/global-schema) — it authenticates against the Website/
+  // SchemaTemplate catalog, which has no tenant owner at all, not a specific
+  // workspace. Every other token type still always sets this.
+  tenantId    String?
   name        String
   description String?
   token       String    @unique
@@ -782,7 +786,7 @@ model ApiToken {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   permissions Json?
-  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_tokens")
 }
