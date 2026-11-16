@@ -29,6 +29,7 @@ import {
   Tag,
   Handshake,
   Rocket,
+  Layout,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -60,6 +61,12 @@ const adminNavSections: NavSection[] = [
       { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
       { title: "Pricing & Plans", href: "/admin/pricing", icon: Tag },
+    ],
+  },
+  {
+    label: "KONTEN",
+    items: [
+      { title: "CMS Frontend", href: "/admin/cms", icon: Layout, superAdminOnly: true },
     ],
   },
   {
