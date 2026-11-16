@@ -180,20 +180,20 @@ const SEED_DATA: Record<string, any> = {
   "sacms-landing-page": {
     hero_badge: "",
     hero_title: "Build smarter. Manage easier. Scale faster.",
-    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan isolasi data per-tenant (plus opsi Dedicated Database untuk Business & Enterprise), integrasi AI IDE lewat MCP, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
+    hero_subtitle: "Satu platform untuk membangun, mengelola, dan menskalakan website & produk digital klien Anda — tanpa server terpisah, tanpa ribet tagihan manual. SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan isolasi data per-tenant (plus opsi Dedicated Database untuk Business & Enterprise), integrasi AI IDE lewat MCP, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
     hero_cta_primary: "Coba Gratis Sekarang",
     hero_cta_secondary: "Dokumentasi API",
     hero_image: "",
     
     features: [
-      { title: "Hybrid Multi-Tenancy & Dedicated Appliance", description: "Mulai dari shared multi-tenant hemat biaya hingga Dedicated Database & Storage Appliance terisolasi penuh untuk privasi data absolut.", icon: "Layers", is_main: true, tag: "Infrastruktur" },
-      { title: "Deploy Frontend 1-Command via MCP", description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.", icon: "Rocket", is_main: true, tag: "AI Powered" },
-      { title: "Dynamic GraphQL, REST API & MCP", description: "Skema otomatis sesuai data model Anda, query filter canggih yang familiar bagi developer, dan integrasi AI IDE via Model Context Protocol (MCP).", icon: "Database", is_main: true, tag: "Developer" },
-      { title: "SaCMS Custom DNS & Registrar", description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.", icon: "Globe", is_main: false, tag: "Networking" },
-      { title: "Sistem Billing Otomatis Midtrans", description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.", icon: "CreditCard", is_main: true, tag: "Fintech" },
-      { title: "Enterprise RBAC & 7-Stage Workflow", description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.", icon: "ShieldCheck", is_main: true, tag: "Keamanan" },
-      { title: "Rate-Limiting Cerdas & Edge Cache", description: "Didukung sistem caching edge performa tinggi — mencegah klien tertentu memonopoli resource API yang bisa memperlambat klien lainnya.", icon: "Activity", is_main: false, tag: "Performa" },
-      { title: "Penyimpanan Media Tanpa Batas", description: "Object storage performa tinggi untuk aset media Anda, dengan biaya egress $0 dan CDN global.", icon: "HardDrive", is_main: false, tag: "Media" },
+      { title: "Infrastruktur yang Tumbuh Bareng Bisnis Anda", description: "Mulai dari shared multi-tenant hemat biaya hingga Dedicated Database & Storage Appliance terisolasi penuh untuk privasi data absolut.", icon: "Layers", is_main: true, tag: "Infrastruktur" },
+      { title: "Dari Kode ke Online dalam Satu Perintah", description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.", icon: "Rocket", is_main: true, tag: "AI Powered" },
+      { title: "Sambungkan ke Mana Saja, Secepat Anda Mau", description: "Skema otomatis sesuai data model Anda, query filter canggih yang familiar bagi developer, dan integrasi AI IDE via Model Context Protocol (MCP).", icon: "Database", is_main: true, tag: "Developer" },
+      { title: "Domain Sendiri, Terbit dalam Hitungan Menit", description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.", icon: "Globe", is_main: false, tag: "Networking" },
+      { title: "Tagihan Otomatis, Tanpa Invoice Manual", description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.", icon: "CreditCard", is_main: true, tag: "Fintech" },
+      { title: "Kontrol Tim & Alur Publikasi yang Rapi", description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.", icon: "ShieldCheck", is_main: true, tag: "Keamanan" },
+      { title: "Performa Stabil Walau Traffic Melonjak", description: "Didukung sistem caching edge performa tinggi — mencegah klien tertentu memonopoli resource API yang bisa memperlambat klien lainnya.", icon: "Activity", is_main: false, tag: "Performa" },
+      { title: "Simpan Aset Media Tanpa Rasa Khawatir", description: "Object storage performa tinggi untuk aset media Anda, dengan biaya egress $0 dan CDN global.", icon: "HardDrive", is_main: false, tag: "Media" },
     ],
 
     workflows: [
@@ -271,7 +271,7 @@ const SEED_DATA: Record<string, any> = {
     local_pride: {
       badge: "Dibangun di Nabire, Papua Tengah",
       title: "Lahir di Papua. Dibangun untuk Bersaing Secara Global.",
-      description: "SaCMS dirancang dan dikembangkan oleh talenta digital asli Papua di Nabire, Papua Tengah — bukti bahwa produk teknologi kelas dunia tidak harus lahir di Jakarta. Kami percaya UMKM, pemerintah daerah, kreator, dan startup di Papua berhak memakai infrastruktur digital yang sama cepat dan sekuat yang dipakai startup di kota besar, tanpa harus meninggalkan tanah sendiri.",
+      description: "SaCMS dirancang dan dikembangkan oleh talenta digital asli Papua di Nabire, Papua Tengah — bukti bahwa produk teknologi kelas dunia tidak harus lahir di Jakarta. Kami percaya UMKM, pemerintah daerah, kreator, dan startup di Papua berhak memakai infrastruktur digital yang sama cepat dan sekuat yang dipakai startup di kota besar, tanpa harus meninggalkan tanah sendiri. Kenal lebih dekat perjalanan kami di halaman Tentang Kami.",
     },
 
     cta_banner: {
@@ -283,7 +283,7 @@ const SEED_DATA: Record<string, any> = {
 
     about: {
       title: "Tentang SaCMS — Smart Content Management System",
-      description: "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated Database Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
+      description: "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">SaCMS lahir dari Nabire, Papua Tengah — dibangun oleh talenta digital lokal yang percaya bahwa produk teknologi kelas dunia tidak harus lahir dari Jakarta atau Jawa.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated Database Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
       mission: "Membantu para developer dan bisnis membangun produk digital lebih cerdas (Build smarter), mengelola konten lebih mudah (Manage easier), dan menskalakan infrastruktur lebih cepat (Scale faster).",
       founded: "2026",
       image: ""

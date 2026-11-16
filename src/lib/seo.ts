@@ -16,7 +16,7 @@ export const SEO_CONFIG = {
   brandDetail: "Smart Content Management System",
   slogan: "Build smarter. Manage easier. Scale faster.",
   defaultTitle: "SaCMS — Smart Content Management System | Build smarter. Manage easier. Scale faster.",
-  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan database terisolasi per workspace, integrasi AI Assistant langsung dari IDE, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis.",
+  defaultDescription: "SaCMS (Smart Content Management System) — Platform Headless CMS multi-tenant modern dengan database terisolasi per workspace, integrasi AI Assistant langsung dari IDE, custom domain untuk brand Anda sendiri, GraphQL API yang fleksibel, dan billing otomatis. Dibangun oleh talenta digital Papua Tengah.",
   keywords: [
     "SaCMS",
     "Smart Content Management System",
@@ -31,7 +31,10 @@ export const SEO_CONFIG = {
     "Custom Domain CMS",
     "Automated Billing CMS",
     "Unlimited Media Storage",
-    "SaaS Headless CMS"
+    "SaaS Headless CMS",
+    "Startup Digital Papua",
+    "CMS Buatan Papua Tengah",
+    "Startup Teknologi Nabire"
   ],
   social: {
     twitter: "@sacms_cloud",

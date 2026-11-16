@@ -10,32 +10,32 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
   const defaultFeatures = [
     {
       icon: "Layers",
-      title: "Hybrid Multi-Tenancy & Dedicated Appliance",
+      title: "Infrastruktur yang Tumbuh Bareng Bisnis Anda",
       description: "Mulai dari shared multi-tenant hemat biaya hingga PostgreSQL 17 + MinIO Appliance terisolasi penuh untuk privasi data absolut.",
     },
     {
-      icon: "Sparkles",
-      title: "1-Prompt AI Fullstack Website Engine",
-      description: "Bangun landing page & website instan berbasis Next.js dengan AI prompt, preview interaktif, export kode, dan 1-click edge deploy.",
+      icon: "Rocket",
+      title: "Dari Kode ke Online dalam Satu Perintah",
+      description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor, dll), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.",
     },
     {
       icon: "Database",
-      title: "Dynamic GraphQL, REST API & MCP",
+      title: "Sambungkan ke Mana Saja, Secepat Anda Mau",
       description: "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol (MCP).",
     },
     {
       icon: "Globe",
-      title: "SaCMS Custom DNS & Registrar",
+      title: "Domain Sendiri, Terbit dalam Hitungan Menit",
       description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
     },
     {
       icon: "CreditCard",
-      title: "Billing Otomatis QRIS & Midtrans",
+      title: "Tagihan Otomatis, Tanpa Invoice Manual",
       description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.",
     },
     {
       icon: "ShieldCheck",
-      title: "Enterprise RBAC & 7-Stage Workflow",
+      title: "Kontrol Tim & Alur Publikasi yang Rapi",
       description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.",
     },
   ]

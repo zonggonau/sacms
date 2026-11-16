@@ -15,7 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   const title = "Tentang SaCMS — Visi, Misi & Tim Pengembang"
   const description =
-    "Pelajari perjalanan SaCMS: Smart Headless CMS multi-tenant dengan integrasi AI IDE lewat MCP dan isolasi tenant enterprise, dibangun dari Indonesia untuk tim modern di seluruh dunia."
+    "Pelajari perjalanan SaCMS: Smart Headless CMS multi-tenant dengan integrasi AI IDE lewat MCP dan isolasi tenant enterprise, dibangun sebagai startup digital dari Nabire, Papua Tengah untuk tim modern di seluruh dunia."
 
   return {
     title: { absolute: title },
@@ -26,6 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "Tim Pengembang SaCMS",
       "Visi Misi SaCMS",
       "Headless CMS Multi-Tenant",
+      "Startup Digital Papua Tengah",
     ],
     alternates: {
       canonical: `${siteUrl}/tentang`,
@@ -69,8 +70,8 @@ export default async function TentangPage() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
-              Membangun Standar Baru <br className="hidden sm:inline" />
-              Headless CMS Indonesia
+              Startup Digital dari Papua Tengah, <br className="hidden sm:inline" />
+              Dibangun untuk Standar Global
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">

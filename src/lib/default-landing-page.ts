@@ -1,7 +1,7 @@
 export const DEFAULT_LANDING_PAGE_DATA: any = {
   "sacms-hero": {
     "headline": "Build smarter. Manage easier. Scale faster.",
-    "subheadline": "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+    "subheadline": "Satu platform untuk membangun, mengelola, dan menskalakan website & produk digital klien Anda — tanpa server terpisah, tanpa ribet tagihan manual. SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, MCP Tools untuk AI IDE, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
     "cta_primary": "Coba Gratis Sekarang",
     "cta_secondary": "Lihat Dokumentasi",
     "badge_text": "",
@@ -10,49 +10,49 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
   "sacms-features": [
     {
       "icon": "Shield",
-      "title": "Isolasi Data Absolut",
+      "title": "Data Klien Anda, Aman Tanpa Kompromi",
       "description": "Arsitektur multi-tenant murni di level database. Tidak ada lagi risiko kebocoran data antar klien atau setup instance terpisah yang mahal.",
       "color": "indigo"
     },
     {
       "icon": "CreditCard",
-      "title": "Billing Midtrans Otomatis",
+      "title": "Tagihan Otomatis, Tanpa Invoice Manual",
       "description": "Monetisasi layanan CMS Anda langsung ke klien. Integrasi Midtrans Snap API bawaan untuk tagihan berlangganan otomatis.",
       "color": "blue"
     },
     {
       "icon": "Zap",
-      "title": "Edge-Optimized API",
+      "title": "Respons Cepat di Mana Pun Pengguna Berada",
       "description": "Waktu respons API Publik di bawah 200ms dengan caching Upstash Redis. Hilangkan masalah waterfall request di frontend.",
       "color": "teal"
     },
     {
       "icon": "Database",
-      "title": "Schema Builder Dinamis",
+      "title": "Rancang Struktur Data Tanpa Coding",
       "description": "Buat struktur database kompleks (Collection & Single Types) tanpa coding, langsung dari antarmuka visual yang modern.",
       "color": "slate"
     },
     {
       "icon": "Cloud",
-      "title": "MinIO Media Storage",
+      "title": "Simpan Aset Media Tanpa Rasa Khawatir",
       "description": "Penyimpanan aset digital object storage mandiri tanpa membebani database utama. Dilengkapi auto-thumbnail generation.",
       "color": "purple"
     },
     {
       "icon": "Webhook",
-      "title": "Sinkronisasi Webhook",
+      "title": "Semua Platform Anda, Selalu Sinkron",
       "description": "Hubungkan CMS ke berbagai platform frontend Anda dengan Webhook asinkron dan sistem antrian gagal (Dead Letter Queue).",
       "color": "pink"
     },
     {
       "icon": "Users",
-      "title": "Granular Role-Based Access",
+      "title": "Kontrol Tim & Alur Publikasi yang Rapi",
       "description": "Atur izin akses untuk klien (Owner, Admin, Editor) untuk membatasi fitur modifikasi skema atau penagihan sesuai kebutuhan.",
       "color": "yellow"
     },
     {
       "icon": "Search",
-      "title": "Full-Text Search & Filter",
+      "title": "Temukan Data dalam Sekejap",
       "description": "REST API & GraphQL dilengkapi operator filter dinamis dan dukungan pencarian teks penuh (FTS) secara bawaan.",
       "color": "orange"
     }
@@ -174,19 +174,19 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
   ],
   "sacms-testimonials": [
     {
-      "name": "Zonggonau Cristoper",
+      "name": "Raka Pratama",
       "role": "Solo Developer",
       "company": "Indie Hacker",
       "content": "Dulu saya harus setup droplet baru tiap kali ada klien web company profile. Sekarang semua masuk ke SaCMS, hemat biaya server 80%!",
-      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=RakaPratama",
       "rating": 5
     },
     {
-      "name": "Januar Fonda",
+      "name": "Dewi Lestari",
       "role": "Tech Lead",
       "company": "Digital Agency",
       "content": "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.",
-      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=DewiLestari",
       "rating": 5
     },
     {
@@ -223,7 +223,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
   ],
   "sacms-about": {
     "title": "Tentang SaCMS — Smart Content Management System",
-    "description": "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated PostgreSQL 17 Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
+    "description": "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">SaCMS lahir dari Nabire, Papua Tengah — dibangun oleh talenta digital lokal yang percaya bahwa produk teknologi kelas dunia tidak harus lahir dari Jakarta atau Jawa.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated PostgreSQL 17 Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
     "mission": "Membantu para developer dan bisnis membangun produk digital lebih cerdas (Build smarter), mengelola konten lebih mudah (Manage easier), dan menskalakan infrastruktur lebih cepat (Scale faster).",
     "founded": "2026"
   },
@@ -256,9 +256,9 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
     }
   ],
   "sacms-local-pride": {
-    "badge": "Smart Content Management System",
-    "title": "Build smarter. Manage easier. Scale faster.",
-    "description": "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien secara manual. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol terpadu yang elegan."
+    "badge": "Dibangun di Nabire, Papua Tengah",
+    "title": "Lahir di Papua. Dibangun untuk Bersaing Secara Global.",
+    "description": "SaCMS dirancang dan dikembangkan oleh talenta digital asli Papua di Nabire, Papua Tengah — bukti bahwa produk teknologi kelas dunia tidak harus lahir di Jakarta. Kami percaya UMKM, pemerintah daerah, kreator, dan startup di Papua berhak memakai infrastruktur digital yang sama cepat dan sekuat yang dipakai startup di kota besar, tanpa harus meninggalkan tanah sendiri. Kenal lebih dekat perjalanan kami di halaman Tentang Kami."
   },
   "sacms-cta": {
     "title": "Build smarter. Manage easier. Scale faster.",
