@@ -7,6 +7,33 @@
 
 import type { PrismaClient } from "../../prisma/generated-client"
 
+/**
+ * chatgpt.md: an AI agent reading content values via query_content/
+ * get_content_entry/get_single_type kept rendering richText/markdown
+ * fields as plain text on the generated frontend, showing literal <p>/
+ * <strong> tags or raw Markdown source to visitors — even though the rule
+ * ("render richText as sanitized HTML, markdown through a Markdown
+ * renderer") already existed in list_field_types and the agent playbook.
+ * Both of those require the agent to have called a SEPARATE tool earlier
+ * in the conversation and still remember it when writing display code.
+ * Attaching the warning directly alongside the actual field VALUES, in the
+ * exact same tool response the agent is already reading, removes that
+ * reliance on memory entirely. Returns undefined (omitted from the
+ * response) when the content type has no richText/markdown field at all,
+ * so this never adds noise to the common case.
+ */
+export function buildRenderHints(fields: Array<{ slug: string; type: string }> | undefined | null): Record<string, string> | undefined {
+  const hints: Record<string, string> = {}
+  for (const f of fields || []) {
+    if (f.type === "richText") {
+      hints[f.slug] = "This value is a raw HTML string. Render it with a sanitized dangerouslySetInnerHTML (or equivalent HTML-aware renderer) — NEVER as plain text/string interpolation, or visitors will see the literal <p>/<strong>/<ul> tags."
+    } else if (f.type === "markdown") {
+      hints[f.slug] = "This value is raw Markdown source, NOT HTML. Render it through a Markdown renderer (e.g. react-markdown/remark) — showing it as-is displays the raw Markdown syntax to visitors."
+    }
+  }
+  return Object.keys(hints).length > 0 ? hints : undefined
+}
+
 function mapFields(fields: any[]) {
   return fields.map((f) => ({
     name: f.name,
@@ -163,8 +190,11 @@ export async function queryContentForTenant(
         { id: contentTypeSlug, tenantId },
       ],
     },
+    include: { schemaFields: true },
   })
   if (!ct) return null
+
+  const renderHints = buildRenderHints(ct.schemaFields)
 
   const safeLimit = Math.min(limit ?? 10, 100)
   const safePage = Math.max(page ?? 1, 1)
@@ -256,6 +286,7 @@ export async function queryContentForTenant(
 
   return {
     contentType: ct.slug,
+    ...(renderHints ? { _renderHints: renderHints } : {}),
     pagination: {
       page: safePage,
       limit: safeLimit,

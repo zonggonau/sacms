@@ -427,4 +427,31 @@ describe("MCP workspace server route — source contract", () => {
     expect(fnBlock).toMatch(/\$transaction\(async/)
     expect(fnBlock).not.toMatch(/\$transaction\(\s*orderedIds\.map/)
   })
+
+  // ── chatgpt.md round (site-settings follow-up): richText/markdown values
+  // kept rendering as literal tags/raw syntax on generated frontends even
+  // though the rule already existed in list_field_types and the agent
+  // playbook — both require the agent to remember a separate earlier call.
+  // get_content_entry/get_single_type now attach a _renderHints entry
+  // directly alongside the field values themselves, in the same response.
+
+  it("get_content_entry fetches the content type's schemaFields and attaches _renderHints next to the field values", () => {
+    const scoped = toolBlockOf("get_content_entry")
+    expect(scoped).toMatch(/schemaFields:\s*true/)
+    expect(scoped).toMatch(/buildRenderHints\(entry\.contentType\.schemaFields\)/)
+    expect(scoped).toMatch(/_renderHints:\s*renderHints/)
+  })
+
+  it("get_single_type attaches _renderHints computed from its own schemaFields, alongside the returned data", () => {
+    const scoped = toolBlockOf("get_single_type")
+    expect(scoped).toMatch(/buildRenderHints\(st\.schemaFields\)/)
+    expect(scoped).toMatch(/_renderHints:\s*renderHints/)
+  })
+
+  it("the server's top-level instructions also warn about richText/markdown rendering, not just a tool description buried deeper", () => {
+    const instructionsStart = routeSource.indexOf("instructions:")
+    const instructionsBlock = routeSource.slice(instructionsStart, instructionsStart + 4000)
+    expect(instructionsBlock).toMatch(/richText field's value is raw HTML/)
+    expect(instructionsBlock).toMatch(/_renderHints/)
+  })
 })

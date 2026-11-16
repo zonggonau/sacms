@@ -121,4 +121,52 @@ describe("queryContentForTenant", () => {
     expect(tenantDb.$queryRawUnsafe).not.toHaveBeenCalled()
     expect(tenantDb.contentEntry.findMany).toHaveBeenCalled()
   })
+
+  // chatgpt.md: an agent reading content values kept rendering richText/
+  // markdown fields as plain text — attaching a _renderHints entry right
+  // next to the actual values (not just in a separate, easy-to-forget
+  // list_field_types call) removes the reliance on the agent remembering.
+
+  it("attaches _renderHints for every richText/markdown field in the content type's own schema", async () => {
+    tenantDb.contentType.findFirst.mockResolvedValue({
+      id: "ct_1",
+      slug: "menu-kedai",
+      schemaFields: [
+        { slug: "title", type: "text" },
+        { slug: "description", type: "richText" },
+        { slug: "notes", type: "markdown" },
+      ],
+    })
+    tenantDb.contentEntry.findMany.mockResolvedValue([])
+    tenantDb.contentEntry.count.mockResolvedValue(0)
+
+    const result = await queryContentForTenant(tenantDb, "t1", { contentTypeSlug: "menu-kedai" })
+
+    expect(result?._renderHints.description).toMatch(/dangerouslySetInnerHTML/)
+    expect(result?._renderHints.notes).toMatch(/Markdown renderer/)
+    expect(result?._renderHints.title).toBeUndefined()
+  })
+
+  it("omits _renderHints entirely when the content type has no richText/markdown field", async () => {
+    tenantDb.contentType.findFirst.mockResolvedValue({
+      id: "ct_1",
+      slug: "menu-kedai",
+      schemaFields: [{ slug: "title", type: "text" }, { slug: "price", type: "currency" }],
+    })
+    tenantDb.contentEntry.findMany.mockResolvedValue([])
+    tenantDb.contentEntry.count.mockResolvedValue(0)
+
+    const result = await queryContentForTenant(tenantDb, "t1", { contentTypeSlug: "menu-kedai" })
+
+    expect(result).not.toHaveProperty("_renderHints")
+  })
+
+  it("does not throw when the content type row has no schemaFields included (defensive default)", async () => {
+    tenantDb.contentType.findFirst.mockResolvedValue({ id: "ct_1", slug: "menu-kedai" })
+    tenantDb.contentEntry.findMany.mockResolvedValue([])
+    tenantDb.contentEntry.count.mockResolvedValue(0)
+
+    const result = await queryContentForTenant(tenantDb, "t1", { contentTypeSlug: "menu-kedai" })
+    expect(result).not.toHaveProperty("_renderHints")
+  })
 })

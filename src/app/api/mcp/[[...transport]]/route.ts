@@ -56,6 +56,7 @@ import {
   getContentTypeForTenant,
   queryContentForTenant,
   listComponentsForTenant,
+  buildRenderHints,
 } from "@/lib/cms-introspection"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { buildGroupTree } from "@/lib/content-type-groups"
@@ -1184,7 +1185,7 @@ const handler = createMcpHandler(
           where: { id, tenantId: auth.tenantId, deletedAt: null },
           include: {
             contentType: {
-              select: { id: true, name: true, slug: true }
+              select: { id: true, name: true, slug: true, schemaFields: true }
             }
           }
         })
@@ -1196,6 +1197,7 @@ const handler = createMcpHandler(
           }
         }
 
+        const renderHints = buildRenderHints(entry.contentType.schemaFields)
         const result = {
           _id: entry.id,
           _contentType: entry.contentType.slug,
@@ -1205,6 +1207,7 @@ const handler = createMcpHandler(
           _createdAt: entry.createdAt,
           _updatedAt: entry.updatedAt,
           _publishedAt: entry.publishedAt,
+          ...(renderHints ? { _renderHints: renderHints } : {}),
           ...(typeof entry.data === "object" && entry.data !== null ? entry.data : {}),
         }
 
@@ -1423,6 +1426,7 @@ const handler = createMcpHandler(
         if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
         const matchingAssignment = st.tenants.find(t => t.locale === targetLocale) || st.tenants[0]
+        const renderHints = buildRenderHints(st.schemaFields)
 
         const result = {
           singleType: {
@@ -1439,6 +1443,7 @@ const handler = createMcpHandler(
             })),
           },
           locale: matchingAssignment?.locale || targetLocale,
+          ...(renderHints ? { _renderHints: renderHints } : {}),
           data: matchingAssignment?.data || {}
         }
 
@@ -4362,7 +4367,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.2.0" },
+    serverInfo: { name: "sacms-mcp", version: "4.3.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
@@ -4373,7 +4378,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy to staging → verify → promote → verify production). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. IMPORTANT: deploy_to_sacms/deploy_website_patch deploy to a STAGING candidate, NOT the live domain — a READY build says nothing about runtime correctness. promote_deployment is the ONLY way a candidate reaches production: it runs your HTTP checks against the candidate first and only promotes if they all pass, refusing with CHECKS_FAILED otherwise (use get_deployment_runtime_logs to diagnose a failure — build logs alone won't show a runtime HTTP 500). rollback_website is the one exception that still deploys straight to production, since it's the emergency-recovery path. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically.",
+      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy to staging → verify → promote → verify production). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. IMPORTANT: deploy_to_sacms/deploy_website_patch deploy to a STAGING candidate, NOT the live domain — a READY build says nothing about runtime correctness. promote_deployment is the ONLY way a candidate reaches production: it runs your HTTP checks against the candidate first and only promotes if they all pass, refusing with CHECKS_FAILED otherwise (use get_deployment_runtime_logs to diagnose a failure — build logs alone won't show a runtime HTTP 500). rollback_website is the one exception that still deploys straight to production, since it's the emergency-recovery path. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically. A richText field's value is raw HTML and a markdown field's value is raw Markdown source — query_content/get_content_entry/get_single_type attach a _renderHints entry next to any such field, spelling out exactly how to render it; never interpolate either one as plain text, or visitors see the literal tags/syntax.",
   }
 )
 
