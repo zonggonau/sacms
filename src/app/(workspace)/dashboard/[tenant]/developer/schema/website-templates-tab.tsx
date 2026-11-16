@@ -492,7 +492,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
           </CardContent>
         </Card>
       ) : viewMode === "card" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {visibleTemplates.map((t) => (
             <Card key={t.id} className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden flex flex-col">
               <div className="relative aspect-[4/3] w-full bg-muted/40 border-b border-border/60 overflow-hidden">

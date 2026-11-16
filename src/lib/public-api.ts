@@ -30,6 +30,13 @@ export const getLandingData = cache(async function getLandingData() {
       where: { tenantId: null }
     })
 
+    const websiteTemplateRows = await db.websiteTemplate.findMany({
+      where: { published: true },
+      select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
+      orderBy: { createdAt: "desc" },
+      take: 8,
+    })
+
     const contentEntries = await db.contentEntry.findMany({
       where: { tenantId: globalWorkspaceId }
     })
@@ -147,6 +154,14 @@ export const getLandingData = cache(async function getLandingData() {
         : (lp.blogs && lp.blogs.length > 0 ? lp.blogs : def["sacms-blogs"] || []),
       testimonials: (lp.testimonials && lp.testimonials.length > 0) ? lp.testimonials : (def["sacms-testimonials"] || []),
       sectors: (lp.sectors && lp.sectors.length > 0) ? lp.sectors : (def["sacms-sectors"] || []),
+      websiteTemplates: websiteTemplateRows.map(t => ({
+        id: t.id,
+        name: t.name,
+        slug: t.slug,
+        icon: t.icon,
+        description: t.description || "",
+        demoUrl: t.demoUrl || null,
+      })),
       localPride: lp.local_pride || def["sacms-local-pride"] || null,
       cta: {
         title: lp.cta_banner?.title || def["sacms-cta"]?.title || "",
@@ -187,6 +202,7 @@ function getDefaultData() {
     blogs: landing["sacms-blogs"] || [],
     testimonials: landing["sacms-testimonials"],
     sectors: landing["sacms-sectors"],
+    websiteTemplates: [],
     localPride: landing["sacms-local-pride"],
     cta: landing["sacms-cta"],
     footer: landing["sacms-footer"],

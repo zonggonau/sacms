@@ -90,6 +90,15 @@ export interface SectorItem {
   desc?: string
 }
 
+export interface WebsiteTemplateItem {
+  id: string
+  name: string
+  slug: string
+  icon: string
+  description: string
+  demoUrl: string | null
+}
+
 export interface LocalPrideData {
   badge?: string
   title: string
@@ -164,6 +173,7 @@ export interface LandingData {
   testimonials: TestimonialItem[]
   whatsapp: any
   sectors: SectorItem[]
+  websiteTemplates: WebsiteTemplateItem[]
   localPride: LocalPrideData | null
   cta: CtaData | null
   footer: FooterData | null
