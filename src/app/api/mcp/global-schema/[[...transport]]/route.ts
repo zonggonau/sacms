@@ -139,6 +139,11 @@ const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
   id: z.string(), name: z.string(), slug: z.string(), schemaTemplateId: z.string(), icon: z.string(),
   description: z.string().nullable(), files: z.array(z.object({ path: z.string(), content: z.string() })),
   published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+  // chatgpt.md P1: pass THIS back as expectedVersion, not `updatedAt` —
+  // `updatedAt` is bumped by every redeploy (even a metadata-only one with
+  // no source change), while sourceVersion only moves when files/schema
+  // genuinely change. See update_website_template's CONFLICT check.
+  sourceVersion: z.string(),
   demoVercelProjectId: z.string().nullable(), demoUrl: z.string().nullable(),
   demoDeployedAt: z.string().nullable(), demoDeploymentId: z.string().nullable(),
 }
@@ -146,6 +151,7 @@ const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
 function serializeWebsiteTemplate(t: {
   createdAt: Date
   updatedAt: Date
+  sourceVersion: Date
   demoDeployedAt: Date | null
   [key: string]: unknown
 }) {
@@ -153,6 +159,7 @@ function serializeWebsiteTemplate(t: {
     ...t,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
+    sourceVersion: t.sourceVersion.toISOString(),
     demoDeployedAt: t.demoDeployedAt ? t.demoDeployedAt.toISOString() : null,
   }
 }
@@ -315,6 +322,9 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
+        // No sourceVersion here deliberately — this listing is metadata-only
+        // (no schema blob either); get_schema_template is the canonical
+        // place to read the version to use for a later expectedVersion.
         const rows = await db.schemaTemplate.findMany({
           orderBy: { createdAt: "desc" },
           select: {
@@ -346,6 +356,10 @@ const handler = createMcpHandler(
           id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
           description: z.string().nullable(), schema: z.any(), published: z.boolean(),
           demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+          // chatgpt.md P1: pass THIS back as update_schema_template's
+          // expectedVersion, not `updatedAt` (which also moves on the
+          // one-time demoTenantId write a first demo deploy makes).
+          sourceVersion: z.string(),
         },
       },
       async ({ id }) => {
@@ -354,7 +368,7 @@ const handler = createMcpHandler(
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!template) return notFound("Schema Template", id)
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -395,6 +409,7 @@ const handler = createMcpHandler(
           id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
           description: z.string().nullable(), schema: z.any(), published: z.boolean(),
           demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+          sourceVersion: z.string(),
         },
       },
       async ({ name, category, icon, description, schema, published }) => {
@@ -420,7 +435,7 @@ const handler = createMcpHandler(
             published: published ?? false,
           },
         })
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -452,13 +467,14 @@ const handler = createMcpHandler(
             "too (template-local slugs, Content Types only).",
           ),
           published: z.boolean().optional(),
-          expectedVersion: z.string().optional().describe("The `updatedAt` you last read for this template (from get_schema_template). If someone else updated it since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
+          expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
         },
         outputSchema: {
           id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
           description: z.string().nullable(), schema: z.any(), published: z.boolean(),
           demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+          sourceVersion: z.string(),
         },
       },
       async ({ id, name, category, icon, description, schema, published, expectedVersion, confirmSharedUpdate }) => {
@@ -468,10 +484,10 @@ const handler = createMcpHandler(
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Schema Template", id)
 
-        if (expectedVersion && existing.updatedAt.toISOString() !== expectedVersion) {
+        if (expectedVersion && existing.sourceVersion.toISOString() !== expectedVersion) {
           return {
-            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.updatedAt.toISOString()}. Panggil get_schema_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
-            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.updatedAt.toISOString(), message: "This template was updated since expectedVersion was read." },
+            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.sourceVersion.toISOString()}. Panggil get_schema_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
+            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.sourceVersion.toISOString(), message: "This template's schema was changed since expectedVersion was read." },
             isError: true,
           }
         }
@@ -513,9 +529,14 @@ const handler = createMcpHandler(
             ...(description !== undefined ? { description } : {}),
             ...(schemaData !== undefined ? { schema: schemaData } : {}),
             ...(published !== undefined ? { published } : {}),
+            // Only a genuine `schema` change moves sourceVersion — a later
+            // metadata-only edit, or the one-time demoTenantId write a first
+            // demo deploy makes, must never invalidate an expectedVersion
+            // read against THIS change.
+            ...(schemaData !== undefined ? { sourceVersion: new Date() } : {}),
           },
         })
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString() }
+        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -894,7 +915,7 @@ const handler = createMcpHandler(
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
           published: z.boolean().optional(),
-          expectedVersion: z.string().optional().describe("The `updatedAt` you last read for this template (from get_website_template). If someone else updated it since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
+          expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
         },
         outputSchema: {
@@ -920,10 +941,10 @@ const handler = createMcpHandler(
         })
         if (!existing) return notFound("Website Template", id)
 
-        if (expectedVersion && existing.updatedAt.toISOString() !== expectedVersion) {
+        if (expectedVersion && existing.sourceVersion.toISOString() !== expectedVersion) {
           return {
-            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.updatedAt.toISOString()}. Panggil get_website_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
-            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.updatedAt.toISOString(), message: "This template was updated since expectedVersion was read." },
+            content: [{ type: "text" as const, text: `⚠️ Conflict: '${existing.name}' sudah diubah sejak ${expectedVersion} — versi saat ini ${existing.sourceVersion.toISOString()}. Panggil get_website_template lagi untuk melihat versi terbaru sebelum menimpa perubahan yang belum kamu lihat.` }],
+            structuredContent: { ok: false, code: "CONFLICT", currentVersion: existing.sourceVersion.toISOString(), message: "This template's files/schema were changed since expectedVersion was read." },
             isError: true,
           }
         }
@@ -996,6 +1017,11 @@ const handler = createMcpHandler(
               ...(description !== undefined ? { description } : {}),
               ...(filesData !== undefined ? { files: filesData } : {}),
               ...(published !== undefined ? { published } : {}),
+              // Only a genuine source change moves sourceVersion — the
+              // demo redeploy triggered below (files/schema) or any later
+              // metadata-only edit must never invalidate an expectedVersion
+              // read against THIS change.
+              ...(filesData !== undefined || schemaUpdated ? { sourceVersion: new Date() } : {}),
             },
           })
         })
@@ -1106,9 +1132,19 @@ const handler = createMcpHandler(
 
         const verification = existing.demoUrl ? await verifyDemoUrl(existing.demoUrl) : { verified: false, error: "No demo URL recorded." }
 
+        // chatgpt.md P0: a build this ERRORED never gets promoted onto the
+        // alias — the alias just keeps serving whatever deployment was
+        // last successful. That means `verification.verified` above can be
+        // `true` purely because an OLDER build still works, even while the
+        // LATEST build is broken. Reporting `verified: true` in that case
+        // would tell a caller the demo reflects their latest change when it
+        // actually doesn't — the build's own terminal state must win over
+        // a URL check that may be looking at stale content.
+        const buildFailed = !!status?.state && /ERROR|FAILED/i.test(status.state)
+
         let buildErrorLines: string[] | undefined
         const deploymentIdForLogs = existing.demoDeploymentId || (status as any)?.id
-        if (status?.state && /ERROR|FAILED/i.test(status.state) && deploymentIdForLogs) {
+        if (buildFailed && deploymentIdForLogs) {
           const logs = await getDeploymentBuildLogs(deploymentIdForLogs).catch(() => null)
           if (logs) buildErrorLines = logs.errorLines.slice(-20)
         }
@@ -1118,12 +1154,16 @@ const handler = createMcpHandler(
           demoUrl: existing.demoUrl,
           deploymentId: existing.demoDeploymentId,
           state: status?.state,
-          verified: verification.verified,
-          verificationError: verification.error,
+          verified: buildFailed ? false : verification.verified,
+          verificationError: buildFailed
+            ? `Latest build ${status?.state}.${verification.verified ? " The URL above is still serving a PREVIOUS successful deployment, not this one." : ""} Check buildErrorLines.`
+            : verification.error,
           buildErrorLines,
-          message: verification.verified
-            ? `Demo is live and rendering at ${existing.demoUrl}.`
-            : `Demo is NOT currently verified: ${verification.error || "unknown reason"}. Call redeploy_website_template_demo to try a fresh deploy.`,
+          message: buildFailed
+            ? `Latest build FAILED (${status?.state}) — this demo does NOT reflect the latest changes${verification.verified ? ", even though its URL still responds (serving an older deployment)" : ""}. Check buildErrorLines, fix the source, and call redeploy_website_template_demo.`
+            : verification.verified
+              ? `Demo is live and rendering at ${existing.demoUrl}.`
+              : `Demo is NOT currently verified: ${verification.error || "unknown reason"}. Call redeploy_website_template_demo to try a fresh deploy.`,
         }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -1173,7 +1213,7 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.8.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.9.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
@@ -1206,7 +1246,10 @@ const handler = createMcpHandler(
       "`demoDeployment` reports `status` (ok/failed/skipped), `verified` (SaCMS actually fetched the URL and " +
       "confirmed it renders — Vercel accepting the build is NOT the same as it working), and `error`/" +
       "`verificationError` when something's wrong; `status: \"ok\"` alone doesn't mean verified is true, check " +
-      "both before telling a human the preview is ready. A metadata-only update (no files/changedFiles/schema) " +
+      "both before telling a human the preview is ready. `verified` reflects the LATEST build specifically — a " +
+      "build that errors reports `status: \"failed\"`/`verified: false` even when the demo URL still happens to " +
+      "render a previous successful deployment (that staleness is called out explicitly in `verificationError`, " +
+      "never silently reported as success). A metadata-only update (no files/changedFiles/schema) " +
       "returns `demoDeployment.status: \"skipped\"` and does not redeploy. For a TARGETED revision of an " +
       "existing template (\"ubah warna header\"), call get_website_template to see the current bundle, then " +
       "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`. " +
@@ -1214,16 +1257,23 @@ const handler = createMcpHandler(
       "Content API calls (collection list, single entry, a populated relation) — read it before writing any " +
       "fetch call, and note it also explains why the demo preview shows media/relation/component/repeater " +
       "fields EMPTY (the demo fixture deliberately never seeds those). get_website_template_demo_status reads " +
-      "a demo's current build state and does a FRESH live check of its URL without triggering any deploy; " +
+      "a demo's current build state and does a FRESH live check of its URL without triggering any deploy, and " +
+      "the same build-vs-URL distinction applies there: `verified` is forced false whenever the latest build " +
+      "errored, regardless of what the URL itself currently serves. " +
       "redeploy_website_template_demo re-deploys using the template's already-stored files/schema — use it to " +
       "retry after a failed build instead of resending files through update_website_template. " +
-      "update_schema_template/update_website_template both accept expectedVersion (the `updatedAt` you last " +
-      "read) and reject with CONFLICT if the row changed since — re-read and retry on that. A structural " +
+      "update_schema_template/update_website_template both accept expectedVersion — pass the `sourceVersion` " +
+      "you last read (NOT `updatedAt`, which also moves on every redeploy/demo-metadata write even with no " +
+      "source change) — and reject with CONFLICT if files/schema changed since. A structural " +
       "`schema` change to either tool refuses with HAS_DEPENDENTS when another Website Template shares that " +
       "same backing Schema Template, unless confirmSharedUpdate/confirmCascade (as applicable) is set after " +
       "confirming with the user what else will be affected. create_website_template's dryRun: true returns " +
       "{ mode: \"dry_run\", ok, valid, issues, warnings } — a DIFFERENT shape from a real create's response, " +
-      "don't expect id/slug/files/demoDeployment on a dry run. Every demo deploy injects the three fixed " +
+      "don't expect id/slug/files/demoDeployment on a dry run; dryRun/create/update also validate every " +
+      "field's `type` against the real 36-type list (list_field_types) and every `dummyData` entry's values " +
+      "against the same per-type rules real content creation uses — a typo'd field type or a value that would " +
+      "genuinely be rejected at import time (e.g. a select value outside its own options.choices) is flagged " +
+      "here too, not just silently accepted. Every demo deploy injects the three fixed " +
       "NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose " +
       "frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom " +
       "name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, " +

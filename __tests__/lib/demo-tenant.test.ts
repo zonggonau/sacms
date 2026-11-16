@@ -30,11 +30,13 @@ vi.mock("@/lib/content/entry-service", () => ({
 
 const contentTypeFindMany = vi.fn().mockResolvedValue([])
 const singleTypeFindMany = vi.fn().mockResolvedValue([])
-const tenantSingleTypeAssignmentCreate = vi.fn().mockResolvedValue({})
+const tenantSingleTypeAssignmentUpsert = vi.fn().mockResolvedValue({})
+const tenantLocaleCreate = vi.fn().mockResolvedValue({})
 const tenantDbMock = {
   contentType: { findMany: contentTypeFindMany },
   singleType: { findMany: singleTypeFindMany },
-  tenantSingleTypeAssignment: { create: tenantSingleTypeAssignmentCreate },
+  tenantSingleTypeAssignment: { upsert: tenantSingleTypeAssignmentUpsert },
+  tenantLocale: { create: tenantLocaleCreate },
 }
 
 const { ensureDemoTenantForSchemaTemplate } = await import("@/lib/infrastructure/demo-tenant")
@@ -81,6 +83,13 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
       where: { id: "st_1" },
       data: { demoTenantId: "demo-tenant-new" },
     })
+    // chatgpt.md P0: without this, createContentEntry's resolveWriteLocale
+    // falls back to "en" (no TenantLocale enabled for the tenant) while
+    // every public read path defaults to "id" — a locale mismatch that
+    // made every seeded sample entry invisible through the demo API.
+    expect(tenantLocaleCreate).toHaveBeenCalledWith({
+      data: { tenantId: "demo-tenant-new", locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
+    })
   })
 
   it("retries with a suffixed slug when the preferred demo-<slug> is already taken", async () => {
@@ -121,7 +130,7 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     expect(input.data).not.toHaveProperty("cover") // structural field, skipped
   })
 
-  it("seeds one TenantSingleTypeAssignment row per single type", async () => {
+  it("seeds one TenantSingleTypeAssignment row per single type via upsert", async () => {
     tenantFindUnique.mockResolvedValue(null)
     tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
     singleTypeFindMany.mockResolvedValue([
@@ -130,9 +139,17 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
 
     await ensureDemoTenantForSchemaTemplate(schemaTemplate)
 
-    expect(tenantSingleTypeAssignmentCreate).toHaveBeenCalledWith(
+    // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
+    // { tenantId } }` already inserts a TenantSingleTypeAssignment row for
+    // this exact [tenantId, singleTypeId, locale] key — a plain `.create()`
+    // here threw P2002 (silently swallowed), so the real sample data/
+    // publishedAt never actually landed and the demo API 404'd as "not
+    // published". upsert fixes it regardless of which call ran first.
+    expect(tenantSingleTypeAssignmentUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ singleTypeId: "st_home", enabled: true, data: { headline: expect.any(String) } }),
+        where: { tenantId_singleTypeId_locale: { tenantId: "demo-tenant-new", singleTypeId: "st_home", locale: "id" } },
+        create: expect.objectContaining({ singleTypeId: "st_home", enabled: true, data: { headline: expect.any(String) }, publishedAt: expect.any(Date) }),
+        update: expect.objectContaining({ enabled: true, data: { headline: expect.any(String) }, publishedAt: expect.any(Date) }),
       }),
     )
   })

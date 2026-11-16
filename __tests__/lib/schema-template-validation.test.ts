@@ -150,4 +150,78 @@ describe("validateBundleReferences", () => {
     const bundle = { groups: [{ slug: "parent", name: "Parent" }, { slug: "child", name: "Child", parentSlug: "parent" }] }
     expect(validateBundleReferences(bundle)).toEqual([])
   })
+
+  // chatgpt.md P1: a fictional field type (e.g. "nonsense") used to pass
+  // straight through — schemaTemplateFieldSchema's own `type` is a bare
+  // z.string(), and the real content-entry validator's switch statement
+  // falls back to z.any() for an unrecognized type too, so nothing
+  // anywhere ever rejected it.
+
+  it("flags a field whose type isn't one of the real 36 field types", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "nonsense", slug: "whatever" }] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].type", message: expect.stringContaining("nonsense") }])
+  })
+
+  it("does not flag any of the real field types", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "richText", slug: "body" }, { type: "dateRange", slug: "window" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  // chatgpt.md P1: dummyData was never validated at all — a select value
+  // outside its own options.choices passed silently, even though that
+  // exact value would be rejected by real content creation's own
+  // generateContentSchema. Reusing that same validator here instead of
+  // inventing new, possibly-stricter rules.
+
+  it("flags a dummyData select value outside its own options.choices", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "select", slug: "status", options: { choices: [{ label: "Live", value: "live" }] } }],
+        dummyData: [{ status: "not-a-real-choice" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].dummyData[0].status")).toBe(true)
+  })
+
+  it("passes a dummyData value that IS one of its field's options.choices", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "select", slug: "status", options: { choices: [{ label: "Live", value: "live" }] } }],
+        dummyData: [{ status: "live" }],
+      }],
+    }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("does NOT flag a number in a text field's dummyData — real content creation coerces it to a string too, by design", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "text", slug: "title" }],
+        dummyData: [{ title: 42 }],
+      }],
+    }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags an invalid email in a dummyData entry", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "contacts",
+        fields: [{ type: "email", slug: "contactEmail" }],
+        dummyData: [{ contactEmail: "not-an-email" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].dummyData[0].contactEmail")).toBe(true)
+  })
+
+  it("skips dummyData validation entirely when a model has none", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "title" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
 })

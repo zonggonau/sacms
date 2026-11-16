@@ -863,6 +863,12 @@ model SchemaTemplate {
   createdBy   String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  // chatgpt.md P1: `updatedAt` is bumped by Prisma on ANY update — including
+  // ensureDemoTenantForSchemaTemplate's one-time demoTenantId write — not
+  // just a genuine `schema` content change. expectedVersion/CONFLICT checks
+  // compare against THIS field instead, which is only ever set explicitly
+  // when `schema` itself actually changes (see update_schema_template).
+  sourceVersion DateTime @default(now())
 
   websiteTemplates WebsiteTemplate[]
 
@@ -904,6 +910,15 @@ model WebsiteTemplate {
   createdBy        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  // chatgpt.md P1: `updatedAt` is bumped by Prisma on ANY update, including
+  // deployWebsiteTemplateDemo's own demo*/metadata-only writes on every
+  // redeploy — so a redeploy with no source change (or redeploy_website_
+  // template_demo, which never touches files/schema at all) silently
+  // invalidated any expectedVersion an agent had just read, rejecting its
+  // next genuine edit as CONFLICT. sourceVersion is only ever set explicitly
+  // when `files`/`schema` actually changes (see update_website_template) —
+  // expectedVersion/CONFLICT checks compare against THIS field instead.
+  sourceVersion    DateTime @default(now())
 
   deployedTenants  Tenant[]
 

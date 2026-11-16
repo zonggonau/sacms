@@ -196,7 +196,11 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     for (const tool of ["update_schema_template", "update_website_template"]) {
       const scoped = toolBlockOf(tool)
       expect(scoped, `${tool} should accept expectedVersion`).toMatch(/expectedVersion: z\.string\(\)\.optional\(\)/)
-      expect(scoped, `${tool} should compare it against the live row`).toMatch(/existing\.updatedAt\.toISOString\(\) !== expectedVersion/)
+      // chatgpt.md P1: compares sourceVersion, NOT updatedAt — updatedAt
+      // also moves on every redeploy/demo-metadata write (website) or the
+      // one-time demoTenantId bookkeeping write (schema), neither of which
+      // is a genuine source change.
+      expect(scoped, `${tool} should compare sourceVersion, not updatedAt`).toMatch(/existing\.sourceVersion\.toISOString\(\) !== expectedVersion/)
       expect(scoped, `${tool} should reject with CONFLICT`).toMatch(/code: "CONFLICT"/)
     }
   })
@@ -277,5 +281,39 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
       "utf-8",
     )
     expect(demoSource).toMatch(/attempt < 2/)
+  })
+
+  // ── chatgpt.md round ────────────────────────────────────────────────────────
+
+  it("deployWebsiteTemplateDemo checks the triggered build's OWN terminal state before trusting the alias/URL check, so a FAILED build can't be masked by a stale previous deployment still rendering fine", () => {
+    const demoSource = readFileSync(
+      join(__dirname, "../../src/lib/infrastructure/deploy-website-template-demo.ts"),
+      "utf-8",
+    )
+    expect(demoSource).toMatch(/waitForBuildTerminal/)
+    expect(demoSource).toMatch(/getDeploymentStatus/)
+    expect(demoSource).toMatch(/verified: false,[\s\S]*?PREVIOUS successful deployment/)
+  })
+
+  it("get_website_template_demo_status forces verified:false when the latest build state is ERROR/FAILED, instead of trusting a URL check that may be reading a previous successful deployment", () => {
+    const scoped = toolBlockOf("get_website_template_demo_status")
+    expect(scoped).toMatch(/const buildFailed = !!status\?\.state && \/ERROR\|FAILED\/i\.test\(status\.state\)/)
+    expect(scoped).toMatch(/verified: buildFailed \? false : verification\.verified/)
+  })
+
+  it("WebsiteTemplate/SchemaTemplate expose sourceVersion (bumped only on a genuine files/schema change) for expectedVersion, separate from updatedAt (which also moves on every redeploy/demo-metadata write)", () => {
+    expect(routeSource).toMatch(/sourceVersion: z\.string\(\)/)
+    const updateWebsite = toolBlockOf("update_website_template")
+    expect(updateWebsite).toMatch(/\.\.\.\(filesData !== undefined \|\| schemaUpdated \? \{ sourceVersion: new Date\(\) \} : \{\}\)/)
+    const updateSchema = toolBlockOf("update_schema_template")
+    expect(updateSchema).toMatch(/\.\.\.\(schemaData !== undefined \? \{ sourceVersion: new Date\(\) \} : \{\}\)/)
+  })
+
+  it("create_website_template's dryRun and real create/update validate field types against the real 36-type list and dummyData values against the same per-type rules real content creation uses", () => {
+    const validationSource = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(validationSource).toMatch(/import \{ FIELD_TYPES \} from "@\/lib\/field-types"/)
+    expect(validationSource).toMatch(/import \{ generateContentSchema \} from "@\/lib\/content-validations"/)
+    expect(validationSource).toMatch(/VALID_FIELD_TYPES\.has\(f\.type\)/)
+    expect(validationSource).toMatch(/function checkDummyData/)
   })
 })

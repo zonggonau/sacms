@@ -20,10 +20,18 @@ vi.mock("@/lib/database", () => ({
 const deployToVercel = vi.fn()
 const ensureDemoSubdomain = vi.fn()
 const getProjectPrimaryDomain = vi.fn()
+// Reset to an immediately-terminal READY build in beforeEach below, so
+// every existing test (written before chatgpt.md's build-status poll
+// existed) keeps passing with no extra delay — only the tests that
+// specifically exercise the build-failure/pending path override this.
+const getDeploymentStatus = vi.fn()
+const getDeploymentBuildLogs = vi.fn()
 vi.mock("@/lib/vercel-client", () => ({
   deployToVercel: (...args: any[]) => deployToVercel(...args),
   ensureDemoSubdomain: (...args: any[]) => ensureDemoSubdomain(...args),
   getProjectPrimaryDomain: (...args: any[]) => getProjectPrimaryDomain(...args),
+  getDeploymentStatus: (...args: any[]) => getDeploymentStatus(...args),
+  getDeploymentBuildLogs: (...args: any[]) => getDeploymentBuildLogs(...args),
 }))
 
 const resolveWebsiteTemplateEnvVars = vi.fn().mockResolvedValue([])
@@ -57,6 +65,13 @@ describe("deployWebsiteTemplateDemo", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ensureDemoTenantForSchemaTemplate.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
+    // Re-applied every test (not just once at module scope) — clearAllMocks
+    // keeps whatever implementation a PRIOR test last set via a plain
+    // (non-Once) mockResolvedValue, so a test that overrides this to
+    // simulate a stuck build would otherwise leak that into every test
+    // that runs after it in the file.
+    getDeploymentStatus.mockResolvedValue({ state: "READY", deploymentUrl: "", productionUrl: null })
+    getDeploymentBuildLogs.mockResolvedValue({ lines: [], errorLines: [] })
   })
 
   const originalFetch = global.fetch
@@ -113,6 +128,45 @@ describe("deployWebsiteTemplateDemo", () => {
     expect(result.verified).toBe(false)
     expect(result.verificationError).toMatch(/error\/protection page/)
     expect(global.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  // chatgpt.md P0: the demo deploy used to check ONLY the alias URL, never
+  // the build this call itself just triggered — a build Vercel reports
+  // ERROR never gets promoted onto the alias, so the alias kept serving the
+  // PREVIOUS successful deployment and the URL check came back healthy,
+  // reporting verified: true for a build that had actually failed.
+  it("reports a FAILED build as verified:false immediately, without ever checking the (possibly stale) alias URL", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "BUILDING", projectId: "prj_1" })
+    getProjectPrimaryDomain.mockResolvedValue("https://demo-x.sites.sacms.cloud")
+    getDeploymentStatus.mockResolvedValueOnce({ state: "ERROR", deploymentUrl: "", productionUrl: null })
+    getDeploymentBuildLogs.mockResolvedValueOnce({ lines: ["Build started", "Error: Unexpected token"], errorLines: ["Error: Unexpected token"] })
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html>still the old good deploy</html>" }) as any
+
+    const result = await deployWebsiteTemplateDemo(websiteTemplate)
+
+    expect(result.verified).toBe(false)
+    expect(result.error).toMatch(/Build ERROR.*Unexpected token/)
+    expect(result.verificationError).toMatch(/PREVIOUS successful deployment/)
+    expect(global.fetch).not.toHaveBeenCalled()
+  })
+
+  // chatgpt.md P0, same root cause: a build still mid-flight past the poll
+  // budget must not be reported verified just because the URL happens to
+  // respond right now — it may still be answering for the PREVIOUS build.
+  it("treats a build still BUILDING after the poll budget as inconclusive, not verified", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://x.vercel.app", state: "BUILDING", projectId: "prj_1" })
+    getProjectPrimaryDomain.mockResolvedValue("https://demo-x.sites.sacms.cloud")
+    getDeploymentStatus.mockResolvedValue({ state: "BUILDING", deploymentUrl: "", productionUrl: null })
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html>maybe the old deploy</html>" }) as any
+
+    vi.useFakeTimers()
+    const pending = deployWebsiteTemplateDemo(websiteTemplate)
+    await vi.advanceTimersByTimeAsync(3000 * 15) // the full build-poll budget, never reaching a terminal state
+    const result = await pending
+    vi.useRealTimers()
+
+    expect(result.verified).toBe(false)
+    expect(result.verificationError).toMatch(/still BUILDING after the verification window/)
   })
 
   it("resolves env vars against the demo tenant, not any real tenant", async () => {

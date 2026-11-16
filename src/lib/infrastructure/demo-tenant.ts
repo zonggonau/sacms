@@ -152,7 +152,20 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
     select: { id: true, slug: true },
   })
 
+  // chatgpt.md P0: a brand-new tenant has no TenantLocale row at all — every
+  // normal onboarding flow leaves that to a staff member, but this demo
+  // tenant has none. createContentEntry's resolveWriteLocale falls back to
+  // "en" when no TenantLocale is enabled for a tenant, while every public
+  // read path (content list, single type) defaults to "id" when none is
+  // configured — so seeded entries landed in a locale NOTHING ever reads
+  // back, and the demo API reported 0 entries for every Content Type
+  // (confirmed live). Seed the one default locale every other read/write
+  // path already assumes.
   const tenantDb = await getTenantDb(tenant.slug)
+  await tenantDb.tenantLocale.create({
+    data: { tenantId: tenant.id, locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
+  })
+
   await materializeSchemaIntoTenant(tenantDb, tenant.id, (schemaTemplate.schema as SchemaBlob) || {})
 
   await seedSampleContent(tenantDb, tenant.id, tenant.slug)
@@ -186,12 +199,27 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
 
   for (const singleType of singleTypes) {
     const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
+    // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
+    // { tenantId } }` on each SingleType ALREADY inserts a
+    // TenantSingleTypeAssignment row (empty data, publishedAt: null,
+    // locale defaulting to "id") — the exact same [tenantId, singleTypeId,
+    // locale] unique key this used to `.create()` again. That threw a
+    // P2002 every time, silently swallowed by the catch below, so the real
+    // sample data/publishedAt here never actually got applied and the
+    // single type's demo API call 404'd as "not published" (confirmed
+    // live). upsert instead of create, onto whichever row already exists.
     await tenantDb.tenantSingleTypeAssignment
-      .create({
-        data: {
+      .upsert({
+        where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId: singleType.id, locale: "id" } },
+        create: {
           tenantId,
           singleTypeId: singleType.id,
           locale: "id",
+          enabled: true,
+          data: buildSampleData(fields, 0) as any,
+          publishedAt: new Date(),
+        },
+        update: {
           enabled: true,
           data: buildSampleData(fields, 0) as any,
           publishedAt: new Date(),

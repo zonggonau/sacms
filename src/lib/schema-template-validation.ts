@@ -9,6 +9,16 @@
  * unnecessary for plain functions with no such registration to intercept).
  */
 
+import { FIELD_TYPES } from "@/lib/field-types"
+import { generateContentSchema } from "@/lib/content-validations"
+
+/** The 36 real field-type slugs — schemaTemplateFieldSchema's own `type` is
+ *  a bare `z.string()` (needed since this bundle shape is reused for
+ *  singleTypes/components, which have their own type rules elsewhere), so
+ *  a typo'd/fictional type (e.g. "nonsense") passes zod untouched. Checked
+ *  here instead, against the SAME list list_field_types documents. */
+const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
+
 /** `["contentTypes", 2, "fields", 4, "options", "choices"]` -> "contentTypes[2].fields[4].options.choices" — the exact bracket-index form an agent needs to locate the offending field itself, not just a flattened message. */
 export function formatZodPath(path: PropertyKey[]): string {
   return path.reduce<string>((acc, seg) => {
@@ -26,6 +36,8 @@ export interface ValidationIssue {
 export interface BundleFieldRef {
   type?: string
   slug?: string
+  name?: string
+  required?: boolean
   relationSlug?: string
   options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; choices?: unknown[] } | null
 }
@@ -34,6 +46,8 @@ export interface BundleModelRef {
   fields?: BundleFieldRef[]
   /** Content Types only — a synthetic, template-local key into `bundle.groups[].slug` (see schema-template.ts's own doc comment). Ignored for singleTypes/components. */
   group?: string
+  /** Sample rows shown in the dashboard/MCP catalog — validated against the SAME per-type value rules real content creation uses (see checkDummyData below). */
+  dummyData?: Record<string, unknown>[]
 }
 export interface BundleGroupRef {
   slug: string
@@ -83,6 +97,9 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
   const checkFields = (fields: BundleFieldRef[] | undefined, basePath: string) => {
     (fields || []).forEach((f, idx) => {
       const fieldPath = `${basePath}.fields[${idx}]`
+      if (f.type && !VALID_FIELD_TYPES.has(f.type)) {
+        issues.push({ path: `${fieldPath}.type`, message: `'${f.type}' is not a real field type. Call list_field_types for the official list of 36 types — a typo'd/fictional type has no renderer anywhere and silently falls back to accepting any value.` })
+      }
       if (f.type === "relation") {
         const targetModel = f.options?.targetModel
         // "member" relates to the tenant's own end-user table, which
@@ -118,5 +135,42 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
   ;(bundle.singleTypes || []).forEach((st, i) => checkFields(st.fields, `singleTypes[${i}]`))
   ;(bundle.components || []).forEach((c, i) => checkFields(c.fields, `components[${i}]`))
 
+  ;(bundle.contentTypes || []).forEach((ct, i) => checkDummyData(ct, `contentTypes[${i}]`, issues))
+  ;(bundle.singleTypes || []).forEach((st, i) => checkDummyData(st, `singleTypes[${i}]`, issues))
+  ;(bundle.components || []).forEach((c, i) => checkDummyData(c, `components[${i}]`, issues))
+
   return issues
+}
+
+/**
+ * Runs each dummyData row through the SAME per-field-type zod validator
+ * real content creation uses (generateContentSchema, entry-service.ts's
+ * createContentEntry) — so a value that would genuinely be rejected at
+ * import time (a select value outside its own options.choices, an invalid
+ * email, a number field that can't be coerced) is flagged here too, not
+ * silently accepted. Deliberately `enforceRequired: false`: dummyData is
+ * illustrative sample data, not a real entry, so a field being OMITTED is
+ * not itself an issue — only a VALUE that's actually present and invalid
+ * for its type is. (A scalar coerced into a text field, e.g. a number
+ * where the sample meant a string, is likewise NOT flagged — that's
+ * exactly what real content creation does too: text fields coerce any
+ * scalar via String(val), by design, so flagging it here would disagree
+ * with what actually happens on import.)
+ */
+function checkDummyData(model: BundleModelRef, basePath: string, issues: ValidationIssue[]): void {
+  if (!model.dummyData || model.dummyData.length === 0) return
+  const fields = (model.fields || [])
+    .filter((f): f is BundleFieldRef & { slug: string; type: string } => !!f.slug && !!f.type)
+    .map((f) => ({ slug: f.slug, name: f.name || f.slug, type: f.type, required: false, options: f.options }))
+  if (fields.length === 0) return
+
+  const schema = generateContentSchema(fields, { enforceRequired: false })
+  model.dummyData.forEach((entry, i) => {
+    const result = schema.safeParse(entry)
+    if (!result.success) {
+      result.error.issues.forEach((issue) => {
+        issues.push({ path: `${basePath}.dummyData[${i}]${issue.path.length ? `.${issue.path.join(".")}` : ""}`, message: issue.message })
+      })
+    }
+  })
 }

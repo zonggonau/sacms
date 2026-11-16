@@ -1,7 +1,7 @@
 import "server-only"
 
 import { db } from "@/lib/database"
-import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain } from "@/lib/vercel-client"
+import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs } from "@/lib/vercel-client"
 import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
 
@@ -36,6 +36,34 @@ export interface DeployWebsiteTemplateDemoResult {
  *  MCP server's verify_deployment_url — catches Vercel's own protection/
  *  not-found boilerplate, not every possible broken state. */
 const LOOKS_LIKE_ERROR_PAGE_RE = /DEPLOYMENT_NOT_FOUND|This deployment is protected|Authentication Required/i
+
+const TERMINAL_BUILD_STATE_RE = /^(READY|ERROR|CANCELED)$/i
+const BUILD_POLL_INTERVAL_MS = 3000
+// ~45s budget — a real Next.js build on Vercel routinely takes longer than
+// the few seconds the URL-verification retry loop below allows, which used
+// to let this function check the ALIAS before the just-triggered build had
+// even finished: if the alias still served the PREVIOUS successful
+// deployment (Vercel never promotes a failed build onto it), that stale
+// content read back fine and got reported `verified: true` even though the
+// build chatgpt.md deliberately broke was failing with Turbopack errors at
+// that exact moment (confirmed live). Bounded, not an open-ended poll — this
+// is still one deploy call's own verification step.
+const BUILD_POLL_MAX_ATTEMPTS = 15
+
+/** Polls the deployment's OWN build state (not the project's alias/URL)
+ *  until it reaches a terminal state or the bounded budget runs out.
+ *  Checks before sleeping, so a mock/simulated deploy that's already
+ *  terminal resolves instantly with no delay. */
+async function waitForBuildTerminal(deploymentId: string): Promise<string> {
+  let state = ""
+  for (let attempt = 0; attempt < BUILD_POLL_MAX_ATTEMPTS; attempt++) {
+    const status = await getDeploymentStatus(deploymentId).catch(() => null)
+    state = status?.state || state
+    if (state && TERMINAL_BUILD_STATE_RE.test(state)) return state
+    await new Promise((resolve) => setTimeout(resolve, BUILD_POLL_INTERVAL_MS))
+  }
+  return state || "UNKNOWN"
+}
 
 /** Exported for get_website_template_demo_status — a fresh, on-demand
  *  check of a demo's CURRENT state, independent of redeploying it. */
@@ -127,6 +155,28 @@ export async function deployWebsiteTemplateDemo(
     if (!url) {
       return { url: null, deploymentId: deployResult.id, verified: false, verificationError: "No URL resolved for the demo deployment." }
     }
+
+    // chatgpt.md P0: check the build this call just triggered BEFORE trusting
+    // the alias/URL check below — the alias can keep serving a PREVIOUS
+    // successful deployment while THIS build is still running or has
+    // outright failed, and Vercel never promotes a failed build onto it, so
+    // a URL-only check can look perfectly healthy while the change just made
+    // never shipped at all.
+    const buildState = deployResult.id ? await waitForBuildTerminal(deployResult.id) : deployResult.state
+
+    if (/^(ERROR|CANCELED)$/i.test(buildState)) {
+      const logs = deployResult.id ? await getDeploymentBuildLogs(deployResult.id).catch(() => null) : null
+      const buildErrorSummary = logs?.errorLines?.slice(-5).join(" | ")
+      const detail = `Build ${buildState}${buildErrorSummary ? `: ${buildErrorSummary}` : ""}`
+      return {
+        url,
+        deploymentId: deployResult.id,
+        verified: false,
+        verificationError: `${detail}. The URL above (if reachable) is still serving a PREVIOUS successful deployment, not this one.`,
+        error: detail,
+      }
+    }
+
     // chatgpt8.md P1: a fresh custom-domain alias (ensureDemoSubdomain just
     // ran above) can take a few seconds to actually start routing — the
     // very first check right after a create/update used to come back
@@ -140,7 +190,21 @@ export async function deployWebsiteTemplateDemo(
       await new Promise((resolve) => setTimeout(resolve, 2500))
       verification = await verifyDemoUrl(url)
     }
-    return { url, deploymentId: deployResult.id, verified: verification.verified, verificationError: verification.error }
+
+    // The build poll above has its own bounded budget — if it ran out
+    // while the build was still BUILDING/QUEUED/INITIALIZING (never
+    // reached a terminal state), the URL check just performed may still be
+    // reading a previous deployment. Don't report `verified: true` on an
+    // inconclusive build state.
+    const buildStillPending = buildState !== "" && !/^READY$/i.test(buildState)
+    return {
+      url,
+      deploymentId: deployResult.id,
+      verified: verification.verified && !buildStillPending,
+      verificationError: buildStillPending
+        ? `Build still ${buildState} after the verification window — this check may reflect a previous deployment, not the one just triggered. Call get_website_template_demo_status shortly to confirm.`
+        : verification.error,
+    }
   } catch (err: any) {
     console.warn(`[deploy-website-template-demo] Failed to deploy demo for ${websiteTemplate.slug}:`, err)
     return { url: null, error: err?.message || "Gagal men-deploy demo" }
