@@ -28,6 +28,7 @@ import {
   Headphones,
   Tag,
   Handshake,
+  Rocket,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -86,6 +87,7 @@ const adminNavSections: NavSection[] = [
     items: [
       { title: "Monitoring", href: "/admin/monitoring", icon: Activity, superAdminOnly: true },
       { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList, superAdminOnly: true },
+      { title: "Project Vercel", href: "/admin/vercel-projects", icon: Rocket, superAdminOnly: true },
       { title: "Platform Settings", href: "/admin/settings", icon: Settings },
     ],
   },

@@ -5,12 +5,21 @@ import { Building2, Search, ChevronLeft, ChevronRight, Loader2, Globe } from "lu
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { useAdminTenants, Tenant } from "@/hooks/admin/use-admin-tenants"
 import { TenantTable } from "@/components/admin/tenants/tenant-table"
 import { TenantFormModal } from "@/components/admin/tenants/tenant-form-modal"
 import { TenantDeleteModal } from "@/components/admin/tenants/tenant-delete-modal"
 import { TenantOverrideModal } from "@/components/admin/tenants/tenant-override-modal"
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100] as const
 
 export default function AdminTenantsPage() {
   const { toast } = useToast()
@@ -21,6 +30,8 @@ export default function AdminTenantsPage() {
     setSearchQuery,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     totalPages,
     totalTenants,
     refetch
@@ -313,12 +324,26 @@ export default function AdminTenantsPage() {
           <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Cari workspace berdasarkan nama atau slug..." 
+              <Input
+                placeholder="Cari workspace berdasarkan nama atau slug..."
                 className="pl-9 h-9 rounded-xl text-xs bg-card border-border/80"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-muted-foreground font-medium">Tampilkan</span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                <SelectTrigger className="h-9 w-[72px] rounded-xl text-xs bg-card border-border/80">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -332,10 +357,10 @@ export default function AdminTenantsPage() {
           />
 
           {/* Pagination */}
-          {!loading && totalPages > 1 && (
+          {!loading && totalTenants > 0 && (
             <div className="flex items-center justify-between pt-2">
               <div className="text-xs text-muted-foreground">
-                Menampilkan halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span>
+                Menampilkan halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span> &bull; {totalTenants} workspace total
               </div>
               <div className="flex items-center gap-2">
                 <Button 

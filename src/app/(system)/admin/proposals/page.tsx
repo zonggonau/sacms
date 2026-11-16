@@ -77,7 +77,7 @@ export default function ProposalsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">

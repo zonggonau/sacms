@@ -37,9 +37,15 @@ export function useAdminTenants() {
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSizeState] = useState(10)
   const [totalPages, setTotalPages] = useState(1)
   const [totalTenants, setTotalTenants] = useState(0)
   const [sort, setSort] = useState("createdAt:desc")
+
+  const setPageSize = useCallback((size: number) => {
+    setPageSizeState(size)
+    setPage(1)
+  }, [])
 
   // Debounce search
   useEffect(() => {
@@ -53,7 +59,7 @@ export function useAdminTenants() {
   const fetchTenants = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/admin/tenants?page=${page}&limit=10&search=${encodeURIComponent(debouncedSearch)}&sort=${encodeURIComponent(sort)}`)
+      const res = await fetch(`/api/admin/tenants?page=${page}&limit=${pageSize}&search=${encodeURIComponent(debouncedSearch)}&sort=${encodeURIComponent(sort)}`)
       if (res.ok) {
         const data = await res.json()
         setTenants(data.tenants || [])
@@ -66,7 +72,7 @@ export function useAdminTenants() {
     } finally {
       setLoading(false)
     }
-  }, [page, debouncedSearch, sort, toast])
+  }, [page, pageSize, debouncedSearch, sort, toast])
 
   useEffect(() => {
     fetchTenants()
@@ -79,6 +85,8 @@ export function useAdminTenants() {
     setSearchQuery,
     page,
     setPage,
+    pageSize,
+    setPageSize,
     totalPages,
     totalTenants,
     sort,

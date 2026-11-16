@@ -86,4 +86,7 @@ export const AuditAction = {
   FRONTEND_BUILD_ITERATED: "frontend_build.iterated",
   FRONTEND_BUILD_UPDATED: "frontend_build.updated",
   FRONTEND_BUILD_DELETED: "frontend_build.deleted",
+
+  // Infrastructure
+  VERCEL_PROJECT_DELETED: "vercel_project.deleted",
 } as const
