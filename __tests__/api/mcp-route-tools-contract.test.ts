@@ -454,4 +454,31 @@ describe("MCP workspace server route — source contract", () => {
     expect(instructionsBlock).toMatch(/richText field's value is raw HTML/)
     expect(instructionsBlock).toMatch(/_renderHints/)
   })
+
+  // ── check_sdk_availability: @sacms/sdk is an ordinary npm package, so its
+  // availability can never be asserted statically from inside this server —
+  // it must be live-checked against the real registry before an agent is
+  // told to install/use it.
+
+  it("check_sdk_availability live-checks the npm registry and never hardcodes a published claim", () => {
+    const scoped = toolBlockOf("check_sdk_availability")
+    expect(scoped).toMatch(/registry\.npmjs\.org\/\$\{packageName\}/)
+    expect(scoped).toMatch(/outputSchema:/)
+    expect(scoped).toMatch(/available:\s*false/)
+    expect(scoped).toMatch(/available:\s*true/)
+  })
+
+  it("check_sdk_availability's quick-start snippet uses the real resolved origin and tenant slug, not placeholders", () => {
+    const scoped = toolBlockOf("check_sdk_availability")
+    expect(scoped).toMatch(/resolveApiOrigin/)
+    expect(scoped).toMatch(/auth\.tenantSlug/)
+  })
+
+  it("get_agent_playbook and the top-level instructions both point to check_sdk_availability", () => {
+    const playbookBlock = toolBlockOf("get_agent_playbook")
+    expect(playbookBlock).toMatch(/check_sdk_availability/)
+    const instructionsStart = routeSource.indexOf("instructions:")
+    const instructionsBlock = routeSource.slice(instructionsStart, instructionsStart + 4000)
+    expect(instructionsBlock).toMatch(/check_sdk_availability/)
+  })
 })

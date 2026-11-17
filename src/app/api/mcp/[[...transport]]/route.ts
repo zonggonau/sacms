@@ -2430,6 +2430,98 @@ export default async function NewsPage() {
       }
     )
 
+    // ── check_sdk_availability ───────────────────────────────────────────────
+    // @sacms/sdk (mini-services/sdk in this repo) is a real, typed client an
+    // agent can use instead of hand-written fetch() calls — but it's an
+    // ordinary npm package, published and versioned independently of this
+    // server, so its availability is never guaranteed from inside this code.
+    // This checks the live public registry rather than trusting a hardcoded
+    // "yes it's published" claim, which is exactly how an agent ended up
+    // telling a user to `npm install` a package that didn't exist yet the
+    // last time this was asserted statically.
+    server.registerTool(
+      "check_sdk_availability",
+      {
+        title: "Check @sacms/sdk Availability (Typed Client SDK)",
+        description: "Live-checks whether the official @sacms/sdk npm package is currently published, and returns a ready-to-use init snippet pre-filled with THIS workspace's real base URL and tenant slug — call this before hand-writing fetch()/GraphQL boilerplate if you'd rather use a typed client with retries, pagination, and the filter DSL built in. Never assume the package is or isn't published without calling this first. If it comes back unavailable, fall back to the REST/GraphQL tools (query_content, get_content_entry, create_content_entry, ...) or get_api_info's raw fetch() sample instead of telling the user to npm install something unconfirmed.",
+        inputSchema: {},
+        outputSchema: {
+          available: z.boolean(),
+          packageName: z.string(),
+          latestVersion: z.string().optional(),
+          installCommand: z.string().optional(),
+          quickStart: z.string().optional(),
+          typeGenCommand: z.string().optional(),
+          note: z.string().optional(),
+          checkError: z.string().optional(),
+          fallback: z.string().optional(),
+        },
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const packageName = "@sacms/sdk"
+        let latestVersion: string | null = null
+        let checkError: string | undefined
+
+        try {
+          const res = await fetch(`https://registry.npmjs.org/${packageName}`, {
+            signal: AbortSignal.timeout(5000),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            latestVersion = data?.["dist-tags"]?.latest || null
+          } else {
+            checkError = `npm registry returned HTTP ${res.status}`
+          }
+        } catch (err: any) {
+          checkError = err?.message || "Failed to reach the npm registry"
+        }
+
+        if (!latestVersion) {
+          const structured = {
+            available: false,
+            packageName,
+            checkError,
+            fallback: "Could not confirm the package is published right now. Use the REST/GraphQL MCP tools directly (query_content, get_content_entry, create_content_entry, get_single_type, ...) or get_api_info's raw fetch() sample instead — do not tell the user to npm install this package without it being confirmed here.",
+          }
+          return {
+            content: [{ type: "text" as const, text: `⚠️ Could not confirm @sacms/sdk is published right now${checkError ? ` (${checkError})` : ""}. Use the REST/GraphQL tools directly instead.` }],
+            structuredContent: structured,
+          }
+        }
+
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const origin = resolveApiOrigin()
+
+        const quickStart = `import { SaCMS } from "${packageName}"
+
+const sacms = new SaCMS({
+  baseUrl: "${origin}",
+  tenant: "${auth.tenantSlug}",
+  token: process.env.SACMS_API_KEY!, // from get_or_create_api_key, injected automatically by deploy_to_sacms
+})
+
+const { data } = await sacms.collection("articles").findMany({ pagination: { pageSize: 10 } })`
+
+        const structured = {
+          available: true,
+          packageName,
+          latestVersion,
+          installCommand: `npm install ${packageName}@${latestVersion}`,
+          quickStart,
+          typeGenCommand: `npx ${packageName} generate --url ${origin} --tenant ${auth.tenantSlug} --token YOUR_TOKEN --out src/types/sacms.ts`,
+          note: "Prefer this typed client over raw fetch() for collections/single types/GraphQL. Member (end-user) auth is separate — see sacms.auth.* in the SDK's own README, unrelated to the service token above.",
+        }
+
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
+      }
+    )
+
     // ── get_agent_playbook ───────────────────────────────────────────────────
     // The ordered, step-by-step workflow for an AI agent/IDE that just
     // connected to this server — distinct from get_api_info (which is REST
@@ -2470,7 +2562,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 7. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
 7b. Every workspace is guaranteed to already have a \`site-settings\` Single Type (auto-provisioned at workspace creation, never missing) with these exact field slugs: \`brand-name\`, \`tagline\`, \`logo\` (media), \`favicon\` (media), \`default-color-mode\` (one of \`system\`/\`light\`/\`dark\`), \`primary-color-light\`/\`primary-color-dark\`, \`secondary-color-light\`/\`secondary-color-dark\`, \`text-color-light\`/\`text-color-dark\` (all six colors as hex strings). Read it with \`get_single_type\` (slug \`site-settings\`) instead of guessing field names, and read/apply it in the frontend's theme (CSS variables, dark-mode class) and header/footer instead of hardcoding brand colors or a logo URL. For a "ganti warna/logo/brand" request, write through \`update_single_type_content\` with \`singleTypeSlug: "site-settings"\` — the user can also edit these same fields directly from Konten → Pengaturan Site in the dashboard, so both stay in sync automatically.
 8. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`→sanitized dangerouslySetInnerHTML (its value is REAL HTML from the dashboard's WYSIWYG editor — rendering it as plain text shows the literal <p>/<strong>/<ul> tags to visitors, confirmed live), \`markdown\`→a Markdown renderer (react-markdown or equivalent — its value is raw Markdown source, not HTML), \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
-9. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample. Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
+9. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample, or \`check_sdk_availability\` for a typed \`@sacms/sdk\` client instead of hand-written \`fetch()\` calls (it live-checks the package is actually published before suggesting it). Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
 10. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
@@ -4367,7 +4459,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.3.0" },
+    serverInfo: { name: "sacms-mcp", version: "4.4.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
@@ -4378,7 +4470,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy to staging → verify → promote → verify production). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. IMPORTANT: deploy_to_sacms/deploy_website_patch deploy to a STAGING candidate, NOT the live domain — a READY build says nothing about runtime correctness. promote_deployment is the ONLY way a candidate reaches production: it runs your HTTP checks against the candidate first and only promotes if they all pass, refusing with CHECKS_FAILED otherwise (use get_deployment_runtime_logs to diagnose a failure — build logs alone won't show a runtime HTTP 500). rollback_website is the one exception that still deploys straight to production, since it's the emergency-recovery path. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically. A richText field's value is raw HTML and a markdown field's value is raw Markdown source — query_content/get_content_entry/get_single_type attach a _renderHints entry next to any such field, spelling out exactly how to render it; never interpolate either one as plain text, or visitors see the literal tags/syntax.",
+      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy to staging → verify → promote → verify production). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. IMPORTANT: deploy_to_sacms/deploy_website_patch deploy to a STAGING candidate, NOT the live domain — a READY build says nothing about runtime correctness. promote_deployment is the ONLY way a candidate reaches production: it runs your HTTP checks against the candidate first and only promotes if they all pass, refusing with CHECKS_FAILED otherwise (use get_deployment_runtime_logs to diagnose a failure — build logs alone won't show a runtime HTTP 500). rollback_website is the one exception that still deploys straight to production, since it's the emergency-recovery path. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically. If you'd rather use a typed client than hand-written fetch() calls, call check_sdk_availability first — it live-checks whether @sacms/sdk is actually published before you suggest installing it. A richText field's value is raw HTML and a markdown field's value is raw Markdown source — query_content/get_content_entry/get_single_type attach a _renderHints entry next to any such field, spelling out exactly how to render it; never interpolate either one as plain text, or visitors see the literal tags/syntax.",
   }
 )
 
