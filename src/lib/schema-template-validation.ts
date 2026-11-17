@@ -19,6 +19,18 @@ import { generateContentSchema } from "@/lib/content-validations"
  *  list list_field_types documents. */
 const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
 
+/** Field slugs are JSON property names in the Content API, not URL paths —
+ *  camelCase/snake_case are both fine, unlike a MODEL slug. See VAL-9's own
+ *  check below for the one exception (document_template). */
+const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
+
+/** A dummyData color/date value is allowed to be loose at real content-entry
+ *  time (a human typing into a form benefits from forgiving coercion) —
+ *  but a demo's entire point is to look like real, finished content, so
+ *  these two are checked stricter here specifically. */
+const HEX_COLOR_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
+const TITLE_LIKE_SLUGS = new Set(["title", "judul", "name"])
+
 /** `["contentTypes", 2, "fields", 4, "options", "choices"]` -> "contentTypes[2].fields[4].options.choices" — the exact bracket-index form an agent needs to locate the offending field itself, not just a flattened message. */
 export function formatZodPath(path: PropertyKey[]): string {
   return path.reduce<string>((acc, seg) => {
@@ -30,6 +42,25 @@ export function formatZodPath(path: PropertyKey[]): string {
 export interface ValidationIssue {
   path: string
   message: string
+  /** Absent/"error" blocks a save; "warning" is surfaced to the caller
+   *  (dry-run's own `warnings` array, or appended to a real save's text
+   *  response) but never blocks it — e.g. a forgiving default that's
+   *  probably not what the author meant, vs. something that would
+   *  genuinely break at materialize/render/content-entry time. */
+  severity?: "error" | "warning"
+}
+
+/** Partitions a validateBundleReferences() result into what must block a
+ *  save vs. what's advisory-only — every caller in route.ts uses this
+ *  instead of treating the flat array as uniformly blocking. */
+export function splitIssuesBySeverity(issues: ValidationIssue[]): { blocking: ValidationIssue[]; warnings: ValidationIssue[] } {
+  const blocking: ValidationIssue[] = []
+  const warnings: ValidationIssue[] = []
+  for (const issue of issues) {
+    if (issue.severity === "warning") warnings.push(issue)
+    else blocking.push(issue)
+  }
+  return { blocking, warnings }
 }
 
 /** A bundle-shaped field, loose enough to cover contentTypes/singleTypes/components entries without importing the full generated zod-inferred type here. */
@@ -39,7 +70,7 @@ export interface BundleFieldRef {
   name?: string
   required?: boolean
   relationSlug?: string
-  options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; componentSlugs?: unknown; choices?: unknown[] } | null
+  options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; componentSlugs?: unknown; choices?: unknown[]; sourceField?: string } | null
 }
 export interface BundleModelRef {
   slug: string
@@ -166,14 +197,43 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
           // actually checked for it, so writing componentSlugs instead of
           // allowedComponents silently fell all the way through to render
           // time as "every component is allowed" with zero feedback here.
-          issues.push({ path: `${fieldPath}.options.componentSlugs`, message: `'componentSlugs' is not a real option key for 'repeater' — the renderer reads 'allowedComponents' instead. Rename it, or this field silently allows every component regardless of what you listed here.` })
+          // Warning, not blocking: "every component allowed" is still a
+          // VALID, working state — just probably not what was intended.
+          issues.push({ path: `${fieldPath}.options.componentSlugs`, message: `'componentSlugs' is not a real option key for 'repeater' — the renderer reads 'allowedComponents' instead. Rename it, or this field silently allows every component regardless of what you listed here.`, severity: "warning" })
         }
+      }
+      // Third external audit, VAL-9: field slugs are the Content API's own
+      // JSON keys — a space/punctuation/leading-digit would be a genuinely
+      // broken property name in every frontend fetch. camelCase/snake_case
+      // are both fine (unlike MODEL slugs, which materialize straight into
+      // a URL path and so stay kebab-case-only). document_template is
+      // exempt: its field slugs deliberately mirror a .docx's own
+      // placeholder keys verbatim (see ai-schema-generator.ts's own
+      // documented exception), which can't be forced into this shape.
+      if (f.type !== "document_template" && f.slug && !FIELD_SLUG_FORMAT_RE.test(f.slug)) {
+        issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — use letters/digits/underscores, starting with a letter (e.g. 'coverImage' or 'cover_image').` })
       }
       if (f.type === "select" || f.type === "multiselect") {
         const choices = f.options?.choices
         if (!Array.isArray(choices) || choices.length === 0) {
           issues.push({ path: `${fieldPath}.options.choices`, message: `${f.type} fields need a non-empty options.choices array — without it, every value is rejected at content-entry time.` })
         }
+      }
+    })
+
+    // Third external audit, VAL-7: slug.ts's real auto-generate logic
+    // (processAutoSlugs) hardcodes `data.title ?? data.judul ?? data.name`
+    // as its fallback source whenever an explicit options.sourceField isn't
+    // configured — a 'slug' field with no title/judul/name sibling AND no
+    // sourceField has nothing to auto-generate from at all. Warning, not
+    // blocking: a template author may still want a manually-filled slug.
+    ;(fields || []).forEach((f, idx) => {
+      if (f.type !== "slug") return
+      const sourceField = f.options?.sourceField
+      const hasExplicitSource = !!sourceField && (fields || []).some((other) => other !== f && other.slug === sourceField)
+      const hasTitleLikeSibling = (fields || []).some((other) => other !== f && other.slug && TITLE_LIKE_SLUGS.has(other.slug))
+      if (!hasExplicitSource && !hasTitleLikeSibling) {
+        issues.push({ path: `${basePath}.fields[${idx}]`, message: `'slug'-type field '${f.slug}' has no 'title'/'judul'/'name' sibling field (or a matching options.sourceField) in this model to auto-generate from.`, severity: "warning" })
       }
     })
   }
@@ -212,6 +272,7 @@ function checkDummyData(model: BundleModelRef, basePath: string, issues: Validat
   if (fields.length === 0) return
 
   const schema = generateContentSchema(fields, { enforceRequired: false })
+  const fieldBySlug = new Map(fields.map((f) => [f.slug, f] as const))
   model.dummyData.forEach((entry, i) => {
     const result = schema.safeParse(entry)
     if (!result.success) {
@@ -219,5 +280,35 @@ function checkDummyData(model: BundleModelRef, basePath: string, issues: Validat
         issues.push({ path: `${basePath}.dummyData[${i}]${issue.path.length ? `.${issue.path.join(".")}` : ""}`, message: issue.message })
       })
     }
+
+    // Third external audit, VAL-11/12/14: generateContentSchema's own
+    // color/date/boolean cases are deliberately forgiving for a human
+    // typing into a real form (Boolean("ya") === true, any non-empty
+    // string passes as a date, 'color' isn't even validated at all —
+    // confirmed in content-validations.ts). That forgiveness is the wrong
+    // default for a demo, whose entire point is to look like finished,
+    // real content — checked stricter here, specific to dummyData only.
+    for (const [slug, field] of fieldBySlug) {
+      const val = entry[slug]
+      if (val === undefined || val === null || val === "") continue
+      if (field.type === "color" && !(typeof val === "string" && HEX_COLOR_RE.test(val))) {
+        issues.push({ path: `${basePath}.dummyData[${i}].${slug}`, message: `'${val}' is not a valid hex color (e.g. '#1a2b3c') — a demo renders this value straight into a swatch/CSS.` })
+      }
+      if ((field.type === "date" || field.type === "datetime") && !(typeof val === "string" && !Number.isNaN(Date.parse(val)))) {
+        issues.push({ path: `${basePath}.dummyData[${i}].${slug}`, message: `'${val}' is not a parseable date${field.type === "datetime" ? "time" : ""} value.` })
+      }
+      if (field.type === "boolean" && typeof val !== "boolean") {
+        issues.push({ path: `${basePath}.dummyData[${i}].${slug}`, message: `'${JSON.stringify(val)}' is not a real boolean (true/false), got ${typeof val} — a coercible string like "ya"/"yes" would silently become true everywhere else, but a demo should use real booleans.` })
+      }
+    }
+
+    // VAL-13: a dummyData key with no matching field in this model at all
+    // — likely a typo or a leftover from a field that got renamed/removed.
+    // Warning, not blocking: the extra key is simply ignored at seed time.
+    Object.keys(entry).forEach((key) => {
+      if (!fieldBySlug.has(key)) {
+        issues.push({ path: `${basePath}.dummyData[${i}].${key}`, message: `'${key}' does not match any field slug in this model.`, severity: "warning" })
+      }
+    })
   })
 }

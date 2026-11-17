@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatZodPath, validateBundleReferences } from "@/lib/schema-template-validation"
+import { formatZodPath, validateBundleReferences, splitIssuesBySeverity } from "@/lib/schema-template-validation"
 
 describe("formatZodPath", () => {
   it("renders a numeric segment as a bracket index, not a dotted segment", () => {
@@ -272,14 +272,130 @@ describe("validateBundleReferences", () => {
   // own note) — until now nothing actually checked for it, so it
   // silently fell through to "every component is allowed".
 
-  it("flags a repeater field using the wrong key 'componentSlugs' instead of 'allowedComponents'", () => {
+  it("flags a repeater field using the wrong key 'componentSlugs' instead of 'allowedComponents', as a warning (not blocking — 'every component allowed' is still valid)", () => {
     const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { componentSlugs: ["hero_banner"] } }] }] }
     const issues = validateBundleReferences(bundle)
-    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlugs", message: expect.stringContaining("allowedComponents") }])
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlugs", message: expect.stringContaining("allowedComponents"), severity: "warning" }])
   })
 
   it("does not flag a repeater field with neither key (every component allowed, by design)", () => {
     const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections" }] }] }
     expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  // Third external audit round (sacms-mcp-audit.mjs VAL-6..17)
+
+  it("flags a 'slug'-type field with no title/judul/name sibling and no matching options.sourceField, as a warning", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "headline" }, { type: "slug", slug: "permalink" }] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[1]", message: expect.stringContaining("title"), severity: "warning" }])
+  })
+
+  it("does not flag a 'slug'-type field with a 'title' sibling", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "title" }, { type: "slug", slug: "permalink" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("does not flag a 'slug'-type field whose options.sourceField matches a real sibling field", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "headline" }, { type: "slug", slug: "permalink", options: { sourceField: "headline" } }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("rejects a field slug with spaces or punctuation", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "Judul Besar" }] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].fields[0].slug")).toBe(true)
+  })
+
+  it("accepts camelCase and snake_case field slugs", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "coverImage" }, { type: "text", slug: "cover_image" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("exempts document_template fields from the field-slug format check (verbatim .docx placeholder keys)", () => {
+    const bundle = { contentTypes: [{ slug: "letters", fields: [{ type: "document_template", slug: "Nama Lengkap!!" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags an invalid hex color in dummyData", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "color", slug: "accent" }],
+        dummyData: [{ accent: "bukan-warna" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].dummyData[0].accent")).toBe(true)
+  })
+
+  it("passes a valid hex color in dummyData", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "color", slug: "accent" }],
+        dummyData: [{ accent: "#1a2b3c" }],
+      }],
+    }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags an unparseable date in dummyData", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "date", slug: "publishedAt" }],
+        dummyData: [{ publishedAt: "kemarin" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].dummyData[0].publishedAt")).toBe(true)
+  })
+
+  it("flags a non-boolean value in a boolean dummyData field, even a truthy-coercible string", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "boolean", slug: "breaking" }],
+        dummyData: [{ breaking: "ya" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "contentTypes[0].dummyData[0].breaking")).toBe(true)
+  })
+
+  it("passes a real boolean literal in dummyData", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "boolean", slug: "breaking" }],
+        dummyData: [{ breaking: true }],
+      }],
+    }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags a dummyData key with no matching field slug in the model, as a warning", () => {
+    const bundle = {
+      contentTypes: [{
+        slug: "posts",
+        fields: [{ type: "text", slug: "title" }],
+        dummyData: [{ title: "Judul", fieldAsing: "typo" }],
+      }],
+    }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].dummyData[0].fieldAsing", message: expect.stringContaining("fieldAsing"), severity: "warning" }])
+  })
+})
+
+describe("splitIssuesBySeverity", () => {
+  it("separates warning-severity issues from everything else (absent severity defaults to blocking)", () => {
+    const { blocking, warnings } = splitIssuesBySeverity([
+      { path: "a", message: "blocking, no severity set" },
+      { path: "b", message: "explicit error", severity: "error" },
+      { path: "c", message: "a warning", severity: "warning" },
+    ])
+    expect(blocking.map((i) => i.path)).toEqual(["a", "b"])
+    expect(warnings.map((i) => i.path)).toEqual(["c"])
   })
 })

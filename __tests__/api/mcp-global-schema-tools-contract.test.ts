@@ -379,10 +379,46 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(scoped).toMatch(/fileSizes/)
   })
 
-  it("create_website_template's dryRun also warns when package.json is missing from the bundle, not just .env.example", () => {
-    const scoped = toolBlockOf("create_website_template")
-    expect(scoped).toMatch(/hasPackageJson/)
-    expect(scoped).toMatch(/package\.json/)
+  it("create_website_template and update_website_template both BLOCK (not just warn) on a bundle missing package.json — upgraded from an advisory-only dry-run warning (VAL-16, third external audit) since a build with no package.json can never actually deploy", () => {
+    const create = toolBlockOf("create_website_template")
+    expect(create).toMatch(/hasPackageJson/)
+    expect(create).toMatch(/package\.json/)
+    expect(create).toMatch(/return referenceIssuesResponse\(\[\{ path: "files", message: "No package\.json found/)
+
+    const update = toolBlockOf("update_website_template")
+    expect(update).toMatch(/filesData !== undefined && !filesData\.some/)
+  })
+
+  // ── Third external audit round (sacms-mcp-audit.mjs) ─────────────────────
+
+  it("validateBundleReferences issues carry a severity, and advisory-only ones (componentSlugs typo, slug-source warning, unknown dummyData key) never block a save", () => {
+    const validationSource = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(validationSource).toMatch(/severity\?:\s*"error"\s*\|\s*"warning"/)
+    expect(validationSource).toMatch(/export function splitIssuesBySeverity/)
+    for (const tool of ["create_schema_template", "update_schema_template", "create_website_template", "update_website_template"]) {
+      expect(toolBlockOf(tool), `${tool} should use splitIssuesBySeverity, not block on every issue uniformly`).toMatch(/splitIssuesBySeverity\(validateBundleReferences/)
+    }
+  })
+
+  it("the global-schema server's 429 rate-limit response carries Retry-After/RateLimit-* headers and a JSON-RPC-shaped body, not a bare {error} string with no way for a client to back off precisely", () => {
+    expect(routeSource).toMatch(/"Retry-After":\s*String\(retryAfterSeconds\)/)
+    expect(routeSource).toMatch(/"RateLimit-Remaining":/)
+    expect(routeSource).toMatch(/jsonrpc:\s*"2\.0"/)
+  })
+
+  it("field slugs reject spaces/punctuation (camelCase/snake_case allowed) except for document_template's verbatim .docx placeholder keys, and a 'slug'-type field warns when it has no title/judul/name source", () => {
+    const validationSource = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(validationSource).toMatch(/FIELD_SLUG_FORMAT_RE/)
+    expect(validationSource).toMatch(/f\.type !== "document_template"/)
+    expect(validationSource).toMatch(/TITLE_LIKE_SLUGS/)
+  })
+
+  it("dummyData color/date/boolean values are checked stricter than real content-entry's own forgiving coercion, and an unrecognized dummyData key is flagged too", () => {
+    const validationSource = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(validationSource).toMatch(/HEX_COLOR_RE/)
+    expect(validationSource).toMatch(/Date\.parse\(val\)/)
+    expect(validationSource).toMatch(/typeof val !== "boolean"/)
+    expect(validationSource).toMatch(/does not match any field slug in this model/)
   })
 
   it("validateBundleReferences flags duplicate slugs within the same array (contentTypes/singleTypes/components/groups each back a real per-array-unique DB table) and the repeater componentSlugs typo", () => {

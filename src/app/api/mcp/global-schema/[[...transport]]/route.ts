@@ -41,7 +41,7 @@ import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
 import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
-import { formatZodPath, validateBundleReferences } from "@/lib/schema-template-validation"
+import { formatZodPath, validateBundleReferences, splitIssuesBySeverity } from "@/lib/schema-template-validation"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -282,6 +282,16 @@ function invalidSchema(error: z.ZodError) {
   }
 }
 
+/** Advisory-only issues (componentSlugs typo, missing title-source for a
+ *  slug field, an unrecognized dummyData key, ...) never block a save —
+ *  surfaced here as a plain text note instead, since none of these tools'
+ *  success outputSchemas declare a `warnings` field of their own (only
+ *  create_website_template's dry-run shape does). */
+function warningsNote(warnings: { path: string; message: string }[]): string {
+  if (warnings.length === 0) return ""
+  return `\n\n⚠️ ${warnings.length} catatan (tidak memblokir penyimpanan):\n${warnings.map((w) => `- ${w.path}: ${w.message}`).join("\n")}`
+}
+
 function referenceIssuesResponse(issues: { path: string; message: string }[]) {
   return {
     content: [{ type: "text" as const, text: `❌ Ditemukan ${issues.length} masalah referensi/opsi:\n${issues.map((i) => `- ${i.path}: ${i.message}`).join("\n")}` }],
@@ -507,7 +517,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile'"),
           category: z.string().min(1).max(100).describe("Catalog category, e.g. 'Business', 'E-Commerce', 'Portfolio'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🏢'"),
-          description: z.string().max(500).optional(),
+          description: z.string().max(500).optional().describe("Short catalog-card blurb shown alongside the name/category — not shown to end content editors."),
           schema: schemaTemplateBundleSchema.describe(
             "{ groups?: [...], contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
             "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }], dummyData?: [...] }. " +
@@ -532,8 +542,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
         if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
 
-        const refIssues = validateBundleReferences(parsedSchema.data)
-        if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+        const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedSchema.data))
+        if (blocking.length > 0) return referenceIssuesResponse(blocking)
 
         const slug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
 
@@ -550,7 +560,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         })
         const structured = serializeSchemaTemplate(template)
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) }],
           structuredContent: structured,
         }
       },
@@ -570,16 +580,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           "`schema` change refuses with code HAS_DEPENDENTS (listing them) unless confirmSharedUpdate: true.",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
-          name: z.string().min(1).max(150).optional(),
-          category: z.string().min(1).max(100).optional(),
-          icon: z.string().max(10).optional(),
-          description: z.string().max(500).optional(),
+          name: z.string().min(1).max(150).optional().describe("New display name, if renaming."),
+          category: z.string().min(1).max(100).optional().describe("New catalog category, if recategorizing."),
+          icon: z.string().max(10).optional().describe("New single-emoji card icon, if changing."),
+          description: z.string().max(500).optional().describe("New catalog-card blurb, if changing."),
           schema: schemaTemplateBundleSchema.optional().describe(
             "Full replacement for groups/contentTypes/singleTypes/components. Call list_field_types first, " +
             "same as create_schema_template — don't guess an options shape. Same `groups`/`group` convention " +
             "too (template-local slugs, Content Types only).",
           ),
-          published: z.boolean().optional(),
+          published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
         },
@@ -602,11 +612,13 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         }
 
         let schemaData: z.infer<typeof schemaTemplateBundleSchema> | undefined
+        let schemaWarnings: { path: string; message: string }[] = []
         if (schema !== undefined) {
           const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
-          const refIssues = validateBundleReferences(parsedSchema.data)
-          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedSchema.data))
+          if (blocking.length > 0) return referenceIssuesResponse(blocking)
+          schemaWarnings = warnings
 
           if (!confirmSharedUpdate) {
             const dependents = await db.websiteTemplate.findMany({ where: { schemaTemplateId: existing.id }, select: { id: true, name: true, slug: true } })
@@ -647,7 +659,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         })
         const structured = serializeSchemaTemplate(template)
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(schemaWarnings) }],
           structuredContent: structured,
         }
       },
@@ -825,7 +837,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           category: z.string().min(1).max(100).optional().describe("Catalog category for the auto-created backing Schema Template when `schema` is given (e.g. 'Business', 'Blog & News'). Ignored when `schemaTemplateId` is given. Defaults to 'Custom'."),
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
-          description: z.string().max(500).optional(),
+          description: z.string().max(500).optional().describe("Short catalog-card blurb shown alongside the name/category."),
           files: websiteTemplateFilesSchema.describe(
             "[{ path, content }, ...] — every source file for the frontend (package.json, app/**, " +
             "components/**, tailwind config, etc.), as plain text, PLUS a `.env.example` documenting its env " +
@@ -892,12 +904,24 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
         if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
 
+        // Third external audit, VAL-16 (upgraded from a dry-run-only
+        // warning): a bundle with no package.json at all can never
+        // actually build on Vercel — blocks BOTH dryRun and a real save,
+        // the same way an invalid `files` payload already does, instead of
+        // only surfacing as an opaque failed deploy afterward.
+        const hasPackageJson = parsedFiles.data.some((f) => f.path === "package.json")
+        if (!hasPackageJson) {
+          return referenceIssuesResponse([{ path: "files", message: "No package.json found at the bundle root — a real deploy has no dependencies/scripts to build with." }])
+        }
+
         let bundleData: z.infer<typeof schemaTemplateBundleSchema> | undefined
+        let bundleWarnings: { path: string; message: string }[] = []
         if (!schemaTemplateId) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          const refIssues = validateBundleReferences(parsedBundle.data)
-          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedBundle.data))
+          if (blocking.length > 0) return referenceIssuesResponse(blocking)
+          bundleWarnings = warnings
           bundleData = parsedBundle.data
         }
 
@@ -911,17 +935,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             if (!found) return notFound("Schema Template", schemaTemplateId)
           }
           const hasEnvExample = parsedFiles.data.some((f) => f.path === ".env.example" || f.path.endsWith("/.env.example"))
-          const hasPackageJson = parsedFiles.data.some((f) => f.path === "package.json")
-          const warnings: { path: string; message: string }[] = []
+          const warnings: { path: string; message: string }[] = [...bundleWarnings]
           if (!hasEnvExample) {
             warnings.push({ path: "files", message: "No .env.example found — this is advisory only (it won't block a real save), but env vars won't be auto-declared on the workspace's Environment tab when a customer applies this template." })
-          }
-          // Report P1 (gap #1): a bundle missing its own package.json still
-          // passes every other check here, then only fails once Vercel
-          // actually tries to build it — this at least surfaces it at
-          // dry-run time instead of only after a real deploy attempt.
-          if (!hasPackageJson) {
-            warnings.push({ path: "files", message: "No package.json found at the bundle root — a real deploy will fail at build time with no dependencies/scripts to run. This won't block a real save (so a deliberately package.json-less bundle isn't impossible), but almost certainly means something is missing." })
           }
           return {
             content: [{
@@ -1023,7 +1039,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
         const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
           structuredContent: structured,
         }
       },
@@ -1047,14 +1063,14 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           "change refuses with code HAS_DEPENDENTS (listing the others) unless confirmSharedUpdate: true.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
-          name: z.string().min(1).max(150).optional(),
-          icon: z.string().max(10).optional(),
-          description: z.string().max(500).optional(),
+          name: z.string().min(1).max(150).optional().describe("New display name, if renaming."),
+          icon: z.string().max(10).optional().describe("New single-emoji card icon, if changing."),
+          description: z.string().max(500).optional().describe("New catalog-card blurb, if changing."),
           files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle. Do not combine with changedFiles/deletedFiles — pick one."),
           changedFiles: z.array(z.object({ path: z.string().trim().min(1).max(300), content: z.string().max(200_000) })).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is."),
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
-          published: z.boolean().optional(),
+          published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
@@ -1133,13 +1149,23 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           filesData = parsedFiles.data
         }
 
+        // VAL-16 parity with create_website_template: a files/changedFiles
+        // edit that ends up dropping package.json entirely would otherwise
+        // only surface as an opaque failed deploy once the redeploy below
+        // actually runs.
+        if (filesData !== undefined && !filesData.some((f) => f.path === "package.json")) {
+          return referenceIssuesResponse([{ path: "files", message: "The resulting bundle has no package.json at the root — a real deploy has no dependencies/scripts to build with." }])
+        }
+
         let schemaUpdated = false
         let parsedBundleData: z.infer<typeof schemaTemplateBundleSchema> | undefined
+        let bundleWarnings: { path: string; message: string }[] = []
         if (schema !== undefined) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          const refIssues = validateBundleReferences(parsedBundle.data)
-          if (refIssues.length > 0) return referenceIssuesResponse(refIssues)
+          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedBundle.data))
+          if (blocking.length > 0) return referenceIssuesResponse(blocking)
+          bundleWarnings = warnings
           parsedBundleData = parsedBundle.data
           schemaUpdated = true
         }
@@ -1147,7 +1173,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (dryRun) {
           return {
             content: [{ type: "text" as const, text: "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan." }],
-            structuredContent: { mode: "dry_run" as const, ok: true as const, valid: true as const, issues: [] as { path: string; message: string }[], warnings: [] as { path: string; message: string }[] },
+            structuredContent: { mode: "dry_run" as const, ok: true as const, valid: true as const, issues: [] as { path: string; message: string }[], warnings: bundleWarnings },
           }
         }
 
@@ -1195,7 +1221,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
           const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
           return {
-            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
             structuredContent: structured,
           }
         }
@@ -1462,7 +1488,28 @@ async function handleGlobalSchemaMcpRequest(req: Request): Promise<Response> {
       "unknown"
     const ipLimit = await rateLimit(`mcp_global_schema_ip:${ip}`, { limit: 60, windowSeconds: 60 })
     if (!ipLimit.success) {
-      return NextResponse.json({ error: "Rate limit exceeded. Try again later." }, { status: 429 })
+      // Third external audit, RL-1: a plain `{error}` body with no
+      // Retry-After/RateLimit-* headers gave a calling agent nothing to
+      // act on but "wait an undetermined amount of time and hope" — JSON-RPC
+      // shaped body (matching every other error this server returns) +
+      // the standard rate-limit headers so a client can back off precisely.
+      const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAt - Date.now()) / 1000))
+      return NextResponse.json(
+        {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32000, message: "Rate limit exceeded. Try again later.", data: { retryAfterSeconds } },
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfterSeconds),
+            "RateLimit-Limit": String(ipLimit.limit),
+            "RateLimit-Remaining": String(Math.max(0, ipLimit.remaining)),
+            "RateLimit-Reset": String(retryAfterSeconds),
+          },
+        },
+      )
     }
 
     let token = ""
