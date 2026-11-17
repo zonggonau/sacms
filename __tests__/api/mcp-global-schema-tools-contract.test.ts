@@ -427,9 +427,57 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(validationSource).toMatch(/componentSlugs/)
   })
 
-  it("schemaTemplateFieldSchema's type is a strict enum of the real field types, and model/group slugs enforce the same kebab-case format the dashboard's own creation routes require", () => {
+  // Fourth external audit, ERR-4: `type`/model slug format are deliberately
+  // NOT enforced as zod constraints directly on schemaTemplateFieldSchema/
+  // schemaTemplateModelSchema — this shape is embedded in every affected
+  // tool's own `inputSchema`, which the MCP SDK validates BEFORE the
+  // handler runs, rejecting with its own generic stop-at-first-issue error
+  // instead of validateBundleReferences' itemized, structuredContent.code
+  // one. Enforced in schema-template-validation.ts instead (previous test).
+  it("does NOT enforce type/slug format as zod constraints on the shared bundle schema (would bypass the MCP SDK's pre-handler gate)", () => {
     const schemaSource = readFileSync(join(__dirname, "../../src/lib/validations/schema-template.ts"), "utf-8")
-    expect(schemaSource).toMatch(/z\.enum\(VALID_FIELD_TYPES\)/)
-    expect(schemaSource).toMatch(/modelSlugSchema/)
+    expect(schemaSource).not.toMatch(/z\.enum\(VALID_FIELD_TYPES\)/)
+    expect(schemaSource).not.toMatch(/\.regex\(/)
+  })
+
+  it("the REST schema-templates route also runs validateBundleReferences, not just this zod shape's own (deliberately loose) structural check", () => {
+    const routeSource = readFileSync(join(__dirname, "../../src/app/api/tenant/[tenant]/schema-templates/route.ts"), "utf-8")
+    expect(routeSource).toMatch(/validateBundleReferences/)
+    expect(routeSource).toMatch(/splitIssuesBySeverity/)
+  })
+
+  // ── Fourth external audit round ───────────────────────────────────────────
+
+  it("the demo tenant's content is wiped and rebuilt on EVERY demo deploy, not just the first one (DEMO-6: a later redeploy/update used to leave it stale forever)", () => {
+    const demoTenantSource = readFileSync(join(__dirname, "../../src/lib/infrastructure/demo-tenant.ts"), "utf-8")
+    expect(demoTenantSource).toMatch(/import \{ wipeTenantSchema \} from "@\/lib\/schema-wipe"/)
+    // Must run the wipe/rematerialize/reseed INSIDE the "already exists"
+    // branch, not only in the brand-new-tenant creation path below it.
+    const existsIdx = demoTenantSource.indexOf("if (existing) {")
+    const wipeIdx = demoTenantSource.indexOf("wipeTenantSchema(tenantDb, existing.id)")
+    expect(existsIdx).toBeGreaterThan(-1)
+    expect(wipeIdx).toBeGreaterThan(existsIdx)
+  })
+
+  it("create_website_template/update_website_template/redeploy_website_template_demo no longer return the full `files` array (OUT-9: a ~150-200KB echo nobody needed), while get_website_template still does", () => {
+    for (const tool of ["create_website_template", "update_website_template", "redeploy_website_template_demo"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should use the summary serializer/shape`).toMatch(/serializeWebsiteTemplateSummary|WEBSITE_TEMPLATE_SUMMARY_SHAPE/)
+    }
+    const getTool = toolBlockOf("get_website_template")
+    expect(getTool).toMatch(/outputSchema: WEBSITE_TEMPLATE_OUTPUT_SHAPE|\.\.\.WEBSITE_TEMPLATE_OUTPUT_SHAPE/)
+  })
+
+  it("the buat-website prompt's workflow reports the demo URL/routes, asks before publishing, and points to apply_website_template on the per-workspace server (PROMPT-2)", () => {
+    const promptStart = routeSource.indexOf('"buat-website"')
+    const promptBlock = routeSource.slice(promptStart, promptStart + 3000)
+    expect(promptBlock).toMatch(/routes\[\]/)
+    expect(promptBlock).toMatch(/published: true/)
+    expect(promptBlock).toMatch(/apply_website_template/)
+  })
+
+  it("the 429 rate-limit response echoes the request's own JSON-RPC id instead of a hardcoded null, so a client correlating by id doesn't wait on it forever", () => {
+    expect(routeSource).toMatch(/const requestId = await req\s*\n\s*\.clone\(\)\s*\n\s*\.json\(\)/)
+    expect(routeSource).toMatch(/id: requestId,/)
   })
 })

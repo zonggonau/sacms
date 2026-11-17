@@ -2,6 +2,7 @@ import { db, getTenantDb } from "@/lib/database"
 import { materializeSchemaIntoTenant, type SchemaBlob } from "@/lib/schema-template-sync"
 import { createContentEntry, updateContentEntry, type EntryWriteContext } from "@/lib/content/entry-service"
 import { slugify } from "@/lib/slug"
+import { wipeTenantSchema } from "@/lib/schema-wipe"
 
 /**
  * Structural/reference field types with no sensible synthetic value (a real
@@ -141,9 +142,24 @@ const SAMPLE_ENTRIES_PER_CONTENT_TYPE = 3
 
 /**
  * Lazily get-or-create the internal, owner-less demo tenant for a
- * SchemaTemplate — materializes its schema and seeds a few sample entries
- * the first time a demo deploy for ANY of its WebsiteTemplates runs.
- * Idempotent: a second/later call just returns the existing demo tenant.
+ * SchemaTemplate, then (re)materialize its schema and (re)seed sample
+ * content — called on EVERY demo deploy (create, update with files/schema,
+ * or an explicit redeploy), never just the first one.
+ *
+ * Fourth external audit, DEMO-6: this used to return the existing demo
+ * tenant as-is once created — every LATER update/redeploy kept serving
+ * whatever content got seeded the very first time, even after the
+ * template's schema/dummyData genuinely changed (confirmed live: a
+ * redeploy and an update with an identical-but-resaved schema both left
+ * the demo tenant's content completely untouched). Every call that reaches
+ * this function already means something schema/files-relevant changed —
+ * update_website_template only triggers a redeploy when files or schema
+ * actually changed (a metadata-only edit never calls deployWebsiteTemplateDemo
+ * at all) — so a stale demo tenant is wiped (wipeTenantSchema — Content
+ * Types/Single Types/Components, cascading their entries) and rebuilt from
+ * scratch every time, not just once. This also makes
+ * redeploy_website_template_demo double as a "force reseed" tool with no
+ * new API surface needed.
  */
 export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
   id: string
@@ -157,7 +173,14 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
       where: { id: schemaTemplate.demoTenantId },
       select: { id: true, slug: true },
     })
-    if (existing) return existing
+    if (existing) {
+      const tenantDb = await getTenantDb(existing.slug)
+      const schemaBlob = (schemaTemplate.schema as SchemaBlob) || {}
+      await wipeTenantSchema(tenantDb, existing.id)
+      await materializeSchemaIntoTenant(tenantDb, existing.id, schemaBlob)
+      await seedSampleContent(tenantDb, existing.id, existing.slug, schemaBlob)
+      return existing
+    }
   }
 
   const slug = await reserveUniqueTenantSlug(`demo-${schemaTemplate.slug}`)

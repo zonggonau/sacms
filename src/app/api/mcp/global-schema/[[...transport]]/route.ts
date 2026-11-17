@@ -186,6 +186,21 @@ function serializeWebsiteTemplate(t: {
 }
 
 /**
+ * Fourth external audit, OUT-9: create_website_template/update_website_template/
+ * redeploy_website_template_demo all returned the FULL `files` array (often
+ * ~150-200KB) on every single call — a caller who just created/updated the
+ * template already HAS the files it sent, and a redeploy doesn't change
+ * them at all, so resending the whole bundle back is pure waste. Only
+ * get_website_template (whose entire purpose IS reading `files`, with its
+ * own listPathsOnly/paths filtering) keeps the full shape.
+ */
+const { files: _omitFiles, ...WEBSITE_TEMPLATE_SUMMARY_SHAPE } = WEBSITE_TEMPLATE_OUTPUT_SHAPE
+function serializeWebsiteTemplateSummary(t: Parameters<typeof serializeWebsiteTemplate>[0]) {
+  const { files, ...summary } = serializeWebsiteTemplate(t)
+  return summary
+}
+
+/**
  * Shared output shape + serializer for get_schema_template/
  * create_schema_template/update_schema_template — same rationale as
  * serializeWebsiteTemplate above. Report P1/P2 follow-up: create/update's
@@ -348,7 +363,7 @@ Pass \`schema\` directly to \`create_website_template\` — it auto-creates the 
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
 ## Demo preview and verification
-Every \`create_website_template\` and \`update_website_template(files/changedFiles/schema: ...)\` call automatically (re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content (your dummyData where you provided it, generic placeholders where you didn't) — never a real customer's data. The response's \`demoDeployment\` reports \`status\` (ok/failed/skipped), \`verified\`, \`routes\` (the homepage PLUS every route the demo's own sitemap.xml lists — \`verified\` is false the moment any ONE of them fails, not just the homepage), and \`error\`/\`verificationError\`; \`status: \"ok\"\` alone doesn't mean \`verified\` is true, check both. A metadata-only update (no files/changedFiles/schema) returns \`demoDeployment.status: \"skipped\"\` and does not redeploy. Media/relation/component/repeater fields still render EMPTY in the demo (dummyData for those isn't supported yet) — that's expected, not a bug to chase.
+Every \`create_website_template\`, \`update_website_template(files/changedFiles/schema: ...)\`, and \`redeploy_website_template_demo\` call automatically (re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content (your dummyData where you provided it, generic placeholders where you didn't) — never a real customer's data. The demo tenant's content is fully wiped and reseeded from the CURRENT schema/dummyData on every one of these calls, never left stale from an earlier deploy — redeploy_website_template_demo with nothing else changed is a legitimate way to force a fresh reseed. The response's \`demoDeployment\` reports \`status\` (ok/failed/skipped), \`verified\`, \`routes\` (the homepage PLUS up to 5 more real routes read from the demo's own sitemap.xml, if it has one — \`verified\` is false the moment any ONE of them fails, not just the homepage), and \`error\`/\`verificationError\`; \`status: \"ok\"\` alone doesn't mean \`verified\` is true, check both. A metadata-only update (no files/changedFiles/schema) returns \`demoDeployment.status: \"skipped\"\` and does not redeploy/reseed. A relation field's dummyData value is a plain slugified LABEL matching the target entry's own title/judul/nama/name (e.g. \"kategori\": \"nasional\", or an array for *-to-many), resolved against whatever got seeded for that Content Type — media/mediaMultiple/file/component/repeater fields still render EMPTY (no sensible synthetic value exists for those) — that's expected, not a bug to chase.
 
 For a TARGETED revision of an existing template ("ubah warna header"), call \`get_website_template\` to see the current bundle, then \`update_website_template\` with changedFiles/deletedFiles instead of resending every file via \`files\`.
 
@@ -851,7 +866,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
-          z.object({ ...WEBSITE_TEMPLATE_OUTPUT_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
+          z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
@@ -873,7 +888,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               url: already.demoUrl,
               deploymentId: already.demoDeploymentId ?? undefined,
             })
-            const structured = { ...serializeWebsiteTemplate(already), demoDeployment }
+            const structured = { ...serializeWebsiteTemplateSummary(already), demoDeployment }
             return {
               content: [{ type: "text" as const, text: `🔁 Replay idempoten — Website Template '${already.id}' sudah dibuat untuk idempotencyKey ini.\n${JSON.stringify(structured, null, 2)}` }],
               structuredContent: structured,
@@ -1014,7 +1029,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             const winner = await db.websiteTemplate.findUnique({ where: { idempotencyKey } })
             if (winner) {
               const demoDeployment = describeDemoDeployment({ url: winner.demoUrl, deploymentId: winner.demoDeploymentId ?? undefined })
-              const structured = { ...serializeWebsiteTemplate(winner), demoDeployment }
+              const structured = { ...serializeWebsiteTemplateSummary(winner), demoDeployment }
               return {
                 content: [{ type: "text" as const, text: `🔁 Replay idempoten — Website Template '${winner.id}' sudah dibuat untuk idempotencyKey ini.\n${JSON.stringify(structured, null, 2)}` }],
                 structuredContent: structured,
@@ -1037,7 +1052,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // itself (or leaves them untouched on a hard failure), so this is
         // the one query that can't drift from what it actually wrote.
         const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
-        const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
+        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
           structuredContent: structured,
@@ -1077,7 +1092,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
-          z.object({ ...WEBSITE_TEMPLATE_OUTPUT_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional() }),
+          z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional() }),
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
@@ -1219,14 +1234,14 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             schemaTemplate: freshSchemaTemplate || existing.schemaTemplate,
           })
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
-          const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
+          const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
           return {
             content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
             structuredContent: structured,
           }
         }
 
-        const structured = { ...serializeWebsiteTemplate(template), demoDeployment: { status: "skipped" as const } }
+        const structured = { ...serializeWebsiteTemplateSummary(template), demoDeployment: { status: "skipped" as const } }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -1381,7 +1396,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           id: z.string().describe("Website Template id or slug"),
         },
         outputSchema: {
-          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          ...WEBSITE_TEMPLATE_SUMMARY_SHAPE,
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
         },
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
@@ -1405,7 +1420,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         })
 
         const saved = (await db.websiteTemplate.findUnique({ where: { id: existing.id } })) || existing
-        const structured = { ...serializeWebsiteTemplate(saved), demoDeployment: describeDemoDeployment(demo) }
+        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -1446,7 +1461,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               "4. Rancang schema (contentTypes/singleTypes/components) yang relevan dengan topik di atas, lengkap dengan dummyData nyata per model (bukan placeholder generik).\n" +
               "5. Tulis frontend-nya (Next.js), sertakan .env.example dan package.json.\n" +
               "6. Panggil create_website_template dengan dryRun: true dulu, perbaiki semua issue, baru panggil lagi tanpa dryRun.\n" +
-              "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.",
+              "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.\n" +
+              "8. Laporkan ke pengguna: URL demo-nya, dan ringkasan routes[] (berapa yang verified, mana yang gagal kalau ada).\n" +
+              "9. Tanyakan ke pengguna apakah template ini siap di-publish (published: true, supaya terlihat di katalog setiap workspace) — jangan set published: true tanpa konfirmasi.\n" +
+              "10. Kalau pengguna juga ingin template ini langsung dipakai di sebuah workspace tertentu, itu dilakukan lewat server MCP per-workspace (bukan server ini) — panggil tool apply_website_template di sana dengan id/slug template ini.",
           },
         }],
       }),
@@ -1488,16 +1506,29 @@ async function handleGlobalSchemaMcpRequest(req: Request): Promise<Response> {
       "unknown"
     const ipLimit = await rateLimit(`mcp_global_schema_ip:${ip}`, { limit: 60, windowSeconds: 60 })
     if (!ipLimit.success) {
-      // Third external audit, RL-1: a plain `{error}` body with no
+      // Third/fourth external audit, RL-1: a plain `{error}` body with no
       // Retry-After/RateLimit-* headers gave a calling agent nothing to
       // act on but "wait an undetermined amount of time and hope" — JSON-RPC
       // shaped body (matching every other error this server returns) +
       // the standard rate-limit headers so a client can back off precisely.
+      // `id` echoes the request's own JSON-RPC id (falling back to null
+      // only when the body can't be read/parsed as JSON-RPC at all) — a
+      // client that correlates responses by id would otherwise wait on
+      // this request forever instead of ever seeing its rejection. Clone
+      // rather than read `req` directly: this branch returns immediately,
+      // but the original body must stay unconsumed for every OTHER path
+      // below (the overwhelming majority of requests, which never hit this
+      // clone/parse cost at all).
+      const requestId = await req
+        .clone()
+        .json()
+        .then((body) => (body && typeof body === "object" && "id" in body ? body.id : null))
+        .catch(() => null)
       const retryAfterSeconds = Math.max(1, Math.ceil((ipLimit.resetAt - Date.now()) / 1000))
       return NextResponse.json(
         {
           jsonrpc: "2.0",
-          id: null,
+          id: requestId,
           error: { code: -32000, message: "Rate limit exceeded. Try again later.", data: { retryAfterSeconds } },
         },
         {

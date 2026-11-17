@@ -23,6 +23,11 @@ vi.mock("@/lib/schema-template-sync", () => ({
   materializeSchemaIntoTenant: (...args: any[]) => materializeSchemaIntoTenant(...args),
 }))
 
+const wipeTenantSchema = vi.fn().mockResolvedValue({ contentTypes: 0, singleTypes: 0, components: 0 })
+vi.mock("@/lib/schema-wipe", () => ({
+  wipeTenantSchema: (...args: any[]) => wipeTenantSchema(...args),
+}))
+
 let createContentEntryCounter = 0
 const createContentEntry = vi.fn().mockImplementation(async () => ({ ok: true, data: { id: `entry_${++createContentEntryCounter}` } }))
 const updateContentEntry = vi.fn().mockResolvedValue({ ok: true, data: {} })
@@ -61,14 +66,24 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     createContentEntry.mockImplementation(async () => ({ ok: true, data: { id: `entry_${++createContentEntryCounter}` } }))
   })
 
-  it("returns the existing demo tenant without creating anything when it already exists", async () => {
+  // Fourth external audit, DEMO-6: this used to return the existing demo
+  // tenant completely as-is — confirmed live, a later redeploy/update left
+  // its content from the FIRST deploy untouched forever, no matter how
+  // much the template's schema/dummyData changed since. A new Tenant row
+  // is never created again (reuses the existing one), but its content IS
+  // fully wiped and rebuilt every time, not just once.
+  it("reuses the existing Tenant row (no new tenant.create) but still wipes and rebuilds its content every time, not just on first creation", async () => {
     tenantFindUnique.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
 
     const result = await ensureDemoTenantForSchemaTemplate({ ...schemaTemplate, demoTenantId: "demo-tenant-1" })
 
     expect(result).toEqual({ id: "demo-tenant-1", slug: "demo-company-profile" })
     expect(tenantCreate).not.toHaveBeenCalled()
-    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
+    expect(tenantLocaleCreate).not.toHaveBeenCalled()
+    expect(wipeTenantSchema).toHaveBeenCalledWith(tenantDbMock, "demo-tenant-1")
+    expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(tenantDbMock, "demo-tenant-1", schemaTemplate.schema)
+    // seedSampleContent ran too (reads the now-empty/rematerialized schema).
+    expect(contentTypeFindMany).toHaveBeenCalled()
   })
 
   it("creates a new demo tenant, materializes the schema, and persists demoTenantId when none exists yet", async () => {

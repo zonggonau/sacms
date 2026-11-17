@@ -65,23 +65,23 @@ describe("validateBundleReferences", () => {
   })
 
   it("flags a component field whose options.componentSlug doesn't exist in components[]", () => {
-    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "component", slug: "hero", options: { componentSlug: "hero_banner" } }] }], components: [{ slug: "cta_block" }] }
+    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "component", slug: "hero", options: { componentSlug: "hero-banner" } }] }], components: [{ slug: "cta-block" }] }
     const issues = validateBundleReferences(bundle)
-    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlug", message: expect.stringContaining("hero_banner") }])
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlug", message: expect.stringContaining("hero-banner") }])
   })
 
   it("passes a component field whose componentSlug DOES exist", () => {
-    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "component", slug: "hero", options: { componentSlug: "hero_banner" } }] }], components: [{ slug: "hero_banner" }] }
+    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "component", slug: "hero", options: { componentSlug: "hero-banner" } }] }], components: [{ slug: "hero-banner" }] }
     expect(validateBundleReferences(bundle)).toEqual([])
   })
 
   it("flags each invalid entry in a repeater's allowedComponents array, by its own index", () => {
     const bundle = {
-      contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { allowedComponents: ["hero_banner", "ghost_component", "cta_block"] } }] }],
-      components: [{ slug: "hero_banner" }, { slug: "cta_block" }],
+      contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { allowedComponents: ["hero-banner", "ghost-component", "cta-block"] } }] }],
+      components: [{ slug: "hero-banner" }, { slug: "cta-block" }],
     }
     const issues = validateBundleReferences(bundle)
-    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.allowedComponents[1]", message: expect.stringContaining("ghost_component") }])
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.allowedComponents[1]", message: expect.stringContaining("ghost-component") }])
   })
 
   it("flags a select field with no options.choices at all", () => {
@@ -273,7 +273,7 @@ describe("validateBundleReferences", () => {
   // silently fell through to "every component is allowed".
 
   it("flags a repeater field using the wrong key 'componentSlugs' instead of 'allowedComponents', as a warning (not blocking — 'every component allowed' is still valid)", () => {
-    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { componentSlugs: ["hero_banner"] } }] }] }
+    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { componentSlugs: ["hero-banner"] } }] }] }
     const issues = validateBundleReferences(bundle)
     expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlugs", message: expect.stringContaining("allowedComponents"), severity: "warning" }])
   })
@@ -299,6 +299,25 @@ describe("validateBundleReferences", () => {
   it("does not flag a 'slug'-type field whose options.sourceField matches a real sibling field", () => {
     const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "headline" }, { type: "slug", slug: "permalink", options: { sourceField: "headline" } }] }] }
     expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("rejects a model slug with spaces, uppercase, or punctuation (materializes straight into a real ContentType/SingleType/Component row with no format check of its own)", () => {
+    for (const slug of ["Blog Posts", "BlogPosts", "blog-posts!"]) {
+      const bundle = { contentTypes: [{ slug, fields: [] }] }
+      const issues = validateBundleReferences(bundle)
+      expect(issues.some((i) => i.path === "contentTypes[0].slug"), `'${slug}' should be flagged`).toBe(true)
+    }
+  })
+
+  it("accepts a kebab-case model slug", () => {
+    const bundle = { contentTypes: [{ slug: "blog-posts", fields: [] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("rejects a malformed groups[].slug the same way", () => {
+    const bundle = { groups: [{ slug: "Marketing Team", name: "Marketing" }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues.some((i) => i.path === "groups[0].slug")).toBe(true)
   })
 
   it("rejects a field slug with spaces or punctuation", () => {

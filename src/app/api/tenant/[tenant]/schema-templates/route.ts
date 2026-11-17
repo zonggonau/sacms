@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { slugify } from "@/lib/slug"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { createSchemaTemplateSchema } from "@/lib/validations/schema-template"
+import { validateBundleReferences, splitIssuesBySeverity } from "@/lib/schema-template-validation"
 
 // Schema templates are platform catalog data (see prisma/schema.prisma —
 // no tenantId FK) and must be visible to every tenant regardless of
@@ -29,6 +30,16 @@ export const POST = withStaffAuth(
     const parsed = await readJson(req, createTemplateSchema)
     if (!parsed.ok) return parsed.response
     const { name, category, icon, description, schema } = parsed.data
+
+    // Same cross-reference/field-type/duplicate-slug checks the MCP
+    // server's create_schema_template runs — this route had none at all
+    // (createSchemaTemplateSchema's own zod shape only ever caught a
+    // structurally malformed bundle, never e.g. a typo'd field type or a
+    // relationSlug pointing at nothing in the same bundle).
+    const { blocking } = splitIssuesBySeverity(validateBundleReferences(schema))
+    if (blocking.length > 0) {
+      return apiError("validation", { message: `${blocking.length} masalah ditemukan di schema.`, details: { issues: blocking } })
+    }
 
     const baseSlug = slugify(name)
     let slug = baseSlug

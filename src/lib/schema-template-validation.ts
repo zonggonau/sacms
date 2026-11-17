@@ -12,17 +12,28 @@
 import { FIELD_TYPES } from "@/lib/field-types"
 import { generateContentSchema } from "@/lib/content-validations"
 
-/** The 36 real field-type slugs, as a Set for fast lookup — schemaTemplateFieldSchema's
- *  own `type` is now a strict z.enum of this same list, so this check is
- *  mostly defense-in-depth for a caller that built a BundleFieldRef by hand
- *  without going through that zod shape first. Checked against the SAME
- *  list list_field_types documents. */
+/** The 36 real field-type slugs — schemaTemplateFieldSchema's own `type` is
+ *  deliberately a bare z.string() (see that file's own header comment: the
+ *  MCP SDK validates a tool's full inputSchema, including this nested
+ *  shape, BEFORE the handler runs, so a zod-level z.enum here would reject
+ *  with the SDK's own generic error instead of this function's nicer one).
+ *  Checked here instead, against the SAME list list_field_types documents. */
 const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
 
 /** Field slugs are JSON property names in the Content API, not URL paths —
  *  camelCase/snake_case are both fine, unlike a MODEL slug. See VAL-9's own
  *  check below for the one exception (document_template). */
 const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
+
+/** Same slug format the dashboard's own Content Type/Single Type/Component
+ *  creation routes enforce (src/lib/validations/admin.ts) — schema-
+ *  template-sync.ts's materialize step writes a model's `slug` straight
+ *  into the real ContentType/SingleType/Component row with NO format check
+ *  of its own, so a template with "My Article!"/spaces/uppercase silently
+ *  materializes a slug no real route would ever let a human create. Kept
+ *  as a plain z.string() at the schema layer for the same SDK-pre-handler
+ *  reason as VALID_FIELD_TYPES above — enforced here instead. */
+const MODEL_SLUG_FORMAT_RE = /^[a-z0-9][a-z0-9-]*$/
 
 /** A dummyData color/date value is allowed to be loose at real content-entry
  *  time (a human typing into a form benefits from forgiving coercion) —
@@ -111,6 +122,20 @@ function checkDuplicateSlugs(models: { slug: string }[] | undefined, basePath: s
   })
 }
 
+/** Third/fourth external audit, VAL-8: a model/group slug materializes
+ *  straight into a real ContentType/SingleType/Component row with no
+ *  format check of its own elsewhere (see MODEL_SLUG_FORMAT_RE's own
+ *  comment) — checked here, not at the zod schema layer (ERR-4: would
+ *  otherwise be rejected by the MCP SDK's own pre-handler validation with
+ *  a generic error, bypassing this function's nicer one entirely). */
+function checkSlugFormat(models: { slug: string }[] | undefined, basePath: string, issues: ValidationIssue[]): void {
+  ;(models || []).forEach((m, i) => {
+    if (m.slug && !MODEL_SLUG_FORMAT_RE.test(m.slug)) {
+      issues.push({ path: `${basePath}[${i}].slug`, message: `'${m.slug}' is not a valid slug — use lowercase letters/digits/dashes, starting with a letter or digit (e.g. 'blog-post').` })
+    }
+  })
+}
+
 /**
  * Cross-reference checks a zod shape check alone can't catch: a
  * relation/component/repeater field pointing at a model or component
@@ -135,6 +160,11 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
   checkDuplicateSlugs(bundle.singleTypes, "singleTypes", issues)
   checkDuplicateSlugs(bundle.components, "components", issues)
   checkDuplicateSlugs(bundle.groups, "groups", issues)
+
+  checkSlugFormat(bundle.contentTypes, "contentTypes", issues)
+  checkSlugFormat(bundle.singleTypes, "singleTypes", issues)
+  checkSlugFormat(bundle.components, "components", issues)
+  checkSlugFormat(bundle.groups, "groups", issues)
 
   // chatgpt8.md P1: a typo'd contentTypes[].group or groups[].parentSlug
   // used to be silently dropped at materialize time (schema-template-sync.ts

@@ -1,5 +1,4 @@
 import { z } from "zod/v4"
-import { VALID_FIELD_TYPES } from "@/lib/field-types"
 
 /**
  * Shared shape for a Schema Template's `schema` JSON blob (prisma/schema.prisma
@@ -9,23 +8,25 @@ import { VALID_FIELD_TYPES } from "@/lib/field-types"
  * (src/app/api/tenant/[tenant]/schema-templates/route.ts) and the SaCMS
  * Global "Schema Template" MCP server (src/app/api/mcp/global-schema), so
  * the validation rules only live in one place.
+ *
+ * Fourth external audit, ERR-4: `type`/model `slug` were briefly tightened
+ * here directly (z.enum of the 36 types, a kebab-case regex) — confirmed
+ * live this was wrong for the MCP server specifically: this shape is
+ * embedded in every affected tool's OWN `inputSchema`, and the MCP SDK's
+ * validateToolInput parses the FULL inputSchema (including this nested
+ * shape) BEFORE the handler ever runs, rejecting with its own generic,
+ * stop-at-first-issue McpError — our handler's nicer validateBundleReferences
+ * pass (itemized issues, a real structuredContent.code, a list_field_types
+ * pointer) never even got a chance to run. Kept loose here on purpose —
+ * see schema-template-validation.ts's own VALID_FIELD_TYPES/
+ * FIELD_SLUG_FORMAT_RE checks for where this is actually enforced, past
+ * the SDK's own pre-handler gate.
  */
-
-// Same slug format the dashboard's own Content Type/Single Type/Component
-// creation routes enforce (src/lib/validations/admin.ts) — but
-// schema-template-sync.ts's materialize step writes a model's `slug`
-// straight into the real ContentType/SingleType/Component row with NO
-// format check of its own (confirmed: no slugify() call on these, only on
-// the group-slug fallback), so a template with "My Article!"/spaces/
-// uppercase silently materializes a slug no real route would ever let a
-// human create, breaking routing/API paths downstream. Enforcing the same
-// rule here catches it at template-definition time instead.
-const modelSlugSchema = z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/, "Slug must be lowercase alphanumeric with dashes (e.g. 'blog-post')")
 
 export const schemaTemplateFieldSchema = z.object({
   name: z.string().describe("Field label shown in the CMS editor, e.g. 'Cover Image'"),
   slug: z.string().describe("Field key used in the Content API's JSON, e.g. 'cover-image'. Kebab-case is the convention (not hard-enforced — document_template fields that mirror a .docx's own placeholder keys verbatim are a known, deliberate exception)."),
-  type: z.enum(VALID_FIELD_TYPES).describe("One of the 36 real field types — call list_field_types for the full list with each type's options/relationSlug/entryValue shape. A typo'd/fictional type is now rejected here directly instead of silently accepted and only flagged by a separate reference check."),
+  type: z.string().describe("One of the 36 real field types — call list_field_types for the full list with each type's options/relationSlug/entryValue shape. A typo'd/fictional type is rejected by validateBundleReferences with a list_field_types pointer, not at this schema layer (see this file's own header comment for why)."),
   required: z.boolean().optional().describe("Default false."),
   unique: z.boolean().optional().describe("Default false."),
   relationSlug: z.string().optional().describe("Required when type is 'relation' — the target Content Type/Single Type's slug (must match one elsewhere in this same bundle, or be 'member' for the tenant's own end-user table)."),
@@ -41,7 +42,7 @@ export const schemaTemplateFieldSchema = z.object({
 
 export const schemaTemplateModelSchema = z.object({
   name: z.string(),
-  slug: modelSlugSchema,
+  slug: z.string(),
   description: z.string().optional(),
   fields: z.array(schemaTemplateFieldSchema),
   dummyData: z.array(z.record(z.string(), z.any())).optional(),
@@ -61,7 +62,7 @@ export const schemaTemplateModelSchema = z.object({
 // content-type-group-service.ts the dashboard dialog and the per-workspace
 // MCP server's group tools use). List parents before their children.
 export const schemaTemplateGroupSchema = z.object({
-  slug: modelSlugSchema,
+  slug: z.string(),
   name: z.string(),
   parentSlug: z.string().optional(),
 })
