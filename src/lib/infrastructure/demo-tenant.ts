@@ -1,6 +1,7 @@
 import { db, getTenantDb } from "@/lib/database"
 import { materializeSchemaIntoTenant, type SchemaBlob } from "@/lib/schema-template-sync"
-import { createContentEntry, type EntryWriteContext } from "@/lib/content/entry-service"
+import { createContentEntry, updateContentEntry, type EntryWriteContext } from "@/lib/content/entry-service"
+import { slugify } from "@/lib/slug"
 
 /**
  * Structural/reference field types with no sensible synthetic value (a real
@@ -71,7 +72,18 @@ function generateSampleFieldValue(field: SampleField, index: number): unknown | 
     case "rating":
       return 5
     case "boolean":
-      return true
+      // Third external audit, DEMO-4: this used to always return `true` —
+      // for a flag like hideFromMenu/hideFromFooter that meant EVERY
+      // seeded entry hid itself from navigation, making the whole demo's
+      // menu/footer empty. Alternating gives a representative MIX
+      // instead of a value that's uniformly wrong for roughly half of
+      // all real-world boolean fields.
+      return index % 2 === 0
+    case "color":
+      // DEMO-4: this type had no case at all, falling through to the
+      // generic `Contoh ${label} ${index+1}` text default — not a color
+      // at all, breaking anything that renders it as a swatch/CSS value.
+      return "#2563eb"
     case "date":
     case "datetime":
       return new Date().toISOString().split("T")[0]
@@ -93,7 +105,14 @@ function generateSampleFieldValue(field: SampleField, index: number): unknown | 
     case "email":
       return "demo@sacms.cloud"
     case "url":
-      return "https://sacms.cloud"
+      // DEMO-4: a plain "https://sacms.cloud" for EVERY url-type field —
+      // including one plainly named e.g. coverUrl — looked obviously fake
+      // and pointed at SaCMS's own marketing site, not a plausible image.
+      // picsum.photos is a public placeholder-image service; seeded by
+      // field slug + index so repeated entries don't all get one photo.
+      return ["cover", "image", "photo", "thumbnail", "banner"].some((kw) => slugLower.includes(kw))
+        ? `https://picsum.photos/seed/${encodeURIComponent(field.slug)}-${index}/800/450`
+        : "https://example.com"
     default:
       return `Contoh ${label} ${index + 1}`
   }
@@ -211,6 +230,81 @@ function buildEntryData(fields: SampleField[], index: number, dummyRow: Record<s
   return { ...generic, ...dummyRow }
 }
 
+/** A stable, human-writable "natural key" for a seeded entry — derived from
+ *  its own title/judul/name value, the same fields real content already
+ *  treats as the identifying label (see generateSampleFieldValue's own
+ *  title-like heuristic). Lets a relation dummyData value reference a
+ *  target row by a plain slugified label (e.g. "nasional") instead of a
+ *  real database id nobody writing a template bundle could ever know in
+ *  advance. */
+function computeNaturalKey(data: Record<string, unknown>): string | undefined {
+  const raw = data.title ?? data.judul ?? data.nama ?? data.name
+  if (typeof raw !== "string" || !raw.trim()) return undefined
+  return slugify(raw)
+}
+
+interface PendingRelationPatch {
+  contentTypeSlug: string
+  entryId: string
+  fieldSlug: string
+  rawValue: unknown
+  targetModelSlug: string
+  isMulti: boolean
+}
+
+/**
+ * Third external audit, DEMO-3: 'relation' dummyData values used to be
+ * silently dropped entirely (SKIP_FIELD_TYPES) — every relation field in
+ * the demo rendered empty no matter how explicit a template's own dummyData
+ * was ("kategori": "nasional"). Resolved here as a plain slugified-label
+ * reference against whichever OTHER Content Type's entries got seeded (by
+ * computeNaturalKey, above) — not a new ref/_key format, just the author's
+ * own dummyData string(s) matched by label. Runs as an explicit SECOND
+ * pass, once every Content Type has already been seeded once, so a
+ * self-relation or a circular pair (A -> B -> A) both resolve correctly:
+ * by the time this runs, every entry that could ever be a valid target
+ * already exists, regardless of model seeding order.
+ *
+ * Deliberately NOT handled: relation fields inside Single Types' own
+ * dummyData (a single type has only one row, not a list to key-match
+ * against in the same way), options.targetModel: "member" (no member
+ * table exists in a template bundle to match against), and media/
+ * component/repeater dummyData (no natural-key concept applies — flagged
+ * separately, still out of scope for this round).
+ */
+async function resolveRelationPatches(
+  ctx: EntryWriteContext,
+  patches: PendingRelationPatch[],
+  seededByModel: Map<string, Map<string, string>>,
+) {
+  for (const patch of patches) {
+    const targetMap = seededByModel.get(patch.targetModelSlug)
+    if (!targetMap) continue
+    const resolveOne = (raw: unknown): string | undefined => (typeof raw === "string" ? targetMap.get(slugify(raw)) : undefined)
+
+    // Coerce to the field's OWN declared shape regardless of how the
+    // author happened to write dummyData (a single string for a *-to-many
+    // field, or an array for a *-to-one) — rather than faithfully
+    // reproducing a shape mismatch into real seeded content.
+    let resolved: string | string[] | undefined
+    if (patch.isMulti) {
+      const rawArray = Array.isArray(patch.rawValue) ? patch.rawValue : [patch.rawValue]
+      resolved = rawArray.map(resolveOne).filter((v): v is string => !!v)
+    } else {
+      const rawSingle = Array.isArray(patch.rawValue) ? patch.rawValue[0] : patch.rawValue
+      resolved = resolveOne(rawSingle)
+    }
+    const hasValue = Array.isArray(resolved) ? resolved.length > 0 : !!resolved
+    if (!hasValue) continue
+
+    await updateContentEntry(ctx, { kind: "system" }, {
+      contentTypeSlug: patch.contentTypeSlug,
+      entryId: patch.entryId,
+      data: { [patch.fieldSlug]: resolved },
+    }).catch((err) => console.warn(`[demo-tenant] Failed to apply resolved relation for ${patch.contentTypeSlug}.${patch.fieldSlug}:`, err))
+  }
+}
+
 async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb>>, tenantId: string, tenantSlug: string, schemaBlob: SchemaBlob) {
   const [contentTypes, singleTypes] = await Promise.all([
     tenantDb.contentType.findMany({ where: { tenantId }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
@@ -219,18 +313,60 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
 
   const ctx: EntryWriteContext = { client: tenantDb, tenantId, tenantSlug }
 
+  // naturalKey -> real entry id, scoped per Content Type slug (a relation's
+  // relationSlug always names a specific model — never "any").
+  const seededByModel = new Map<string, Map<string, string>>()
+  const pendingRelationPatches: PendingRelationPatch[] = []
+
   for (const contentType of contentTypes) {
-    const fields = contentType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
+    const fields = contentType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any, relationSlug: f.relationSlug }))
+    const relationFields = fields.filter((f) => f.type === "relation" && f.relationSlug && (f.options as any)?.targetModel !== "member")
     const dummyRows = findDummyData(schemaBlob.contentTypes as any, contentType.slug)
     const entryCount = dummyRows ? Math.max(dummyRows.length, SAMPLE_ENTRIES_PER_CONTENT_TYPE) : SAMPLE_ENTRIES_PER_CONTENT_TYPE
+    const keyMap = new Map<string, string>()
+    seededByModel.set(contentType.slug, keyMap)
+
     for (let i = 0; i < entryCount; i++) {
-      await createContentEntry(ctx, { kind: "system" }, {
+      const dummyRow = dummyRows?.[i % dummyRows.length]
+      const data = buildEntryData(fields, i, dummyRow)
+      // A dummyData-provided relation value is a slugified LABEL reference
+      // (resolved in the second pass below), never a real id — it must not
+      // reach createContentEntry as-is, which would store the raw label
+      // string as if it were an id.
+      for (const rf of relationFields) delete data[rf.slug]
+
+      const result = await createContentEntry(ctx, { kind: "system" }, {
         contentTypeSlug: contentType.slug,
-        data: buildEntryData(fields, i, dummyRows?.[i % dummyRows.length]),
+        data,
         status: "PUBLISHED",
-      }).catch((err) => console.warn(`[demo-tenant] Failed to seed sample entry for ${contentType.slug}:`, err))
+      }).catch((err): null => {
+        console.warn(`[demo-tenant] Failed to seed sample entry for ${contentType.slug}:`, err)
+        return null
+      })
+      if (!result || !result.ok) continue
+
+      const naturalKey = computeNaturalKey(data)
+      if (naturalKey) keyMap.set(naturalKey, result.data.id)
+
+      if (dummyRow) {
+        for (const rf of relationFields) {
+          const rawValue = dummyRow[rf.slug]
+          if (rawValue === undefined) continue
+          const relationType = (rf.options as any)?.relationType
+          pendingRelationPatches.push({
+            contentTypeSlug: contentType.slug,
+            entryId: result.data.id,
+            fieldSlug: rf.slug,
+            rawValue,
+            targetModelSlug: rf.relationSlug!,
+            isMulti: relationType === "oneToMany" || relationType === "manyToMany",
+          })
+        }
+      }
     }
   }
+
+  await resolveRelationPatches(ctx, pendingRelationPatches, seededByModel)
 
   for (const singleType of singleTypes) {
     const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))

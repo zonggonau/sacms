@@ -23,9 +23,12 @@ vi.mock("@/lib/schema-template-sync", () => ({
   materializeSchemaIntoTenant: (...args: any[]) => materializeSchemaIntoTenant(...args),
 }))
 
-const createContentEntry = vi.fn().mockResolvedValue({ ok: true })
+let createContentEntryCounter = 0
+const createContentEntry = vi.fn().mockImplementation(async () => ({ ok: true, data: { id: `entry_${++createContentEntryCounter}` } }))
+const updateContentEntry = vi.fn().mockResolvedValue({ ok: true, data: {} })
 vi.mock("@/lib/content/entry-service", () => ({
   createContentEntry: (...args: any[]) => createContentEntry(...args),
+  updateContentEntry: (...args: any[]) => updateContentEntry(...args),
 }))
 
 const contentTypeFindMany = vi.fn().mockResolvedValue([])
@@ -54,6 +57,8 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     vi.clearAllMocks()
     contentTypeFindMany.mockResolvedValue([])
     singleTypeFindMany.mockResolvedValue([])
+    createContentEntryCounter = 0
+    createContentEntry.mockImplementation(async () => ({ ok: true, data: { id: `entry_${++createContentEntryCounter}` } }))
   })
 
   it("returns the existing demo tenant without creating anything when it already exists", async () => {
@@ -207,5 +212,152 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
         update: expect.objectContaining({ enabled: true, data: { headline: expect.any(String) }, publishedAt: expect.any(Date) }),
       }),
     )
+  })
+
+  // Third external audit, DEMO-3: a relation field's dummyData value is a
+  // plain slugified LABEL reference (e.g. "nasional"), resolved against
+  // whichever target content type's own entries got seeded — not a real id
+  // nobody writing a template could know in advance. "artikel" is listed
+  // BEFORE "kategori" here deliberately: resolution runs as a second pass
+  // after EVERY content type is seeded, so it must not depend on array order.
+  it("resolves a relation dummyData value by natural-key label match against another content type's seeded entries, regardless of array order", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-news" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "artikel",
+        schemaFields: [
+          { slug: "title", name: "Judul", type: "text", options: null, relationSlug: null },
+          { slug: "kategori", name: "Kategori", type: "relation", options: { relationType: "manyToOne" }, relationSlug: "kategori" },
+        ],
+      },
+      {
+        slug: "kategori",
+        schemaFields: [{ slug: "name", name: "Nama", type: "text", options: null, relationSlug: null }],
+      },
+    ])
+
+    const schema = {
+      ...schemaTemplate,
+      schema: {
+        contentTypes: [
+          { slug: "artikel", dummyData: [{ title: "Berita A", kategori: "nasional" }, { title: "Berita B", kategori: "ekonomi" }, { title: "Berita C", kategori: "olahraga" }] },
+          { slug: "kategori", dummyData: [{ name: "Nasional" }, { name: "Ekonomi" }, { name: "Olahraga" }] },
+        ],
+      },
+    }
+
+    await ensureDemoTenantForSchemaTemplate(schema)
+
+    // Created WITHOUT the relation field (a raw label string would
+    // otherwise be stored as if it were a real id).
+    expect(createContentEntry).toHaveBeenCalledTimes(6)
+    expect(createContentEntry.mock.calls[0][2].data).not.toHaveProperty("kategori")
+
+    // kategori entries are entry_4/5/6 (seeded after all 3 artikel entries).
+    expect(updateContentEntry).toHaveBeenCalledTimes(3)
+    expect(updateContentEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "system" },
+      { contentTypeSlug: "artikel", entryId: "entry_1", data: { kategori: "entry_4" } },
+    )
+    expect(updateContentEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "system" },
+      { contentTypeSlug: "artikel", entryId: "entry_3", data: { kategori: "entry_6" } },
+    )
+  })
+
+  it("resolves a *-to-many relation dummyData array against multiple target entries, and silently drops any label that matches nothing", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-news" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "artikel",
+        schemaFields: [
+          { slug: "title", name: "Judul", type: "text", options: null, relationSlug: null },
+          { slug: "tags", name: "Tags", type: "relation", options: { relationType: "manyToMany" }, relationSlug: "kategori" },
+        ],
+      },
+      {
+        slug: "kategori",
+        schemaFields: [{ slug: "name", name: "Nama", type: "text", options: null, relationSlug: null }],
+      },
+    ])
+
+    // 3 rows each (not 1-2) deliberately: dummyData shorter than
+    // SAMPLE_ENTRIES_PER_CONTENT_TYPE cycles to fill the minimum, which
+    // would otherwise re-seed "Nasional" twice and overwrite its own
+    // natural-key mapping — irrelevant to what THIS test checks.
+    const schema = {
+      ...schemaTemplate,
+      schema: {
+        contentTypes: [
+          { slug: "artikel", dummyData: [{ title: "Berita A", tags: ["nasional", "tidak-ada", "ekonomi"] }, { title: "Berita B" }, { title: "Berita C" }] },
+          { slug: "kategori", dummyData: [{ name: "Nasional" }, { name: "Ekonomi" }, { name: "Olahraga" }] },
+        ],
+      },
+    }
+
+    await ensureDemoTenantForSchemaTemplate(schema)
+
+    expect(updateContentEntry).toHaveBeenCalledTimes(1)
+    expect(updateContentEntry).toHaveBeenCalledWith(
+      expect.anything(),
+      { kind: "system" },
+      { contentTypeSlug: "artikel", entryId: "entry_1", data: { tags: ["entry_4", "entry_5"] } },
+    )
+  })
+
+  // Third external audit, DEMO-4: the generic synthesizer's own fallback
+  // values for these three types were flatly wrong — boolean always
+  // `true` (hiding every seeded entry from nav if the field happened to be
+  // named hideFromMenu/hideFromFooter), color falling through to plain
+  // placeholder TEXT (not a hex value at all), and a url-type "coverUrl"
+  // field pointing at SaCMS's own marketing site instead of a plausible
+  // image.
+  it("generates a real hex color, an alternating (not always-true) boolean, and a placeholder IMAGE url for a 'cover'-named url field", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "artikel",
+        schemaFields: [
+          { slug: "accentColor", name: "Warna Aksen", type: "color", options: null, relationSlug: null },
+          { slug: "breaking", name: "Breaking", type: "boolean", options: null, relationSlug: null },
+          { slug: "coverUrl", name: "Cover URL", type: "url", options: null, relationSlug: null },
+          { slug: "externalLink", name: "Link Eksternal", type: "url", options: null, relationSlug: null },
+        ],
+      },
+    ])
+
+    await ensureDemoTenantForSchemaTemplate({ ...schemaTemplate, schema: { contentTypes: [] } })
+
+    const seeded = createContentEntry.mock.calls.map((call) => call[2].data)
+    expect(seeded).toHaveLength(3)
+    for (const entry of seeded) {
+      expect(entry.accentColor).toMatch(/^#[0-9a-fA-F]{6}$/)
+      expect(entry.coverUrl).toMatch(/^https:\/\/picsum\.photos\//)
+      expect(entry.externalLink).toBe("https://example.com")
+    }
+    // Alternates rather than being uniformly true — index 0 true, index 1 false.
+    expect(seeded[0].breaking).toBe(true)
+    expect(seeded[1].breaking).toBe(false)
+  })
+
+  it("never calls updateContentEntry when a relation dummyData value matches nothing on either side", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-news" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "artikel",
+        schemaFields: [{ slug: "kategori", name: "Kategori", type: "relation", options: {}, relationSlug: "kategori-asing" }],
+      },
+    ])
+    const schema = { ...schemaTemplate, schema: { contentTypes: [{ slug: "artikel", dummyData: [{ kategori: "nasional" }] }] } }
+
+    await ensureDemoTenantForSchemaTemplate(schema)
+
+    expect(updateContentEntry).not.toHaveBeenCalled()
   })
 })
