@@ -52,7 +52,7 @@ vi.mock("@/lib/infrastructure/demo-tenant", () => ({
   ensureDemoTenantForSchemaTemplate: (...args: any[]) => ensureDemoTenantForSchemaTemplate(...args),
 }))
 
-const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
+const { deployWebsiteTemplateDemo, verifyDemoRoutes } = await import("@/lib/infrastructure/deploy-website-template-demo")
 
 const websiteTemplate = {
   id: "wt_1",
@@ -100,7 +100,13 @@ describe("deployWebsiteTemplateDemo", () => {
       "production",
     )
     expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
-    expect(result).toEqual({ url: "https://demo-modern-dark.sites.sacms.cloud", deploymentId: "dpl_1", verified: true, verificationError: undefined })
+    expect(result).toEqual({
+      url: "https://demo-modern-dark.sites.sacms.cloud",
+      deploymentId: "dpl_1",
+      verified: true,
+      verificationError: undefined,
+      routes: [{ path: "/", verified: true, error: undefined }],
+    })
     expect(websiteTemplateUpdate).toHaveBeenCalledWith({
       where: { id: "wt_1" },
       data: {
@@ -127,7 +133,10 @@ describe("deployWebsiteTemplateDemo", () => {
 
     expect(result.verified).toBe(false)
     expect(result.verificationError).toMatch(/error\/protection page/)
-    expect(global.fetch).toHaveBeenCalledTimes(3)
+    // 3 homepage attempts (initial + 2 retries through the alias-cutover
+    // window) + 1 sitemap.xml probe (verifyDemoRoutes always attempts
+    // this, regardless of whether the homepage itself verified).
+    expect(global.fetch).toHaveBeenCalledTimes(4)
   })
 
   // chatgpt.md P0: the demo deploy used to check ONLY the alias URL, never
@@ -240,5 +249,56 @@ describe("deployWebsiteTemplateDemo", () => {
 
     expect(result).toEqual({ url: null, error: "Vercel deployment failed: quota exceeded" })
     expect(websiteTemplateUpdate).not.toHaveBeenCalled()
+  })
+})
+
+// Kabar Nusa report P0: the old single-URL check only ever looked at "/" —
+// a demo whose every list/detail route 500'd still reported verified: true
+// as long as the homepage rendered. verifyDemoRoutes reads the demo's own
+// sitemap.xml (if it has one) and checks every route it lists too.
+describe("verifyDemoRoutes", () => {
+  const originalFetch = global.fetch
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it("checks every route a real sitemap.xml lists, and fails overall if even one of them 500s", async () => {
+    global.fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/sitemap.xml")) {
+        return {
+          ok: true,
+          text: async () => `<?xml version="1.0"?><urlset>
+            <url><loc>https://demo.sites.sacms.cloud/</loc></url>
+            <url><loc>https://demo.sites.sacms.cloud/berita/artikel-1</loc></url>
+            <url><loc>https://demo.sites.sacms.cloud/berita/artikel-2</loc></url>
+          </urlset>`,
+        }
+      }
+      if (url.endsWith("/berita/artikel-2")) {
+        return { ok: false, status: 500, text: async () => "" }
+      }
+      return { ok: true, text: async () => "<html>real page</html>" }
+    }) as any
+
+    const result = await verifyDemoRoutes("https://demo.sites.sacms.cloud")
+
+    expect(result.verified).toBe(false)
+    expect(result.routes).toEqual([
+      { path: "/", verified: true, error: undefined },
+      { path: "/berita/artikel-1", verified: true, error: undefined },
+      { path: "/berita/artikel-2", verified: false, error: "HTTP 500" },
+    ])
+  })
+
+  it("falls back to just the homepage when there's no sitemap.xml (or it fails to fetch)", async () => {
+    global.fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/sitemap.xml")) return { ok: false, status: 404, text: async () => "" }
+      return { ok: true, text: async () => "<html>real page</html>" }
+    }) as any
+
+    const result = await verifyDemoRoutes("https://demo.sites.sacms.cloud")
+
+    expect(result.verified).toBe(true)
+    expect(result.routes).toEqual([{ path: "/", verified: true, error: undefined }])
   })
 })

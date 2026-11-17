@@ -219,7 +219,7 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
 
   it("registers get_website_template_demo_status (read-only, never deploys) and redeploy_website_template_demo as separate operations from create/update", () => {
     const statusTool = toolBlockOf("get_website_template_demo_status")
-    expect(statusTool).toMatch(/verifyDemoUrl/)
+    expect(statusTool).toMatch(/verifyDemoRoutes/)
     expect(statusTool).not.toMatch(/deployWebsiteTemplateDemo/)
 
     const redeployTool = toolBlockOf("redeploy_website_template_demo")

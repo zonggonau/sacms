@@ -1,7 +1,7 @@
 import "server-only"
 
 import { db } from "@/lib/database"
-import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs } from "@/lib/vercel-client"
+import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs, getRuntimeLogs } from "@/lib/vercel-client"
 import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
 
@@ -18,6 +18,12 @@ export interface WebsiteTemplateDemoInput {
   }
 }
 
+export interface RouteCheckResult {
+  path: string
+  verified: boolean
+  error?: string
+}
+
 export interface DeployWebsiteTemplateDemoResult {
   url: string | null
   deploymentId?: string
@@ -29,6 +35,13 @@ export interface DeployWebsiteTemplateDemoResult {
    *  same as the demo actually rendering anything. */
   verified?: boolean
   verificationError?: string
+  /** Kabar Nusa report P0: `verified` used to reflect ONLY the homepage —
+   *  a demo whose every list/detail route 500'd still reported verified:
+   *  true as long as "/" rendered. Per-route breakdown (homepage plus up
+   *  to MAX_SITEMAP_ROUTES_CHECKED real routes read from the demo's own
+   *  sitemap.xml, if it has one) so a caller can see exactly which route
+   *  failed instead of just an aggregate boolean. */
+  routes?: RouteCheckResult[]
   error?: string
 }
 
@@ -81,6 +94,76 @@ export async function verifyDemoUrl(url: string): Promise<{ verified: boolean; e
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+const MAX_SITEMAP_ROUTES_CHECKED = 5
+
+/** Extracts up to `limit` distinct, non-root paths from a sitemap.xml
+ *  body's <loc> entries — a tiny regex extractor rather than a full XML
+ *  parser dependency, consistent with this file's existing
+ *  LOOKS_LIKE_ERROR_PAGE_RE heuristic-over-dependency style. Only the
+ *  PATH is kept (not the full <loc> URL) so each one is checked against
+ *  THIS demo's actual serving domain, not whatever host the sitemap
+ *  itself happened to hardcode. */
+function extractSitemapPaths(xml: string, limit: number): string[] {
+  const locs = Array.from(xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)).map((m) => m[1])
+  const paths: string[] = []
+  for (const loc of locs) {
+    try {
+      const path = new URL(loc).pathname
+      if (path && path !== "/" && !paths.includes(path)) paths.push(path)
+    } catch {
+      // Not a full URL (a relative <loc>, or malformed) — skip it rather
+      // than guessing at a base to resolve it against.
+    }
+    if (paths.length >= limit) break
+  }
+  return paths
+}
+
+/**
+ * Checks the homepage AND, when the demo has a sitemap.xml, up to
+ * MAX_SITEMAP_ROUTES_CHECKED more real routes read from it — the Kabar
+ * Nusa report's core P0 finding: the previous single-URL check only ever
+ * looked at "/", so a demo whose every list/detail route 500'd still
+ * reported `verified: true` as long as the homepage rendered. Never
+ * throws — a route this can't check (network error, non-200 response, or
+ * a response that looks like Vercel's own error/protection page) is
+ * reported as a failed check for THAT route, not a thrown error.
+ */
+export async function verifyDemoRoutes(
+  baseUrl: string,
+  opts: {
+    /** chatgpt8.md P1: a fresh custom-domain alias can take a few seconds
+     *  to actually start routing right after deploy — only worth the
+     *  retry cost right after a deploy, not on an on-demand status check
+     *  of an already-settled domain. */
+    retryHomepage?: boolean
+  } = {},
+): Promise<{ verified: boolean; routes: RouteCheckResult[] }> {
+  const origin = baseUrl.replace(/\/+$/, "")
+  const routes: RouteCheckResult[] = []
+
+  let home = await verifyDemoUrl(origin)
+  if (opts.retryHomepage) {
+    for (let attempt = 0; !home.verified && attempt < 2; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 2500))
+      home = await verifyDemoUrl(origin)
+    }
+  }
+  routes.push({ path: "/", verified: home.verified, error: home.error })
+
+  const extraPaths = await fetch(`${origin}/sitemap.xml`, { signal: AbortSignal.timeout(8000) })
+    .then((res) => (res.ok ? res.text() : ""))
+    .then((xml) => (xml ? extractSitemapPaths(xml, MAX_SITEMAP_ROUTES_CHECKED) : []))
+    .catch(() => [] as string[])
+
+  for (const path of extraPaths) {
+    const result = await verifyDemoUrl(`${origin}${path}`)
+    routes.push({ path, verified: result.verified, error: result.error })
+  }
+
+  return { verified: routes.every((r) => r.verified), routes }
 }
 
 /**
@@ -177,33 +260,34 @@ export async function deployWebsiteTemplateDemo(
       }
     }
 
-    // chatgpt8.md P1: a fresh custom-domain alias (ensureDemoSubdomain just
-    // ran above) can take a few seconds to actually start routing — the
-    // very first check right after a create/update used to come back
-    // ECONNRESET even though the SAME url, checked moments later by hand,
-    // was already a plain HTTP 200. 3 short, limited retries covers that
-    // cutover window without turning this into an open-ended poll — this is
-    // still a single deploy call's own verification step, not a background
-    // job, so it can't wait indefinitely.
-    let verification = await verifyDemoUrl(url)
-    for (let attempt = 0; !verification.verified && attempt < 2; attempt++) {
-      await new Promise((resolve) => setTimeout(resolve, 2500))
-      verification = await verifyDemoUrl(url)
-    }
+    // Kabar Nusa report P0: this used to stop at the homepage — a demo
+    // whose every list/detail route 500'd still reported `verified: true`
+    // as long as "/" rendered. Check every route the demo's own
+    // sitemap.xml advertises too, not just the one that's always checked.
+    // retryHomepage: true covers the brief window right after
+    // ensureDemoSubdomain where a fresh custom-domain alias hasn't started
+    // routing yet (confirmed live: the very first check right after a
+    // create/update used to come back ECONNRESET even though the SAME url,
+    // checked moments later by hand, was already a plain HTTP 200).
+    const { verified: routesVerified, routes } = await verifyDemoRoutes(url, { retryHomepage: true })
 
     // The build poll above has its own bounded budget — if it ran out
     // while the build was still BUILDING/QUEUED/INITIALIZING (never
-    // reached a terminal state), the URL check just performed may still be
-    // reading a previous deployment. Don't report `verified: true` on an
+    // reached a terminal state), the route checks just performed may still
+    // be reading a previous deployment. Don't report `verified: true` on an
     // inconclusive build state.
     const buildStillPending = buildState !== "" && !/^READY$/i.test(buildState)
+    const failedRoute = routes.find((r) => !r.verified)
     return {
       url,
       deploymentId: deployResult.id,
-      verified: verification.verified && !buildStillPending,
+      verified: routesVerified && !buildStillPending,
+      routes,
       verificationError: buildStillPending
         ? `Build still ${buildState} after the verification window — this check may reflect a previous deployment, not the one just triggered. Call get_website_template_demo_status shortly to confirm.`
-        : verification.error,
+        : failedRoute
+          ? `Route ${failedRoute.path} failed: ${failedRoute.error || "unknown error"}`
+          : undefined,
     }
   } catch (err: any) {
     console.warn(`[deploy-website-template-demo] Failed to deploy demo for ${websiteTemplate.slug}:`, err)

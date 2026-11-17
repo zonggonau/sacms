@@ -481,4 +481,31 @@ describe("MCP workspace server route — source contract", () => {
     const instructionsBlock = routeSource.slice(instructionsStart, instructionsStart + 4000)
     expect(instructionsBlock).toMatch(/check_sdk_availability/)
   })
+
+  // ── Kabar Nusa report: apply_website_template — applying a catalog
+  // Website Template used to be dashboard-only ("Terapkan"), no MCP path.
+
+  it("apply_website_template reuses the shared apply-website-template lib instead of a second copy of the apply logic", () => {
+    const scoped = toolBlockOf("apply_website_template")
+    expect(scoped).toMatch(/applyWebsiteTemplateToTenant/)
+    expect(scoped).toMatch(/import\("@\/lib\/infrastructure\/apply-website-template"\)/)
+  })
+
+  it("apply_website_template gates on write scope and the hosting-paid flag before touching anything", () => {
+    const scoped = toolBlockOf("apply_website_template")
+    expect(scoped).toMatch(/hasScope\(auth, "write"\)/)
+    expect(scoped).toMatch(/auth\.isHostingPlanPaid/)
+  })
+
+  it("apply_website_template only matches published templates and declares a union outputSchema for the ok/error cases", () => {
+    const scoped = toolBlockOf("apply_website_template")
+    expect(scoped).toMatch(/published: true/)
+    expect(scoped).toMatch(/z\.union\(/)
+    expect(scoped).toMatch(/WORKSPACE_NOT_EMPTY/)
+  })
+
+  it("get_agent_playbook's Phase 0 offers apply_website_template as the catalog-template alternative to building from scratch", () => {
+    const playbookBlock = toolBlockOf("get_agent_playbook")
+    expect(playbookBlock).toMatch(/apply_website_template/)
+  })
 })

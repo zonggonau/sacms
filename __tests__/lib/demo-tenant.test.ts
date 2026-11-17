@@ -130,6 +130,61 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     expect(input.data).not.toHaveProperty("cover") // structural field, skipped
   })
 
+  // Kabar Nusa report P0: a template author's own dummyData (validated at
+  // create_schema_template/create_website_template time, confirmed live to
+  // never be read by anything downstream) is wired through here now —
+  // confirmed by the original author's own admission in
+  // ai-schema-generator.ts's comment ("nothing downstream ... reads
+  // dummyData") before this fix.
+  it("uses the template author's own dummyData instead of the fully generic synthesizer, when the schema blob provides it", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "artikel",
+        schemaFields: [
+          { slug: "title", name: "Judul", type: "text", options: null },
+          { slug: "kategori", name: "Kategori", type: "text", options: null },
+        ],
+      },
+    ])
+
+    const schemaWithDummyData = {
+      ...schemaTemplate,
+      schema: {
+        contentTypes: [
+          {
+            slug: "artikel",
+            dummyData: [
+              { title: "Pemkot Luncurkan Transportasi Gratis", kategori: "Nasional" },
+              { title: "Harga Beras Naik di Pasar Induk", kategori: "Ekonomi" },
+            ],
+          },
+        ],
+      },
+    }
+
+    await ensureDemoTenantForSchemaTemplate(schemaWithDummyData)
+
+    const firstEntryData = createContentEntry.mock.calls[0][2].data
+    const secondEntryData = createContentEntry.mock.calls[1][2].data
+    expect(firstEntryData).toEqual({ title: "Pemkot Luncurkan Transportasi Gratis", kategori: "Nasional" })
+    expect(secondEntryData).toEqual({ title: "Harga Beras Naik di Pasar Induk", kategori: "Ekonomi" })
+  })
+
+  it("falls back to the generic synthesizer for a content type with no dummyData at all", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
+    contentTypeFindMany.mockResolvedValue([
+      { slug: "artikel", schemaFields: [{ slug: "title", name: "Judul", type: "text", options: null }] },
+    ])
+
+    await ensureDemoTenantForSchemaTemplate({ ...schemaTemplate, schema: { contentTypes: [] } })
+
+    const firstEntryData = createContentEntry.mock.calls[0][2].data
+    expect(firstEntryData.title).toMatch(/^Contoh Judul/)
+  })
+
   it("seeds one TenantSingleTypeAssignment row per single type via upsert", async () => {
     tenantFindUnique.mockResolvedValue(null)
     tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })

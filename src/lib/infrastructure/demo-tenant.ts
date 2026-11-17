@@ -166,9 +166,10 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
     data: { tenantId: tenant.id, locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
   })
 
-  await materializeSchemaIntoTenant(tenantDb, tenant.id, (schemaTemplate.schema as SchemaBlob) || {})
+  const schemaBlob = (schemaTemplate.schema as SchemaBlob) || {}
+  await materializeSchemaIntoTenant(tenantDb, tenant.id, schemaBlob)
 
-  await seedSampleContent(tenantDb, tenant.id, tenant.slug)
+  await seedSampleContent(tenantDb, tenant.id, tenant.slug, schemaBlob)
 
   await db.schemaTemplate.update({
     where: { id: schemaTemplate.id },
@@ -178,7 +179,39 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
   return tenant
 }
 
-async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb>>, tenantId: string, tenantSlug: string) {
+/**
+ * A template author can supply real, hand-written `dummyData` rows per
+ * Content Type/Single Type (see BundleModelRef in
+ * schema-template-validation.ts — validated at create_schema_template/
+ * create_website_template time via checkDummyData, against the SAME
+ * per-field-type rules real content creation uses). Confirmed live
+ * (the Kabar Nusa report): nothing downstream ever read it — the demo
+ * tenant always got the fully generic `buildSampleData` output instead,
+ * no matter how much real sample data a template author wrote. Looked up
+ * by slug against the ORIGINAL schema blob (not the materialized tenant
+ * rows, which have no column for it at all).
+ */
+function findDummyData(blobModels: { slug: string; [key: string]: unknown }[] | undefined, slug: string): Record<string, unknown>[] | undefined {
+  const model = (blobModels || []).find((m) => m.slug === slug)
+  const dummyData = model?.dummyData as unknown
+  return Array.isArray(dummyData) && dummyData.length > 0 ? (dummyData as Record<string, unknown>[]) : undefined
+}
+
+/**
+ * Builds one entry's data by starting from the generic synthesizer, then
+ * overlaying whatever the author's own dummyData row actually provides —
+ * so a field the author didn't bother filling (or couldn't, e.g. a
+ * relation/media field dummyData's own validator doesn't support a
+ * forward-reference for yet) still gets a non-empty placeholder instead of
+ * silently reverting the whole entry to 100% generic data.
+ */
+function buildEntryData(fields: SampleField[], index: number, dummyRow: Record<string, unknown> | undefined): Record<string, unknown> {
+  const generic = buildSampleData(fields, index)
+  if (!dummyRow) return generic
+  return { ...generic, ...dummyRow }
+}
+
+async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb>>, tenantId: string, tenantSlug: string, schemaBlob: SchemaBlob) {
   const [contentTypes, singleTypes] = await Promise.all([
     tenantDb.contentType.findMany({ where: { tenantId }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
     tenantDb.singleType.findMany({ where: { tenantId }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
@@ -188,10 +221,12 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
 
   for (const contentType of contentTypes) {
     const fields = contentType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
-    for (let i = 0; i < SAMPLE_ENTRIES_PER_CONTENT_TYPE; i++) {
+    const dummyRows = findDummyData(schemaBlob.contentTypes as any, contentType.slug)
+    const entryCount = dummyRows ? Math.max(dummyRows.length, SAMPLE_ENTRIES_PER_CONTENT_TYPE) : SAMPLE_ENTRIES_PER_CONTENT_TYPE
+    for (let i = 0; i < entryCount; i++) {
       await createContentEntry(ctx, { kind: "system" }, {
         contentTypeSlug: contentType.slug,
-        data: buildSampleData(fields, i),
+        data: buildEntryData(fields, i, dummyRows?.[i % dummyRows.length]),
         status: "PUBLISHED",
       }).catch((err) => console.warn(`[demo-tenant] Failed to seed sample entry for ${contentType.slug}:`, err))
     }
@@ -199,6 +234,7 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
 
   for (const singleType of singleTypes) {
     const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
+    const singleDummyRows = findDummyData(schemaBlob.singleTypes as any, singleType.slug)
     // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
     // { tenantId } }` on each SingleType ALREADY inserts a
     // TenantSingleTypeAssignment row (empty data, publishedAt: null,
@@ -216,12 +252,12 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
           singleTypeId: singleType.id,
           locale: "id",
           enabled: true,
-          data: buildSampleData(fields, 0) as any,
+          data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any,
           publishedAt: new Date(),
         },
         update: {
           enabled: true,
-          data: buildSampleData(fields, 0) as any,
+          data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any,
           publishedAt: new Date(),
         },
       })

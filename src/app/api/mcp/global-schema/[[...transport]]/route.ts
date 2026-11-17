@@ -137,19 +137,51 @@ const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
   demoDeployedAt: z.string().nullable(), demoDeploymentId: z.string().nullable(),
 }
 
+/**
+ * chatgpt (Kabar Nusa report) P0: this used to spread `...t` — every scalar
+ * AND relation Prisma handed back, not just what WEBSITE_TEMPLATE_OUTPUT_SHAPE
+ * declares. get_website_template's own query does `include: { schemaTemplate:
+ * {...} } }`, so the result carried an undeclared `schemaTemplate: {...}`
+ * object (plus `createdBy`) alongside the real fields — confirmed live as
+ * exactly why Claude Code rejected get_website_template/get_schema_template's
+ * output at the protocol layer (an MCP client validates structuredContent
+ * against outputSchema and has no reason to accept extra, undeclared keys).
+ * Pick exactly the declared shape instead of trusting every caller's query
+ * to never select more than that.
+ */
 function serializeWebsiteTemplate(t: {
+  id: string
+  name: string
+  slug: string
+  schemaTemplateId: string
+  icon: string
+  description: string | null
+  files: unknown
+  published: boolean
   createdAt: Date
   updatedAt: Date
   sourceVersion: Date
+  demoVercelProjectId: string | null
+  demoUrl: string | null
   demoDeployedAt: Date | null
-  [key: string]: unknown
+  demoDeploymentId: string | null
 }) {
   return {
-    ...t,
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    schemaTemplateId: t.schemaTemplateId,
+    icon: t.icon,
+    description: t.description,
+    files: t.files,
+    published: t.published,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
     sourceVersion: t.sourceVersion.toISOString(),
+    demoVercelProjectId: t.demoVercelProjectId,
+    demoUrl: t.demoUrl,
     demoDeployedAt: t.demoDeployedAt ? t.demoDeployedAt.toISOString() : null,
+    demoDeploymentId: t.demoDeploymentId,
   }
 }
 
@@ -160,11 +192,14 @@ const DEMO_DEPLOYMENT_OUTPUT_SHAPE = z.object({
   deploymentId: z.string().optional(),
   verified: z.boolean().optional(),
   verificationError: z.string().optional(),
+  // Kabar Nusa report P0: `verified` alone can't tell a caller WHICH route
+  // failed when the demo has more than one — see verifyDemoRoutes.
+  routes: z.array(z.object({ path: z.string(), verified: z.boolean(), error: z.string().optional() })).optional(),
 })
 
-function describeDemoDeployment(demo: { url: string | null; deploymentId?: string; verified?: boolean; verificationError?: string; error?: string }) {
+function describeDemoDeployment(demo: { url: string | null; deploymentId?: string; verified?: boolean; verificationError?: string; error?: string; routes?: { path: string; verified: boolean; error?: string }[] }) {
   return demo.url
-    ? { status: "ok" as const, deploymentId: demo.deploymentId, verified: demo.verified, verificationError: demo.verificationError }
+    ? { status: "ok" as const, deploymentId: demo.deploymentId, verified: demo.verified, verificationError: demo.verificationError, routes: demo.routes }
     : { status: "failed" as const, error: demo.error, deploymentId: demo.deploymentId }
 }
 
@@ -357,7 +392,24 @@ const handler = createMcpHandler(
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!template) return notFound("Schema Template", id)
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
+        // chatgpt (Kabar Nusa report) P0: was `{ ...template, ... }`, which
+        // also carried `createdBy` — not declared below — for the same
+        // reason serializeWebsiteTemplate's own fix above exists. Pick
+        // exactly the declared shape.
+        const structured = {
+          id: template.id,
+          name: template.name,
+          slug: template.slug,
+          category: template.category,
+          icon: template.icon,
+          description: template.description,
+          schema: template.schema,
+          published: template.published,
+          demoTenantId: template.demoTenantId,
+          createdAt: template.createdAt.toISOString(),
+          updatedAt: template.updatedAt.toISOString(),
+          sourceVersion: template.sourceVersion.toISOString(),
+        }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -1080,7 +1132,7 @@ const handler = createMcpHandler(
       "get_website_template_demo_status",
       {
         title: "Get Website Template Demo Status (Read-Only)",
-        description: "Read a Website Template's demo deployment status WITHOUT redeploying anything — the build stage of its most recent deploy, a FRESH HTTP check of the demo URL right now (not just whatever was recorded at deploy time), and, when the build errored, a summary of the build log's error lines. Call this instead of create_website_template/update_website_template just to check on an existing demo, and before deciding whether redeploy_website_template_demo is actually needed.",
+        description: "Read a Website Template's demo deployment status WITHOUT redeploying anything — the build stage of its most recent deploy, a FRESH HTTP check of the homepage AND (if the demo has a sitemap.xml) up to 5 more real routes from it, and error logs when something's broken: build log errors if the build itself failed, or RUNTIME log errors if the build succeeded but a specific route still 500s at request time. Call this instead of create_website_template/update_website_template just to check on an existing demo, and before deciding whether redeploy_website_template_demo is actually needed.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },
@@ -1091,7 +1143,9 @@ const handler = createMcpHandler(
           state: z.string().optional(),
           verified: z.boolean().optional(),
           verificationError: z.string().optional(),
+          routes: z.array(z.object({ path: z.string(), verified: z.boolean(), error: z.string().optional() })).optional(),
           buildErrorLines: z.array(z.string()).optional(),
+          runtimeErrorLines: z.array(z.string()).optional(),
           message: z.string(),
         },
       },
@@ -1112,14 +1166,20 @@ const handler = createMcpHandler(
           return { content: [{ type: "text" as const, text: structured.message }], structuredContent: structured }
         }
 
-        const { getDeploymentStatus, getLatestDeployment, getDeploymentBuildLogs } = await import("@/lib/vercel-client")
-        const { verifyDemoUrl } = await import("@/lib/infrastructure/deploy-website-template-demo")
+        const { getDeploymentStatus, getLatestDeployment, getDeploymentBuildLogs, getRuntimeLogs } = await import("@/lib/vercel-client")
+        const { verifyDemoRoutes } = await import("@/lib/infrastructure/deploy-website-template-demo")
 
         const status = existing.demoDeploymentId
           ? await getDeploymentStatus(existing.demoDeploymentId).catch(() => null)
           : await getLatestDeployment(existing.demoVercelProjectId).catch(() => null)
 
-        const verification = existing.demoUrl ? await verifyDemoUrl(existing.demoUrl) : { verified: false, error: "No demo URL recorded." }
+        // Kabar Nusa report P0: this used to check ONLY the homepage — a
+        // demo whose every list/detail route 500'd still reported
+        // `verified: true` as long as "/" rendered.
+        const verification = existing.demoUrl
+          ? await verifyDemoRoutes(existing.demoUrl)
+          : { verified: false, routes: [] as { path: string; verified: boolean; error?: string }[] }
+        const verificationError = verification.routes.find((r) => !r.verified)?.error
 
         // chatgpt.md P0: a build this ERRORED never gets promoted onto the
         // alias — the alias just keeps serving whatever deployment was
@@ -1132,10 +1192,21 @@ const handler = createMcpHandler(
         const buildFailed = !!status?.state && /ERROR|FAILED/i.test(status.state)
 
         let buildErrorLines: string[] | undefined
+        let runtimeErrorLines: string[] | undefined
         const deploymentIdForLogs = existing.demoDeploymentId || (status as any)?.id
         if (buildFailed && deploymentIdForLogs) {
           const logs = await getDeploymentBuildLogs(deploymentIdForLogs).catch(() => null)
           if (logs) buildErrorLines = logs.errorLines.slice(-20)
+        } else if (!verification.verified && deploymentIdForLogs) {
+          // Kabar Nusa report P0: a route 500ing at REQUEST time (not a
+          // build failure) never shows up in build logs at all — that's
+          // the whole reason get_deployment_runtime_logs exists on the
+          // per-workspace server. Same idea here: only worth fetching when
+          // the build itself is fine but something still failed to render.
+          const runtime = await getRuntimeLogs(existing.demoVercelProjectId, deploymentIdForLogs).catch(() => null)
+          if (runtime && runtime.errorLines.length > 0) {
+            runtimeErrorLines = runtime.errorLines.slice(-20).map((l) => `[${l.responseStatusCode ?? "?"}] ${l.requestPath ?? ""} ${l.message}`.trim())
+          }
         }
 
         const structured = {
@@ -1146,13 +1217,15 @@ const handler = createMcpHandler(
           verified: buildFailed ? false : verification.verified,
           verificationError: buildFailed
             ? `Latest build ${status?.state}.${verification.verified ? " The URL above is still serving a PREVIOUS successful deployment, not this one." : ""} Check buildErrorLines.`
-            : verification.error,
+            : verificationError,
+          routes: verification.routes,
           buildErrorLines,
+          runtimeErrorLines,
           message: buildFailed
             ? `Latest build FAILED (${status?.state}) — this demo does NOT reflect the latest changes${verification.verified ? ", even though its URL still responds (serving an older deployment)" : ""}. Check buildErrorLines, fix the source, and call redeploy_website_template_demo.`
             : verification.verified
-              ? `Demo is live and rendering at ${existing.demoUrl}.`
-              : `Demo is NOT currently verified: ${verification.error || "unknown reason"}. Call redeploy_website_template_demo to try a fresh deploy.`,
+              ? `Demo is live and rendering at ${existing.demoUrl} (${verification.routes.length} route(s) checked).`
+              : `Demo is NOT currently verified — ${verification.routes.filter((r) => !r.verified).length} of ${verification.routes.length} checked route(s) failed. ${runtimeErrorLines?.length ? "Check runtimeErrorLines." : "Call redeploy_website_template_demo to try a fresh deploy."}`,
         }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -1202,7 +1275,7 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.9.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.10.0" },
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
       "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +

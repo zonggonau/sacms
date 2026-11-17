@@ -2546,7 +2546,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
 You are connected to a live, real headless CMS workspace via MCP. Follow these phases IN ORDER — do not invent Content Types, fields, or data; everything must come from these tools.
 
 ## Phase 0 — Build/revise requests only
-0. If the user is asking you to build, create, or revise this workspace's website/app (not just browse schema/content), call \`start_website_build\` before anything else — it registers a resumable \`runId\` and flags a target conflict up front if this workspace already has a live site and the user wants a brand-new one. If the user instead opens a NEW conversation referring back to an earlier build ("lanjutkan website kemarin"), call \`get_build_run\` first to resume its actual last-known state instead of starting over or guessing.
+0. If the user is asking you to build, create, or revise this workspace's website/app (not just browse schema/content), call \`start_website_build\` before anything else — it registers a resumable \`runId\` and flags a target conflict up front if this workspace already has a live site and the user wants a brand-new one. If the user instead opens a NEW conversation referring back to an earlier build ("lanjutkan website kemarin"), call \`get_build_run\` first to resume its actual last-known state instead of starting over or guessing. If the user instead wants to start from an existing catalog Website Template (a pre-built schema+frontend bundle) rather than building from scratch, call \`apply_website_template\` with its id/slug — it only works on an empty workspace (no existing Content Types/Single Types/Components), skip the rest of this playbook once it succeeds, the schema AND the deployed frontend are both already done.
 
 ## Phase 1 — Discover the real schema
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
@@ -2697,6 +2697,79 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
     // =========================================================================
     // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
     // =========================================================================
+
+    // ── apply_website_template ────────────────────────────────────────────────
+    // Kabar Nusa report P0: applying a catalog Website Template to a real
+    // workspace was dashboard-only ("Terapkan" button) — no MCP path at
+    // all, so an agent that just built/browsed one with the platform's
+    // global-schema MCP server had no way to actually hand it to a
+    // workspace without a human switching to the dashboard mid-flow. Reuses
+    // the exact same apply logic as the dashboard button (see
+    // src/lib/infrastructure/apply-website-template.ts) rather than a
+    // second copy.
+    server.registerTool(
+      "apply_website_template",
+      {
+        title: "Apply a Catalog Website Template to This Workspace",
+        description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and deploys its bundled frontend — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Only works on a workspace with NO existing Content Types/Single Types/Components (call get_full_schema first to confirm it's actually empty) — applying on top of unrelated existing structures would silently skip slug-conflicting models and leave a confusing mix behind. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
+        inputSchema: {
+          templateId: z.string().describe("Website Template id or slug to apply, e.g. from the dashboard's Website Template gallery URL or card."),
+        },
+        outputSchema: z.union([
+          z.object({
+            ok: z.literal(true),
+            imported: z.number(),
+            envVarsApplied: z.array(z.string()),
+            deploymentUrl: z.string(),
+            message: z.string(),
+          }),
+          z.object({
+            ok: z.literal(false),
+            code: z.enum(["NOT_FOUND", "WORKSPACE_NOT_EMPTY", "PAYMENT_REQUIRED"]),
+            message: z.string(),
+          }),
+        ]),
+      },
+      async ({ templateId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        if (!auth.isHostingPlanPaid) {
+          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `Menerapkan Website Template memerlukan workspace berstatus PAID. Selesaikan pembayaran di /dashboard/${auth.tenantSlug}/subscriptions.` }
+          return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
+        }
+
+        const websiteTemplate = await db.websiteTemplate.findFirst({
+          where: { OR: [{ id: templateId }, { slug: templateId }], published: true },
+          include: { schemaTemplate: { select: { schema: true } } },
+        })
+        if (!websiteTemplate) {
+          const structured = { ok: false as const, code: "NOT_FOUND" as const, message: `Website Template '${templateId}' tidak ditemukan atau belum dipublikasikan.` }
+          return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
+        }
+
+        const { applyWebsiteTemplateToTenant } = await import("@/lib/infrastructure/apply-website-template")
+        const result = await applyWebsiteTemplateToTenant(auth.tenantId, auth.tenantSlug, websiteTemplate as any)
+
+        if (!result.ok) {
+          const structured = { ok: false as const, code: result.code, message: result.message }
+          return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], structuredContent: structured, isError: true }
+        }
+
+        const structured = {
+          ok: true as const,
+          imported: result.imported,
+          envVarsApplied: result.envVarsApplied,
+          deploymentUrl: result.deployment.url,
+          message: `✅ Website Template '${websiteTemplate.name}' diterapkan — ${result.imported} model schema dibuat, frontend sedang di-deploy ke ${result.deployment.url}.`,
+        }
+        return {
+          content: [{ type: "text" as const, text: structured.message }],
+          structuredContent: structured,
+        }
+      },
+    )
 
     // ── start_website_build ──────────────────────────────────────────────────
     server.registerTool(
@@ -4459,7 +4532,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.4.0" },
+    serverInfo: { name: "sacms-mcp", version: "4.5.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

@@ -1,15 +1,8 @@
 import { NextResponse } from "next/server"
-import { db, getTenantDb } from "@/lib/database"
+import { db } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
-import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
-import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
-import {
-  resolveApiOrigin,
-  resolveWebsiteTemplateEnvVars,
-  getTenantCustomEnvVarList,
-  setTenantCustomEnvVars,
-} from "@/lib/infrastructure/frontend-env"
+import { applyWebsiteTemplateToTenant } from "@/lib/infrastructure/apply-website-template"
 
 /**
  * POST /api/tenant/[tenant]/website-templates/[id]/apply
@@ -45,67 +38,16 @@ export const POST = withStaffAuth(
       })
     }
 
-    // Empty-workspace guard — same convention as "Pakai Template"'s
-    // requireEmpty check in ai-builder/import-schema/route.ts. A Website
-    // Template's schema is tied to its own specific Schema Template, so
-    // applying it on top of unrelated existing structures would silently
-    // skip slug-conflicting models and leave a confusing mix behind.
-    const tenantDb = await getTenantDb(tenant.slug)
-    const [hasCt, hasSt, hasComp] = await Promise.all([
-      tenantDb.contentType.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
-      tenantDb.singleType.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
-      tenantDb.component.findFirst({ where: { tenantId: tenant.id }, select: { id: true } }),
-    ])
-    if (hasCt || hasSt || hasComp) {
-      return apiError("validation", {
-        message: "Masih ada Content Type/Single Type/Component di workspace ini. Hapus dulu (tombol \"Hapus Semua Schema\") sebelum menerapkan Website Template.",
-      })
+    const result = await applyWebsiteTemplateToTenant(tenant.id, tenant.slug, websiteTemplate)
+    if (!result.ok) {
+      return apiError("validation", { message: result.message })
     }
-
-    const { imported } = await materializeSchemaIntoTenant(
-      tenantDb,
-      tenant.id,
-      websiteTemplate.schemaTemplate.schema as any,
-    )
-
-    // Pre-populate the Environment tab with whatever custom vars the
-    // bundled frontend expects — resolved to this workspace's REAL
-    // production API origin/tenant slug/deploy token wherever the
-    // template's .env(.example) used a {{SACMS_*}} placeholder — BEFORE
-    // deploying, so the very first deploy (and every Redeploy after it)
-    // already carries correct values instead of the customer having to
-    // discover and fill them in by hand after the fact.
-    const templateFiles = websiteTemplate.files as unknown as { path: string; content: string }[]
-    const templateEnvVars = await resolveWebsiteTemplateEnvVars(tenant.id, tenant.slug, templateFiles)
-    if (templateEnvVars.length > 0) {
-      const existing = await getTenantCustomEnvVarList(tenant.id)
-      const merged = [...existing]
-      for (const v of templateEnvVars) {
-        const idx = merged.findIndex((m) => m.key === v.key)
-        if (idx >= 0) merged[idx] = v
-        else merged.push(v)
-      }
-      await setTenantCustomEnvVars(tenant.id, merged)
-    }
-
-    const files = templateFiles.map((f) => ({ name: f.path, content: f.content }))
-    const deployResult = await deployTenantFrontend(tenant.id, tenant.slug, resolveApiOrigin(), files)
-
-    // Informational only (Hosting tab banner / the new reset-website action)
-    // — never gates anything, so a failure here must not fail an apply that
-    // already succeeded. Only THIS route sets it; ordinary revisions via
-    // deploy_to_sacms/deploy_website_patch/the dashboard's own deploy button
-    // must not overwrite it, and only the reset-website action clears it.
-    await db.tenant.update({
-      where: { id: tenant.id },
-      data: { sourceWebsiteTemplateId: websiteTemplate.id },
-    }).catch((err) => console.warn("Failed to set sourceWebsiteTemplateId after apply:", err))
 
     return NextResponse.json({
       success: true,
-      imported,
-      envVarsApplied: templateEnvVars.map((v) => v.key),
-      deployment: deployResult,
+      imported: result.imported,
+      envVarsApplied: result.envVarsApplied,
+      deployment: result.deployment,
     })
   },
   { minRole: "admin" },
