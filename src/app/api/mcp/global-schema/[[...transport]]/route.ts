@@ -256,6 +256,55 @@ async function dedupeSlug(baseSlug: string, exists: (slug: string) => Promise<un
 
 const handler = createMcpHandler(
   async (server) => {
+    // ── get_builder_guide ──────────────────────────────────────────────────
+    // Kabar Nusa report bug 4: the full workflow used to live entirely in
+    // this server's top-level `instructions` field (6,178 characters) —
+    // confirmed live, Claude Code truncates a long MCP `instructions`
+    // string outright, cutting it off mid-sentence ("get_w… [truncated]")
+    // before it ever reached the guidance that mattered. Same fix as the
+    // per-workspace server's own get_agent_playbook: keep `instructions`
+    // short (a pointer + the few rules too safety-critical to risk never
+    // being read), move the full detail into a tool callable on demand.
+    server.registerTool(
+      "get_builder_guide",
+      {
+        title: "Get Builder Guide (Start Here)",
+        description: "Read this FIRST when you connect to this MCP server. Returns the full workflow for building a Schema Template + Website Template together, dry-run validation, the demo preview/verification contract, and every structured error code — call with no arguments.",
+        inputSchema: {},
+      },
+      async () => {
+        const guide = `# SaCMS Platform Template-Builder Guide
+
+This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, or settings; for that, connect to a workspace's own MCP server at /api/mcp instead (its own apply_website_template tool is how a template ends up on a real tenant).
+
+## Before writing any schema field
+Call \`list_field_types\` first — it has the real options/relationSlug shape per type, flags options that are silently ignored, and its \`contentApiContract\` has real request/response examples for the frontend's actual Content API calls. Its entry for richText/markdown also tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never \`{value}\`/string interpolation — a template that renders it as plain text only looks fine with unwrapped test prose and shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink.
+
+Call \`list_website_templates\` before creating a new one, to avoid a near-duplicate.
+
+## Build schema and frontend together
+Pass \`schema\` directly to \`create_website_template\` — it auto-creates the backing Schema Template for you, no separate \`create_schema_template\` step needed for the common case. Only use \`schemaTemplateId\` (and the standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template tools) when deliberately reusing an existing structure for a second frontend skin.
+
+## Validate before you save
+For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
+
+## Demo preview and verification
+Every \`create_website_template\` and \`update_website_template(files/changedFiles/schema: ...)\` call automatically (re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content (your dummyData where you provided it, generic placeholders where you didn't) — never a real customer's data. The response's \`demoDeployment\` reports \`status\` (ok/failed/skipped), \`verified\`, \`routes\` (the homepage PLUS every route the demo's own sitemap.xml lists — \`verified\` is false the moment any ONE of them fails, not just the homepage), and \`error\`/\`verificationError\`; \`status: \"ok\"\` alone doesn't mean \`verified\` is true, check both. A metadata-only update (no files/changedFiles/schema) returns \`demoDeployment.status: \"skipped\"\` and does not redeploy. Media/relation/component/repeater fields still render EMPTY in the demo (dummyData for those isn't supported yet) — that's expected, not a bug to chase.
+
+For a TARGETED revision of an existing template ("ubah warna header"), call \`get_website_template\` to see the current bundle, then \`update_website_template\` with changedFiles/deletedFiles instead of resending every file via \`files\`.
+
+\`get_website_template_demo_status\` reads a demo's current build state and does a FRESH live check (same multi-route + sitemap behavior as above) without triggering any deploy — when a route fails AFTER the build itself succeeded, it also pulls RUNTIME log error lines (a request-time 500 never shows up in build logs). \`redeploy_website_template_demo\` re-deploys using the template's already-stored files/schema — use it to retry after a failed build instead of resending files through update_website_template.
+
+## Conflict and dependency safety
+\`update_schema_template\`/\`update_website_template\` both accept \`expectedVersion\` — pass the \`sourceVersion\` you last read (NOT \`updatedAt\`, which also moves on every redeploy/demo-metadata write even with no source change) — and reject with CONFLICT if files/schema changed since. A structural \`schema\` change to either tool refuses with HAS_DEPENDENTS when another Website Template shares that same backing Schema Template, unless confirmSharedUpdate/confirmCascade (as applicable) is set after confirming with the user what else will be affected. \`delete_schema_template\` refuses with HAS_DEPENDENTS (listing them) instead of silently cascade-deleting every Website Template built on it — only pass confirmCascade: true after telling the user exactly what else will be deleted.
+
+## Response shapes
+\`create_website_template\`'s \`dryRun: true\` returns \`{ mode: "dry_run", ok, valid, issues, warnings }\` — a DIFFERENT shape from a real create's response, don't expect id/slug/files/demoDeployment on a dry run. Every demo deploy injects the three fixed NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, CONFLICT, HAS_DEPENDENTS, INVALID_ARGUMENT, UNAUTHORIZED) uses the same \`structuredContent.code\` field.`
+
+        return { content: [{ type: "text" as const, text: guide }] }
+      },
+    )
+
     server.registerTool(
       "list_field_types",
       {
@@ -1275,71 +1324,24 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.10.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.11.0" },
+    // Kept short deliberately — confirmed live that at least one real MCP
+    // client (Claude Code) truncates a long `instructions` string outright
+    // (this field used to run ~6,178 characters and was cut off mid-word
+    // well before the end, so everything past the cut never reached the
+    // agent). Call get_builder_guide for the full workflow; this is only
+    // the handful of rules too safety-critical to risk never being read.
     instructions:
-      "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS " +
-      "blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles " +
-      "that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, " +
-      "or settings; for that, connect to a workspace's own MCP server at /api/mcp instead. Call " +
-      "list_field_types before writing any schema field (it has the real options/relationSlug shape per type, " +
-      "and flags options that are silently ignored — never guess one). Its entry for richText/markdown also " +
-      "tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from " +
-      "a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never `{value}`/string interpolation — " +
-      "confirmed live, a template that renders it as plain text only looks fine with unwrapped test prose and " +
-      "shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw " +
-      "Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink. And " +
-      "list_website_templates before " +
-      "creating a new one, to avoid a near-duplicate. BUILD SCHEMA AND FRONTEND TOGETHER in one call: pass " +
-      "`schema` directly to create_website_template — it auto-creates the backing Schema Template for you, no " +
-      "separate create_schema_template step needed for the common case. Only use `schemaTemplateId` (and the " +
-      "standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template " +
-      "tools) when deliberately reusing an existing structure for a second frontend skin. For anything " +
-      "non-trivial, call create_website_template with dryRun: true FIRST — it validates files, schema shape, " +
-      "every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, and " +
-      "select/multiselect choices, returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" " +
-      "for anything wrong, without creating or deploying anything. Pass idempotencyKey to create_website_template " +
-      "if you want a lost response's retry to resolve to the same template instead of a duplicate (and, worse, a " +
-      "second orphaned backing Schema Template). delete_schema_template refuses with HAS_DEPENDENTS (listing " +
-      "them) instead of silently cascade-deleting every Website Template built on it — only pass " +
-      "confirmCascade: true after telling the user exactly what else will be deleted. Every " +
-      "create_website_template and update_website_template(files/changedFiles/schema: ...) call automatically " +
-      "(re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content — never a " +
-      "real customer's data — so you can test in a real browser before publishing. The response's " +
-      "`demoDeployment` reports `status` (ok/failed/skipped), `verified` (SaCMS actually fetched the URL and " +
-      "confirmed it renders — Vercel accepting the build is NOT the same as it working), and `error`/" +
-      "`verificationError` when something's wrong; `status: \"ok\"` alone doesn't mean verified is true, check " +
-      "both before telling a human the preview is ready. `verified` reflects the LATEST build specifically — a " +
-      "build that errors reports `status: \"failed\"`/`verified: false` even when the demo URL still happens to " +
-      "render a previous successful deployment (that staleness is called out explicitly in `verificationError`, " +
-      "never silently reported as success). A metadata-only update (no files/changedFiles/schema) " +
-      "returns `demoDeployment.status: \"skipped\"` and does not redeploy. For a TARGETED revision of an " +
-      "existing template (\"ubah warna header\"), call get_website_template to see the current bundle, then " +
-      "update_website_template with changedFiles/deletedFiles instead of resending every file via `files`. " +
-      "list_field_types's `contentApiContract` has real request/response examples for the frontend's actual " +
-      "Content API calls (collection list, single entry, a populated relation) — read it before writing any " +
-      "fetch call, and note it also explains why the demo preview shows media/relation/component/repeater " +
-      "fields EMPTY (the demo fixture deliberately never seeds those). get_website_template_demo_status reads " +
-      "a demo's current build state and does a FRESH live check of its URL without triggering any deploy, and " +
-      "the same build-vs-URL distinction applies there: `verified` is forced false whenever the latest build " +
-      "errored, regardless of what the URL itself currently serves. " +
-      "redeploy_website_template_demo re-deploys using the template's already-stored files/schema — use it to " +
-      "retry after a failed build instead of resending files through update_website_template. " +
-      "update_schema_template/update_website_template both accept expectedVersion — pass the `sourceVersion` " +
-      "you last read (NOT `updatedAt`, which also moves on every redeploy/demo-metadata write even with no " +
-      "source change) — and reject with CONFLICT if files/schema changed since. A structural " +
-      "`schema` change to either tool refuses with HAS_DEPENDENTS when another Website Template shares that " +
-      "same backing Schema Template, unless confirmSharedUpdate/confirmCascade (as applicable) is set after " +
-      "confirming with the user what else will be affected. create_website_template's dryRun: true returns " +
-      "{ mode: \"dry_run\", ok, valid, issues, warnings } — a DIFFERENT shape from a real create's response, " +
-      "don't expect id/slug/files/demoDeployment on a dry run; dryRun/create/update also validate every " +
-      "field's `type` against the real 36-type list (list_field_types) and every `dummyData` entry's values " +
-      "against the same per-type rules real content creation uses — a typo'd field type or a value that would " +
-      "genuinely be rejected at import time (e.g. a select value outside its own options.choices) is flagged " +
-      "here too, not just silently accepted. Every demo deploy injects the three fixed " +
-      "NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose " +
-      "frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom " +
-      "name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, " +
-      "CONFLICT, HAS_DEPENDENTS, INVALID_ARGUMENT, UNAUTHORIZED) uses the same `structuredContent.code` field.",
+      "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates and Website " +
+      "Templates. It has no access to any tenant's own content, deployment, or settings; for that, connect " +
+      "to a workspace's own MCP server at /api/mcp instead. Call get_builder_guide FIRST for the full " +
+      "workflow (schema+frontend build order, dry-run validation, demo preview contract, every structured " +
+      "error code). Three rules too important to risk missing: (1) call list_field_types before writing any " +
+      "schema field — it has the real options/relationSlug shape per type and flags silently-ignored " +
+      "options, never guess one; (2) richText field values are real HTML needing a sanitized " +
+      "dangerouslySetInnerHTML in the frontend, never string interpolation, and markdown values need a " +
+      "Markdown renderer, not an HTML sink; (3) for anything non-trivial, call create_website_template with " +
+      "dryRun: true first — it validates the whole bundle without creating or deploying anything.",
   },
 )
 
