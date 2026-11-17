@@ -316,4 +316,84 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(validationSource).toMatch(/VALID_FIELD_TYPES\.has\(f\.type\)/)
     expect(validationSource).toMatch(/function checkDummyData/)
   })
+
+  // ── P1/P2 round (second external audit) ─────────────────────────────────
+
+  it("every registered tool declares an annotations hint (readOnlyHint/destructiveHint/idempotentHint/openWorldHint)", () => {
+    const toolNames = Array.from(routeSource.matchAll(/server\.registerTool\(\s*\n\s*"([a-z_]+)",/g)).map((m) => m[1])
+    expect(toolNames.length).toBeGreaterThanOrEqual(14)
+    for (const tool of toolNames) {
+      expect(toolBlockOf(tool), `${tool} should declare annotations`).toMatch(/annotations:\s*\{/)
+    }
+  })
+
+  it("registers get_builder_guide as the first tool, and keeps the top-level instructions short instead of the full workflow (confirmed to get truncated mid-word by at least one real MCP client at ~6,178 characters)", () => {
+    expect(routeSource).toMatch(/"get_builder_guide"/)
+    const firstToolIdx = routeSource.indexOf('server.registerTool(\n      "')
+    const firstToolName = routeSource.slice(firstToolIdx).match(/"([a-z_]+)"/)?.[1]
+    expect(firstToolName).toBe("get_builder_guide")
+
+    const instructionsStart = routeSource.indexOf("instructions:")
+    const instructionsBlock = routeSource.slice(instructionsStart, routeSource.indexOf("\n  },\n)", instructionsStart))
+    const literalChars = (instructionsBlock.match(/"((?:[^"\\]|\\.)*)"/g) || []).join("").length
+    expect(literalChars).toBeLessThan(2000)
+  })
+
+  it("registers a buat-website prompt via registerPrompt, not just tools", () => {
+    expect(routeSource).toMatch(/server\.registerPrompt\(\s*\n\s*"buat-website",/)
+    const promptStart = routeSource.indexOf('"buat-website"')
+    const promptBlock = routeSource.slice(promptStart, promptStart + 2000)
+    expect(promptBlock).toMatch(/argsSchema:/)
+    expect(promptBlock).toMatch(/messages:\s*\[\{/)
+  })
+
+  it("delete_schema_template and delete_website_template declare an outputSchema instead of a bare content[]-only response", () => {
+    for (const tool of ["delete_schema_template", "delete_website_template"]) {
+      expect(toolBlockOf(tool), `${tool} should declare an outputSchema`).toMatch(/outputSchema:/)
+    }
+  })
+
+  it("create_schema_template and update_schema_template serialize their response via serializeSchemaTemplate instead of spreading the raw Prisma row (which would leak the undeclared createdBy column)", () => {
+    for (const tool of ["create_schema_template", "update_schema_template"]) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should call serializeSchemaTemplate`).toMatch(/serializeSchemaTemplate\(/)
+      expect(scoped, `${tool} should not spread the raw template row`).not.toMatch(/\{ \.\.\.template,/)
+    }
+    expect(routeSource).toMatch(/function serializeSchemaTemplate/)
+  })
+
+  it("update_website_template accepts dryRun and returns before the write transaction, mirroring create_website_template's own dryRun contract", () => {
+    const scoped = toolBlockOf("update_website_template")
+    expect(scoped).toMatch(/dryRun: z\.boolean\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/outputSchema: z\.union\(\[\s*DRY_RUN_OUTPUT_SHAPE,/)
+    const dryRunIdx = scoped.indexOf("if (dryRun) {")
+    const transactionIdx = scoped.indexOf("db.$transaction(async (tx)")
+    expect(dryRunIdx).toBeGreaterThan(-1)
+    expect(dryRunIdx).toBeLessThan(transactionIdx)
+  })
+
+  it("get_website_template supports listPathsOnly and paths so a caller doesn't have to pull the whole (often ~150-200KB) files bundle just to check or patch one file", () => {
+    const scoped = toolBlockOf("get_website_template")
+    expect(scoped).toMatch(/listPathsOnly: z\.boolean\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/paths: z\.array\(z\.string\(\)\)\.optional\(\)/)
+    expect(scoped).toMatch(/fileSizes/)
+  })
+
+  it("create_website_template's dryRun also warns when package.json is missing from the bundle, not just .env.example", () => {
+    const scoped = toolBlockOf("create_website_template")
+    expect(scoped).toMatch(/hasPackageJson/)
+    expect(scoped).toMatch(/package\.json/)
+  })
+
+  it("validateBundleReferences flags duplicate slugs within the same array (contentTypes/singleTypes/components/groups each back a real per-array-unique DB table) and the repeater componentSlugs typo", () => {
+    const validationSource = readFileSync(join(__dirname, "../../src/lib/schema-template-validation.ts"), "utf-8")
+    expect(validationSource).toMatch(/function checkDuplicateSlugs/)
+    expect(validationSource).toMatch(/componentSlugs/)
+  })
+
+  it("schemaTemplateFieldSchema's type is a strict enum of the real field types, and model/group slugs enforce the same kebab-case format the dashboard's own creation routes require", () => {
+    const schemaSource = readFileSync(join(__dirname, "../../src/lib/validations/schema-template.ts"), "utf-8")
+    expect(schemaSource).toMatch(/z\.enum\(VALID_FIELD_TYPES\)/)
+    expect(schemaSource).toMatch(/modelSlugSchema/)
+  })
 })

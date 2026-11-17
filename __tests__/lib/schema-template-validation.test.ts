@@ -224,4 +224,62 @@ describe("validateBundleReferences", () => {
     const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "title" }] }] }
     expect(validateBundleReferences(bundle)).toEqual([])
   })
+
+  // Report P1 (gap #1): each of contentTypes/singleTypes/components backs
+  // a real `@@unique([tenantId, slug])` table — two entries sharing a
+  // slug in the same array used to pass validation fine and only fail
+  // much later, as a raw Prisma P2002 thrown mid-materialize.
+
+  it("flags two contentTypes sharing the same slug", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [] }, { slug: "authors", fields: [] }, { slug: "posts", fields: [] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[2].slug", message: expect.stringContaining("posts") }])
+  })
+
+  it("does not flag the same slug reused across DIFFERENT arrays (separate tables)", () => {
+    const bundle = { contentTypes: [{ slug: "settings", fields: [] }], singleTypes: [{ slug: "settings", fields: [] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  it("flags two components sharing the same slug", () => {
+    const bundle = { components: [{ slug: "hero", fields: [] }, { slug: "hero", fields: [] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "components[1].slug", message: expect.stringContaining("hero") }])
+  })
+
+  it("flags two groups sharing the same slug", () => {
+    const bundle = { groups: [{ slug: "marketing", name: "Marketing" }, { slug: "marketing", name: "Marketing 2" }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "groups[1].slug", message: expect.stringContaining("marketing") }])
+  })
+
+  it("flags two fields sharing the same slug within the same model", () => {
+    const bundle = { contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "title" }, { type: "textarea", slug: "title" }] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[1].slug", message: expect.stringContaining("title") }])
+  })
+
+  it("does not flag the same field slug reused across DIFFERENT models", () => {
+    const bundle = {
+      contentTypes: [{ slug: "posts", fields: [{ type: "text", slug: "title" }] }],
+      singleTypes: [{ slug: "home", fields: [{ type: "text", slug: "title" }] }],
+    }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
+
+  // Report P1 (gap #4): `componentSlugs` is a documented-dead typo for
+  // repeater's real `allowedComponents` key (see list_field_types'
+  // own note) — until now nothing actually checked for it, so it
+  // silently fell through to "every component is allowed".
+
+  it("flags a repeater field using the wrong key 'componentSlugs' instead of 'allowedComponents'", () => {
+    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections", options: { componentSlugs: ["hero_banner"] } }] }] }
+    const issues = validateBundleReferences(bundle)
+    expect(issues).toEqual([{ path: "contentTypes[0].fields[0].options.componentSlugs", message: expect.stringContaining("allowedComponents") }])
+  })
+
+  it("does not flag a repeater field with neither key (every component allowed, by design)", () => {
+    const bundle = { contentTypes: [{ slug: "pages", fields: [{ type: "repeater", slug: "sections" }] }] }
+    expect(validateBundleReferences(bundle)).toEqual([])
+  })
 })

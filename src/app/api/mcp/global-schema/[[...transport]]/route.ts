@@ -185,6 +185,54 @@ function serializeWebsiteTemplate(t: {
   }
 }
 
+/**
+ * Shared output shape + serializer for get_schema_template/
+ * create_schema_template/update_schema_template — same rationale as
+ * serializeWebsiteTemplate above. Report P1/P2 follow-up: create/update's
+ * own handlers still did `{ ...template, ... }` (only get_schema_template's
+ * read path had been fixed to pick exact fields) — leaking the undeclared
+ * `createdBy` column on every create/update response, the same bug class
+ * already fixed for Website Templates.
+ */
+const SCHEMA_TEMPLATE_OUTPUT_SHAPE = {
+  id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
+  description: z.string().nullable(), schema: z.any(), published: z.boolean(),
+  demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+  // chatgpt.md P1: pass THIS back as update_schema_template's
+  // expectedVersion, not `updatedAt` (which also moves on the one-time
+  // demoTenantId write a first demo deploy makes).
+  sourceVersion: z.string(),
+}
+function serializeSchemaTemplate(t: {
+  id: string
+  name: string
+  slug: string
+  category: string
+  icon: string
+  description: string | null
+  schema: unknown
+  published: boolean
+  demoTenantId: string | null
+  createdAt: Date
+  updatedAt: Date
+  sourceVersion: Date
+}) {
+  return {
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    category: t.category,
+    icon: t.icon,
+    description: t.description,
+    schema: t.schema,
+    published: t.published,
+    demoTenantId: t.demoTenantId,
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
+    sourceVersion: t.sourceVersion.toISOString(),
+  }
+}
+
 /** The demoDeployment sub-object every create/update_website_template response carries. */
 const DEMO_DEPLOYMENT_OUTPUT_SHAPE = z.object({
   status: z.enum(["ok", "failed", "skipped"]),
@@ -271,6 +319,7 @@ const handler = createMcpHandler(
         title: "Get Builder Guide (Start Here)",
         description: "Read this FIRST when you connect to this MCP server. Returns the full workflow for building a Schema Template + Website Template together, dry-run validation, the demo preview/verification contract, and every structured error code — call with no arguments.",
         inputSchema: {},
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async () => {
         const guide = `# SaCMS Platform Template-Builder Guide
@@ -331,6 +380,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           usageNote: z.string(),
           contentApiContract: z.any(),
         },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async ({ category }) => {
         const auth = authContext.getStore()
@@ -390,6 +440,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             description: z.string().nullable(), published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
           })),
         },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async () => {
         const auth = authContext.getStore()
@@ -425,15 +476,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
         },
-        outputSchema: {
-          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
-          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
-          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
-          // chatgpt.md P1: pass THIS back as update_schema_template's
-          // expectedVersion, not `updatedAt` (which also moves on the
-          // one-time demoTenantId write a first demo deploy makes).
-          sourceVersion: z.string(),
-        },
+        outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -441,24 +485,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!template) return notFound("Schema Template", id)
-        // chatgpt (Kabar Nusa report) P0: was `{ ...template, ... }`, which
-        // also carried `createdBy` — not declared below — for the same
-        // reason serializeWebsiteTemplate's own fix above exists. Pick
-        // exactly the declared shape.
-        const structured = {
-          id: template.id,
-          name: template.name,
-          slug: template.slug,
-          category: template.category,
-          icon: template.icon,
-          description: template.description,
-          schema: template.schema,
-          published: template.published,
-          demoTenantId: template.demoTenantId,
-          createdAt: template.createdAt.toISOString(),
-          updatedAt: template.updatedAt.toISOString(),
-          sourceVersion: template.sourceVersion.toISOString(),
-        }
+        const structured = serializeSchemaTemplate(template)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -495,12 +522,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
         },
-        outputSchema: {
-          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
-          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
-          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
-          sourceVersion: z.string(),
-        },
+        outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
       },
       async ({ name, category, icon, description, schema, published }) => {
         const auth = authContext.getStore()
@@ -525,7 +548,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             published: published ?? false,
           },
         })
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
+        const structured = serializeSchemaTemplate(template)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -560,12 +583,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
         },
-        outputSchema: {
-          id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
-          description: z.string().nullable(), schema: z.any(), published: z.boolean(),
-          demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
-          sourceVersion: z.string(),
-        },
+        outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
+        annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
       },
       async ({ id, name, category, icon, description, schema, published, expectedVersion, confirmSharedUpdate }) => {
         const auth = authContext.getStore()
@@ -626,7 +645,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             ...(schemaData !== undefined ? { sourceVersion: new Date() } : {}),
           },
         })
-        const structured = { ...template, createdAt: template.createdAt.toISOString(), updatedAt: template.updatedAt.toISOString(), sourceVersion: template.sourceVersion.toISOString() }
+        const structured = serializeSchemaTemplate(template)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -643,6 +662,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           id: z.string().describe("Schema Template id or slug"),
           confirmCascade: z.boolean().optional().describe("Required (after confirming with the user) when this Schema Template still has one or more Website Templates built on it — deleting it WILL cascade-delete those too."),
         },
+        outputSchema: { ok: z.literal(true), deletedDependents: z.number() },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: false },
       },
       async ({ id, confirmCascade }) => {
         const auth = authContext.getStore()
@@ -705,6 +726,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             demoUrl: z.string().nullable(), schemaTemplate: z.object({ name: z.string(), slug: z.string() }),
           })),
         },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async ({ schemaTemplateId }) => {
         const auth = authContext.getStore()
@@ -732,13 +754,19 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       "get_website_template",
       {
         title: "Get Website Template",
-        description: "Get one Website Template's full detail, including its complete `files` array (path + content for every source file) and its demo deployment state (demoUrl/demoDeploymentId) — use `files` as the base for a changedFiles/deletedFiles patch via update_website_template instead of regenerating the whole bundle for a small edit.",
+        description: "Get one Website Template's full detail, including its demo deployment state (demoUrl/demoDeploymentId). By default `files` carries the COMPLETE bundle (path + content for every source file, often ~150-200KB) — use `listPathsOnly` first to see what's there cheaply, then `paths` to pull just the handful of files you actually need to read, instead of the whole bundle every time you just want to check or patch one file.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
+          paths: z.array(z.string()).optional().describe("Only return these exact file paths' content, instead of every file in the bundle. Ignored when listPathsOnly is true."),
+          listPathsOnly: z.boolean().optional().describe("Return every file's path and byte size (see `fileSizes`) with `files` empty — skips sending any file content at all. Use this to decide which `paths` to actually fetch next."),
         },
-        outputSchema: WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+        outputSchema: {
+          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number() })).optional().describe("Only populated when listPathsOnly was true."),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
-      async ({ id }) => {
+      async ({ id, paths, listPathsOnly }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -747,7 +775,19 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
         })
         if (!template) return notFound("Website Template", id)
-        const structured = serializeWebsiteTemplate(template)
+
+        const allFiles = template.files as unknown as { path: string; content: string }[]
+        let files: { path: string; content: string }[] = allFiles
+        let fileSizes: { path: string; bytes: number }[] | undefined
+        if (listPathsOnly) {
+          fileSizes = allFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8") }))
+          files = []
+        } else if (paths && paths.length > 0) {
+          const wanted = new Set(paths)
+          files = allFiles.filter((f) => wanted.has(f.path))
+        }
+
+        const structured = { ...serializeWebsiteTemplate({ ...template, files }), ...(fileSizes ? { fileSizes } : {}) }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -801,6 +841,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           DRY_RUN_OUTPUT_SHAPE,
           z.object({ ...WEBSITE_TEMPLATE_OUTPUT_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
         ]),
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
       async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun }) => {
         const auth = authContext.getStore()
@@ -870,9 +911,18 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             if (!found) return notFound("Schema Template", schemaTemplateId)
           }
           const hasEnvExample = parsedFiles.data.some((f) => f.path === ".env.example" || f.path.endsWith("/.env.example"))
-          const warnings = hasEnvExample
-            ? []
-            : [{ path: "files", message: "No .env.example found — this is advisory only (it won't block a real save), but env vars won't be auto-declared on the workspace's Environment tab when a customer applies this template." }]
+          const hasPackageJson = parsedFiles.data.some((f) => f.path === "package.json")
+          const warnings: { path: string; message: string }[] = []
+          if (!hasEnvExample) {
+            warnings.push({ path: "files", message: "No .env.example found — this is advisory only (it won't block a real save), but env vars won't be auto-declared on the workspace's Environment tab when a customer applies this template." })
+          }
+          // Report P1 (gap #1): a bundle missing its own package.json still
+          // passes every other check here, then only fails once Vercel
+          // actually tries to build it — this at least surfaces it at
+          // dry-run time instead of only after a real deploy attempt.
+          if (!hasPackageJson) {
+            warnings.push({ path: "files", message: "No package.json found at the bundle root — a real deploy will fail at build time with no dependencies/scripts to run. This won't block a real save (so a deliberately package.json-less bundle isn't impossible), but almost certainly means something is missing." })
+          }
           return {
             content: [{
               type: "text" as const,
@@ -1007,13 +1057,15 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           published: z.boolean().optional(),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
+          dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
         },
-        outputSchema: {
-          ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
-          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional(),
-        },
+        outputSchema: z.union([
+          DRY_RUN_OUTPUT_SHAPE,
+          z.object({ ...WEBSITE_TEMPLATE_OUTPUT_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional() }),
+        ]),
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate }) => {
+      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, dryRun }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -1092,6 +1144,13 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           schemaUpdated = true
         }
 
+        if (dryRun) {
+          return {
+            content: [{ type: "text" as const, text: "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan." }],
+            structuredContent: { mode: "dry_run" as const, ok: true as const, valid: true as const, issues: [] as { path: string; message: string }[], warnings: [] as { path: string; message: string }[] },
+          }
+        }
+
         // One transaction when both are changing — a website-metadata
         // write failing right after the schema write landed would
         // otherwise leave the two inconsistent with each other.
@@ -1157,6 +1216,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },
+        outputSchema: { ok: z.literal(true) },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -1173,7 +1234,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         }
 
         await db.websiteTemplate.delete({ where: { id: existing.id } })
-        return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }] }
+        const structured = { ok: true as const }
+        return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }], structuredContent: structured }
       },
     )
 
@@ -1197,6 +1259,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           runtimeErrorLines: z.array(z.string()).optional(),
           message: z.string(),
         },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -1295,6 +1358,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
           demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
         },
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
       async ({ id }) => {
         const auth = authContext.getStore()
@@ -1322,9 +1386,48 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         }
       },
     )
+
+    // ── Prompts ─────────────────────────────────────────────────────────
+    // Report P1/P2 (no `prompts` capability at all): a pre-packaged,
+    // parameterized entry point for the exact workflow get_builder_guide
+    // documents in prose — a client that supports MCP prompts can surface
+    // this as a one-click/slash-command starting point instead of the
+    // agent having to piece the same steps together from the guide text
+    // every time. Deliberately thin: it just seeds the FIRST message with
+    // the topic filled in and a pointer to call get_builder_guide/
+    // list_field_types next, rather than duplicating their content here
+    // (which would only go stale against them).
+    server.registerPrompt(
+      "buat-website",
+      {
+        title: "Buat Website Baru",
+        description: "Start building a new Website Template end-to-end: schema + frontend + demo preview, for a given site topic/type.",
+        argsSchema: {
+          topic: z.string().describe("What the site is about, e.g. 'warung kopi', 'portal berita lokal', 'company profile konsultan hukum'"),
+          name: z.string().optional().describe("Template display name, if already decided (otherwise propose one from the topic)"),
+        },
+      },
+      async ({ topic, name }) => ({
+        messages: [{
+          role: "user" as const,
+          content: {
+            type: "text" as const,
+            text: `Bangun sebuah Website Template baru untuk: "${topic}"${name ? ` (nama template: "${name}")` : ""}.\n\n` +
+              "Ikuti urutan ini:\n" +
+              "1. Panggil get_builder_guide (sekali, di awal) untuk alur kerja lengkap.\n" +
+              "2. Panggil list_website_templates dan list_schema_templates untuk mengecek apakah sudah ada template serupa.\n" +
+              "3. Panggil list_field_types untuk tipe field yang valid dan bentuk options/relationSlug-nya.\n" +
+              "4. Rancang schema (contentTypes/singleTypes/components) yang relevan dengan topik di atas, lengkap dengan dummyData nyata per model (bukan placeholder generik).\n" +
+              "5. Tulis frontend-nya (Next.js), sertakan .env.example dan package.json.\n" +
+              "6. Panggil create_website_template dengan dryRun: true dulu, perbaiki semua issue, baru panggil lagi tanpa dryRun.\n" +
+              "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.",
+          },
+        }],
+      }),
+    )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.11.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.12.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word

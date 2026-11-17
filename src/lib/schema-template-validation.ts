@@ -12,11 +12,11 @@
 import { FIELD_TYPES } from "@/lib/field-types"
 import { generateContentSchema } from "@/lib/content-validations"
 
-/** The 36 real field-type slugs — schemaTemplateFieldSchema's own `type` is
- *  a bare `z.string()` (needed since this bundle shape is reused for
- *  singleTypes/components, which have their own type rules elsewhere), so
- *  a typo'd/fictional type (e.g. "nonsense") passes zod untouched. Checked
- *  here instead, against the SAME list list_field_types documents. */
+/** The 36 real field-type slugs, as a Set for fast lookup — schemaTemplateFieldSchema's
+ *  own `type` is now a strict z.enum of this same list, so this check is
+ *  mostly defense-in-depth for a caller that built a BundleFieldRef by hand
+ *  without going through that zod shape first. Checked against the SAME
+ *  list list_field_types documents. */
 const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
 
 /** `["contentTypes", 2, "fields", 4, "options", "choices"]` -> "contentTypes[2].fields[4].options.choices" — the exact bracket-index form an agent needs to locate the offending field itself, not just a flattened message. */
@@ -39,7 +39,7 @@ export interface BundleFieldRef {
   name?: string
   required?: boolean
   relationSlug?: string
-  options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; choices?: unknown[] } | null
+  options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; componentSlugs?: unknown; choices?: unknown[] } | null
 }
 export interface BundleModelRef {
   slug: string
@@ -60,14 +60,35 @@ export interface SchemaBundleRef {
   components?: BundleModelRef[]
 }
 
+/** Report P1 (gap #1): each of contentTypes/singleTypes/components backs
+ *  its own real DB table with a `@@unique([tenantId, slug])` constraint
+ *  (ContentType/SingleType/Component) — two entries sharing a slug within
+ *  the SAME array pass zod/the reference checks fine today and only fail
+ *  much later, as a raw Prisma P2002 thrown mid-materialize on a real
+ *  tenant. Also used for `groups`, which has no DB table of its own yet
+ *  but would still resolve two same-slug groups to the same parent/child
+ *  ambiguously. */
+function checkDuplicateSlugs(models: { slug: string }[] | undefined, basePath: string, issues: ValidationIssue[]): void {
+  const seen = new Map<string, number>()
+  ;(models || []).forEach((m, i) => {
+    const firstIndex = seen.get(m.slug)
+    if (firstIndex !== undefined) {
+      issues.push({ path: `${basePath}[${i}].slug`, message: `Duplicate slug '${m.slug}' — already used by ${basePath}[${firstIndex}]. Each ${basePath} entry needs its own unique slug.` })
+    } else {
+      seen.set(m.slug, i)
+    }
+  })
+}
+
 /**
  * Cross-reference checks a zod shape check alone can't catch: a
  * relation/component/repeater field pointing at a model or component
- * slug that doesn't actually exist anywhere else IN THIS SAME BUNDLE, and
- * a select/multiselect with no (or an empty) options.choices — silently
- * unusable at render/content-entry time either way. Pure, no DB access —
- * every slug it needs is already right there in the bundle being
- * validated. Returns bracket-indexed paths like
+ * slug that doesn't actually exist anywhere else IN THIS SAME BUNDLE, a
+ * select/multiselect with no (or an empty) options.choices, and duplicate
+ * slugs that would only otherwise surface as a raw DB error at materialize
+ * time — silently unusable at render/content-entry/materialize time
+ * either way. Pure, no DB access — every slug it needs is already right
+ * there in the bundle being validated. Returns bracket-indexed paths like
  * "contentTypes[2].fields[4].options.choices".
  */
 export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIssue[] {
@@ -78,6 +99,11 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
   ])
   const componentSlugs = new Set((bundle.components || []).map((c) => c.slug))
   const groupSlugs = new Set((bundle.groups || []).map((g) => g.slug))
+
+  checkDuplicateSlugs(bundle.contentTypes, "contentTypes", issues)
+  checkDuplicateSlugs(bundle.singleTypes, "singleTypes", issues)
+  checkDuplicateSlugs(bundle.components, "components", issues)
+  checkDuplicateSlugs(bundle.groups, "groups", issues)
 
   // chatgpt8.md P1: a typo'd contentTypes[].group or groups[].parentSlug
   // used to be silently dropped at materialize time (schema-template-sync.ts
@@ -95,8 +121,19 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
   })
 
   const checkFields = (fields: BundleFieldRef[] | undefined, basePath: string) => {
-    (fields || []).forEach((f, idx) => {
+    const seenFieldSlugs = new Map<string, number>()
+    ;(fields || []).forEach((f, idx) => {
       const fieldPath = `${basePath}.fields[${idx}]`
+      // Backs a real `@@unique([contentTypeId, slug])`-style constraint
+      // (per-model, same rationale as checkDuplicateSlugs above).
+      if (f.slug) {
+        const firstIndex = seenFieldSlugs.get(f.slug)
+        if (firstIndex !== undefined) {
+          issues.push({ path: `${fieldPath}.slug`, message: `Duplicate field slug '${f.slug}' within ${basePath} — already used by fields[${firstIndex}]. Field slugs must be unique within the same model.` })
+        } else {
+          seenFieldSlugs.set(f.slug, idx)
+        }
+      }
       if (f.type && !VALID_FIELD_TYPES.has(f.type)) {
         issues.push({ path: `${fieldPath}.type`, message: `'${f.type}' is not a real field type. Call list_field_types for the official list of 36 types — a typo'd/fictional type has no renderer anywhere and silently falls back to accepting any value.` })
       }
@@ -115,12 +152,22 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
           issues.push({ path: `${fieldPath}.options.componentSlug`, message: `options.componentSlug '${slug}' does not match any components[] slug in this bundle.` })
         }
       }
-      if (f.type === "repeater" && Array.isArray(f.options?.allowedComponents)) {
-        f.options!.allowedComponents!.forEach((slug, i) => {
-          if (!componentSlugs.has(slug)) {
-            issues.push({ path: `${fieldPath}.options.allowedComponents[${i}]`, message: `allowedComponents '${slug}' does not match any components[] slug in this bundle.` })
-          }
-        })
+      if (f.type === "repeater") {
+        if (Array.isArray(f.options?.allowedComponents)) {
+          f.options!.allowedComponents!.forEach((slug, i) => {
+            if (!componentSlugs.has(slug)) {
+              issues.push({ path: `${fieldPath}.options.allowedComponents[${i}]`, message: `allowedComponents '${slug}' does not match any components[] slug in this bundle.` })
+            }
+          })
+        } else if (f.options?.componentSlugs !== undefined) {
+          // Report P1 (gap #4): this exact typo is called out by name in
+          // list_field_types' own `note` for 'repeater' (an earlier version
+          // of this guide documented the wrong key) — but until now nothing
+          // actually checked for it, so writing componentSlugs instead of
+          // allowedComponents silently fell all the way through to render
+          // time as "every component is allowed" with zero feedback here.
+          issues.push({ path: `${fieldPath}.options.componentSlugs`, message: `'componentSlugs' is not a real option key for 'repeater' — the renderer reads 'allowedComponents' instead. Rename it, or this field silently allows every component regardless of what you listed here.` })
+        }
       }
       if (f.type === "select" || f.type === "multiselect") {
         const choices = f.options?.choices
