@@ -1,6 +1,7 @@
 import { LandingHeader } from "@/components/landing/header"
 import { FooterSection } from "@/components/landing/sections/footer-section"
 import { WhatsAppButton } from "@/components/landing/whatsapp-button"
+import { MarketingPageTransition } from "@/components/landing/marketing-page-transition"
 import { getLandingData } from "@/lib/public-api"
 
 export default async function MarketingLayout({
@@ -19,7 +20,7 @@ export default async function MarketingLayout({
   return (
     <div className="flex flex-col min-h-screen bg-card text-foreground selection:bg-primary/30">
       <LandingHeader brandName={data.footer?.brand_name} />
-      {children}
+      <MarketingPageTransition>{children}</MarketingPageTransition>
       <FooterSection footer={data.footer} />
       <WhatsAppButton
         phone={wa.phone}
