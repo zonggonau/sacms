@@ -24,7 +24,7 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
     {
       icon: "Code2",
       label: "Solo Builders & Developers",
-      desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant.",
+      desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, AI Schema Generator, dan Website Template siap pakai.",
     },
   ]
 

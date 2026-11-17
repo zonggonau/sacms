@@ -55,6 +55,12 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       "title": "Temukan Data dalam Sekejap",
       "description": "REST API & GraphQL dilengkapi operator filter dinamis dan dukungan pencarian teks penuh (FTS) secara bawaan.",
       "color": "orange"
+    },
+    {
+      "icon": "LayoutTemplate",
+      "title": "Mulai dari Template Siap Pakai, Bukan dari Nol",
+      "description": "Jelajahi galeri Website Template siap pakai, lihat live demo langsung di browser, lalu terapkan ke workspace Anda dengan satu klik.",
+      "color": "indigo"
     }
   ],
   "sacms-workflow": [
@@ -252,7 +258,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
     {
       "icon": "Code2",
       "label": "Solo Builders & Developers",
-      "desc": "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant."
+      "desc": "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan deploy 1-command lewat MCP dari AI IDE favorit Anda."
     }
   ],
   "sacms-local-pride": {

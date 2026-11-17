@@ -102,10 +102,10 @@ export function ModernLanding({ data }: { data: LandingData }) {
                 <Cpu className="h-6 w-6" />
               </div>
               <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                AI Website &amp; Schema Generator
+                AI Schema Generator &amp; Website Template
               </h3>
               <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-                Bangun skema konten, relasi data kompleks, dan template frontend lengkap cukup dari satu prompt teks bergaya v0.app.
+                Bangun skema konten dan relasi data kompleks cukup dari satu prompt teks, atau langsung mulai dari galeri Website Template siap pakai dengan live demo.
               </p>
               <div className="flex items-center text-xs font-bold text-primary gap-1">
                 <span>Pelajari AI Generator</span>

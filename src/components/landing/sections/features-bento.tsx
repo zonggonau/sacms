@@ -2,7 +2,6 @@
 
 import { getIcon } from "../icon-map"
 import type { FeatureItem } from "../types"
-import { Cpu, Server, Layers, LayoutTemplate, HardDrive, CreditCard } from "lucide-react"
 import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
@@ -17,6 +16,11 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
       icon: "Rocket",
       title: "Dari Kode ke Online dalam Satu Perintah",
       description: "Kembangkan frontend Next.js/React di AI IDE favorit Anda (Antigravity, VS Code, Cursor, dll), lalu deploy ke SaCMS Cloud Hosting langsung dari editor lewat tool MCP deploy_to_sacms.",
+    },
+    {
+      icon: "LayoutTemplate",
+      title: "Mulai dari Template Siap Pakai, Bukan dari Nol",
+      description: "Jelajahi galeri Website Template siap pakai, lihat live demo langsung di browser, lalu terapkan ke workspace Anda dengan satu klik — skema konten dan frontend langsung terpasang.",
     },
     {
       icon: "Database",
