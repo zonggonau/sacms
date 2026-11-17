@@ -729,6 +729,110 @@ const MCP_TOOLS: ToolDefinition[] = [
     sampleResponse: { ok: true, message: "✅ Proteksi deployment dinonaktifkan." }
   },
 
+  // ─── 8b. Build Runs, Patch/Promote Workflow & Version History ───
+  // A richer, resumable workflow layered on top of deploy_to_sacms above —
+  // a build run survives a lost/restarted conversation, a patch only sends
+  // what changed, and nothing reaches production until it's checked.
+  {
+    name: "start_website_build",
+    title: "Start or Resume a Website Build",
+    description: "The entry point for any build, create, or revision request against this workspace's website — call this before get_full_schema whenever the ask is build-shaped. Returns a runId to pass into deploy_to_sacms/verify_deployment_url, and flags upfront if a live site already exists so a brand-new build doesn't accidentally overwrite it.",
+    inputs: [
+      { name: "intent", type: "string", required: false, description: "\"create\" for a brand-new site, \"update\" for a revision of what's already live. Omit to auto-detect." }
+    ],
+    sampleResponse: { runId: "run_abc123", intent: "create", stage: "started", resumed: false, conflict: false, nextStep: "Call get_agent_playbook for the full phase order, then get_full_schema." }
+  },
+  {
+    name: "get_build_run",
+    title: "Get Build Run Status (Resume After an Interruption)",
+    description: "Fetch a build run's current state — call this at the start of a new conversation when the user refers back to a build started earlier, instead of starting over from scratch. Also recovers a lost deploy_to_sacms/deploy_website_patch response via idempotencyKey.",
+    inputs: [
+      { name: "runId", type: "string", required: false, description: "A specific run's id, from start_website_build. Omit for this workspace's most recent run." },
+      { name: "idempotencyKey", type: "string", required: false, description: "Look up the run by the idempotencyKey passed to a previous deploy call, if that call's response never arrived." }
+    ],
+    sampleResponse: { runId: "run_abc123", intent: "create", stage: "deployed", deploymentId: "dpl_abc123", sourceRevision: "rev_001", updatedAt: "2026-11-17T10:00:00.000Z" }
+  },
+  {
+    name: "deploy_website_patch",
+    title: "Deploy a Targeted Revision (Changed Files Only)",
+    description: "Revise a live website by sending ONLY the files that actually changed instead of the whole project — use this for every follow-up edit after the first deploy_to_sacms (\"ubah warna header\", \"ganti logo\"). SaCMS merges changedFiles onto the exact baseSourceRevision snapshot and deploys the result to a staging candidate; it does not touch production until promote_deployment confirms it.",
+    inputs: [
+      { name: "baseSourceRevision", type: "string", required: true, description: "The sourceRevision this patch is based on, from a previous deploy or get_deployment_source response" },
+      { name: "changedFiles", type: "array", required: true, description: "Only the files being added or changed — array of { name, content, encoding? }" },
+      { name: "deletedFiles", type: "array", required: false, description: "File paths to remove entirely" },
+      { name: "envVars", type: "object", required: false, description: "Extra env vars for this deploy" }
+    ],
+    sampleResponse: { ok: true, deploymentId: "dpl_def456", sourceRevision: "rev_002", deploymentUrl: "https://my-workspace-def456.vercel.app", changedCount: 1, unchangedCount: 24, state: "READY", message: "✅ Patch deployed — call promote_deployment to go live." }
+  },
+  {
+    name: "promote_deployment",
+    title: "Verify and Promote a Staging Candidate to Production",
+    description: "The only way a deploy_to_sacms/deploy_website_patch staging candidate ever reaches the live production domain. Runs HTTP checks against the candidate's own URL first and only promotes if every check passes — never promotes blind, and never rebuilds anything (it just re-points the production alias).",
+    inputs: [
+      { name: "deploymentId", type: "string", required: true, description: "The staging candidate's deployment id, from deploy_to_sacms/deploy_website_patch" },
+      { name: "checks", type: "array", required: false, description: "Paths to verify on the candidate before promoting, e.g. [{ path: \"/\" }]. Defaults to just \"/\"" }
+    ],
+    sampleResponse: { ok: true, promoted: true, deploymentId: "dpl_def456", productionUrl: "https://my-workspace.sites.sacms.cloud", checks: [{ path: "/", status: 200, ok: true }], message: "✅ Promoted to production." }
+  },
+  {
+    name: "get_deployment_source",
+    title: "Get Current Deployed Source Files",
+    description: "Read back the actual files from a live SaCMS Cloud Hosting deployment — call this before a targeted revision instead of regenerating the whole frontend or guessing what's there. Returns files in the same shape deploy_to_sacms expects, plus a sha256 checksum per file and a sourceRevision usable as deploy_website_patch's baseSourceRevision.",
+    inputs: [
+      { name: "deploymentId", type: "string", required: false, description: "Specific deployment to read from. Omit for the latest production deployment." },
+      { name: "paths", type: "array", required: false, description: "Return only these file paths instead of the whole project" },
+      { name: "manifestOnly", type: "boolean", required: false, description: "Return just name/size/checksum for every file, with no content" }
+    ],
+    sampleResponse: { deploymentId: "dpl_abc123", sourceRevision: "rev_001", source: "persisted", files: [{ name: "app/page.tsx", content: "...", encoding: "utf-8", size: 1820, checksum: "a1b2c3d4..." }], skipped: [], truncated: false }
+  },
+  {
+    name: "list_website_versions",
+    title: "List Recent Deployed Source Versions",
+    description: "List this workspace's recent deploy_to_sacms/deploy_website_patch/rollback_website snapshots, most recent first. Pass a sourceRevision to get_deployment_source or rollback_website. Only a rolling window of recent revisions is kept, not permanent history.",
+    inputs: [
+      { name: "limit", type: "number", required: false, default: "10", description: "Max versions to return (1-20)" }
+    ],
+    sampleResponse: { versions: [{ sourceRevision: "rev_002", deploymentId: "dpl_def456", fileCount: 25, createdAt: "2026-11-17T10:00:00.000Z" }] }
+  },
+  {
+    name: "rollback_website",
+    title: "Rollback to a Previous Deployed Version",
+    description: "Redeploy a previous sourceRevision's exact files (from list_website_versions) — use this when a revision broke something and the user wants to go back. Creates a NEW deployment with the old content; it does not delete what's currently live.",
+    inputs: [
+      { name: "sourceRevision", type: "string", required: true, description: "The sourceRevision to restore, from list_website_versions" }
+    ],
+    sampleResponse: { ok: true, deploymentId: "dpl_ghi789", sourceRevision: "rev_003", productionUrl: "https://my-workspace.sites.sacms.cloud", state: "READY", message: "✅ Rolled back — call promote_deployment to go live." }
+  },
+  {
+    name: "get_deployment_build_logs",
+    title: "Get Deployment Build Logs",
+    description: "Read a deployment's BUILD log output — call this when get_deployment_status reports an errored/failed build, to see why it failed (compiler error, missing dependency, etc.) before fixing the source and deploying again.",
+    inputs: [
+      { name: "deploymentId", type: "string", required: false, description: "Specific deployment to read logs from. Omit for the latest production deployment." }
+    ],
+    sampleResponse: { deploymentId: "dpl_abc123", lines: ["Installing dependencies...", "Error: Cannot find module 'foo'"], errorLines: ["Error: Cannot find module 'foo'"] }
+  },
+  {
+    name: "get_deployment_runtime_logs",
+    title: "Get Deployment Runtime Logs",
+    description: "Read a deployment's RUNTIME logs — actual request/response activity from serving traffic — to diagnose an HTTP 500 a real request hit. Different from get_deployment_build_logs: a READY build says nothing about runtime correctness.",
+    inputs: [
+      { name: "deploymentId", type: "string", required: false, description: "Specific deployment to read runtime logs from. Omit for the latest production deployment." }
+    ],
+    sampleResponse: { deploymentId: "dpl_abc123", lines: [{ level: "error", message: "TypeError: Cannot read properties of undefined", requestPath: "/artikel/contoh", responseStatusCode: 500 }], errorLines: [{ level: "error", message: "TypeError: Cannot read properties of undefined", responseStatusCode: 500 }], truncated: false }
+  },
+  {
+    name: "verify_deployment_url",
+    title: "Verify the Live Deployment Actually Works",
+    description: "Fetch the live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the site is done. A ready build can still serve a login wall, an error page, or stale content instead of real data.",
+    inputs: [
+      { name: "path", type: "string", required: false, default: "/", description: "Path to check on the live domain" },
+      { name: "expectedText", type: "string", required: false, description: "A substring expected in that path's rendered HTML" },
+      { name: "checks", type: "array", required: false, description: "Multiple checks for a multi-page build (home, detail page, feed, icon) — all must pass" }
+    ],
+    sampleResponse: { ok: true, checks: [{ path: "/", status: 200, ok: true, htmlLength: 15234, containsExpectedText: true, looksLikeErrorPage: false }], url: "https://my-workspace.sites.sacms.cloud", status: 200 }
+  },
+
   // Member (end-user) management intentionally has no MCP tools — see the
   // comment at the very end of api/mcp/[[...transport]]/route.ts. Members
   // are managed through the dashboard's Users & Permissions section; the
