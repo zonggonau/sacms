@@ -106,8 +106,12 @@ describe("SaCMS SDK", () => {
 
       const result = await cf.collection("articles").findOne("123")
 
+      // Sixth external audit: findOne() now defaults to the client's own
+      // locale the same way findMany() already did — previously it built
+      // no query string at all, so a relation came back as a raw id
+      // regardless of what the caller asked findMany() for.
       expect(mockFetch).toHaveBeenCalledWith(
-        "https://api.example.com/api/public/my-tenant/content/articles/123",
+        "https://api.example.com/api/public/my-tenant/content/articles/123?locale=en",
         expect.anything()
       )
       expect(result.data.id).toBe("123")
