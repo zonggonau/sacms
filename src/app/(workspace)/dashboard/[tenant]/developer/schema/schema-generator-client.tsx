@@ -171,16 +171,18 @@ export function SchemaGeneratorClient({
           </div>
 
           <TabsContent value="website-templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <WebsiteTemplatesTab
-              tenantSlug={tenantSlug}
-              isGlobal={isGlobal}
-              isWorkspaceEmpty={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
-              onApplied={() => {
-                setActiveTab("diagram")
-                setRefreshKey((k) => k + 1)
-              }}
-              onReset={() => setRefreshKey((k) => k + 1)}
-            />
+            <div className="mx-auto w-full max-w-7xl">
+              <WebsiteTemplatesTab
+                tenantSlug={tenantSlug}
+                isGlobal={isGlobal}
+                isWorkspaceEmpty={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
+                onApplied={() => {
+                  setActiveTab("diagram")
+                  setRefreshKey((k) => k + 1)
+                }}
+                onReset={() => setRefreshKey((k) => k + 1)}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="diagram" className="flex min-h-0 flex-col gap-2 data-[state=inactive]:hidden">

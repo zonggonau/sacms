@@ -42,6 +42,28 @@ interface WebsiteTemplatesTabProps {
 
 const ALL_SCHEMAS = "__all__"
 
+// Vercel-template-gallery-style card art: a live iframe preview (what this
+// used to render here) comes back blank for almost every demo — the
+// deployed site's own frame-ancestors/CSP header blocks third-party
+// embedding, so the card silently showed an empty box while the SAME url
+// opened in a new tab rendered fine. A static, per-template gradient tile
+// is simpler, never breaks, and reads as a deliberate design rather than a
+// failed embed — closer to how vercel.com/templates itself falls back
+// when a template has no screenshot.
+const CARD_GRADIENTS = [
+  "from-violet-500/20 via-fuchsia-500/10 to-transparent",
+  "from-sky-500/20 via-cyan-500/10 to-transparent",
+  "from-amber-500/20 via-orange-500/10 to-transparent",
+  "from-emerald-500/20 via-teal-500/10 to-transparent",
+  "from-rose-500/20 via-pink-500/10 to-transparent",
+  "from-indigo-500/20 via-blue-500/10 to-transparent",
+]
+function gradientFor(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  return CARD_GRADIENTS[hash % CARD_GRADIENTS.length]
+}
+
 export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<WebsiteTemplateItem[]>([])
@@ -492,26 +514,42 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
           </CardContent>
         </Card>
       ) : viewMode === "card" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {visibleTemplates.map((t) => (
-            <Card key={t.id} className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden flex flex-col">
-              <div className="relative aspect-[4/3] w-full bg-muted/40 border-b border-border/60 overflow-hidden">
+            <Card
+              key={t.id}
+              className="group rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden flex flex-col transition-shadow hover:shadow-md"
+            >
+              {/* No live preview on purpose — a demo's own frame-ancestors/CSP
+                  header blocks third-party iframe embedding almost every
+                  time, so this used to render as a silent blank box even
+                  though the exact same url opens fine in its own tab. A
+                  per-template gradient tile instead, same spirit as
+                  vercel.com/templates' own fallback art for a template with
+                  no screenshot. */}
+              <a
+                href={t.demoUrl || undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-disabled={!t.demoUrl}
+                className={`relative aspect-[16/10] w-full overflow-hidden border-b border-border/60 ${t.demoUrl ? "cursor-pointer" : "cursor-default pointer-events-none"}`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradientFor(t.id)} bg-muted/30`} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-5xl drop-shadow-sm" aria-hidden>{t.icon}</span>
+                </div>
                 {t.demoUrl ? (
-                  <iframe
-                    src={t.demoUrl}
-                    scrolling="no"
-                    className="absolute top-0 left-0 w-[400%] h-[400%] origin-top-left scale-[0.25] border-0 pointer-events-none bg-white"
-                    loading="lazy"
-                    tabIndex={-1}
-                    title={`Pratinjau ${t.name}`}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted-foreground/50">
-                    <LayoutTemplate className="h-7 w-7" />
-                    <span className="text-[10px] font-semibold">Demo belum tersedia</span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-bold text-background">
+                      <ExternalLink className="h-3 w-3" /> Lihat Demo
+                    </span>
                   </div>
+                ) : (
+                  <span className="absolute bottom-2 right-2 rounded-full bg-background/80 px-2 py-0.5 text-[9px] font-semibold text-muted-foreground backdrop-blur-sm">
+                    Demo belum tersedia
+                  </span>
                 )}
-              </div>
+              </a>
               <CardContent className="p-3.5 flex flex-col gap-2.5 flex-1">
                 <div className="flex items-start gap-2 min-w-0">
                   <span className="text-base shrink-0">{t.icon}</span>
