@@ -1,6 +1,7 @@
 import type {
   SaCMSConfig,
   FindManyParams,
+  FindOneParams,
   FindSingleParams,
   CollectionResponse,
   SingleResponse,
@@ -8,6 +9,7 @@ import type {
   MutateParams,
   Filters,
   FilterOperators,
+  RequestExtras,
 } from "./types"
 import type { EmptyRegistry, SaCMSRegistryShape } from "./generated-types"
 import { AuthClient } from "./auth"
@@ -33,6 +35,7 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   private tenant: string
   private token: string
   private defaultLocale?: string
+  private defaultTimeoutMs: number
 
   /** Member (end-user) authentication — login, register, session, profile. */
   readonly auth: AuthClient
@@ -42,6 +45,12 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
     this.tenant = config.tenant
     this.token = config.token ?? ""
     this.defaultLocale = config.locale ?? "id"
+    // Sixth external audit: unset before, a hung connection to the server
+    // could block a page's render indefinitely — 15s is generous enough
+    // not to false-positive on a slow connection, short enough to not
+    // hang a request forever. Override per-client via `timeoutMs`, or
+    // per-call via `RequestExtras.timeoutMs` (0 disables it for that call).
+    this.defaultTimeoutMs = config.timeoutMs ?? 15000
     this.auth = new AuthClient(this)
   }
 
@@ -68,22 +77,41 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
    */
   async graphql<T = Record<string, unknown>>(
     query: string,
-    variables?: Record<string, unknown>
+    variables?: Record<string, unknown>,
+    extras?: RequestExtras,
   ): Promise<GraphQLResponse<T>> {
     return this.request<GraphQLResponse<T>>(
       `/api/public/${this.tenant}/graphql`,
       {
         method: "POST",
         body: JSON.stringify({ query, variables }),
-      }
+      },
+      extras,
     )
   }
 
   /** @internal */
-  async request<T>(path: string, init?: RequestInit, retries = 3): Promise<T> {
+  async request<T>(path: string, init: RequestInit = {}, extras: RequestExtras = {}, retries = 3): Promise<T> {
     const url = `${this.baseUrl}${path}`
+    // Sixth external audit: retrying a NETWORK failure (connection reset,
+    // DNS, timeout — as opposed to a 429, which means the server never
+    // processed the request at all) is only safe for a method with no
+    // side effects. A dropped connection on POST/PUT/DELETE leaves real
+    // ambiguity about whether the server already wrote the data before
+    // the connection died — blindly retrying those risked a duplicate
+    // write, confirmed as a real finding. Only GET is retried on a raw
+    // network failure; a 429 is still retried for every method (it means
+    // the request was rejected before any processing happened at all).
+    const method = (init.method || "GET").toUpperCase()
+    const isIdempotentMethod = method === "GET"
+
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      // Sixth external audit: this used to always send Content-Type:
+      // application/json, including on a GET/DELETE with no body — a
+      // non-empty, non-form Content-Type on a cross-origin request forces
+      // the browser into an extra CORS preflight (OPTIONS) round-trip for
+      // every single read, for no reason (there's no body to describe).
+      ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
       // Fifth external audit: this used to send `Authorization: Bearer
       // ${this.token}` unconditionally — with no token configured,
       // `this.token` was `undefined` (TS's `token: string` only enforces
@@ -96,29 +124,60 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
       // request would have succeeded perfectly well anonymously had this
       // header been omitted entirely. Only send it when a real token exists.
       ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-      ...(init?.headers as Record<string, string>),
+      ...(init.headers as Record<string, string>),
+      ...(extras.headers as Record<string, string>),
     }
 
+    const timeoutMs = extras.timeoutMs ?? this.defaultTimeoutMs
+    const callerSignal = extras.signal ?? init.signal
+
     for (let attempt = 0; attempt <= retries; attempt++) {
+      // Sixth external audit: there was no timeout at all before — a
+      // request the server never answers could hang a page's render
+      // forever. Only installed when the caller didn't bring their own
+      // `signal` (composing two AbortSignals isn't universally supported
+      // across the runtimes this SDK targets — a caller-supplied signal
+      // takes full responsibility for abort instead).
+      let timeoutController: AbortController | undefined
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+      let signal = callerSignal
+      if (!callerSignal && timeoutMs > 0) {
+        timeoutController = new AbortController()
+        signal = timeoutController.signal
+        timeoutHandle = setTimeout(() => timeoutController!.abort(), timeoutMs)
+      }
+
       let res: Response
       try {
-        res = await fetch(url, { ...init, headers })
+        const fetchInit: RequestInit & { next?: unknown } = { ...init, headers, signal }
+        if (extras.next) fetchInit.next = extras.next
+        if (extras.cache) fetchInit.cache = extras.cache
+        res = await fetch(url, fetchInit)
       } catch (err) {
-        // A pure network failure (connection reset, DNS, timeout) throws
-        // before there's any Response to inspect — retry it the same way
-        // as a 429, instead of letting it escape as a raw, un-typed
-        // exception that the README's `catch (SaCMSError)` pattern can't
-        // catch.
-        if (attempt < retries) {
+        // A timeout is deliberate (OUR OWN AbortController, not the
+        // caller's) — fail immediately rather than retrying it. Retrying
+        // with exponential backoff on top of a timeout the caller chose
+        // specifically to fail FAST would silently balloon the effective
+        // wait time well past what they configured, defeating the point
+        // of a short timeoutMs override.
+        if (!callerSignal && err instanceof Error && err.name === "AbortError") {
+          throw new SaCMSError(`Request to ${path} timed out after ${timeoutMs}ms`, 0)
+        }
+        if (isIdempotentMethod && attempt < retries) {
           await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)))
           continue
         }
+        // A pure network failure (connection reset, DNS) throws before
+        // there's any Response to inspect — surfaced as a typed
+        // SaCMSError instead of a raw, un-typed exception the README's
+        // `catch (SaCMSError)` pattern can't catch.
         throw new SaCMSError(err instanceof Error ? err.message : "Network request failed", 0)
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle)
       }
 
       if (res.status === 429 && attempt < retries) {
-        const retryAfter = res.headers.get("Retry-After")
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt)
+        const delay = parseRetryAfterMs(res.headers.get("Retry-After")) ?? 1000 * Math.pow(2, attempt)
         await new Promise(r => setTimeout(r, delay))
         continue
       }
@@ -167,27 +226,41 @@ class CollectionClient<T> {
    * Query multiple entries with filtering, sorting, pagination, and field selection.
    */
   async findMany(
-    params?: FindManyParams
+    params?: FindManyParams,
+    extras?: RequestExtras,
   ): Promise<CollectionResponse<T>> {
     const qs = buildQueryString(params, this.cf.getDefaultLocale())
     return this.cf.request<CollectionResponse<T>>(
-      `/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`
+      `/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`,
+      {},
+      extras,
     )
   }
 
   /**
-   * Get a single entry by ID.
+   * Get a single entry by ID. Pass `populate`/`locale` the same way you
+   * would to `findMany` — omitted, a relation field comes back as a raw id.
    */
-  async findOne(id: string): Promise<{ data: T }> {
+  async findOne(id: string, params?: FindOneParams, extras?: RequestExtras): Promise<{ data: T }> {
+    const qsParts: string[] = []
+    const locale = params?.locale ?? this.cf.getDefaultLocale()
+    if (locale) qsParts.push(`locale=${encodeURIComponent(locale)}`)
+    if (params?.populate) {
+      const populateValue = params.populate === "*" ? "*" : params.populate.map(encodeURIComponent).join(",")
+      qsParts.push(`populate=${populateValue}`)
+    }
+    const qs = qsParts.length ? `?${qsParts.join("&")}` : ""
     return this.cf.request<{ data: T }>(
-      `/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`
+      `/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}${qs}`,
+      {},
+      extras,
     )
   }
 
   /**
    * Create a new entry (requires full-access token).
    */
-  async create(params: MutateParams): Promise<{ data: T }> {
+  async create(params: MutateParams, extras?: RequestExtras): Promise<{ data: T }> {
     return this.cf.request<{ data: T }>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}`,
       {
@@ -197,7 +270,8 @@ class CollectionClient<T> {
           locale: params.locale ?? this.cf.getDefaultLocale(),
           status: params.status,
         }),
-      }
+      },
+      extras,
     )
   }
 
@@ -206,7 +280,8 @@ class CollectionClient<T> {
    */
   async update(
     id: string,
-    params: MutateParams
+    params: MutateParams,
+    extras?: RequestExtras,
   ): Promise<{ data: T }> {
     return this.cf.request<{ data: T }>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`,
@@ -217,17 +292,19 @@ class CollectionClient<T> {
           locale: params.locale ?? this.cf.getDefaultLocale(),
           status: params.status,
         }),
-      }
+      },
+      extras,
     )
   }
 
   /**
    * Delete an entry by ID (requires full-access token).
    */
-  async delete(id: string): Promise<{ success: boolean }> {
+  async delete(id: string, extras?: RequestExtras): Promise<{ success: boolean }> {
     return this.cf.request<{ success: boolean }>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
+      extras,
     )
   }
 }
@@ -242,12 +319,15 @@ class SingleClient<T> {
    * Get the single type content.
    */
   async find(
-    params?: FindSingleParams
+    params?: FindSingleParams,
+    extras?: RequestExtras,
   ): Promise<SingleResponse<T>> {
     const locale = params?.locale ?? this.cf.getDefaultLocale()
     const qs = locale ? `?locale=${encodeURIComponent(locale)}` : ""
     return this.cf.request<SingleResponse<T>>(
-      `/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`
+      `/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`,
+      {},
+      extras,
     )
   }
 
@@ -255,14 +335,16 @@ class SingleClient<T> {
    * Update the single type content (requires full-access token).
    */
   async update(
-    data: Record<string, unknown>
+    data: Record<string, unknown>,
+    extras?: RequestExtras,
   ): Promise<SingleResponse<T>> {
     return this.cf.request<SingleResponse<T>>(
       `/api/public/${this.cf.getTenant()}/single/${this.slug}`,
       {
         method: "PUT",
         body: JSON.stringify({ data }),
-      }
+      },
+      extras,
     )
   }
 }
@@ -362,12 +444,30 @@ export class QueryBuilder<T> {
   /**
    * Execute the query and fetch the results.
    */
-  async fetch(): Promise<CollectionResponse<T>> {
-    return this.client.findMany(this.params)
+  async fetch(extras?: RequestExtras): Promise<CollectionResponse<T>> {
+    return this.client.findMany(this.params, extras)
   }
 }
 
 // ─── Helpers ────────────────────────────────────────────
+
+/**
+ * Sixth external audit: `Retry-After` is valid as EITHER delta-seconds
+ * (what this used to assume exclusively) OR an HTTP-date (RFC 9110 §10.2.3)
+ * — the server is free to send either. `parseInt("<http-date>", 10)` on
+ * the date form returns `NaN` (it parses the leading digits of the day-of-
+ * month, if any, then gives up), silently losing the intended backoff
+ * delay entirely (`setTimeout` treats a NaN delay as 0, i.e. an immediate
+ * retry with no backoff at all).
+ */
+function parseRetryAfterMs(header: string | null): number | null {
+  if (!header) return null
+  const seconds = Number(header)
+  if (!Number.isNaN(seconds)) return Math.max(0, seconds * 1000)
+  const dateMs = Date.parse(header)
+  if (!Number.isNaN(dateMs)) return Math.max(0, dateMs - Date.now())
+  return null
+}
 
 function buildQueryString(
   params?: FindManyParams,

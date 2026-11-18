@@ -1,4 +1,4 @@
-import type { SaCMSConfig, FindManyParams, FindSingleParams, CollectionResponse, SingleResponse, GraphQLResponse, MutateParams } from "./types";
+import type { SaCMSConfig, FindManyParams, FindOneParams, FindSingleParams, CollectionResponse, SingleResponse, GraphQLResponse, MutateParams, RequestExtras } from "./types";
 import type { EmptyRegistry, SaCMSRegistryShape } from "./generated-types";
 import { AuthClient } from "./auth";
 /**
@@ -22,6 +22,7 @@ export declare class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> 
     private tenant;
     private token;
     private defaultLocale?;
+    private defaultTimeoutMs;
     /** Member (end-user) authentication — login, register, session, profile. */
     readonly auth: AuthClient;
     constructor(config: SaCMSConfig);
@@ -38,9 +39,9 @@ export declare class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> 
     /**
      * Execute a raw GraphQL query or mutation.
      */
-    graphql<T = Record<string, unknown>>(query: string, variables?: Record<string, unknown>): Promise<GraphQLResponse<T>>;
+    graphql<T = Record<string, unknown>>(query: string, variables?: Record<string, unknown>, extras?: RequestExtras): Promise<GraphQLResponse<T>>;
     /** @internal */
-    request<T>(path: string, init?: RequestInit, retries?: number): Promise<T>;
+    request<T>(path: string, init?: RequestInit, extras?: RequestExtras, retries?: number): Promise<T>;
     /** @internal */
     getDefaultLocale(): string | undefined;
     /** @internal */
@@ -57,29 +58,30 @@ declare class CollectionClient<T> {
     /**
      * Query multiple entries with filtering, sorting, pagination, and field selection.
      */
-    findMany(params?: FindManyParams): Promise<CollectionResponse<T>>;
+    findMany(params?: FindManyParams, extras?: RequestExtras): Promise<CollectionResponse<T>>;
     /**
-     * Get a single entry by ID.
+     * Get a single entry by ID. Pass `populate`/`locale` the same way you
+     * would to `findMany` — omitted, a relation field comes back as a raw id.
      */
-    findOne(id: string): Promise<{
+    findOne(id: string, params?: FindOneParams, extras?: RequestExtras): Promise<{
         data: T;
     }>;
     /**
      * Create a new entry (requires full-access token).
      */
-    create(params: MutateParams): Promise<{
+    create(params: MutateParams, extras?: RequestExtras): Promise<{
         data: T;
     }>;
     /**
      * Update an entry by ID (requires full-access token).
      */
-    update(id: string, params: MutateParams): Promise<{
+    update(id: string, params: MutateParams, extras?: RequestExtras): Promise<{
         data: T;
     }>;
     /**
      * Delete an entry by ID (requires full-access token).
      */
-    delete(id: string): Promise<{
+    delete(id: string, extras?: RequestExtras): Promise<{
         success: boolean;
     }>;
 }
@@ -90,11 +92,11 @@ declare class SingleClient<T> {
     /**
      * Get the single type content.
      */
-    find(params?: FindSingleParams): Promise<SingleResponse<T>>;
+    find(params?: FindSingleParams, extras?: RequestExtras): Promise<SingleResponse<T>>;
     /**
      * Update the single type content (requires full-access token).
      */
-    update(data: Record<string, unknown>): Promise<SingleResponse<T>>;
+    update(data: Record<string, unknown>, extras?: RequestExtras): Promise<SingleResponse<T>>;
 }
 export declare class SaCMSError extends Error {
     status: number;
@@ -143,6 +145,6 @@ export declare class QueryBuilder<T> {
     /**
      * Execute the query and fetch the results.
      */
-    fetch(): Promise<CollectionResponse<T>>;
+    fetch(extras?: RequestExtras): Promise<CollectionResponse<T>>;
 }
 export {};

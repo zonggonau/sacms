@@ -81,8 +81,12 @@ const posts = await sacms.collection("posts").findMany({
   populate: ["author"],
 });
 
-// 2. Fetch single entry by ID
-const post = await sacms.collection("posts").findOne("entry_cuid_123");
+// 2. Fetch single entry by ID — pass populate/locale the same way findMany
+// takes them; omitted, a relation field comes back as a raw id.
+const post = await sacms.collection("posts").findOne("entry_cuid_123", {
+  populate: ["author"],
+  locale: "id",
+});
 
 // 3. Create entry (Requires Full-Access API Token)
 // New entries created through the public API are always saved as DRAFT —
@@ -271,6 +275,29 @@ const { article } = Astro.props;
 
 ---
 
+## ⏱️ Timeouts, Retries, and Next.js Caching
+
+Every request has a default 15s timeout, configurable per client or per call:
+
+```typescript
+const sacms = new SaCMS({ baseUrl, tenant, token, timeoutMs: 30_000 }); // client default
+
+await sacms.collection("articles").findMany(undefined, { timeoutMs: 5_000 }); // per-call override
+```
+
+A `429` response is always retried (with backoff, honoring `Retry-After`) regardless of method — the server never processed that request at all, so retrying is always safe. A genuine network failure (DNS, connection reset — as opposed to a deliberate timeout, which is never retried) is only retried for a read (`findMany`/`findOne`/`find`): retrying a `create`/`update`/`delete`/single-type `update` on a dropped connection would risk writing the same data twice, since there's no way to know whether the server already received it before the connection died.
+
+Every method's last argument also passes extra options straight through to the underlying `fetch()` — including Next.js's own data-cache controls, so you don't need to wrap calls in `unstable_cache` yourself:
+
+```typescript
+const { data } = await sacms.collection("articles").findMany(
+  { sort: "createdAt:desc" },
+  { next: { revalidate: 60, tags: ["articles"] } }, // Next.js App Router cache
+);
+```
+
+---
+
 ## 🛡️ Error Handling
 
 ```typescript
@@ -281,8 +308,8 @@ try {
 } catch (error) {
   if (error instanceof SaCMSError) {
     // error.status is the real HTTP status for an API-level error (404, 403, …),
-    // or 0 if every retry hit a pure network failure (DNS, connection reset, timeout) —
-    // those are retried with backoff first, same as a 429, before being thrown.
+    // or 0 for a network failure/timeout — see "Timeouts, Retries, and Next.js
+    // Caching" above for exactly which of those get retried before being thrown.
     console.error(`SaCMS API Error [HTTP ${error.status}]: ${error.message}`);
   } else {
     console.error("Unexpected error:", error);

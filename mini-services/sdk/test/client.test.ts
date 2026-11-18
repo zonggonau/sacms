@@ -147,6 +147,127 @@ describe("SaCMS client", () => {
     vi.useRealTimers()
   })
 
+  // Sixth external audit: a dropped connection on POST/PUT/DELETE leaves
+  // genuine ambiguity about whether the server already wrote the data
+  // before the connection died — retrying blindly (as every method used
+  // to) risked creating a duplicate. Only a GET (no side effects) is safe
+  // to retry on a raw network failure.
+  it("does NOT retry a network failure for create() (POST) — fails immediately instead of risking a duplicate write", async () => {
+    fetchMock.mockRejectedValue(new TypeError("fetch failed"))
+
+    await expect(client().collection("articles").create({ data: { title: "x" } })).rejects.toMatchObject({ name: "SaCMSError" })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("still retries a 429 for create() (POST) — a 429 means the request was never processed at all, so retrying is always safe", async () => {
+    vi.useFakeTimers()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: "slow down" }, 429, { "Retry-After": "1" }))
+      .mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
+
+    const promise = client().collection("articles").create({ data: { title: "x" } })
+    await vi.advanceTimersByTimeAsync(1000)
+    await expect(promise).resolves.toEqual({ data: { id: "1" } })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  // Sixth external audit: Retry-After is valid as EITHER delta-seconds OR
+  // an HTTP-date (RFC 9110) — parseInt() on the date form used to return
+  // NaN, silently collapsing the intended backoff to an immediate retry.
+  it("honors a Retry-After sent as an HTTP-date, not just delta-seconds", async () => {
+    vi.useFakeTimers()
+    const now = new Date("2026-01-01T00:00:00Z")
+    vi.setSystemTime(now)
+    const retryAt = new Date(now.getTime() + 2000).toUTCString()
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ error: "slow down" }, 429, { "Retry-After": retryAt }))
+      .mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+
+    const promise = client().collection("articles").findMany()
+    // Not yet due — still only the first call.
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1100)
+    await expect(promise).resolves.toEqual({ data: [], meta: {} })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.useRealTimers()
+  })
+
+  // Sixth external audit: no timeout existed at all before — a request
+  // the server never answers could hang a page's render indefinitely.
+  // Real timers with a tiny override, not fake timers: AbortController's
+  // event firing doesn't need faking, and this keeps the test fast and
+  // free of fake-timer/microtask-interleaving edge cases.
+  it("aborts a request that never resolves once the timeout elapses, honoring a per-call override", async () => {
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => {
+        const err = new Error("aborted")
+        err.name = "AbortError"
+        reject(err)
+      })
+    }))
+
+    await expect(client().collection("articles").findMany(undefined, { timeoutMs: 50 })).rejects.toMatchObject({
+      name: "SaCMSError",
+      message: expect.stringContaining("timed out after 50ms"),
+    })
+  })
+
+  it("never installs its own timeout when the caller supplies their own AbortSignal", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    const controller = new AbortController()
+    await client().collection("articles").findMany(undefined, { timeoutMs: 50, signal: controller.signal })
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init.signal).toBe(controller.signal)
+  })
+
+  // Sixth external audit: Content-Type: application/json used to be sent
+  // unconditionally, including on a GET with no body — a non-empty,
+  // non-form Content-Type on a cross-origin request forces an extra CORS
+  // preflight (OPTIONS) round-trip for every single read, for nothing.
+  it("omits Content-Type on a GET (no body) but sends it on create() (POST, has a body)", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    await client().collection("articles").findMany()
+    expect(fetchMock.mock.calls[0][1].headers["Content-Type"]).toBeUndefined()
+
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
+    await client().collection("articles").create({ data: { title: "x" } })
+    expect(fetchMock.mock.calls[1][1].headers["Content-Type"]).toBe("application/json")
+  })
+
+  // Sixth external audit: findOne() didn't accept either of these at all,
+  // even though the server's own single-entry route supports both — a
+  // relation always came back as a raw id no matter what findMany() itself
+  // was asked for.
+  it("findOne() builds populate and locale into the query string", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
+    await client().collection("articles").findOne("1", { populate: ["author", "category"], locale: "en" })
+
+    const [url] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.test/api/public/acme/content/articles/1?locale=en&populate=author,category")
+  })
+
+  it("findOne() defaults to the client's own locale when none is passed, same as findMany()", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
+    await client().collection("articles").findOne("1")
+
+    const [url] = fetchMock.mock.calls[0]
+    expect(url).toBe("https://app.test/api/public/acme/content/articles/1?locale=id")
+  })
+
+  // Sixth external audit: there was no way at all to reach Next.js's own
+  // data-cache controls through this SDK — a template had to wrap every
+  // call in unstable_cache itself just to get revalidate/tags behavior.
+  it("passes next: { revalidate, tags } straight through to fetch()", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    await client().collection("articles").findMany(undefined, { next: { revalidate: 60, tags: ["articles"] } })
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init.next).toEqual({ revalidate: 60, tags: ["articles"] })
+  })
+
   it("single().find() includes the locale query param and hits the single endpoint", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ data: {}, meta: { singleType: { name: "Homepage", slug: "homepage" }, locale: "id" } }))
     await client().single("homepage").find()

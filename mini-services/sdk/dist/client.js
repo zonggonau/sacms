@@ -24,6 +24,12 @@ class SaCMS {
         this.tenant = config.tenant;
         this.token = config.token ?? "";
         this.defaultLocale = config.locale ?? "id";
+        // Sixth external audit: unset before, a hung connection to the server
+        // could block a page's render indefinitely — 15s is generous enough
+        // not to false-positive on a slow connection, short enough to not
+        // hang a request forever. Override per-client via `timeoutMs`, or
+        // per-call via `RequestExtras.timeoutMs` (0 disables it for that call).
+        this.defaultTimeoutMs = config.timeoutMs ?? 15000;
         this.auth = new auth_1.AuthClient(this);
     }
     collection(slug) {
@@ -35,17 +41,33 @@ class SaCMS {
     /**
      * Execute a raw GraphQL query or mutation.
      */
-    async graphql(query, variables) {
+    async graphql(query, variables, extras) {
         return this.request(`/api/public/${this.tenant}/graphql`, {
             method: "POST",
             body: JSON.stringify({ query, variables }),
-        });
+        }, extras);
     }
     /** @internal */
-    async request(path, init, retries = 3) {
+    async request(path, init = {}, extras = {}, retries = 3) {
         const url = `${this.baseUrl}${path}`;
+        // Sixth external audit: retrying a NETWORK failure (connection reset,
+        // DNS, timeout — as opposed to a 429, which means the server never
+        // processed the request at all) is only safe for a method with no
+        // side effects. A dropped connection on POST/PUT/DELETE leaves real
+        // ambiguity about whether the server already wrote the data before
+        // the connection died — blindly retrying those risked a duplicate
+        // write, confirmed as a real finding. Only GET is retried on a raw
+        // network failure; a 429 is still retried for every method (it means
+        // the request was rejected before any processing happened at all).
+        const method = (init.method || "GET").toUpperCase();
+        const isIdempotentMethod = method === "GET";
         const headers = {
-            "Content-Type": "application/json",
+            // Sixth external audit: this used to always send Content-Type:
+            // application/json, including on a GET/DELETE with no body — a
+            // non-empty, non-form Content-Type on a cross-origin request forces
+            // the browser into an extra CORS preflight (OPTIONS) round-trip for
+            // every single read, for no reason (there's no body to describe).
+            ...(init.body !== undefined ? { "Content-Type": "application/json" } : {}),
             // Fifth external audit: this used to send `Authorization: Bearer
             // ${this.token}` unconditionally — with no token configured,
             // `this.token` was `undefined` (TS's `token: string` only enforces
@@ -58,28 +80,61 @@ class SaCMS {
             // request would have succeeded perfectly well anonymously had this
             // header been omitted entirely. Only send it when a real token exists.
             ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
-            ...init?.headers,
+            ...init.headers,
+            ...extras.headers,
         };
+        const timeoutMs = extras.timeoutMs ?? this.defaultTimeoutMs;
+        const callerSignal = extras.signal ?? init.signal;
         for (let attempt = 0; attempt <= retries; attempt++) {
+            // Sixth external audit: there was no timeout at all before — a
+            // request the server never answers could hang a page's render
+            // forever. Only installed when the caller didn't bring their own
+            // `signal` (composing two AbortSignals isn't universally supported
+            // across the runtimes this SDK targets — a caller-supplied signal
+            // takes full responsibility for abort instead).
+            let timeoutController;
+            let timeoutHandle;
+            let signal = callerSignal;
+            if (!callerSignal && timeoutMs > 0) {
+                timeoutController = new AbortController();
+                signal = timeoutController.signal;
+                timeoutHandle = setTimeout(() => timeoutController.abort(), timeoutMs);
+            }
             let res;
             try {
-                res = await fetch(url, { ...init, headers });
+                const fetchInit = { ...init, headers, signal };
+                if (extras.next)
+                    fetchInit.next = extras.next;
+                if (extras.cache)
+                    fetchInit.cache = extras.cache;
+                res = await fetch(url, fetchInit);
             }
             catch (err) {
-                // A pure network failure (connection reset, DNS, timeout) throws
-                // before there's any Response to inspect — retry it the same way
-                // as a 429, instead of letting it escape as a raw, un-typed
-                // exception that the README's `catch (SaCMSError)` pattern can't
-                // catch.
-                if (attempt < retries) {
+                // A timeout is deliberate (OUR OWN AbortController, not the
+                // caller's) — fail immediately rather than retrying it. Retrying
+                // with exponential backoff on top of a timeout the caller chose
+                // specifically to fail FAST would silently balloon the effective
+                // wait time well past what they configured, defeating the point
+                // of a short timeoutMs override.
+                if (!callerSignal && err instanceof Error && err.name === "AbortError") {
+                    throw new SaCMSError(`Request to ${path} timed out after ${timeoutMs}ms`, 0);
+                }
+                if (isIdempotentMethod && attempt < retries) {
                     await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)));
                     continue;
                 }
+                // A pure network failure (connection reset, DNS) throws before
+                // there's any Response to inspect — surfaced as a typed
+                // SaCMSError instead of a raw, un-typed exception the README's
+                // `catch (SaCMSError)` pattern can't catch.
                 throw new SaCMSError(err instanceof Error ? err.message : "Network request failed", 0);
             }
+            finally {
+                if (timeoutHandle)
+                    clearTimeout(timeoutHandle);
+            }
             if (res.status === 429 && attempt < retries) {
-                const retryAfter = res.headers.get("Retry-After");
-                const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt);
+                const delay = parseRetryAfterMs(res.headers.get("Retry-After")) ?? 1000 * Math.pow(2, attempt);
                 await new Promise(r => setTimeout(r, delay));
                 continue;
             }
@@ -123,20 +178,30 @@ class CollectionClient {
     /**
      * Query multiple entries with filtering, sorting, pagination, and field selection.
      */
-    async findMany(params) {
+    async findMany(params, extras) {
         const qs = buildQueryString(params, this.cf.getDefaultLocale());
-        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`);
+        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`, {}, extras);
     }
     /**
-     * Get a single entry by ID.
+     * Get a single entry by ID. Pass `populate`/`locale` the same way you
+     * would to `findMany` — omitted, a relation field comes back as a raw id.
      */
-    async findOne(id) {
-        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`);
+    async findOne(id, params, extras) {
+        const qsParts = [];
+        const locale = params?.locale ?? this.cf.getDefaultLocale();
+        if (locale)
+            qsParts.push(`locale=${encodeURIComponent(locale)}`);
+        if (params?.populate) {
+            const populateValue = params.populate === "*" ? "*" : params.populate.map(encodeURIComponent).join(",");
+            qsParts.push(`populate=${populateValue}`);
+        }
+        const qs = qsParts.length ? `?${qsParts.join("&")}` : "";
+        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}${qs}`, {}, extras);
     }
     /**
      * Create a new entry (requires full-access token).
      */
-    async create(params) {
+    async create(params, extras) {
         return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}`, {
             method: "POST",
             body: JSON.stringify({
@@ -144,12 +209,12 @@ class CollectionClient {
                 locale: params.locale ?? this.cf.getDefaultLocale(),
                 status: params.status,
             }),
-        });
+        }, extras);
     }
     /**
      * Update an entry by ID (requires full-access token).
      */
-    async update(id, params) {
+    async update(id, params, extras) {
         return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`, {
             method: "PUT",
             body: JSON.stringify({
@@ -157,13 +222,13 @@ class CollectionClient {
                 locale: params.locale ?? this.cf.getDefaultLocale(),
                 status: params.status,
             }),
-        });
+        }, extras);
     }
     /**
      * Delete an entry by ID (requires full-access token).
      */
-    async delete(id) {
-        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`, { method: "DELETE" });
+    async delete(id, extras) {
+        return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`, { method: "DELETE" }, extras);
     }
 }
 class SingleClient {
@@ -174,19 +239,19 @@ class SingleClient {
     /**
      * Get the single type content.
      */
-    async find(params) {
+    async find(params, extras) {
         const locale = params?.locale ?? this.cf.getDefaultLocale();
         const qs = locale ? `?locale=${encodeURIComponent(locale)}` : "";
-        return this.cf.request(`/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`);
+        return this.cf.request(`/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`, {}, extras);
     }
     /**
      * Update the single type content (requires full-access token).
      */
-    async update(data) {
+    async update(data, extras) {
         return this.cf.request(`/api/public/${this.cf.getTenant()}/single/${this.slug}`, {
             method: "PUT",
             body: JSON.stringify({ data }),
-        });
+        }, extras);
     }
 }
 class SaCMSError extends Error {
@@ -277,12 +342,32 @@ class QueryBuilder {
     /**
      * Execute the query and fetch the results.
      */
-    async fetch() {
-        return this.client.findMany(this.params);
+    async fetch(extras) {
+        return this.client.findMany(this.params, extras);
     }
 }
 exports.QueryBuilder = QueryBuilder;
 // ─── Helpers ────────────────────────────────────────────
+/**
+ * Sixth external audit: `Retry-After` is valid as EITHER delta-seconds
+ * (what this used to assume exclusively) OR an HTTP-date (RFC 9110 §10.2.3)
+ * — the server is free to send either. `parseInt("<http-date>", 10)` on
+ * the date form returns `NaN` (it parses the leading digits of the day-of-
+ * month, if any, then gives up), silently losing the intended backoff
+ * delay entirely (`setTimeout` treats a NaN delay as 0, i.e. an immediate
+ * retry with no backoff at all).
+ */
+function parseRetryAfterMs(header) {
+    if (!header)
+        return null;
+    const seconds = Number(header);
+    if (!Number.isNaN(seconds))
+        return Math.max(0, seconds * 1000);
+    const dateMs = Date.parse(header);
+    if (!Number.isNaN(dateMs))
+        return Math.max(0, dateMs - Date.now());
+    return null;
+}
 function buildQueryString(params, defaultLocale) {
     if (!params)
         return "";
