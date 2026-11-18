@@ -22,7 +22,7 @@ class SaCMS {
     constructor(config) {
         this.baseUrl = config.baseUrl.replace(/\/+$/, "");
         this.tenant = config.tenant;
-        this.token = config.token;
+        this.token = config.token ?? "";
         this.defaultLocale = config.locale ?? "id";
         this.auth = new auth_1.AuthClient(this);
     }
@@ -45,8 +45,19 @@ class SaCMS {
     async request(path, init, retries = 3) {
         const url = `${this.baseUrl}${path}`;
         const headers = {
-            Authorization: `Bearer ${this.token}`,
             "Content-Type": "application/json",
+            // Fifth external audit: this used to send `Authorization: Bearer
+            // ${this.token}` unconditionally — with no token configured,
+            // `this.token` was `undefined` (TS's `token: string` only enforces
+            // this at compile time; a plain-JS caller omitting it entirely got
+            // a real `undefined` at runtime), producing the literal header
+            // "Bearer undefined". The server's own bearer-extraction only treats
+            // a MISSING Authorization header as anonymous/public access — a
+            // non-empty (but garbage) token value is treated as a real,
+            // invalid credential attempt and rejected with 401, even though the
+            // request would have succeeded perfectly well anonymously had this
+            // header been omitted entirely. Only send it when a real token exists.
+            ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
             ...init?.headers,
         };
         for (let attempt = 0; attempt <= retries; attempt++) {

@@ -40,7 +40,7 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   constructor(config: SaCMSConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "")
     this.tenant = config.tenant
-    this.token = config.token
+    this.token = config.token ?? ""
     this.defaultLocale = config.locale ?? "id"
     this.auth = new AuthClient(this)
   }
@@ -83,8 +83,19 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   async request<T>(path: string, init?: RequestInit, retries = 3): Promise<T> {
     const url = `${this.baseUrl}${path}`
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
+      // Fifth external audit: this used to send `Authorization: Bearer
+      // ${this.token}` unconditionally — with no token configured,
+      // `this.token` was `undefined` (TS's `token: string` only enforces
+      // this at compile time; a plain-JS caller omitting it entirely got
+      // a real `undefined` at runtime), producing the literal header
+      // "Bearer undefined". The server's own bearer-extraction only treats
+      // a MISSING Authorization header as anonymous/public access — a
+      // non-empty (but garbage) token value is treated as a real,
+      // invalid credential attempt and rejected with 401, even though the
+      // request would have succeeded perfectly well anonymously had this
+      // header been omitted entirely. Only send it when a real token exists.
+      ...(this.token ? { Authorization: `Bearer ${this.token}` } : {}),
       ...(init?.headers as Record<string, string>),
     }
 

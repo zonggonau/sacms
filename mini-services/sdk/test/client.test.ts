@@ -29,6 +29,32 @@ describe("SaCMS client", () => {
     expect(init.headers.Authorization).toBe("Bearer svc_token")
   })
 
+  // Fifth external audit: `new SaCMS({ baseUrl, tenant })` with no token at
+  // all used to send the literal header "Authorization: Bearer undefined"
+  // — the server's own bearer-extraction treats any NON-EMPTY value as a
+  // real (if invalid) credential attempt, not as "no credential", so every
+  // such request was rejected with 401 even for public, unauthenticated
+  // content the server would have served happily with no Authorization
+  // header at all.
+  it("omits the Authorization header entirely when no token is configured, instead of sending 'Bearer undefined'", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    const anon = new SaCMS({ baseUrl: "https://app.test", tenant: "acme" })
+    await anon.collection("articles").findMany()
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init.headers.Authorization).toBeUndefined()
+    expect(Object.values(init.headers)).not.toContain("Bearer undefined")
+  })
+
+  it("also omits Authorization when token is explicitly an empty string (the documented former workaround)", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    const anon = new SaCMS({ baseUrl: "https://app.test", tenant: "acme", token: "" })
+    await anon.collection("articles").findMany()
+
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init.headers.Authorization).toBeUndefined()
+  })
+
   it("findMany builds the expected query string: fields, populate, sort, pagination, search, status, locale", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
     await client()

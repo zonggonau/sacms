@@ -71,7 +71,16 @@ export interface GraphQLResponse<T = Record<string, unknown>> {
 export interface SaCMSConfig {
   baseUrl: string
   tenant: string
-  token: string
+  /**
+   * Optional — the public Content API works anonymously for published
+   * content (confirmed: `resolvePublicApiActor` falls back to a "public"
+   * role when no Authorization header is sent at all). Only needed for a
+   * full-access/read-only API token, or to read non-PUBLISHED content.
+   * Omit it rather than passing `""` as a workaround — both are now
+   * treated identically (see the client's own request() comment for why
+   * that distinction used to matter).
+   */
+  token?: string
   locale?: string
 }
 

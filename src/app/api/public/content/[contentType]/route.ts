@@ -137,7 +137,17 @@ export async function GET(
     const populate = parsePopulate(searchParams)
 
     // Advanced Filtering via SQL
-    const { conditions, orGroups } = parseFilters(searchParams, allowedFieldNames)
+    const { conditions, orGroups, rejected } = parseFilters(searchParams, allowedFieldNames)
+    // Fifth external audit: see the tenant-scoped content route's own
+    // comment on this check — a typo'd field/operator used to be silently
+    // dropped, which (if it was the only filter) returned every row
+    // instead of zero or an error.
+    if (rejected.length > 0) {
+      return NextResponse.json(
+        { error: `Unrecognized or unsupported filter key(s): ${rejected.join(", ")}.` },
+        { status: 400 },
+      )
+    }
     const { fragments, params: sqlParams } = buildFilterSQL(conditions, orGroups, 3) // Start from $3 because $1=$contentTypeId, $2=$status
 
     let whereClause = `WHERE "contentTypeId" = $1 AND "status"::text = $2 AND "tenantId" IS NULL`

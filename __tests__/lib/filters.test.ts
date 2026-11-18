@@ -70,6 +70,67 @@ describe("Filter Engine", () => {
       const { conditions } = parseFilters(params, allowedFields)
       expect(conditions.length).toBeLessThanOrEqual(20)
     })
+
+    // Fifth external audit, the most dangerous finding: a filter key this
+    // function can't recognize used to just vanish — if it was the only
+    // filter in the request, that meant "no filter at all" (every row)
+    // instead of "reject this request" or "zero rows". `rejected` now
+    // surfaces exactly which key(s) didn't parse, so the caller can refuse
+    // the request instead of silently serving more than was asked for.
+
+    it("reports a disallowed/typo'd field in `rejected`, not just a silently empty conditions list", () => {
+      const params = new URLSearchParams("filters[titlee][$eq]=hello")
+      const { conditions, rejected } = parseFilters(params, allowedFields)
+      expect(conditions).toHaveLength(0)
+      expect(rejected).toEqual(["filters[titlee][$eq]"])
+    })
+
+    it("reports an unsupported operator in `rejected`", () => {
+      const params = new URLSearchParams("filters[title][$regex]=hello")
+      const { conditions, rejected } = parseFilters(params, allowedFields)
+      expect(conditions).toHaveLength(0)
+      expect(rejected).toEqual(["filters[title][$regex]"])
+    })
+
+    it("does not report anything in `rejected` for a well-formed filter", () => {
+      const params = new URLSearchParams("filters[title][$eq]=hello")
+      const { rejected } = parseFilters(params, allowedFields)
+      expect(rejected).toEqual([])
+    })
+
+    // Confirmed root cause of "$in is ignored": @sacms/sdk (and real
+    // Strapi) serializes an array-valued operator as indexed sub-keys,
+    // not a flat comma-joined value — a shape this function didn't
+    // recognize AT ALL before (neither the plain field/op branch, which
+    // required no third bracket, nor the $or/$and branches).
+    it("accepts the real indexed-array shape for $in (filters[field][$in][0], [1], ...) and reconstructs one array-valued condition", () => {
+      const params = new URLSearchParams()
+      params.append("filters[category][$in][0]", "a")
+      params.append("filters[category][$in][1]", "b")
+      params.append("filters[category][$in][2]", "c")
+      const { conditions, rejected } = parseFilters(params, allowedFields)
+
+      expect(rejected).toEqual([])
+      expect(conditions).toHaveLength(1)
+      expect(conditions[0]).toEqual({ field: "category", operator: "$in", value: ["a", "b", "c"] })
+    })
+
+    it("preserves index order for the array shape even when sent out of order", () => {
+      const params = new URLSearchParams()
+      params.append("filters[category][$in][2]", "c")
+      params.append("filters[category][$in][0]", "a")
+      params.append("filters[category][$in][1]", "b")
+      const { conditions } = parseFilters(params, allowedFields)
+
+      expect(conditions[0].value).toEqual(["a", "b", "c"])
+    })
+
+    it("accepts $containsi, the case-insensitive-contains alias", () => {
+      const params = new URLSearchParams("filters[title][$containsi]=Next")
+      const { conditions, rejected } = parseFilters(params, allowedFields)
+      expect(rejected).toEqual([])
+      expect(conditions[0]).toMatchObject({ field: "title", operator: "$containsi" })
+    })
   })
 
   describe("isSafeFieldIdentifier", () => {
@@ -136,23 +197,101 @@ describe("Filter Engine", () => {
       expect(params).toEqual(["tutorial", 200])
     })
 
-    it("should generate OR clause for orGroups", () => {
-      const orGroups = [[
-        { field: "status", operator: "$eq", value: "archived" },
-        { field: "status", operator: "$eq", value: "deleted" }
-      ]]
+    // Fifth external audit, the headline finding: `filters[$or][0][...]` /
+    // `filters[$or][1][...]` — two SEPARATE array indices, the real
+    // Strapi-style shape for "this field is X OR Y" — used to get AND'ed
+    // together instead of OR'd (each index became its own `(...)`
+    // fragment, and the flat `fragments` array is always joined with AND
+    // at the call site), so two mutually-exclusive alternatives on the
+    // SAME field always produced zero rows. This is the exact repro.
+    it("ORs DIFFERENT $or array indices together (Strapi: $or: [{status: 'archived'}, {status: 'deleted'}])", () => {
+      const orGroups = [
+        [{ field: "status", operator: "$eq", value: "archived" }],
+        [{ field: "status", operator: "$eq", value: "deleted" }],
+      ]
       const { fragments, params } = buildFilterSQL([], orGroups)
-      
+
       expect(fragments[0]).toBe('("data"->>\'status\' = $1 OR "data"->>\'status\' = $2)')
       expect(params).toEqual(["archived", "deleted"])
+    })
+
+    // Multiple conditions at the SAME $or index are one alternative's own
+    // keys (Strapi: $or: [{status: 'featured', price: {$gt: 500}}]) and
+    // must be AND'ed together, not OR'd — the inverse of the bug above.
+    it("ANDs multiple conditions within the SAME $or index, as one single alternative", () => {
+      const orGroups = [[
+        { field: "status", operator: "$eq", value: "featured" },
+        { field: "price", operator: "$gt", value: "500" },
+      ]]
+      const { fragments, params } = buildFilterSQL([], orGroups)
+
+      expect(fragments[0]).toBe('(("data"->>\'status\' = $1 AND ("data"->>\'price\')::numeric > $2))')
+      expect(params).toEqual(["featured", 500])
+    })
+
+    it("combines a same-index AND-group with a different-index OR alternative correctly", () => {
+      const orGroups = [
+        [
+          { field: "status", operator: "$eq", value: "featured" },
+          { field: "price", operator: "$gt", value: "500" },
+        ],
+        [{ field: "category", operator: "$eq", value: "clearance" }],
+      ]
+      const { fragments, params } = buildFilterSQL([], orGroups)
+
+      expect(fragments[0]).toBe(
+        '(("data"->>\'status\' = $1 AND ("data"->>\'price\')::numeric > $2) OR "data"->>\'category\' = $3)',
+      )
+      expect(params).toEqual(["featured", 500, "clearance"])
     })
 
     it("should handle $in operator with array expansion", () => {
       const conditions = [{ field: "category", operator: "$in", value: "a, b, c" }]
       const { fragments, params } = buildFilterSQL(conditions, [])
-      
+
       expect(fragments[0]).toBe('"data"->>\'category\' IN ($1,$2,$3)')
       expect(params).toEqual(["a", "b", "c"])
+    })
+
+    it("handles $in with a real array value (the shape parseFilters now actually produces)", () => {
+      const conditions = [{ field: "category", operator: "$in", value: ["a", "b", "c"] }]
+      const { fragments, params } = buildFilterSQL(conditions, [])
+
+      expect(fragments[0]).toBe('"data"->>\'category\' IN ($1,$2,$3)')
+      expect(params).toEqual(["a", "b", "c"])
+    })
+
+    it("accepts $containsi and generates the same case-insensitive ILIKE as $contains", () => {
+      const conditions = [{ field: "title", operator: "$containsi", value: "Next" }]
+      const { fragments, params } = buildFilterSQL(conditions, [])
+
+      expect(fragments[0]).toBe('"data"->>\'title\' ILIKE $1')
+      expect(params).toEqual(["%Next%"])
+    })
+
+    // Fifth external audit: $gt/$gte/$lt/$lte always cast to ::numeric,
+    // which is a raw Postgres error for a genuine date string. Falls back
+    // to a timestamptz comparison instead of crashing the whole query.
+    it("falls back to a timestamptz comparison for $gte on a date value instead of casting it to ::numeric", () => {
+      const conditions = [{ field: "publishedAt", operator: "$gte", value: "2026-01-15" }]
+      const { fragments, params } = buildFilterSQL(conditions, [])
+
+      expect(fragments[0]).toBe('("data"->>\'publishedAt\')::timestamptz >= $1::timestamptz')
+      expect(params).toEqual([new Date("2026-01-15").toISOString()])
+    })
+
+    it("still uses the numeric path for $gte when the value genuinely is a number", () => {
+      const conditions = [{ field: "price", operator: "$gte", value: "100" }]
+      const { fragments, params } = buildFilterSQL(conditions, [])
+
+      expect(fragments[0]).toBe('("data"->>\'price\')::numeric >= $1')
+      expect(params).toEqual([100])
+    })
+
+    it("drops a $gte condition whose value is neither a number nor a parseable date, instead of crashing the query", () => {
+      const conditions = [{ field: "price", operator: "$gte", value: "not-a-number-or-date!!" }]
+      const { fragments } = buildFilterSQL(conditions, [])
+      expect(fragments).toHaveLength(0)
     })
   })
 })

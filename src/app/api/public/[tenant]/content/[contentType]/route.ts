@@ -227,7 +227,22 @@ export async function GET(
     if (locale) baseWhere.locale = locale
 
     // Parse advanced filters
-    const { conditions, orGroups } = parseFilters(searchParams, allowedFieldNames)
+    const { conditions, orGroups, rejected } = parseFilters(searchParams, allowedFieldNames)
+
+    // Fifth external audit (the single most dangerous finding): an
+    // unrecognized filter key (a typo'd field, an unsupported operator, or
+    // a malformed shape) used to be silently dropped — if it was the
+    // request's ONLY filter, that meant every row came back instead of
+    // zero or an error. Refuse the request outright instead, naming
+    // exactly which key(s) didn't parse.
+    if (rejected.length > 0) {
+      return logResponse(
+        NextResponse.json(
+          { error: `Unrecognized or unsupported filter key(s): ${rejected.join(", ")}. Check the field slug and operator — call list_field_types (MCP) or GET .../openapi.json for the real field list.` },
+          { status: 400 },
+        ),
+      )
+    }
 
     let entries: Array<Record<string, unknown>>
     let total: number
