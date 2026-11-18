@@ -19,6 +19,7 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
   const navItems = [
     { label: "Beranda", href: "/" },
     { label: "Fitur", href: "/fitur" },
+    { label: "Template", href: "/templates" },
     { label: "Harga", href: "/harga" },
     { label: "Tentang", href: "/tentang" },
     { label: "Blog", href: "/blog" },

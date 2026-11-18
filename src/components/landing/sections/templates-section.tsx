@@ -1,15 +1,8 @@
-"use client"
-
-import { useState } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
-import { LayoutTemplate, ExternalLink, ArrowRight, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
+import { TemplateGallery } from "../template-gallery"
 import type { WebsiteTemplateItem } from "../types"
 
 export function TemplatesSection({ templates = [] }: { templates?: WebsiteTemplateItem[] }) {
-  const [active, setActive] = useState<WebsiteTemplateItem | null>(null)
-
   if (!templates || templates.length === 0) return null
 
   return (
@@ -28,90 +21,11 @@ export function TemplatesSection({ templates = [] }: { templates?: WebsiteTempla
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {templates.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setActive(t)}
-              className="group text-left relative rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
-            >
-              <div className="relative aspect-[4/3] w-full bg-muted/40 border-b border-border/60 overflow-hidden">
-                {t.demoUrl ? (
-                  <iframe
-                    src={t.demoUrl}
-                    scrolling="no"
-                    className="absolute top-0 left-0 w-[400%] h-[400%] origin-top-left scale-[0.25] border-0 pointer-events-none bg-white"
-                    loading="lazy"
-                    tabIndex={-1}
-                    title={`Pratinjau ${t.name}`}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/40">
-                    <LayoutTemplate className="h-8 w-8" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-background/0 group-hover:bg-background/70 transition-colors flex items-center justify-center">
-                  <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-lg">
-                    Lihat Demo <ArrowRight className="h-3 w-3" />
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 flex items-start gap-2.5">
-                <span className="text-base shrink-0">{t.icon}</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-foreground truncate">{t.name}</p>
-                  {t.description && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{t.description}</p>}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {/* Exactly 6 cards (data layer already caps it) in a 3-column
+            grid — 3 on top, 3 below, same proportions as vercel.com/templates'
+            own homepage teaser. */}
+        <TemplateGallery templates={templates} viewAllHref="/templates" />
       </div>
-
-      <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
-        <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 rounded-2xl border border-border overflow-hidden">
-          <DialogHeader className="p-4 pb-3 border-b border-border/60 text-left">
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <span className="text-base">{active?.icon}</span> {active?.name}
-            </DialogTitle>
-            {active?.description && (
-              <DialogDescription className="text-xs text-muted-foreground">{active.description}</DialogDescription>
-            )}
-          </DialogHeader>
-
-          <div className="aspect-video w-full bg-muted/40">
-            {active?.demoUrl ? (
-              <iframe
-                src={active.demoUrl}
-                className="w-full h-full border-0 bg-white"
-                loading="lazy"
-                title={`Demo ${active.name}`}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">
-                <LayoutTemplate className="h-10 w-10" />
-              </div>
-            )}
-          </div>
-
-          <div className="p-4 border-t border-border/60 flex flex-wrap items-center justify-end gap-2">
-            {active?.demoUrl && (
-              <Button variant="outline" size="sm" asChild className="h-9 rounded-xl text-xs font-bold gap-1.5">
-                <a href={active.demoUrl} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink className="h-3.5 w-3.5" /> Buka di Tab Baru
-                </a>
-              </Button>
-            )}
-            <Button size="sm" asChild className="h-9 rounded-xl text-xs font-bold gap-1.5">
-              <Link href="/register">
-                <span>Daftar &amp; Gunakan Template Ini</span>
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </section>
   )
 }

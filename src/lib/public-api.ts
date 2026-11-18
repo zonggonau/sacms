@@ -32,11 +32,15 @@ export const getLandingData = cache(async function getLandingData() {
       where: { tenantId: null }
     })
 
+    // Landing page teaser: exactly 6 (3 cards on top, 3 below, on the
+    // 3-column grid TemplateGallery renders) — the full catalog is at
+    // /templates (see getPublishedWebsiteTemplates below), linked from a
+    // "Lihat Semua Template" CTA under this teaser.
     const websiteTemplateRows = await db.websiteTemplate.findMany({
       where: { published: true },
       select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
       orderBy: { createdAt: "desc" },
-      take: 8,
+      take: 6,
     })
 
     const contentEntries = await db.contentEntry.findMany({
@@ -187,6 +191,27 @@ export const getLandingData = cache(async function getLandingData() {
   }
 })
 
+
+/**
+ * The full published Website Template catalog — for the /templates
+ * gallery page, as opposed to getLandingData()'s own 6-item teaser (same
+ * underlying table, no artificial cap here).
+ */
+export const getPublishedWebsiteTemplates = cache(async function getPublishedWebsiteTemplates() {
+  const rows = await db.websiteTemplate.findMany({
+    where: { published: true },
+    select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
+    orderBy: { createdAt: "desc" },
+  })
+  return rows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    icon: t.icon,
+    description: t.description || "",
+    demoUrl: t.demoUrl || null,
+  }))
+})
 
 function getDefaultData() {
   const landing = DEFAULT_LANDING_PAGE_DATA;
