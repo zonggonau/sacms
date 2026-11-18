@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search, AlertTriangle } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
+import { getWebsitePreviewUrl, gradientFor } from "@/lib/website-preview"
 
 interface WebsiteTemplateItem {
   id: string
@@ -41,28 +42,6 @@ interface WebsiteTemplatesTabProps {
 }
 
 const ALL_SCHEMAS = "__all__"
-
-// Vercel-template-gallery-style card art: a live iframe preview (what this
-// used to render here) comes back blank for almost every demo — the
-// deployed site's own frame-ancestors/CSP header blocks third-party
-// embedding, so the card silently showed an empty box while the SAME url
-// opened in a new tab rendered fine. A static, per-template gradient tile
-// is simpler, never breaks, and reads as a deliberate design rather than a
-// failed embed — closer to how vercel.com/templates itself falls back
-// when a template has no screenshot.
-const CARD_GRADIENTS = [
-  "from-violet-500/20 via-fuchsia-500/10 to-transparent",
-  "from-sky-500/20 via-cyan-500/10 to-transparent",
-  "from-amber-500/20 via-orange-500/10 to-transparent",
-  "from-emerald-500/20 via-teal-500/10 to-transparent",
-  "from-rose-500/20 via-pink-500/10 to-transparent",
-  "from-indigo-500/20 via-blue-500/10 to-transparent",
-]
-function gradientFor(id: string): string {
-  let hash = 0
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
-  return CARD_GRADIENTS[hash % CARD_GRADIENTS.length]
-}
 
 export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
@@ -520,13 +499,14 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
               key={t.id}
               className="group rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden flex flex-col transition-shadow hover:shadow-md"
             >
-              {/* No live preview on purpose — a demo's own frame-ancestors/CSP
-                  header blocks third-party iframe embedding almost every
-                  time, so this used to render as a silent blank box even
-                  though the exact same url opens fine in its own tab. A
-                  per-template gradient tile instead, same spirit as
-                  vercel.com/templates' own fallback art for a template with
-                  no screenshot. */}
+              {/* A real <iframe> pointed at the demo blocked itself via its
+                  own frame-ancestors/X-Frame-Options header — confirmed
+                  live, every template's deployed Next.js app sends one by
+                  default, and that header only blocks FRAMING, not a
+                  plain resource fetch. A screenshot <img> sidesteps it
+                  entirely. The gradient+icon tile stays underneath as a
+                  loading/error fallback — it's what's visible until the
+                  screenshot loads, and stays visible if it never does. */}
               <a
                 href={t.demoUrl || undefined}
                 target="_blank"
@@ -538,6 +518,15 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
                 <div className="absolute inset-0 flex items-center justify-center">
                   <span className="text-5xl drop-shadow-sm" aria-hidden>{t.icon}</span>
                 </div>
+                {t.demoUrl && (
+                  <img
+                    src={getWebsitePreviewUrl(t.demoUrl)}
+                    alt={`Pratinjau ${t.name}`}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover object-top bg-white"
+                    onError={(e) => { e.currentTarget.style.display = "none" }}
+                  />
+                )}
                 {t.demoUrl ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-background/80 opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100">
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-bold text-background">

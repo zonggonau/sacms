@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { getWebsitePreviewUrl, gradientFor } from "@/lib/website-preview"
 
 interface WebsiteTemplateItem {
   id: string
@@ -178,7 +179,29 @@ export default function AdminDeveloperTemplatesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((t) => (
-                <Card key={t.id} className="rounded-2xl border border-border/80 shadow-xs">
+                <Card key={t.id} className="rounded-2xl border border-border/80 shadow-xs overflow-hidden">
+                  {/* A real <iframe> here would render blank — every
+                      deployed template's own frame-ancestors/X-Frame-Options
+                      header blocks third-party framing, even though the
+                      same URL opens fine in its own tab. A screenshot <img>
+                      isn't subject to that (it only restricts framing, not
+                      a plain resource fetch); the gradient+icon tile stays
+                      underneath as the loading/error/no-demo fallback. */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-border/60">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${gradientFor(t.id)} bg-muted/30`} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-4xl drop-shadow-sm" aria-hidden>{t.icon}</span>
+                    </div>
+                    {t.demoUrl && (
+                      <img
+                        src={getWebsitePreviewUrl(t.demoUrl)}
+                        alt={`Pratinjau ${t.name}`}
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover object-top bg-white"
+                        onError={(e) => { e.currentTarget.style.display = "none" }}
+                      />
+                    )}
+                  </div>
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
