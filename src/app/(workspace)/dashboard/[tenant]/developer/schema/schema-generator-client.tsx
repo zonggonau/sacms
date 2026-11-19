@@ -25,6 +25,8 @@ interface SchemaGeneratorClientProps {
   }
   isGlobal: boolean
   initialFinalized: boolean
+  /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
+  currentRole: string
 }
 
 const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
@@ -35,6 +37,7 @@ export function SchemaGeneratorClient({
   existingSchemaSummary,
   isGlobal,
   initialFinalized,
+  currentRole,
 }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -175,6 +178,7 @@ export function SchemaGeneratorClient({
               <WebsiteTemplatesTab
                 tenantSlug={tenantSlug}
                 isGlobal={isGlobal}
+                currentRole={currentRole}
                 isWorkspaceEmpty={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
                 onApplied={() => {
                   setActiveTab("diagram")

@@ -53,6 +53,7 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
         existingSchemaSummary={existingSchemaSummary}
         isGlobal={access.isGlobal}
         initialFinalized={finalized}
+        currentRole={access.role}
       />
     </div>
   )

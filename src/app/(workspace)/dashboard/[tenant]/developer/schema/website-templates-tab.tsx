@@ -30,6 +30,12 @@ interface WebsiteTemplateItem {
 interface WebsiteTemplatesTabProps {
   tenantSlug: string
   isGlobal: boolean
+  /** This workspace's own staff role for the signed-in user — the "Reset &
+   *  Pilih Template Lain" banner (which can wipe the whole workspace's
+   *  hosting + schema) only ever renders for "owner", never admin/editor/
+   *  etc., even though the backend route itself already accepts "admin"
+   *  too (owner just never has to go looking for a way to call it). */
+  currentRole: string
   /** Whether this workspace currently has no Content Type/Single Type/Component at all — mirrors the
    *  same empty-workspace check the apply route itself gates on. When false, a regular tenant needs to
    *  reset before a NEW template can be applied. */
@@ -43,7 +49,7 @@ interface WebsiteTemplatesTabProps {
 
 const ALL_SCHEMAS = "__all__"
 
-export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
+export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<WebsiteTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -400,6 +406,20 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
   const published = templates.filter((t) => t.published)
   const visibleTemplates = (schemaFilter === ALL_SCHEMAS ? published : published.filter((t) => t.schemaTemplate.slug === schemaFilter)).filter(matchesSearch)
 
+  // Too dangerous to risk the wrong person clicking it (wipes hosting +
+  // all schema/content permanently) — the banner, and the button inside
+  // it, render ONLY for the workspace's owner. The backend route itself
+  // still accepts "admin" too (defense in depth, not a second way in from
+  // this UI) — an owner simply never has to go looking for another way to
+  // call it.
+  const isOwner = currentRole === "owner"
+  // "Terapkan" itself is already gated to owner/admin on the backend
+  // (POST .../website-templates/[id]/apply requires minRole: "admin",
+  // which owner also satisfies) — disabling it here too for anyone below
+  // that is just a clearer failure mode than letting them click it and
+  // get a 403 back.
+  const canApply = currentRole === "owner" || currentRole === "admin"
+
   const ResetBanner = () => (
     <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
       <CardContent className="p-4 flex items-start gap-3">
@@ -424,10 +444,29 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
     </Card>
   )
 
+  // Shown to a non-owner (admin/editor/...) instead of the banner above —
+  // explains WHY they can't proceed, without offering the destructive
+  // action itself at all.
+  const OwnerOnlyResetNotice = () => (
+    <Card className="rounded-2xl border-border/70 bg-muted/20 shadow-xs">
+      <CardContent className="p-4 flex items-start gap-3">
+        <AlertTriangle className="h-4.5 w-4.5 text-muted-foreground shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-xs font-bold text-foreground">Workspace ini sudah punya schema dan/atau website aktif</p>
+          <p className="text-[11px] text-muted-foreground">
+            Menerapkan Website Template baru memerlukan reset total workspace — hanya <strong className="text-foreground">owner</strong> workspace ini yang bisa melakukannya.
+            Kalau cuma mau mengubah sebagian website yang sudah diterapkan, tidak perlu reset — langsung edit lewat ChatGPT/MCP di tab{" "}
+            <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="font-semibold underline underline-offset-2 hover:text-foreground">Server MCP</a>.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   if (published.length === 0) {
     return (
       <div className="space-y-3">
-        {!isWorkspaceEmpty && <ResetBanner />}
+        {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
         <div className="flex flex-col items-center justify-center gap-2 py-20 text-center text-muted-foreground">
           <LayoutTemplate className="h-6 w-6 opacity-50" />
           <p className="text-xs">Belum ada Website Template tersedia.</p>
@@ -470,7 +509,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
 
   return (
     <div className="space-y-3">
-      {!isWorkspaceEmpty && <ResetBanner />}
+      {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>
@@ -565,8 +604,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
                   <Button
                     size="sm"
                     onClick={() => handleApply(t)}
-                    disabled={applyingId === t.id || !isWorkspaceEmpty}
-                    title={!isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
+                    disabled={applyingId === t.id || !isWorkspaceEmpty || !canApply}
+                    title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
                     className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
                   >
                     {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
@@ -619,8 +658,8 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, isWorkspaceEmpty, on
                         <Button
                           size="sm"
                           onClick={() => handleApply(t)}
-                          disabled={applyingId === t.id || !isWorkspaceEmpty}
-                          title={!isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
+                          disabled={applyingId === t.id || !isWorkspaceEmpty || !canApply}
+                          title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
                           className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
                         >
                           {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
