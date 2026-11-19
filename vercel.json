@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/admin/billing/generate-invoices",
+      "path": "/api/cron/generate-invoices",
       "schedule": "0 3 * * *"
     },
     {
@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/webhook-retry",
       "schedule": "*/2 * * * *"
+    },
+    {
+      "path": "/api/cron/payment-fulfillment",
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/cleanup-logs",

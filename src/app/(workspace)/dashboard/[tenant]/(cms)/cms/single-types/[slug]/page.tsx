@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { isPlatformStaff } from "@/lib/platform-roles"
@@ -39,6 +39,17 @@ import { IconField } from "@/components/content/field-renderers/icon-field"
 import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
+import { ButtonField } from "@/components/content/field-renderers/button-field"
+import { CurrencyField } from "@/components/content/field-renderers/currency-field"
+import { DateRangeField } from "@/components/content/field-renderers/date-range-field"
+import { DocumentTemplateField } from "@/components/content/field-renderers/document-template-field"
+import { DynamicZoneField } from "@/components/content/field-renderers/dynamic-zone-field"
+import { MarkdownField } from "@/components/content/field-renderers/markdown-field"
+import { MultiSelectField } from "@/components/content/field-renderers/multiselect-field"
+import { PasswordField } from "@/components/content/field-renderers/password-field"
+import { PhoneField } from "@/components/content/field-renderers/phone-field"
+import { RatingField } from "@/components/content/field-renderers/rating-field"
+import { UrlField } from "@/components/content/field-renderers/url-field"
 import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
@@ -48,6 +59,7 @@ interface Field {
   slug: string
   type: string
   required: boolean
+  showInCms?: boolean
   options?: any
   relationSlug?: string
 }
@@ -59,8 +71,10 @@ interface SingleType {
   description: string | null
   fields: Field[]
   data: Record<string, unknown> | null
-  publishedAt: string | null
-  updatedAt: string
+  publishedAt: Date | null
+  locale: string
+  locales: { locale: string; name: string }[]
+  hasPendingDraft: boolean
 }
 
 export default function CMSSingleTypeDetailPage() {
@@ -74,8 +88,7 @@ export default function CMSSingleTypeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
-  const [locale, setLocale] = useState<string>("id")
-  const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "id", name: "Bahasa Indonesia" }])
+  const [targetLocale, setTargetLocale] = useState<string>()
 
   // Halaman Statis is meant to be entered by the owner/admin only — a
   // regular member reaching this URL directly gets bounced back to the CMS
@@ -93,40 +106,35 @@ export default function CMSSingleTypeDetailPage() {
     }
   }, [status, canManageStaticPages, router, tenantSlug])
 
-  const fetchData = useCallback(async () => {
-    if (!tenantSlug || !singleTypeSlug) return
-    setLoading(true)
-    try {
-      const [stRes, locRes] = await Promise.all([
-        getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, locale),
-        fetch(`/api/tenant/${tenantSlug}/locales`)
-      ])
-      
-      if (stRes.singleType) {
-        setSingleType(stRes.singleType as any)
-        setFormData(stRes.singleType.data || {})
-      } else if (stRes.error) {
-        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: stRes.error })
-      }
-      if (locRes.ok) {
-        try {
-          const data = await locRes.json()
-          if (data.locales?.length > 0) setAvailableLocales(data.locales)
-        } catch (e) {
-          console.error("Failed to parse locales response:", e)
-        }
-      }
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat konten halaman" })
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantSlug, singleTypeSlug, locale])
-
   useEffect(() => {
-    if (session?.user?.id) fetchData()
-  }, [session?.user?.id, fetchData])
+    if (!session?.user?.id || !canManageStaticPages || !tenantSlug || !singleTypeSlug) return
+    let ignore = false
+
+    async function loadPage() {
+      setLoading(true)
+      try {
+        const result = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, targetLocale, "studio")
+        if (ignore) return
+        if (result.singleType) {
+          setSingleType(result.singleType)
+          setFormData(result.singleType.data)
+        } else {
+          setSingleType(null)
+          toast({ variant: "destructive", title: "Terjadi Kesalahan", description: result.error })
+        }
+      } catch (error) {
+        if (ignore) return
+        console.error(error)
+        setSingleType(null)
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat konten halaman" })
+      } finally {
+        if (!ignore) setLoading(false)
+      }
+    }
+
+    void loadPage()
+    return () => { ignore = true }
+  }, [canManageStaticPages, session?.user?.id, singleTypeSlug, targetLocale, tenantSlug])
 
   const handleFieldChange = (fieldSlug: string, value: unknown) => {
     setFormData(prev => ({
@@ -139,15 +147,18 @@ export default function CMSSingleTypeDetailPage() {
     if (!singleType) return
     setSaving(true)
     try {
-      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish, locale)
-      if (res && !res.error) {
+      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish, singleType.locale, "studio")
+      if (res.singleType) {
+        const { data, publishedAt, hasPendingDraft } = res.singleType
+        setSingleType({ ...singleType, data, publishedAt, hasPendingDraft })
+        setFormData(data)
         toast({ 
           title: publish ? "Halaman Diterbitkan" : "Draft Disimpan", 
           description: publish ? "Perubahan halaman kini live di API publik" : "Draft perubahan konten berhasil disimpan" 
         })
-        fetchData()
       } else {
-        toast({ variant: "destructive", title: "Gagal Menyimpan", description: res?.error || "Terjadi kesalahan saat menyimpan konten" })
+        const description = Object.values(res.details || {}).join(", ") || res.error || "Terjadi kesalahan saat menyimpan konten"
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description })
       }
     } catch (error) {
       console.error(error)
@@ -190,14 +201,23 @@ export default function CMSSingleTypeDetailPage() {
       case "richText":
         return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
+      case "markdown":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MarkdownField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "number":
         return <div className="space-y-1.5">{renderLabelWithAI()}<NumberField label="" value={value as number || 0} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "currency":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<CurrencyField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "boolean":
         return <div className="space-y-1.5">{renderLabelWithAI()}<BooleanField label="" value={value as boolean || false} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "date":
         return <div className="space-y-1.5">{renderLabelWithAI()}<DateField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "dateRange":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateRangeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "datetime":
         return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="datetime" /></div>
@@ -212,7 +232,10 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-1.5">{renderLabelWithAI()}<ValidationField value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="uid" /></div>
 
       case "select":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField label="" options={field.options} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField label="" options={field.options?.choices || []} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "multiselect":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MultiSelectField value={Array.isArray(value) ? value : []} options={field.options?.choices || []} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "tags":
         return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} /></div>
@@ -253,6 +276,18 @@ export default function CMSSingleTypeDetailPage() {
       case "percent":
         return <div className="space-y-1.5">{renderLabelWithAI()}<PercentField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
+      case "rating":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<RatingField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "url":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<UrlField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "phone":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PhoneField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "password":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PasswordField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "icon":
         return <div className="space-y-1.5">{renderLabelWithAI()}<IconField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
@@ -261,6 +296,24 @@ export default function CMSSingleTypeDetailPage() {
 
       case "code":
         return <div className="space-y-1.5">{renderLabelWithAI()}<CodeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "button":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "repeater":
+        return <DynamicZoneField label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
+
+      case "document_template":
+        return (
+          <DocumentTemplateField
+            field={field}
+            value={value}
+            onChange={v => handleFieldChange(field.slug, v)}
+            tenantSlug={tenantSlug}
+            allFields={singleType?.fields}
+            entryData={formData}
+          />
+        )
 
       case "component":
         let compOpts: any = {}
@@ -295,6 +348,9 @@ export default function CMSSingleTypeDetailPage() {
   const isRestrictedViewer = effectiveRole === "subscriber" || effectiveRole === "viewer"
   const canPublish = !isRestrictedViewer || Boolean(customPermissions?.includes("workflow.draft_to_publish"))
   const canEdit = !isRestrictedViewer
+  const visibleFields = singleType.fields.filter((field) =>
+    field.showInCms !== false && field.options?.showInCms !== false && isFieldVisible(field, formData),
+  )
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -310,6 +366,7 @@ export default function CMSSingleTypeDetailPage() {
               <Badge className={cn("text-[10px] font-bold uppercase px-2.5 py-0.5 shadow-none border rounded-full", singleType.publishedAt ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground border-border/60")}>
                 {singleType.publishedAt ? "Terbit" : "Draft"}
               </Badge>
+              {singleType.publishedAt && singleType.hasPendingDraft && <Badge variant="outline">Draft perubahan</Badge>}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">Konten Singleton &middot; /{singleType.slug}</p>
           </div>
@@ -344,13 +401,13 @@ export default function CMSSingleTypeDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              {singleType.fields.length === 0 ? (
+              {visibleFields.length === 0 ? (
                 <div className="text-center py-12 opacity-40">
                   <Zap className="h-10 w-10 mx-auto mb-2 text-primary" />
-                  <p className="font-bold text-xs text-foreground">Belum ada field yang didefinisikan untuk halaman ini</p>
+                  <p className="font-bold text-xs text-foreground">Tidak ada field yang ditampilkan untuk halaman ini</p>
                 </div>
               ) : (
-                singleType.fields.filter((field) => isFieldVisible(field, formData)).map((field) => (
+                visibleFields.map((field) => (
                   <div key={field.id} className="space-y-1.5 pb-2">
                     {renderField(field)}
                   </div>
@@ -370,12 +427,12 @@ export default function CMSSingleTypeDetailPage() {
             <CardContent className="p-5 pt-2">
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-muted-foreground">Bahasa Target</Label>
-                <Select value={locale} onValueChange={setLocale}>
+                <Select value={singleType.locale} onValueChange={setTargetLocale} disabled={saving}>
                   <SelectTrigger className="bg-background border-border/80 h-9 rounded-xl font-bold text-xs text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-border bg-card">
-                    {availableLocales.map(l => (
+                    {singleType.locales.map(l => (
                       <SelectItem key={l.locale} value={l.locale} className="font-bold text-xs rounded-lg">{l.name} ({l.locale.toUpperCase()})</SelectItem>
                     ))}
                   </SelectContent>

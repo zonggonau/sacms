@@ -13,7 +13,8 @@ export const GET = withAdminAuth(async (request) => {
     const search = searchParams.get("search")
 
     const where: any = {}
-    if (status && status !== "all") where.status = status
+    if (status === "needs_review") where.fulfillmentStatus = status
+    else if (status && status !== "all") where.status = status
     if (search) {
       where.OR = [
         { orderId: { contains: search, mode: "insensitive" } },
@@ -41,6 +42,7 @@ export const GET = withAdminAuth(async (request) => {
           paymentMethod: true,
           amount: true,
           status: true,
+          fulfillmentStatus: true,
           transactionId: true,
           transactionTime: true,
           fraudStatus: true,

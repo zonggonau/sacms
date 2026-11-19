@@ -12,6 +12,12 @@ node_modules
 
 # testing
 /coverage
+/e2e/.auth/
+/e2e/storageState.json
+
+# Local database and test artifacts must never enter Git.
+/.local-backups/
+*.dump
 
 # next.js
 /.next/
@@ -19,6 +25,7 @@ node_modules
 
 # production
 /build
+/packages/sacms-mcp/dist/
 
 # misc
 .DS_Store

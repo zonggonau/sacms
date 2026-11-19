@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ArrowLeft, Save, Send, FileText, CheckCircle2, 
@@ -29,7 +29,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { allowedUserTransitions, isWorkflowStatus } from "@/lib/content-workflow-rules"
@@ -71,7 +70,7 @@ import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { ReviewerAssignment } from "@/components/cms/reviewer-assignment"
-import { getContentTypeBySlugAction } from "@/actions/content-types"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { getEntryAction, updateEntryAction } from "@/actions/content"
 
 interface Field {
@@ -80,6 +79,7 @@ interface Field {
   slug: string
   type: string
   required: boolean
+  localizable?: boolean
   options: any
   relationSlug?: string
 }
@@ -92,6 +92,40 @@ interface ContentType {
   docxTemplateUrl?: string | null
   fields: Field[]
 }
+
+interface SavedEntry {
+  id: string
+  locale: string
+  data: unknown
+  status: string
+  scheduledAt: Date | string | null
+  updatedAt: Date | string
+}
+
+function readEntryData(value: unknown): Record<string, unknown> {
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value)
+    } catch {
+      return {}
+    }
+  }
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+}
+
+function previewLink(value?: string) {
+  if (!value) return null
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" || url.protocol === "http:" ? url.href : null
+  } catch {
+    return null
+  }
+}
+
+const TRANSLATABLE_FIELDS = new Set(["text", "textarea", "richText", "markdown"])
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   DRAFT: { 
@@ -136,72 +170,141 @@ export default function CMSEditEntryClient({
   contentTypeSlug,
   entryId,
   initialEntry,
-  initialContentType,
-  initialAvailableLocales,
-  initialPreviewUrl,
+  initialContentType: contentType,
+  initialAvailableLocales: enabledLocales,
+  previewUrl,
   userRole,
   customPermissions: initialCustomPermissions,
 }: {
   tenantSlug: string
   contentTypeSlug: string
   entryId: string
-  initialEntry?: any
-  initialContentType?: ContentType | null
-  initialAvailableLocales?: any[]
-  initialPreviewUrl?: string | null
+  initialEntry: SavedEntry
+  initialContentType: ContentType
+  initialAvailableLocales: { locale: string; name: string }[]
+  previewUrl?: string
   userRole?: string
   customPermissions?: string[] | null
 }) {
   const { data: session } = useSession()
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
-  const [loading, setLoading] = useState(!initialEntry || !initialContentType)
+  const [loadingLocale, setLoadingLocale] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [contentType, setContentType] = useState<ContentType | null>(initialContentType || null)
-  const [formData, setFormData] = useState<Record<string, unknown>>(initialEntry?.data || {})
-  const [entryStatus, setEntryStatus] = useState<string>(initialEntry?.status || "DRAFT")
-  const [persistedStatus, setPersistedStatus] = useState<string>(initialEntry?.status || "DRAFT")
-  const [locale, setLocale] = useState<string>(initialEntry?.locale || initialAvailableLocales?.[0]?.locale || "id")
-  const [scheduledAt, setScheduledAt] = useState<Date | undefined>(
-    initialEntry?.scheduledAt ? new Date(initialEntry.scheduledAt) : undefined
+  const [savedEntry, setSavedEntry] = useState<SavedEntry | null>(initialEntry)
+  const [savedData, setSavedData] = useState(() => readEntryData(initialEntry.data))
+  const [formData, setFormData] = useState(savedData)
+  const [entryStatus, setEntryStatus] = useState(initialEntry.status)
+  const [locale, setLocale] = useState(initialEntry.locale)
+  const activeLocale = useRef(initialEntry.locale)
+  const [scheduledAt, setScheduledAt] = useState<Date | undefined>(() =>
+    initialEntry.scheduledAt ? new Date(initialEntry.scheduledAt) : undefined
   )
-  const [availableLocales, setAvailableLocales] = useState<any[]>(initialAvailableLocales || [{ locale: "id", name: "Bahasa Indonesia" }])
-  // The `updatedAt` this editor last loaded for the current locale's row —
-  // sent back on save so a concurrent edit by someone else is caught as a
-  // conflict instead of silently overwritten (see entry-service.ts).
-  const [lastKnownUpdatedAt, setLastKnownUpdatedAt] = useState<Date | string | null>(initialEntry?.updatedAt ?? null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialPreviewUrl || null)
   const [translating, setTranslating] = useState(false)
+  const [translateOpen, setTranslateOpen] = useState(false)
+  const persistedStatus = savedEntry?.status ?? "DRAFT"
+  const savedSchedule = savedEntry?.scheduledAt ? new Date(savedEntry.scheduledAt).getTime() : undefined
+  const hasUnsavedChanges = formData !== savedData || entryStatus !== persistedStatus || scheduledAt?.getTime() !== savedSchedule
+  const availableLocales = enabledLocales.some((item) => item.locale === locale)
+    ? enabledLocales
+    : [...enabledLocales, { locale, name: locale.toUpperCase() }]
+  const translationTargets = enabledLocales.filter((item) => item.locale !== locale)
+  const busy = loadingLocale || translating || saving
+  const livePreview = previewLink(previewUrl)
+
+  const applyEntry = (entry: SavedEntry | null, data: Record<string, unknown>) => {
+    setSavedEntry(entry)
+    setSavedData(data)
+    setFormData(data)
+    setEntryStatus(entry?.status ?? "DRAFT")
+    setScheduledAt(entry?.scheduledAt ? new Date(entry.scheduledAt) : undefined)
+  }
+
+  const loadLocale = async (targetLocale: string) => {
+    const result = await getEntryAction(tenantSlug, contentTypeSlug, entryId, targetLocale)
+    if (result.error || !result.entry) throw new Error(result.error || "Entri tidak ditemukan.")
+    return { entry: result.entry, isNewTranslation: result.isNewTranslation === true }
+  }
+
+  const leaveCurrentLocale = () => !hasUnsavedChanges || confirm({
+    title: "Pindah bahasa?",
+    description: "Perubahan yang belum disimpan pada bahasa ini akan ditinggalkan.",
+    confirmLabel: "Pindah bahasa",
+  })
+
+  const handleLocaleChange = async (targetLocale: string) => {
+    if (busy || targetLocale === locale || !(await leaveCurrentLocale())) return
+    setLoadingLocale(true)
+    try {
+      const result = await loadLocale(targetLocale)
+      applyEntry(result.isNewTranslation ? null : result.entry, readEntryData(result.entry.data))
+      activeLocale.current = targetLocale
+      setLocale(targetLocale)
+    } catch (error) {
+      toast({ variant: "destructive", title: "Gagal Memuat Bahasa", description: error instanceof Error ? error.message : undefined })
+    } finally {
+      setLoadingLocale(false)
+    }
+  }
+
+  const refreshAfterReview = async () => {
+    try {
+      const { entry } = await loadLocale(locale)
+      if (activeLocale.current !== locale) return
+      const updatedData = readEntryData(entry.data)
+      if (JSON.stringify(updatedData) !== JSON.stringify(savedData)) {
+        toast({ title: "Entri Telah Berubah", description: "Muat ulang editor untuk melihat perubahan terbaru." })
+        return
+      }
+      setSavedEntry(entry)
+      setEntryStatus((status) => status === persistedStatus ? entry.status : status)
+    } catch {
+      toast({ variant: "destructive", title: "Gagal Memuat Status Peninjauan" })
+    }
+  }
 
   const handleAiTranslate = async (targetLoc: string) => {
-    if (!formData || Object.keys(formData).length === 0) {
-      toast({ variant: "destructive", title: "Konten Kosong", description: "Isi data konten terlebih dahulu sebelum menerjemahkan." })
+    const texts: Record<string, string> = {}
+    for (const field of contentType.fields) {
+      const value = formData[field.slug]
+      if (field.localizable !== false && TRANSLATABLE_FIELDS.has(field.type) && typeof value === "string" && value.trim()) {
+        texts[field.slug] = value
+      }
+    }
+    if (!Object.keys(texts).length) {
+      toast({ variant: "destructive", title: "Konten Kosong", description: "Isi kolom teks yang dapat diterjemahkan terlebih dahulu." })
       return
     }
+    setTranslateOpen(false)
+    if (busy || !(await leaveCurrentLocale())) return
 
     setTranslating(true)
     try {
+      const target = await loadLocale(targetLoc)
       const res = await fetch(`/api/tenant/${tenantSlug}/ai/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sourceLocale: locale,
           targetLocale: targetLoc,
-          data: formData,
-          contentTypeSlug,
+          data: texts,
         }),
       })
 
       const data = await res.json()
-      if (!res.ok) {
+      if (!res.ok || data.simulated || !data.translatedData) {
         throw new Error(data.error || "Gagal menerjemahkan konten")
       }
 
-      setFormData(data.translatedData)
+      const targetData = readEntryData(target.entry.data)
+      applyEntry(target.isNewTranslation ? null : target.entry, targetData)
+      setFormData({ ...targetData, ...data.translatedData })
+      activeLocale.current = targetLoc
       setLocale(targetLoc)
       toast({
-        title: "✨ Konten Berhasil Diterjemahkan",
-        description: `Seluruh teks telah diterjemahkan ke bahasa ${targetLoc.toUpperCase()}`,
+        title: "Konten Berhasil Diterjemahkan",
+        description: `Periksa teks bahasa ${targetLoc.toUpperCase()} lalu simpan perubahan.`,
       })
     } catch (err: any) {
       toast({
@@ -231,55 +334,22 @@ export default function CMSEditEntryClient({
   const canPublish = availableStatuses.includes("PUBLISHED")
   const canSchedule = availableStatuses.includes("SCHEDULED")
 
-  const fetchData = useCallback(async () => {
-    if (!tenantSlug || !contentTypeSlug || !entryId) return
-    try {
-      if (!contentType || !formData) setLoading(true)
-      const [entryData, ctData] = await Promise.all([
-        getEntryAction(tenantSlug, contentTypeSlug, entryId, locale),
-        getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
-      ])
-
-      if (entryData?.entry) {
-        setFormData((entryData.entry.data as Record<string, unknown>) || {})
-        setEntryStatus(entryData.entry.status || "DRAFT")
-        setPersistedStatus(entryData.entry.status || "DRAFT")
-        setLastKnownUpdatedAt(entryData.entry.updatedAt ?? null)
-        if (entryData.entry.scheduledAt) {
-          setScheduledAt(new Date(entryData.entry.scheduledAt))
-        }
-      }
-
-      if (ctData?.contentType) {
-        setContentType(ctData.contentType as any)
-      }
-    } catch {
-      // Keep initial
-    } finally {
-      setLoading(false)
+  const handleSave = async (targetStatus?: string) => {
+    if (busy) return
+    if (targetStatus === "SCHEDULED" && (!scheduledAt || scheduledAt.getTime() <= Date.now())) {
+      toast({ variant: "destructive", title: "Jadwal Belum Valid", description: "Pilih tanggal dan waktu publikasi yang akan datang." })
+      return
     }
-  }, [tenantSlug, contentTypeSlug, entryId, locale, contentType, formData])
-
-  useEffect(() => {
-    if (!initialEntry || !initialContentType) {
-      fetchData()
-    }
-  }, [fetchData, initialEntry, initialContentType])
-
-  const handleSave = async (publishNow: boolean = false, targetOverride?: string) => {
     setSaving(true)
-    let targetStatus = publishNow ? "PUBLISHED" : (targetOverride || entryStatus)
-    if (!publishNow && scheduledAt && targetStatus !== "ARCHIVED") {
-      targetStatus = "SCHEDULED"
-    }
 
     try {
       const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
         data: formData,
         status: targetStatus,
         locale,
-        scheduledAt: scheduledAt || null,
-        expectedUpdatedAt: lastKnownUpdatedAt,
+        scheduledAt: targetStatus === "SCHEDULED" ? scheduledAt : undefined,
+        expectedUpdatedAt: savedEntry?.updatedAt ?? null,
+        expectedLocaleMissing: !savedEntry,
       })
 
       if (res.error) {
@@ -289,12 +359,10 @@ export default function CMSEditEntryClient({
           if (detailList) errorDesc = `${res.error} (${detailList})`
         }
         toast({ variant: "destructive", title: "Gagal Menyimpan", description: errorDesc })
-      } else {
-        setPersistedStatus(targetStatus)
-        setEntryStatus(targetStatus)
-        if (res.entry?.updatedAt) setLastKnownUpdatedAt(res.entry.updatedAt)
+      } else if (res.entry) {
+        applyEntry(res.entry, readEntryData(res.entry.data))
         toast({
-          title: publishNow ? "Entri Berhasil Dipublikasikan" : "Entri Berhasil Diperbarui",
+          title: targetStatus === "PUBLISHED" ? "Entri Berhasil Dipublikasikan" : "Entri Berhasil Diperbarui",
           description: `Perubahan data untuk ${contentType?.name || 'konten'} berhasil disimpan.`
         })
       }
@@ -500,19 +568,12 @@ export default function CMSEditEntryClient({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    )
-  }
-
-  const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
+  const statusCfg = STATUS_CONFIG[persistedStatus] || STATUS_CONFIG.DRAFT
   const StatusIcon = statusCfg.icon
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
@@ -539,13 +600,13 @@ export default function CMSEditEntryClient({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5 font-mono">
-                  ID: {entryId}
+                  {savedEntry ? `ID: ${savedEntry.id}` : "Terjemahan baru"}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {contentType && (
+              {!busy && (
                 <AISmartFill
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
@@ -555,22 +616,31 @@ export default function CMSEditEntryClient({
                 />
               )}
 
+              {livePreview && savedEntry && (
+                <Button asChild variant="outline" size="sm" className="rounded-xl h-9 text-xs font-bold border-border/80">
+                  <a href={livePreview} target="_blank" rel="noopener noreferrer">
+                    <Eye className="mr-1.5 h-3.5 w-3.5" />
+                    Live Preview
+                  </a>
+                </Button>
+              )}
+
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleSave(false, "DRAFT")}
-                disabled={saving}
+                onClick={() => handleSave()}
+                disabled={busy}
                 className="rounded-xl h-9 text-xs font-bold border-border/80"
               >
                 {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
                 Simpan
               </Button>
 
-              {canPublish && (
+              {canPublish && persistedStatus !== "PUBLISHED" && (
                 <Button
                   size="sm"
-                  onClick={() => handleSave(true)}
-                  disabled={saving}
+                  onClick={() => handleSave("PUBLISHED")}
+                  disabled={busy}
                   className="rounded-xl h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                 >
                   {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />}
@@ -596,8 +666,8 @@ export default function CMSEditEntryClient({
                       {availableLocales.length > 1 && (
                         <div className="flex items-center gap-1.5">
                           <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                          <Select value={locale} onValueChange={setLocale}>
-                            <SelectTrigger className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
+                          <Select value={locale} onValueChange={handleLocaleChange} disabled={busy}>
+                            <SelectTrigger aria-label="Bahasa entri" className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border">
@@ -612,12 +682,12 @@ export default function CMSEditEntryClient({
                       )}
 
                       {/* AI Translate Dropdown Action */}
-                      <Popover>
+                      {translationTargets.length > 0 && <Popover open={translateOpen} onOpenChange={setTranslateOpen}>
                         <PopoverTrigger asChild>
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={translating}
+                            disabled={busy}
                             className="h-8 rounded-xl text-xs font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 shadow-xs gap-1.5"
                           >
                             {translating ? (
@@ -633,13 +703,7 @@ export default function CMSEditEntryClient({
                             <span className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1 block">
                               Terjemahkan Ke Bahasa:
                             </span>
-                            {(availableLocales.length > 1 ? availableLocales : [
-                              { locale: "en", name: "English (EN)" },
-                              { locale: "id", name: "Bahasa Indonesia (ID)" },
-                              { locale: "zh", name: "Mandarin Chinese (ZH)" },
-                              { locale: "ar", name: "Arabic (AR)" },
-                              { locale: "ja", name: "Japanese (JA)" },
-                            ]).map((target) => (
+                            {translationTargets.map((target) => (
                               <button
                                 key={target.locale}
                                 type="button"
@@ -652,12 +716,14 @@ export default function CMSEditEntryClient({
                             ))}
                           </div>
                         </PopoverContent>
-                      </Popover>
+                      </Popover>}
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="p-6 space-y-5">
+                  {loadingLocale && <p role="status" className="text-xs text-muted-foreground">Memuat konten untuk bahasa pilihan…</p>}
+                  <fieldset className="space-y-5" disabled={busy}>
                   {(() => {
                     const visibleFields = (contentType?.fields || []).filter((f: any) => {
                       if (f.showInCms === false) return false
@@ -682,6 +748,7 @@ export default function CMSEditEntryClient({
                       </div>
                     )
                   })()}
+                  </fieldset>
                 </CardContent>
               </Card>
             </div>
@@ -698,7 +765,7 @@ export default function CMSEditEntryClient({
                   {/* Status Selector */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-foreground">Status Konten</Label>
-                    <Select value={entryStatus} onValueChange={setEntryStatus}>
+                    <Select value={entryStatus} onValueChange={setEntryStatus} disabled={busy}>
                       <SelectTrigger className="h-9 rounded-xl text-xs font-bold bg-background border-border/80">
                         <SelectValue />
                       </SelectTrigger>
@@ -716,46 +783,19 @@ export default function CMSEditEntryClient({
                   </div>
 
                   {/* Scheduled Publishing */}
-                  {canSchedule && (
+                  {canSchedule && entryStatus === "SCHEDULED" && (
                     <div className="space-y-2 pt-3 border-t border-border/60">
-                      <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Label htmlFor="publication-schedule" className="text-xs font-bold text-foreground flex items-center gap-1.5">
                         <CalendarIcon className="h-3.5 w-3.5 text-purple-500" /> Jadwal Publikasi Otomatis
                       </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full h-9 justify-start text-left text-xs font-normal rounded-xl border-border/80",
-                              !scheduledAt && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                            {scheduledAt ? format(scheduledAt, "PPP HH:mm") : "Pilih Tanggal & Waktu"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-2xl border-border bg-card" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={scheduledAt}
-                            onSelect={setScheduledAt}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {scheduledAt && (
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                          <span>Akan terbit: {format(scheduledAt, "dd/MM/yyyy HH:mm")}</span>
-                          <button 
-                            type="button" 
-                            onClick={() => setScheduledAt(undefined)}
-                            className="text-destructive hover:underline font-semibold"
-                          >
-                            Batal Jadwal
-                          </button>
-                        </div>
-                      )}
+                      <Input
+                        id="publication-schedule"
+                        type="datetime-local"
+                        value={scheduledAt ? format(scheduledAt, "yyyy-MM-dd'T'HH:mm") : ""}
+                        onChange={(event) => setScheduledAt(event.currentTarget.value ? new Date(event.currentTarget.value) : undefined)}
+                        disabled={busy}
+                        className="h-9 rounded-xl text-xs border-border/80"
+                      />
                     </div>
                   )}
 
@@ -763,8 +803,8 @@ export default function CMSEditEntryClient({
                   <div className="pt-3 border-t border-border/60">
                     <Button
                       className="w-full h-10 font-bold rounded-xl text-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
-                      onClick={() => handleSave(entryStatus === "PUBLISHED")}
-                      disabled={saving}
+                      onClick={() => handleSave(entryStatus)}
+                      disabled={busy}
                     >
                       {saving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -778,22 +818,23 @@ export default function CMSEditEntryClient({
               </Card>
 
               {/* Reviewer Assignment & History */}
-              <ReviewerAssignment
-                tenantSlug={tenantSlug}
-                entryId={entryId}
-                entryStatus={persistedStatus}
-              />
-
-              <ContentHistorySidebar
-                tenantSlug={tenantSlug}
-                contentTypeSlug={contentTypeSlug}
-                entryId={entryId}
-                currentData={formData}
-                onRestoreSuccess={(newData) => {
-                  if (newData) setFormData(newData)
-                  else fetchData()
-                }}
-              />
+              {savedEntry && (
+                <fieldset key={savedEntry.id} className="space-y-6" disabled={busy}>
+                  <ReviewerAssignment
+                    tenantSlug={tenantSlug}
+                    entryId={savedEntry.id}
+                    entryStatus={persistedStatus}
+                    onDecisionComplete={refreshAfterReview}
+                  />
+                  <ContentHistorySidebar
+                    tenantSlug={tenantSlug}
+                    contentTypeSlug={contentTypeSlug}
+                    entryId={savedEntry.id}
+                    currentData={formData}
+                    onRestoreSuccess={(data, entry) => applyEntry({ ...savedEntry, ...entry }, readEntryData(data))}
+                  />
+                </fieldset>
+              )}
             </div>
 
           </div>

@@ -25,7 +25,8 @@ export interface PaginationParams {
 export interface FindManyParams {
     filters?: Filters;
     fields?: string[];
-    populate?: string[];
+    /** Seventh external audit: `findOne` already accepted `"*"` (every relation); `findMany` crashed on it with a raw TypeError (`"*".map` isn't a function) — now consistent. */
+    populate?: string[] | "*";
     locale?: string;
     sort?: string;
     pagination?: PaginationParams;

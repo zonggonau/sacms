@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withStaffAuth } from "@/lib/api/route-helpers"
+import { getWebsiteTemplateRun } from "@/lib/infrastructure/website-template-run"
 
 // Website Templates are platform catalog data (see prisma/schema.prisma —
 // no tenantId FK, same as SchemaTemplate) and must be visible to every
@@ -21,5 +22,6 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     },
   })
 
-  return NextResponse.json({ templates })
+  const pending = await getWebsiteTemplateRun(access.tenantId)
+  return NextResponse.json({ templates, pendingTemplateId: pending?.templateId ?? null })
 })

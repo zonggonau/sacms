@@ -1,4 +1,5 @@
 import { STORAGE_QUOTA_TYPE, grantStorageAddon } from "./storage-addon"
+import type { Prisma } from "@/lib/database"
 
 /**
  * Checkout stores what was bought in PaymentTransaction.rawResponse; payment providers
@@ -19,13 +20,17 @@ export async function fulfillAddonOrder(params: {
   orderId: string
   raw: Record<string, any>
   userId?: string | null
+  client?: Pick<Prisma.TransactionClient, "storageAddon">
 }): Promise<boolean> {
   if (params.raw.quotaType === STORAGE_QUOTA_TYPE) {
     // Size is whatever was resolved and stored at checkout time, not a
     // fixed constant — see the comment on grantStorageAddon.
     const bytes = Number(params.raw.amountUnits || 0)
     if (bytes > 0) {
-      await grantStorageAddon(params.tenantId, params.orderId, bytes, { renewsAddonId: params.raw.renewsAddonId })
+      await grantStorageAddon(params.tenantId, params.orderId, bytes, {
+        renewsAddonId: params.raw.renewsAddonId,
+        client: params.client,
+      })
       return true
     }
   }

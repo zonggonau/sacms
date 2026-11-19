@@ -31,6 +31,7 @@ import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import type { WorkspaceResource } from "@/lib/plan-enforcement"
 import { roleMeets, type StaffRole } from "@/lib/rbac/staff"
+import { TenantDatabaseUnavailableError } from "@/lib/tenant-database-error"
 
 /** Best-effort route path for logs, tolerant of a plain Request in tests. */
 function routePath(request: NextRequest): string {
@@ -51,6 +52,7 @@ export type ApiErrorCode =
   | "conflict"
   | "rate_limited"
   | "plan_limit"
+  | "workspace_database_unavailable"
   | "internal"
 
 const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
@@ -63,6 +65,7 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   // Historically plan-limit denials returned 403; keep that so existing clients
   // that branch on the status don't regress.
   plan_limit: 403,
+  workspace_database_unavailable: 503,
   internal: 500,
 }
 
@@ -74,6 +77,7 @@ const DEFAULT_MESSAGE: Record<ApiErrorCode, string> = {
   conflict: "That conflicts with something that already exists",
   rate_limited: "Too many requests — slow down",
   plan_limit: "Your plan's limit for this has been reached",
+  workspace_database_unavailable: "Workspace database is temporarily unavailable. Try again shortly.",
   internal: "Something went wrong on our end",
 }
 
@@ -101,6 +105,9 @@ export function apiError(code: ApiErrorCode, opts: ApiErrorOptions = {}): NextRe
  * known, deliberate exception below.
  */
 export function handleRouteError(error: unknown, context?: { route?: string; method?: string }): NextResponse {
+  if (error instanceof TenantDatabaseUnavailableError) {
+    return apiError("workspace_database_unavailable", { headers: { "Retry-After": "30", "Cache-Control": "no-store" } })
+  }
   const tag = context?.route ? `[${context.method ?? "?"} ${context.route}]` : "[api]"
   console.error(`${tag} unhandled error:`, error)
   // Sentry (configured in sentry.*.config.ts) auto-captures uncaught errors;

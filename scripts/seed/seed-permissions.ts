@@ -1,5 +1,5 @@
 import { db } from "@/lib/database"
-import { PERMISSIONS } from "@/lib/rbac"
+import { PERMISSIONS } from "@/lib/rbac/staff"
 import { TRANSITION_PERMISSIONS } from "@/lib/content-workflow-rules"
 
 /**

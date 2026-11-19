@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getTransactionStatus } from "@/lib/midtrans"
-import { applyPaymentOutcome } from "@/lib/billing/payment-success"
+import { applyPaymentOutcome, isPaymentAwaitingFulfillment, paymentStatusForCheckout } from "@/lib/billing/payment-success"
 
 export async function GET(
   request: NextRequest,
@@ -78,20 +78,24 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // SYNC WITH MIDTRANS IF PENDING — now safely after the access check above.
-    if (transaction.status === "pending") {
+    if (transaction.status === "pending" || isPaymentAwaitingFulfillment(transaction)) {
       try {
-        const midtransStatus = await getTransactionStatus(orderId)
-        if (midtransStatus && (midtransStatus.transaction_status === "capture" || midtransStatus.transaction_status === "settlement")) {
-          await applyPaymentOutcome(orderId, "success", {
-            rawProviderPayload: midtransStatus,
-            paymentType: midtransStatus.payment_type || null,
-            transactionId: midtransStatus.transaction_id || null,
-            transactionTime: midtransStatus.transaction_time ? new Date(midtransStatus.transaction_time) : new Date(),
-            fraudStatus: midtransStatus.fraud_status || null,
-          })
-        } else if (midtransStatus && (midtransStatus.transaction_status === "cancel" || midtransStatus.transaction_status === "deny" || midtransStatus.transaction_status === "expire")) {
-          await applyPaymentOutcome(orderId, "failed", { rawProviderPayload: midtransStatus })
+        if (transaction.status === "success") {
+          await applyPaymentOutcome(orderId, "success")
+        } else {
+          const midtransStatus = await getTransactionStatus(orderId)
+          if (midtransStatus && (midtransStatus.transaction_status === "settlement" ||
+            (midtransStatus.transaction_status === "capture" && midtransStatus.fraud_status === "accept"))) {
+            await applyPaymentOutcome(orderId, "success", {
+              rawProviderPayload: midtransStatus,
+              paymentType: midtransStatus.payment_type || null,
+              transactionId: midtransStatus.transaction_id || null,
+              transactionTime: midtransStatus.transaction_time ? new Date(midtransStatus.transaction_time) : new Date(),
+              fraudStatus: midtransStatus.fraud_status || null,
+            })
+          } else if (midtransStatus && ["cancel", "deny", "expire"].includes(midtransStatus.transaction_status)) {
+            await applyPaymentOutcome(orderId, "failed", { rawProviderPayload: midtransStatus })
+          }
         }
       } catch (err) {
         console.error("Failed to sync with Midtrans:", err)
@@ -119,7 +123,9 @@ export async function GET(
 
     return NextResponse.json({
       orderId: transaction.orderId,
-      status: transaction.status,
+      status: paymentStatusForCheckout(transaction),
+      paymentStatus: transaction.status,
+      fulfillmentStatus: transaction.fulfillmentStatus,
       paymentType: transaction.paymentType,
       paymentMethod: transaction.paymentMethod,
       amount: transaction.amount,

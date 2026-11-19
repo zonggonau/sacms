@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
@@ -12,7 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  Loader2, CreditCard, Search, Filter, RefreshCw, 
+  AlertCircle, Loader2, CreditCard, Search, Filter, RefreshCw,
   ArrowLeft, Building2, Download, ChevronLeft, ChevronRight,
   ExternalLink, MoreHorizontal, Check, Copy
 } from "lucide-react"
@@ -34,6 +34,7 @@ interface Transaction {
   orderId: string
   amount: number
   status: string
+  fulfillmentStatus: string | null
   paymentType: string | null
   createdAt: string
   transactionId: string | null
@@ -53,57 +54,74 @@ export default function AdminTransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   
   // Filters
   const [statusFilter, setStatusFilter] = useState("all")
-  const [search, setSearch] = useState("")
+  const searchInput = useRef<HTMLInputElement>(null)
+  const activeRequest = useRef<AbortController | null>(null)
+  const canViewTransactions = session?.user?.role === "super_admin" || session?.user?.role === "finance"
   
   // Details Modal
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [copied, setCopied] = useState(false)
 
-  const fetchTransactions = async (p: number = 1) => {
+  const fetchTransactions = useCallback(async (p: number = 1) => {
+    activeRequest.current?.abort()
+    const request = new AbortController()
+    activeRequest.current = request
     setRefreshing(true)
+    setLoadError(false)
     try {
-      let url = `/api/admin/billing/transactions?page=${p}&limit=20`
-      if (statusFilter !== "all") url += `&status=${statusFilter}`
-      if (search) url += `&search=${search}`
-      
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        setTransactions(data.transactions || [])
-        setTotalPages(data.pagination?.totalPages || 1)
-        setPage(data.pagination?.page || 1)
-      }
+      const params = new URLSearchParams({ page: String(p), limit: "20" })
+      if (statusFilter !== "all") params.set("status", statusFilter)
+      const search = searchInput.current?.value.trim()
+      if (search) params.set("search", search)
+
+      const response = await fetch(`/api/admin/billing/transactions?${params}`, { signal: request.signal })
+      if (!response.ok) throw new Error(`Transaction request failed with HTTP ${response.status}`)
+      const data = await response.json()
+      if (request.signal.aborted) return
+
+      setTransactions(data.transactions)
+      setTotalPages(Math.max(1, data.pagination.totalPages))
+      setPage(data.pagination.page)
     } catch (error) {
-      console.error("Failed to fetch transactions:", error)
+      if (!request.signal.aborted) {
+        console.error("Failed to fetch transactions:", error)
+        setLoadError(true)
+      }
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (!request.signal.aborted) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
-  }
+  }, [statusFilter])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
-  }, [status, router])
+    if (status === "authenticated" && !canViewTransactions) router.push("/dashboard")
+  }, [status, canViewTransactions, router])
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin" || session?.user?.role === "finance") fetchTransactions(1)
-  }, [session, statusFilter])
+    if (canViewTransactions) void fetchTransactions(1)
+    return () => activeRequest.current?.abort()
+  }, [canViewTransactions, fetchTransactions])
 
   const exportCSV = () => {
     if (transactions.length === 0) return toast({ title: "Tidak ada data untuk diekspor", variant: "destructive" })
     
-    const headers = ["Order ID", "Tenant", "Payment Method", "Amount", "Status", "Date"]
+    const headers = ["Order ID", "Tenant", "Payment Method", "Amount", "Status", "Fulfillment", "Date"]
     const rows = transactions.map(tx => [
       tx.orderId,
       tx.subscription?.tenant?.slug || "System",
       tx.paymentType || "Unknown",
       tx.amount,
       tx.status,
+      tx.fulfillmentStatus ?? "",
       new Date(tx.createdAt).toISOString()
     ])
     
@@ -154,7 +172,7 @@ export default function AdminTransactionsPage() {
     return <Badge variant="outline" className="text-[9px] font-bold px-2 py-0.5 rounded-full border-border/60 text-muted-foreground">{status}</Badge>
   }
 
-  if (status === "loading" || loading) {
+  if (status === "loading" || (canViewTransactions && loading)) {
     return (
       <div className="flex flex-1 min-h-[80vh] items-center justify-center flex-col w-full bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -163,10 +181,7 @@ export default function AdminTransactionsPage() {
     )
   }
 
-  if (session?.user?.role !== "super_admin" && session?.user?.role !== "finance") {
-    router.push("/dashboard")
-    return null
-  }
+  if (!canViewTransactions) return null
 
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
@@ -188,10 +203,10 @@ export default function AdminTransactionsPage() {
               </div>
             </div>
             <div className="flex items-center gap-2.5">
-              <Button variant="outline" className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80" onClick={() => fetchTransactions(page)}>
+              <Button variant="outline" className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80" disabled={refreshing} onClick={() => fetchTransactions(page)}>
                 <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} /> Refresh
               </Button>
-              <Button onClick={exportCSV} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
+              <Button onClick={exportCSV} disabled={refreshing || loadError} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
                 <Download className="h-3.5 w-3.5 mr-1.5" /> Ekspor CSV
               </Button>
             </div>
@@ -204,8 +219,7 @@ export default function AdminTransactionsPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input 
                   placeholder="Cari berdasarkan Order ID, Transaction ID, atau nama workspace..." 
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  ref={searchInput}
                   onKeyDown={e => e.key === 'Enter' && fetchTransactions(1)}
                   className="pl-9 h-9 rounded-xl text-xs bg-background border-border/80" 
                 />
@@ -220,6 +234,7 @@ export default function AdminTransactionsPage() {
                   <SelectItem value="success" className="text-xs rounded-lg">Sukses / Lunas</SelectItem>
                   <SelectItem value="pending" className="text-xs rounded-lg">Menunggu</SelectItem>
                   <SelectItem value="failed" className="text-xs rounded-lg">Gagal / Kadaluarsa</SelectItem>
+                  <SelectItem value="needs_review" className="text-xs rounded-lg">Perlu Ditinjau</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
@@ -241,7 +256,26 @@ export default function AdminTransactionsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {transactions.length === 0 ? (
+                  {refreshing ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                        <span role="status">Memuat transaksi…</span>
+                      </TableCell>
+                    </TableRow>
+                  ) : loadError ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-12 text-center">
+                        <div role="alert">
+                          <AlertCircle aria-hidden="true" className="mx-auto mb-2 h-7 w-7 text-destructive" />
+                          <p className="text-sm font-semibold">Riwayat transaksi gagal dimuat</p>
+                          <p className="mt-1 text-xs text-muted-foreground">Coba muat ulang daftar transaksi.</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="mt-3" onClick={() => fetchTransactions(page)}>
+                          Coba lagi
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ) : transactions.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">
                         <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-20" />
@@ -288,6 +322,9 @@ export default function AdminTransactionsPage() {
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(tx.status)}
+                          {tx.fulfillmentStatus === "needs_review" && (
+                            <Badge variant="destructive" className="ml-1 text-[9px]">Perlu Ditinjau</Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground font-mono">
                           <div>{new Date(tx.createdAt).toLocaleDateString('id-ID')}</div>
@@ -320,7 +357,7 @@ export default function AdminTransactionsPage() {
             </div>
             
             {/* Pagination */}
-            {!loading && totalPages > 1 && (
+            {!refreshing && !loadError && totalPages > 1 && (
               <div className="p-3 bg-muted/20 border-t border-border/60 flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
                   Halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span>
@@ -371,6 +408,15 @@ export default function AdminTransactionsPage() {
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">Status Pembayaran</p>
                   <div className="mt-0.5">{getStatusBadge(selectedTx.status)}</div>
                 </div>
+                {selectedTx.fulfillmentStatus && (
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Pemenuhan Pesanan</p>
+                    <p className="font-bold">{
+                      selectedTx.fulfillmentStatus === "needs_review" ? "Perlu ditinjau" :
+                      selectedTx.fulfillmentStatus === "completed" ? "Selesai" : "Sedang diproses"
+                    }</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-[10px] font-bold uppercase text-muted-foreground">Metode Pembayaran</p>
                   <p className="font-bold text-foreground uppercase">{selectedTx.paymentType || "Midtrans"}</p>

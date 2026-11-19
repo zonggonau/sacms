@@ -4,7 +4,13 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { resolveContentData } from "@/lib/content-resolver"
 import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 import { logApiRequest } from "@/lib/monitoring"
-import { getCache, setCache, invalidatePattern } from "@/lib/cache"
+import { getCache, setCache } from "@/lib/cache"
+import {
+  getSingleTypeLocales,
+  invalidateSingleTypePublication,
+  readSingleTypeAssignment,
+  singleTypeContentWrite,
+} from "@/lib/single-type-publication"
 import { createHash } from "crypto"
 import { checkApiCallQuota } from "@/lib/plan-enforcement"
 
@@ -179,23 +185,13 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const defaultLocale = (await db.tenantLocale.findFirst({
-      where: { tenantId: auth.tenantId, isDefault: true },
-      select: { locale: true },
-    }))?.locale || "id"
+    const [{ locale: defaultLocale }] = await getSingleTypeLocales(auth.tenantId)
     const locale = searchParams.get("locale") || defaultLocale
-
-    // CACHE CHECK
-    const cacheKey = `single:${auth.tenantId}:${singleTypeSlug}:${locale}:${auth.apiTokenType}`
-    const cached = await getCache(cacheKey)
-    if (cached) {
-      return logResponse(NextResponse.json(cached, {
-        headers: {
-          "X-RateLimit-Limit": String(rateLimitResult.limit),
-          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
-          "X-Cache": "HIT",
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-        }
+    const readDraft = searchParams.get("draft") === "true"
+    if (readDraft && !auth.hasWriteAccess) {
+      return logResponse(NextResponse.json({ error: "Draft preview requires write access" }, {
+        status: 403,
+        headers: { "Cache-Control": "private, no-store" },
       }))
     }
 
@@ -206,6 +202,7 @@ export async function GET(
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         slug: singleTypeSlug,
+        draftTemplateId: null,
         OR: [
           { tenantId: auth.tenantId },
           { tenantId: null }
@@ -243,35 +240,41 @@ export async function GET(
       ))
     }
 
-    if (auth.apiTokenType !== "full-access" && !assignment.publishedAt) {
+    if (!readDraft && !assignment.publishedAt) {
       return logResponse(NextResponse.json(
         { error: `Single type '${singleTypeSlug}' is not published` },
         { status: 404 }
       ))
     }
 
-    // Return content
-    let rawData: any = {}
-    if (assignment.data) {
-      rawData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
+    const cacheKey = !readDraft && assignment.publishedAt
+      ? `single:${auth.tenantId}:${singleTypeSlug}:${locale}:published:${assignment.publishedAt.getTime()}`
+      : null
+    const responseHeaders = {
+      "X-RateLimit-Limit": String(rateLimitResult.limit),
+      "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+      "Cache-Control": readDraft ? "private, no-store" : "public, max-age=0, must-revalidate",
+      Vary: "Authorization, X-API-Key",
     }
-    
-    // Resolve dynamic data (Relations and Components)
+    const cached = cacheKey ? await getCache(cacheKey) : null
+    if (cached) {
+      return logResponse(NextResponse.json(cached, { headers: { ...responseHeaders, "X-Cache": "HIT" } }))
+    }
+
+    const snapshot = readSingleTypeAssignment(assignment, readDraft)
     const resolvedData = await resolveContentData(
       auth.tenantId,
-      rawData,
-      singleType.schemaFields
+      snapshot.data,
+      singleType.schemaFields,
+      { client: tenantDb, includeUnpublished: readDraft, includeSingleTypeDraft: readDraft, locale },
     )
-    // Only a full-access token can reach this with an unpublished
-    // assignment (see the publishedAt check above) — a draft's media must
-    // not become publicly fetchable without a login.
-    const publicData = assignment.publishedAt ? rewritePublicMediaUrls(resolvedData) : resolvedData
+    const responseData = readDraft ? resolvedData : rewritePublicMediaUrls(resolvedData)
 
     const responsePayload = {
       data: {
-        ...publicData,
+        ...responseData,
         publishedAt: assignment.publishedAt,
-        updatedAt: assignment.updatedAt,
+        updatedAt: snapshot.updatedAt,
       },
       meta: {
         singleType: {
@@ -282,15 +285,10 @@ export async function GET(
       },
     }
 
-    await setCache(cacheKey, responsePayload, 300)
+    if (cacheKey) await setCache(cacheKey, responsePayload, 300)
 
     return logResponse(NextResponse.json(responsePayload, {
-      headers: {
-        "X-RateLimit-Limit": String(rateLimitResult.limit),
-        "X-RateLimit-Remaining": String(rateLimitResult.remaining),
-        "X-Cache": "MISS",
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-      }
+      headers: { ...responseHeaders, "X-Cache": readDraft ? "BYPASS" : "MISS" },
     }))
   } catch (error) {
     console.error("Error fetching single type:", error)
@@ -353,10 +351,7 @@ export async function PUT(
     }
 
     const { searchParams } = new URL(request.url)
-    const defaultLocale = (await db.tenantLocale.findFirst({
-      where: { tenantId: auth.tenantId, isDefault: true },
-      select: { locale: true },
-    }))?.locale || "id"
+    const [{ locale: defaultLocale }] = await getSingleTypeLocales(auth.tenantId)
     const locale = searchParams.get("locale") || defaultLocale
 
     const { getTenantDb } = await import("@/lib/database")
@@ -366,6 +361,7 @@ export async function PUT(
     const singleType = await tenantDb.singleType.findFirst({
       where: { 
         slug: singleTypeSlug,
+        draftTemplateId: null,
         OR: [
           { tenantId: auth.tenantId },
           { tenantId: null }
@@ -399,24 +395,31 @@ export async function PUT(
     }
 
     // Get request body
-    const body = await request.json()
-    const { data, publish } = body
+    let content: Record<string, unknown>
+    let publish: boolean
+    try {
+      const body = await request.json()
+      const data = typeof body.data === "string" ? JSON.parse(body.data) : body.data
+      if (!data || typeof data !== "object" || Array.isArray(data) || (body.publish !== undefined && typeof body.publish !== "boolean")) {
+        throw new Error("Invalid Single Type payload")
+      }
+      content = data
+      publish = body.publish === true
+    } catch {
+      return logResponse(NextResponse.json({ error: "Expected a data object and an optional publish boolean" }, { status: 400 }))
+    }
 
     // Update assignment
     const updated = await tenantDb.tenantSingleTypeAssignment.update({
       where: { id: assignment.id },
-      data: {
-        data: typeof data === 'object' ? data : JSON.parse(data || "{}"),
-        publishedAt: publish ? new Date() : assignment.publishedAt,
-        updatedAt: new Date(),
-      },
+      data: singleTypeContentWrite(content, publish),
     })
 
-    await invalidatePattern(`single:${auth.tenantId}:${singleTypeSlug}:${locale}:*`)
+    if (publish) await invalidateSingleTypePublication(auth.tenantId, singleType.slug, locale)
 
     return logResponse(NextResponse.json({
       data: {
-        ...data,
+        ...content,
         publishedAt: updated.publishedAt,
         updatedAt: updated.updatedAt,
       },

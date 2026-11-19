@@ -5,6 +5,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
+import { getStudioLocales } from "@/lib/content/studio-locales"
 import CMSCreateEntryClient from "./create-entry-client"
 
 export default async function CMSCreateEntryPage({
@@ -19,8 +20,8 @@ export default async function CMSCreateEntryPage({
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect("/dashboard")
 
-  const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
-  if (!rbac.allowed) redirect(`/dashboard/${tenantSlug}/cms`)
+  const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_CREATE)
+  if (!rbac.allowed) redirect(`/dashboard/${tenantSlug}/cms/content/${contentTypeSlug}`)
 
   const tenantDb = await getTenantDb(tenantSlug)
 
@@ -45,36 +46,13 @@ export default async function CMSCreateEntryPage({
     fields: formattedFields
   }
 
-  // Fetch available locales
-  let availableLocales = [{ locale: "id", name: "Bahasa Indonesia" }]
-  try {
-    const dbLocales = await (tenantDb as any).locale?.findMany({
-      where: { tenantId: access.tenantId },
-      orderBy: { isDefault: 'desc' }
-    })
-    if (dbLocales && dbLocales.length > 0) {
-      availableLocales = dbLocales.map((l: any) => ({ locale: l.code, name: l.name }))
-    }
-  } catch {
-    // Fallback default
-  }
-
-  // Plan limit enforcement
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-  const enforcement = await enforcePlanLimit(access.tenantId, "content_entries", session.user.id)
+  const [availableLocales, enforcement] = await Promise.all([
+    getStudioLocales(access.tenantId),
+    enforcePlanLimit(access.tenantId, "content_entries", session.user.id),
+  ])
   const isLimitReached = !enforcement.allowed
   const entriesLimit = enforcement.max
-
-  // Preview URL setting
-  let previewUrl: string | null = null
-  try {
-    const setting = await tenantDb.setting.findFirst({
-      where: { key: { in: [`${access.tenantId}_previewUrl`, "previewUrl"] } }
-    })
-    if (setting?.value) previewUrl = setting.value
-  } catch {
-    // Ignore setting fetch error
-  }
 
   return (
     <CMSCreateEntryClient 
@@ -84,7 +62,6 @@ export default async function CMSCreateEntryPage({
       initialAvailableLocales={availableLocales}
       initialIsLimitReached={isLimitReached}
       initialEntriesLimit={entriesLimit}
-      initialPreviewUrl={previewUrl}
       userRole={access.role}
       customPermissions={(access as any).customPermissions}
     />

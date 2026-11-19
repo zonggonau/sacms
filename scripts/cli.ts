@@ -56,7 +56,7 @@ const COMMANDS: Record<string, CommandDefinition> = {
     script: "scripts/migrate/push-tenant-schema.ts",
     category: "Migration",
     description: "Push Prisma schema to dedicated tenant database",
-    usage: "<slug|id|--all>",
+    usage: "<slug|id|--all> [--accept-data-loss]",
   },
   "migrate:media": {
     script: "scripts/migrate/migrate-local-media.ts",

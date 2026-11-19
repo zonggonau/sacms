@@ -37,7 +37,7 @@ interface ContentHistorySidebarProps {
   contentTypeSlug: string
   entryId: string
   currentData?: any
-  onRestoreSuccess: (newData: any) => void
+  onRestoreSuccess: (data: any, entry: { updatedAt: string; status: string; scheduledAt: string | null }) => void
 }
 
 export function ContentHistorySidebar({
@@ -99,7 +99,8 @@ export function ContentHistorySidebar({
           title: "✨ Versi Berhasil Dipulihkan", 
           description: "Data konten telah dikembalikan ke revisi yang dipilih.",
         })
-        onRestoreSuccess(data.entry.data)
+        const { updatedAt, status, scheduledAt } = data.entry
+        onRestoreSuccess(data.entry.data, { updatedAt, status, scheduledAt })
         setOpen(false)
         setDiffVersionId(null)
       } else {

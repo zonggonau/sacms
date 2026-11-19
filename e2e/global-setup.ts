@@ -1,6 +1,7 @@
 import { chromium, FullConfig } from '@playwright/test';
 import { PrismaClient } from '../prisma/generated-client';
 import bcrypt from 'bcrypt';
+import { mkdir } from 'node:fs/promises';
 
 async function globalSetup(config: FullConfig) {
   const { baseURL } = config.projects[0].use;
@@ -23,7 +24,7 @@ async function globalSetup(config: FullConfig) {
       },
     });
 
-    await prisma.tenant.upsert({
+    const tenant = await prisma.tenant.upsert({
       where: { slug: 'demo-tenant' },
       update: { plan: 'enterprise' },
       create: {
@@ -38,13 +39,13 @@ async function globalSetup(config: FullConfig) {
     await prisma.tenantMember.upsert({
       where: {
         tenantId_userId: {
-          tenantId: 'test-tenant-id',
+          tenantId: tenant.id,
           userId: user.id,
         }
       },
       update: { role: 'owner' },
       create: {
-        tenantId: 'test-tenant-id',
+        tenantId: tenant.id,
         userId: user.id,
         role: 'owner',
       }
@@ -55,15 +56,13 @@ async function globalSetup(config: FullConfig) {
       where: { token: '3f98e3ad578064e710ba3876cb369f9c9c29331875673bebb80efe369c17adbd' },
       update: {},
       create: {
-        tenantId: 'test-tenant-id',
+        tenantId: tenant.id,
         name: 'Test Token',
         token: '3f98e3ad578064e710ba3876cb369f9c9c29331875673bebb80efe369c17adbd',
         type: 'read-only',
       }
     });
 
-  } catch (error) {
-    console.error("Database seed failed in global setup:", error);
   } finally {
     await prisma.$disconnect();
   }
@@ -83,9 +82,8 @@ async function globalSetup(config: FullConfig) {
     await page.waitForURL('**/dashboard**');
     
     // Save storage state
-    await page.context().storageState({ path: 'e2e/storageState.json' });
-  } catch (error) {
-    console.error("Global setup login failed.", error);
+    await mkdir('e2e/.auth', { recursive: true });
+    await page.context().storageState({ path: 'e2e/.auth/storageState.json' });
   } finally {
     await browser.close();
   }

@@ -12,7 +12,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     video: 'on-first-retry',
-    storageState: 'e2e/storageState.json',
+    storageState: 'e2e/.auth/storageState.json',
   },
   projects: [
     {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
+import { studioModelWhere } from "@/lib/content/studio-visibility"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { redirect, notFound } from "next/navigation"
@@ -93,42 +94,15 @@ export default async function CMSLayout({
 
   // Fetch content types directly in Server Component
   const tenantDb = await getTenantDb(tenantId)
+  const where = studioModelWhere(tenantId, access.isGlobal)
   const [availableContentTypes, availableSingleTypes, contentTypeGroups] = await Promise.all([
     tenantDb.contentType.findMany({
-      where: {
-        showInCms: true,
-        OR: [
-          { tenantId: tenantId },
-          {
-            tenants: {
-              some: {
-                tenantId: tenantId,
-                enabled: true
-              }
-            }
-          },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
-        ]
-      },
+      where,
       select: { id: true, name: true, slug: true, groupId: true, groupOrder: true },
       orderBy: { updatedAt: "desc" },
     }),
     tenantDb.singleType.findMany({
-      where: {
-        showInCms: true,
-        OR: [
-          { tenantId: tenantId },
-          {
-            tenants: {
-              some: {
-                tenantId: tenantId,
-                enabled: true
-              }
-            }
-          },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
-        ]
-      },
+      where,
       select: { id: true, name: true, slug: true },
       orderBy: { updatedAt: "desc" },
     }),

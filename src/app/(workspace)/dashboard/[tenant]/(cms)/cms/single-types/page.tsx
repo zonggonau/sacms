@@ -26,7 +26,7 @@ interface SingleType {
   description: string | null
   fields: any[]
   publishedAt: string | null
-  updatedAt: string
+  updatedAt: string | null
 }
 
 export default function CMSSingleTypesPage() {
@@ -58,7 +58,7 @@ export default function CMSSingleTypesPage() {
   const fetchSingleTypes = async () => {
     if (!tenantSlug) return
     try {
-      const response = await getSingleTypesAction(tenantSlug)
+      const response = await getSingleTypesAction(tenantSlug, "studio")
       if (response.singleTypes) {
         setSingleTypes(response.singleTypes)
       } else if (response.error) {
@@ -185,7 +185,7 @@ export default function CMSSingleTypesPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">
-                      {new Date(st.updatedAt).toLocaleDateString('id-ID')}
+                      {st.updatedAt ? new Date(st.updatedAt).toLocaleDateString('id-ID') : "—"}
                     </TableCell>
                     <TableCell className="text-right pr-5">
                       <Button 

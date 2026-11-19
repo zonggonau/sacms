@@ -147,13 +147,57 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
         timeoutHandle = setTimeout(() => timeoutController!.abort(), timeoutMs)
       }
 
-      let res: Response
       try {
         const fetchInit: RequestInit & { next?: unknown } = { ...init, headers, signal }
         if (extras.next) fetchInit.next = extras.next
         if (extras.cache) fetchInit.cache = extras.cache
-        res = await fetch(url, fetchInit)
+        // Seventh external audit: the timeout used to be cleared as soon
+        // as fetch() itself resolved — which the Fetch spec defines as
+        // "headers received," NOT "body fully read." A server sending
+        // headers immediately but trickling the body over several seconds
+        // sailed straight through a short timeoutMs with nothing enforcing
+        // it, because clearTimeout had already fired before res.json()/
+        // res.text() even started. The same AbortSignal passed into
+        // fetch() already governs the body-read stream too (standard,
+        // well-supported Fetch behavior) — the fix is simply to keep the
+        // timer running (and the try/catch covering it) through the body
+        // read as well, not to invent new cancellation plumbing.
+        const res = await fetch(url, fetchInit)
+
+        if (res.status === 429 && attempt < retries) {
+          // `finally` below clears timeoutHandle before this `continue`
+          // actually advances the loop — no need to do it here too.
+          const delay = parseRetryAfterMs(res.headers.get("Retry-After")) ?? 1000 * Math.pow(2, attempt)
+          await new Promise(r => setTimeout(r, delay))
+          continue
+        }
+
+        if (!res.ok) {
+          const body = await res.text()
+          let message: string
+          try {
+            const json = JSON.parse(body)
+            message = json.error || json.message || body
+          } catch {
+            message = body
+          }
+          // A real, successfully-received HTTP error response — not a
+          // network/abort failure — so it must propagate as-is, never
+          // treated as something to retry below.
+          throw new SaCMSError(message, res.status)
+        }
+        return (await res.json()) as T
       } catch (err) {
+        if (err instanceof SaCMSError) throw err
+
+        // Seventh external audit: a caller who passed their OWN `signal`
+        // and aborted it got retried anyway (up to ~7s of backoff) before
+        // finally surfacing their cancellation — a caller-initiated abort
+        // must fail immediately, the same way a deliberate timeout
+        // already did, regardless of method.
+        if (callerSignal?.aborted) {
+          throw new SaCMSError(`Request to ${path} was aborted by the caller`, 0)
+        }
         // A timeout is deliberate (OUR OWN AbortController, not the
         // caller's) — fail immediately rather than retrying it. Retrying
         // with exponential backoff on top of a timeout the caller chose
@@ -175,25 +219,6 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
       } finally {
         if (timeoutHandle) clearTimeout(timeoutHandle)
       }
-
-      if (res.status === 429 && attempt < retries) {
-        const delay = parseRetryAfterMs(res.headers.get("Retry-After")) ?? 1000 * Math.pow(2, attempt)
-        await new Promise(r => setTimeout(r, delay))
-        continue
-      }
-
-      if (!res.ok) {
-        const body = await res.text()
-        let message: string
-        try {
-          const json = JSON.parse(body)
-          message = json.error || json.message || body
-        } catch {
-          message = body
-        }
-        throw new SaCMSError(message, res.status)
-      }
-      return res.json() as Promise<T>
     }
     throw new SaCMSError("Max retries reached", 429)
   }
@@ -384,9 +409,9 @@ export class QueryBuilder<T> {
   }
 
   /**
-   * Select specific relations to populate. E.g. .populate(['author'])
+   * Select specific relations to populate. E.g. .populate(['author']) or .populate('*') for every relation.
    */
-  populate(fields: string[]) {
+  populate(fields: string[] | "*") {
     this.params.populate = fields
     return this
   }
@@ -484,7 +509,14 @@ function buildQueryString(
     parts.push(`fields=${params.fields.map(encodeURIComponent).join(",")}`)
   }
 
-  if (params.populate?.length) {
+  // Seventh external audit: `params.populate?.length` is truthy for the
+  // STRING "*" too (strings have `.length`), so this used to fall through
+  // to `.map()` — not a method strings have — and crash with a raw
+  // TypeError instead of building `populate=*`. findOne() already handled
+  // the "*" case correctly; made findMany() match it.
+  if (params.populate === "*") {
+    parts.push("populate=*")
+  } else if (params.populate?.length) {
     parts.push(`populate=${params.populate.map(encodeURIComponent).join(",")}`)
   }
 

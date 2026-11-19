@@ -86,25 +86,8 @@ NEXT_PUBLIC_SENTRY_DSN="https://xxx@sentry.io/xxx"
 Metode termudah. Sesuai dengan arsitektur Serverless Next.js SaCMS.
 
 ### 3.1. Konfigurasi `vercel.json`
-Pastikan file `vercel.json` di root project mengkonfigurasi cron jobs:
-```json
-{
-  "crons": [
-    {
-      "path": "/api/cron/publish",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/webhook-retry",
-      "schedule": "*/2 * * * *"
-    },
-    {
-      "path": "/api/admin/billing/generate-invoices",
-      "schedule": "0 0 * * *"
-    }
-  ]
-}
-```
+
+Vercel menjalankan jadwal yang tercantum di `vercel.json`. Atur `CRON_SECRET` di environment production agar Vercel dapat mengirim header otorisasi. [Konfigurasi Vercel](../vercel.json)
 
 ### 3.2. Langkah Deploy
 ```bash
@@ -119,155 +102,55 @@ Tambahkan semua Environment Variables dari **Section 2** di Vercel Dashboard →
 
 ## 4. Deployment: Docker Compose (Self-hosted)
 
-### 4.1. `docker-compose.yml`
-```yaml
-version: '3.9'
+### 4.1. Jalankan image rilis
 
-services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env.production
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
+Compose membaca konfigurasi dari `.env`. Atur `SACMS_APP_IMAGE` ke digest image GHCR dari build yang akan dirilis. Untuk build lokal, jalankan `bun run build`, lalu `docker build -t sacms:local .` dan atur `SACMS_APP_IMAGE=sacms:local`. [Konfigurasi Compose](../docker-compose.yml)
 
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: sacms
-      POSTGRES_USER: sacms_user
-      POSTGRES_PASSWORD: strong_password_here
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sacms_user -d sacms"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-```
-
-### 4.2. Build & Run
 ```bash
-# Build image
-docker build -t sacms:latest .
-
-# Jalankan database migrasi (sekali saja)
-docker compose run --rm app npx prisma migrate deploy
-
-# Jalankan semua service
+docker compose up -d postgres redis
+docker compose run --rm --no-deps app bun x prisma db push --skip-generate
+docker compose run --rm --no-deps app bun scripts/migrate/verify-release-schema.ts
 docker compose up -d
 ```
 
-### 4.3. Cron Jobs (Self-hosted)
-Jika tidak menggunakan Vercel Cron, tambahkan crontab di server:
+Terapkan SQL yang sudah ditinjau sebelum menjalankan `db push`. Pastikan database siap menerima koneksi setelah memulai layanan.
+
+### 4.2. Cron self-hosted
+
+Tambahkan profil `cron` ke `COMPOSE_PROFILES` dan atur `CRON_SECRET` di `.env`. Deploy CI membuat ulang kontainer cron aktif agar mengambil tabel jadwal yang baru. Untuk perubahan jadwal manual, gunakan `docker compose up -d --no-deps --force-recreate cron`. [Jadwal Docker](../docker/cron/crontab)
+
+## 5. CI/CD GitHub Actions
+
+Pipeline memeriksa tipe, lint, Vitest, dan build standalone. Job `critical-flows` menyiapkan dua database PostgreSQL sementara untuk menguji scheduled publishing, pemulihan pembayaran, pembuatan invoice bersamaan, dan kelanjutan deploy Website Template. Job deploy menunggu kedua job verifikasi dan menggunakan digest image dari build yang sama. [Workflow CI/CD](../.github/workflows/ci.yml)
+
+Push ke `master` dan `develop` menggunakan VPS yang sama. Konfigurasikan *required reviewers* pada GitHub Environment `develop-deploy-approval` untuk menahan rilis `develop` sampai disetujui.
+
+## 6. Pembaruan skema produksi
+
+Pipeline menerapkan SQL yang sudah ditinjau di `db/manual-migrations/`, menjalankan `prisma db push --skip-generate` pada database utama, dan memverifikasi kolom yang dibutuhkan pada database utama dan dedicated. Deploy berhenti jika langkah ini gagal atau melewati batas waktu.
+
+Jalankan pembaruan database dedicated secara terpisah dengan koneksi yang efektif untuk setiap workspace. Gunakan database yang sudah mendapat izin pengelolaan, termasuk saat workspace mewarisi koneksi dari pemilik akun.
+
 ```bash
-# Edit crontab
-crontab -e
-
-# Tambahkan baris berikut:
-*/5 * * * * curl -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://your-domain.com/api/cron/publish
-*/2 * * * * curl -s -H "Authorization: Bearer YOUR_CRON_SECRET" https://your-domain.com/api/cron/webhook-retry
-```
-
-## 5. CI/CD: GitHub Actions
-
-Buat file `.github/workflows/deploy.yml`:
-
-```yaml
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run test
-
-  e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: sacms_test
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        ports: ['5432:5432']
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/sacms_test
-      - run: npx playwright test
-        env:
-          DATABASE_URL: postgresql://test_user:test_pass@localhost:5432/sacms_test
-
-  deploy:
-    name: Deploy to Production
-    needs: [test]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-```
-
-## 6. Database Migration (Production)
-**JANGAN PERNAH** menjalankan `prisma migrate dev` di production. Selalu gunakan Bun runtime:
-```bash
-# 1. Deploy migrasi skema yang sudah dicommit ke Database Utama
-bunx prisma migrate deploy
-
-# 2. Regenerate Prisma client (output: prisma/generated-client/)
-bunx prisma generate
-
-# 3. Push skema ke database dedicated tenant aktif (Enterprise / Hybrid)
 bun run db:tenant:push <tenantSlugOrId>
-# atau via CLI terpadu:
 bun run cli migrate:tenant <tenantSlugOrId>
+bun run db:tenant:push --all
+bun scripts/migrate/verify-release-schema.ts
 ```
 
-## 7. Cron Jobs Setup & Background Workers
-SaCMS mengandalkan background cron jobs untuk fitur scheduled publish, webhook retry, dan pembuatan invoice billing.
+Untuk rilis ini, verifikasi `tenant_single_type_assignments.draftData` pada database utama dan dedicated, serta `payment_transactions.fulfillmentStatus` pada database utama. [Validasi skema rilis](../scripts/migrate/verify-release-schema.ts)
 
-| Endpoint / Command | Interval | Metode / Trigger | Deskripsi |
-|--------------------|----------|------------------|-----------|
-| `GET /api/cron/publish` | Setiap 5 menit | Vercel Cron (`Bearer <CRON_SECRET>`) | Memicu scheduled publishing via HTTP |
-| `bun run cron:publish` | Sesuai crontab | Worker lokal / Docker (`bun run cli cron:publish`) | Memproses entri SCHEDULED langsung via database |
-| `GET /api/cron/webhook-retry` | Setiap 2 menit | Vercel Cron (`Bearer <CRON_SECRET>`) | Pengiriman ulang pesan gagal di tabel DLQ |
-| `POST /api/admin/billing/generate-invoices` | Harian 00:00 | Vercel Cron / Admin session | Pembuatan invoice langganan bulanan |
-| `bun run cli db:backup` | Harian 02:00 | Linux crontab (`scripts/shell/db-backup.sh`) | Logical backup PostgreSQL dengan rotasi 7 hari |
+## 7. Cron dan worker
+
+Endpoint cron berikut menerima `Authorization: Bearer <CRON_SECRET>`. Jadwal menggunakan UTC.
+
+| Endpoint atau perintah | Interval | Pemicu | Kegunaan |
+|------------------------|----------|--------|----------|
+| `GET /api/cron/publish` | Setiap 5 menit | Vercel dan Docker | Publikasi terjadwal ke database workspace |
+| `GET /api/cron/webhook-retry` | Setiap 2 menit | Vercel dan Docker | Percobaan ulang pengiriman webhook dari DLQ |
+| `GET /api/cron/payment-fulfillment` | Setiap 5 menit | Vercel dan Docker | Pemulihan pemenuhan pembayaran |
+| `GET /api/cron/generate-invoices` | Harian 03:00 | Vercel dan Docker | Pembuatan invoice langganan yang jatuh tempo |
+| `bun run cron:publish` | Sesuai kebutuhan | Worker CLI | Memproses entri terjadwal melalui database |
 
 ## 8. Docker & Standalone Production Build
 

@@ -2,10 +2,6 @@
  * SaCMS — Dedicated Tenant Schema Push Entrypoint
  * Forwards to scripts/migrate/push-tenant-schema.ts
  */
-import { pushTenantSchema } from "./migrate/push-tenant-schema";
+import { runTenantSchemaPush } from "./migrate/push-tenant-schema"
 
-const target = process.argv[2];
-pushTenantSchema(target).catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+await runTenantSchemaPush(process.argv.slice(2))

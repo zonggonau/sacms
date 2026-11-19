@@ -16,6 +16,10 @@ COPY --chown=nextjs:nodejs .next/standalone ./
 COPY --chown=nextjs:nodejs node_modules ./node_modules
 COPY --chown=nextjs:nodejs prisma ./prisma
 COPY --chown=nextjs:nodejs scripts ./scripts
+# Bun executes the operational scripts from source inside the image.
+COPY --chown=nextjs:nodejs src/lib ./src/lib
+COPY --chown=nextjs:nodejs src/actions/content-pipeline.ts ./src/actions/content-pipeline.ts
+COPY --chown=nextjs:nodejs tsconfig.json ./tsconfig.json
 COPY --chown=nextjs:nodejs package.json bun.lock ./
 # Only the RSA public key — it's a verification key, safe to ship. The
 # private key (keys/license-private.pem) must NEVER be added here; it stays

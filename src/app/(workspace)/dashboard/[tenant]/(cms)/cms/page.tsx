@@ -1,8 +1,8 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db, getTenantDb } from "@/lib/database"
+import { db, getTenantDb, type Prisma, type SchemaField } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { isWorkspaceAdmin } from "@/lib/rbac/staff"
+import { isWorkspaceAdmin, PERMISSIONS, roleHasPermission } from "@/lib/rbac/staff"
 import { withCache } from "@/lib/cache"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,6 +14,44 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { CONTENT_STATUSES, type WorkflowStatus } from "@/lib/content-workflow-rules"
+import { studioModelWhere } from "@/lib/content/studio-visibility"
+import { extractEntryLabel } from "@/lib/relation-labels"
+import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
+import { isFieldVisible } from "@/lib/field-visibility"
+
+const workflowLabels: Record<WorkflowStatus, [label: string, dot: string]> = {
+  DRAFT: ["Draft", "bg-muted-foreground/60"],
+  IN_REVIEW: ["In Review", "bg-amber-500"],
+  APPROVED: ["Approved", "bg-blue-500"],
+  SCHEDULED: ["Scheduled", "bg-purple-500"],
+  PUBLISHED: ["Published", "bg-emerald-500"],
+  ARCHIVED: ["Archived", "bg-muted-foreground"],
+  REJECTED: ["Rejected", "bg-red-500"],
+}
+
+function recentEntryTitle(id: string, value: Prisma.JsonValue, fields: Pick<SchemaField, "slug" | "type" | "options">[]) {
+  let data = value
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data)
+    } catch {
+      data = null
+    }
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return id.slice(0, 8)
+
+  const titleFields = fields.filter(({ slug, type }) =>
+    (type === "text" && /^(name|nama|title|judul|label)(?:$|[-_])/.test(slug)) ||
+    (type === "slug" && slug === "slug")
+  )
+  const values = Object.fromEntries(
+    parseSchemaFieldOptions(titleFields)
+      .filter((field) => field.showInCms && isFieldVisible(field, data))
+      .map(({ slug }) => [slug, data[slug]]),
+  )
+  return extractEntryLabel(values, id)
+}
 
 export default async function CMSDashboardPage({ 
   params 
@@ -30,6 +68,9 @@ export default async function CMSDashboardPage({
 
   const tenantId = access.tenantId
   const tenantDb = await getTenantDb(tenantSlug)
+  const visibleCollections = studioModelWhere(tenantId, access.isGlobal)
+  const visibleEntries = { tenantId, deletedAt: null, contentType: visibleCollections }
+  const canReadContent = roleHasPermission(access.role, PERMISSIONS.CONTENT_READ)
 
   const [
     tenantData,
@@ -43,29 +84,35 @@ export default async function CMSDashboardPage({
       where: { id: tenantId },
       select: { name: true }
     }),
-    tenantDb.tenantContentTypeAssignment.count({ where: { tenantId } }),
+    tenantDb.contentType.count({ where: visibleCollections }),
     tenantDb.contentEntry.groupBy({
       by: ["status"],
-      where: { tenantId, deletedAt: null },
+      where: visibleEntries,
       _count: { _all: true },
     }),
     tenantDb.media.count({ where: { tenantId } }).catch((err) => {
       console.error(`[CMS Dashboard] media.count failed for tenant ${tenantId}:`, err)
       return 0
     }),
-    tenantDb.contentEntry.findMany({
-      where: { tenantId, deletedAt: null },
+    canReadContent ? tenantDb.contentEntry.findMany({
+      where: visibleEntries,
       select: {
         id: true,
+        data: true,
         status: true,
-        createdAt: true,
         updatedAt: true,
         updatedBy: true,
-        contentType: { select: { name: true, slug: true } },
+        contentType: {
+          select: {
+            name: true,
+            slug: true,
+            schemaFields: { select: { slug: true, type: true, options: true } },
+          },
+        },
       },
       orderBy: { updatedAt: "desc" },
       take: 20,
-    }),
+    }) : [],
     // Platform-wide and rarely changing — cached instead of re-scanning the
     // whole users table on every tenant's dashboard load.
     withCache("super-admin-ids", () => db.user.findMany({ where: { role: "super_admin" }, select: { id: true } }), 300),
@@ -76,23 +123,16 @@ export default async function CMSDashboardPage({
     .filter(e => !e.updatedBy || !superAdminIds.has(e.updatedBy))
     .slice(0, 8)
 
-  const statusMap = Object.fromEntries(
-    (entriesByStatus || []).map((g) => [g.status.toLowerCase(), g._count._all])
-  )
-
-  const totalEntries = entriesByStatus ? Object.values(statusMap).reduce((a, b) => (a as number) + (b as number), 0) : 0
+  const statusMap = new Map(entriesByStatus.map(({ status, _count }) => [status, _count._all]))
+  const totalEntries = entriesByStatus.reduce((sum, row) => sum + row._count._all, 0)
 
   const stats = {
     contentTypeCount,
     totalEntries,
     mediaCount,
-    entries: {
-      draft: statusMap["draft"] || 0,
-      in_review: statusMap["in_review"] || 0,
-      published: statusMap["published"] || 0,
-    },
     recentEntries: filteredRecentEntries.map((e) => ({
       id: e.id,
+      title: recentEntryTitle(e.id, e.data, e.contentType.schemaFields),
       status: e.status,
       contentType: e.contentType.name,
       contentTypeSlug: e.contentType.slug,
@@ -187,9 +227,9 @@ export default async function CMSDashboardPage({
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-foreground truncate">{entry.contentType}</p>
+                        <p className="text-xs font-bold text-foreground truncate">{entry.title}</p>
                         <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                          Diperbarui {new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}
+                          {entry.contentType} · {new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
                         </p>
                       </div>
                     </div>
@@ -202,11 +242,11 @@ export default async function CMSDashboardPage({
                       )}>
                         {entry.status}
                       </Badge>
-                      <Link href={`/dashboard/${tenantSlug}/cms/content/${entry.contentTypeSlug}`}>
-                        <Button variant="ghost" size="icon" className="rounded-lg h-7 w-7 text-muted-foreground hover:text-foreground">
+                      <Button asChild variant="ghost" size="icon" className="rounded-lg h-7 w-7 text-muted-foreground hover:text-foreground">
+                        <Link href={`/dashboard/${tenantSlug}/cms/content/${entry.contentTypeSlug}/edit/${entry.id}`} aria-label={`Buka ${entry.title}`}>
                           <ArrowRight className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -222,19 +262,18 @@ export default async function CMSDashboardPage({
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Alur Kerja</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 p-4 pt-3">
-              {[
-                { label: "Draft", count: stats.entries.draft, dot: "bg-muted-foreground/60" },
-                { label: "In Review", count: stats.entries.in_review, dot: "bg-amber-500" },
-                { label: "Published", count: stats.entries.published, dot: "bg-emerald-500" },
-              ].map((w) => (
-                <div key={w.label} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", w.dot)} />
-                    <span className="text-xs font-semibold text-muted-foreground">{w.label}</span>
+              {CONTENT_STATUSES.map((status) => {
+                const [label, dot] = workflowLabels[status]
+                return (
+                  <div key={status} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-2 h-2 rounded-full", dot)} />
+                      <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                    </div>
+                    <span className="text-xs font-black text-foreground">{statusMap.get(status) ?? 0}</span>
                   </div>
-                  <span className="text-xs font-black text-foreground">{w.count}</span>
-                </div>
-              ))}
+                )
+              })}
             </CardContent>
           </Card>
 

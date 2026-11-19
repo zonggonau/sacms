@@ -7,6 +7,7 @@ import { getDynamicAccountPrices } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
+import { resolveYearlyPrice } from "@/lib/billing/plan-price"
 import { STORAGE_QUOTA_TYPE, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
 
 /**
@@ -146,12 +147,12 @@ export async function POST(request: NextRequest) {
         const addon = workspacePlan ? null : await getAddon(planId)
 
         if (workspacePlan) {
-          const yearlyPrice = workspacePlan.yearlyPrice ?? workspacePlan.price * 10
+          const yearlyPrice = resolveYearlyPrice(workspacePlan.price, workspacePlan.yearlyPrice)
           amount = interval === "year" ? yearlyPrice : workspacePlan.price
           planName = workspacePlan.name
         } else if (addon) {
           const monthlyPrice = addon.price ?? 0
-          const yearlyPrice = addon.yearlyPrice ?? monthlyPrice * 10
+          const yearlyPrice = resolveYearlyPrice(monthlyPrice, addon.yearlyPrice)
           amount = interval === "year" ? yearlyPrice : monthlyPrice
           planName = addon.name
           isAddon = true
@@ -160,7 +161,7 @@ export async function POST(request: NextRequest) {
         } else {
           const { PLAN_PRICES } = await import("@/lib/midtrans")
           const base = PLAN_PRICES[planId] ?? 0
-          amount = interval === "year" ? base * 10 : base
+          amount = interval === "year" ? resolveYearlyPrice(base) : base
           planName = planId
         }
       }

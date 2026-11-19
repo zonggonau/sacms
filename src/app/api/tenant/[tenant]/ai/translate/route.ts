@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server"
-import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { z } from "zod"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+
+const localeSchema = z.string().regex(/^[a-zA-Z][a-zA-Z0-9-]{0,19}$/)
+const translationSchema = z.object({
+  sourceLocale: localeSchema.default("id"),
+  targetLocale: localeSchema.default("en"),
+  data: z.record(z.string(), z.unknown()),
+})
 
 export const POST = withStaffAuth(async (request, _context, { access }) => {
-    const body = await request.json()
-    const { sourceLocale = "id", targetLocale = "en", data = {} } = body
+    const body = await readJson(request, translationSchema)
+    if (!body.ok) return body.response
 
-    if (!data || Object.keys(data).length === 0) {
+    const { sourceLocale, targetLocale, data } = body.data
+    const fields = Object.keys(data)
+    if (fields.length === 0) {
       return apiError("validation", { message: "Data konten kosong" })
     }
 
@@ -30,31 +40,20 @@ ${JSON.stringify(data, null, 2)}`
         action: "translate",
       })
 
-      const translatedData = JSON.parse(result.text)
+      const translatedData: unknown = JSON.parse(result.text)
+      const parsed = z.record(z.string(), z.unknown()).safeParse(translatedData)
+      if (!parsed.success || fields.some((field) => !Object.hasOwn(parsed.data, field) || typeof parsed.data[field] !== typeof data[field])) {
+        return apiError("internal", { status: 502, message: "Format hasil terjemahan AI tidak sesuai dengan kolom yang diminta." })
+      }
 
       return NextResponse.json({
         success: true,
-        translatedData,
+        translatedData: Object.fromEntries(fields.map((field) => [field, parsed.data[field]])),
         sourceLocale,
         targetLocale,
       })
-    } catch (err: any) {
-      // Vercel AI Gateway not configured (or a transient failure) — fall
-      // back to a simulated translation instead of a hard error, same as
-      // before this route spoke directly to a provider.
-      const simulated: Record<string, any> = { ...data }
-      for (const [key, value] of Object.entries(data)) {
-        if (typeof value === "string" && value.length > 0) {
-          simulated[key] = `[${targetLocale.toUpperCase()}] ${value}`
-        }
-      }
-      return NextResponse.json({
-        success: true,
-        simulated: true,
-        translatedData: simulated,
-        notice: err.message?.includes("belum dikonfigurasi")
-          ? "Vercel AI Gateway belum disetel, menggunakan simulasi translasi."
-          : "Gagal menghubungi AI Gateway, menggunakan simulasi translasi.",
-      })
+    } catch (error) {
+      if (error instanceof Error && "status" in error && error.status === 429) throw error
+      return apiError("internal", { status: 502, message: "Layanan terjemahan AI gagal. Coba lagi." })
     }
 }, { minRole: "editor" })

@@ -1,5 +1,6 @@
 import path from 'path'
 import fs from 'fs'
+import { TenantDatabaseUnavailableError } from './tenant-database-error'
 
 // Explicitly resolve Prisma Query Engine library path on Windows to avoid runtime lookup errors
 if (process.platform === 'win32' && !process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
@@ -109,39 +110,25 @@ const TENANT_CONNECTION_LIMIT = (() => {
 })()
 
 /**
- * Track hosts that failed to connect, so subsequent requests don't block
- * on long connection timeouts and immediately fallback to shared master DB.
+ * Cool down a failed dedicated connection without routing its requests to
+ * another database. Workspaces sharing the same configured connection share
+ * its cooldown.
  */
-const unreachableHosts = new Map<string, number>()
-
-function isHostKnownUnreachable(rawDbUrl: string): boolean {
-  try {
-    const u = new URL(rawDbUrl)
-    const expiry = unreachableHosts.get(u.host)
-    if (expiry && Date.now() < expiry) {
-      return true
-    }
-  } catch {}
-  return false
-}
-
-function markHostUnreachable(rawDbUrl: string, ttlMs = 60_000): void {
-  try {
-    const u = new URL(rawDbUrl)
-    unreachableHosts.set(u.host, Date.now() + ttlMs)
-  } catch {}
-}
+const unavailableConnections = new Map<string, number>()
+const DATABASE_RETRY_MS = 30_000
 
 function isConnectionError(error: any): boolean {
   if (!error) return false
   const msg = String(error.message || '')
   const name = String(error.name || '')
-  const code = String(error.code || '')
+  const code = String(error.code || error.errorCode || '')
   return (
     name === 'PrismaClientInitializationError' ||
     code === 'P1001' || // Can't reach database server
     code === 'P1002' || // The database server timed out
     code === 'P1003' || // Database does not exist
+    code === 'P1017' || // Connection closed by the server
+    code === 'P2024' || // Connection pool exhausted
     msg.includes("Can't reach database server") ||
     msg.includes('ETIMEDOUT') ||
     msg.includes('ECONNREFUSED') ||
@@ -185,99 +172,16 @@ function evictLruTenantClients(): void {
 }
 
 /**
- * Wraps dedicated PrismaClient in a Proxy that catches connection failures
- * and automatically falls back to the shared master database (db).
- */
-function createResilientTenantClient(rawDbUrl: string, slug: string, client: PrismaClient): PrismaClient {
-  return new Proxy(client, {
-    get(target, prop, receiver) {
-      const origProp = Reflect.get(target, prop, receiver)
-
-      // Direct functions on client ($queryRaw, $executeRaw, etc.)
-      if (typeof origProp === 'function') {
-        return (...args: any[]) => {
-          try {
-            const result = origProp.apply(target, args)
-            if (result && typeof result.then === 'function') {
-              return result.catch((err: any) => {
-                if (isConnectionError(err)) {
-                  markHostUnreachable(rawDbUrl)
-                  console.warn(`[Database] Dedicated DB connection failed for tenant ${slug}. Falling back to master DB: ${err.message}`)
-                  const fallbackFn = (db as any)[prop]
-                  if (typeof fallbackFn === 'function') {
-                    return fallbackFn.apply(db, args)
-                  }
-                }
-                throw err
-              })
-            }
-            return result
-          } catch (err: any) {
-            if (isConnectionError(err)) {
-              markHostUnreachable(rawDbUrl)
-              console.warn(`[Database] Dedicated DB connection failed for tenant ${slug}. Falling back to master DB: ${err.message}`)
-              const fallbackFn = (db as any)[prop]
-              if (typeof fallbackFn === 'function') {
-                return fallbackFn.apply(db, args)
-              }
-            }
-            throw err
-          }
-        }
-      }
-
-      // Model delegates (contentType, contentEntry, etc.)
-      if (origProp && typeof origProp === 'object') {
-        return new Proxy(origProp, {
-          get(modelTarget, modelProp, modelReceiver) {
-            const origModelProp = Reflect.get(modelTarget, modelProp, modelReceiver)
-            if (typeof origModelProp === 'function') {
-              return (...args: any[]) => {
-                try {
-                  const result = origModelProp.apply(modelTarget, args)
-                  if (result && typeof result.then === 'function') {
-                    return result.catch((err: any) => {
-                      if (isConnectionError(err)) {
-                        markHostUnreachable(rawDbUrl)
-                        console.warn(`[Database] Dedicated DB error on ${String(prop)}.${String(modelProp)} for tenant ${slug}. Falling back to master DB: ${err.message}`)
-                        const fallbackModel = (db as any)[prop]
-                        if (fallbackModel && typeof fallbackModel[modelProp] === 'function') {
-                          return fallbackModel[modelProp](...args)
-                        }
-                      }
-                      throw err
-                    })
-                  }
-                  return result
-                } catch (err: any) {
-                  if (isConnectionError(err)) {
-                    markHostUnreachable(rawDbUrl)
-                    console.warn(`[Database] Dedicated DB error on ${String(prop)}.${String(modelProp)} for tenant ${slug}. Falling back to master DB: ${err.message}`)
-                    const fallbackModel = (db as any)[prop]
-                    if (fallbackModel && typeof fallbackModel[modelProp] === 'function') {
-                      return fallbackModel[modelProp](...args)
-                    }
-                  }
-                  throw err
-                }
-              }
-            }
-            return origModelProp
-          }
-        })
-      }
-
-      return origProp
-    }
-  })
-}
-
-/**
  * Get (or create) the pooled Prisma client for a dedicated tenant database URL.
  * Enforces the LRU cap and injects a small connection_limit.
  */
 function acquireTenantClient(rawDbUrl: string, slug: string, forceFresh: boolean): PrismaClient {
   const dbUrl = withConnectionLimit(rawDbUrl, TENANT_CONNECTION_LIMIT)
+  const unavailableUntil = unavailableConnections.get(dbUrl)
+  if (!forceFresh && unavailableUntil && unavailableUntil > Date.now()) {
+    throw new TenantDatabaseUnavailableError()
+  }
+  unavailableConnections.delete(dbUrl)
 
   if (!forceFresh) {
     const existing = tenantClients.get(dbUrl)
@@ -290,11 +194,42 @@ function acquireTenantClient(rawDbUrl: string, slug: string, forceFresh: boolean
   evictLruTenantClients()
 
   console.log(`[Database] Initializing dedicated DB client for tenant: ${slug}`)
+  const handleConnectionError = (error: unknown): never => {
+    if (!isConnectionError(error)) throw error
+    unavailableConnections.set(dbUrl, Date.now() + DATABASE_RETRY_MS)
+    console.warn(`[Database] Dedicated database connection unavailable (workspace ${slug}).`)
+    throw new TenantDatabaseUnavailableError()
+  }
   const rawClient = new PrismaClient({
     datasources: { db: { url: dbUrl } },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
-  const client = createResilientTenantClient(rawDbUrl, slug, rawClient)
+  const scopedClient = rawClient.$extends({
+    query: {
+      async $allOperations({ args, query }) {
+        try {
+          return await query(args)
+        } catch (error) {
+          return handleConnectionError(error)
+        }
+      },
+    },
+  })
+  // A database failure can also occur while opening the transaction, before
+  // the query extension runs. Preserve PrismaPromise inputs for batch transactions.
+  const client = new Proxy(scopedClient, {
+    get(target, property, receiver) {
+      const value = Reflect.get(target, property, receiver)
+      if (property !== '$transaction' || typeof value !== 'function') return value
+      return async (...args: unknown[]) => {
+        try {
+          return await Reflect.apply(value, target, args)
+        } catch (error) {
+          return handleConnectionError(error)
+        }
+      }
+    },
+  }) as unknown as PrismaClient
   tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
   return client
 }
@@ -310,7 +245,11 @@ if (!globalForPrisma.cleanupInterval) {
         tenantClients.delete(dbUrl)
       }
     }
+    for (const [dbUrl, expiry] of unavailableConnections) {
+      if (expiry <= now) unavailableConnections.delete(dbUrl)
+    }
   }, 5 * 60 * 1000) // Check every 5 minutes
+  globalForPrisma.cleanupInterval.unref()
 }
 
 interface OwnerMasterInfra {
@@ -385,17 +324,10 @@ export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMaster
   }
 
   let result: OwnerMasterInfra = { databaseUrl: null, storageConfig: null }
-  try {
-    // Per-workspace opt-out — see Tenant.useOwnerInfra. An owner with
-    // BYODB/BYOS configured can still keep individual workspaces on
-    // SaCMS's own dedicated DB / Enterprise storage pool instead of
-    // forcing every owned tenant onto their own infra automatically.
-    const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { useOwnerInfra: true } })
-    if (tenant?.useOwnerInfra === false) {
-      ownerMasterInfraCache.set(tenantId, { ...result, expiresAt: Date.now() + MASTER_INFRA_CACHE_MS })
-      return result
-    }
-
+  const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { useOwnerInfra: true } })
+  // Check the stored opt-out before resolving the owner's database or storage.
+  // A failed metadata lookup must not be cached as an opt-out.
+  if (tenant && tenant.useOwnerInfra !== false) {
     const owner = await db.tenantMember.findFirst({ where: { tenantId, role: 'owner' }, select: { userId: true } })
     if (owner) {
       const allowed = await isOwnerEligibleForByoInfra(owner.userId)
@@ -414,8 +346,6 @@ export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMaster
         }
       }
     }
-  } catch {
-    // Never block a tenant request over this — treat as "no master override".
   }
 
   ownerMasterInfraCache.set(tenantId, { ...result, expiresAt: Date.now() + MASTER_INFRA_CACHE_MS })
@@ -432,75 +362,39 @@ export async function invalidateOwnerMasterInfraCache(ownerId: string): Promise<
   }
 }
 
-export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): Promise<PrismaClient> {
-  const tenant = await db.tenant.findFirst({
-    where: {
-      OR: [
-        { id: tenantIdOrSlug },
-        { slug: tenantIdOrSlug }
-      ]
-    },
-    select: { id: true, databaseUrl: true, slug: true }
-  })
+/** The same data-store selection used by request and release tooling. */
+export async function getTenantDatabaseUrl(tenant: { id: string; databaseUrl: string | null }): Promise<string | null> {
+  return tenant.databaseUrl || (await getOwnerMasterInfra(tenant.id)).databaseUrl
+}
 
-  if (!tenant) {
-    return db
-  }
-
-  let dedicatedUrl = tenant.databaseUrl
-  if (!dedicatedUrl) {
-    const master = await getOwnerMasterInfra(tenant.id)
-    dedicatedUrl = master.databaseUrl
-  }
-  if (!dedicatedUrl) {
-    return db
-  }
-
-  if (isHostKnownUnreachable(dedicatedUrl)) {
-    console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
-    return db
-  }
-
+async function resolveTenantClient(
+  tenant: { id: string; slug: string; databaseUrl: string | null } | null,
+  forceFresh: boolean,
+): Promise<PrismaClient> {
+  if (!tenant) return db
   try {
-    return acquireTenantClient(dedicatedUrl, tenant.slug, forceFresh)
+    const dedicatedUrl = await getTenantDatabaseUrl(tenant)
+    return dedicatedUrl ? acquireTenantClient(dedicatedUrl, tenant.slug, forceFresh) : db
   } catch (error) {
-    console.error(`[Database] Failed to initialize dedicated DB for tenant ${tenant.slug}:`, error)
-    return db
+    if (error instanceof TenantDatabaseUnavailableError) throw error
+    console.error(`[Database] Could not resolve data database (workspace ${tenant.slug}).`)
+    throw new TenantDatabaseUnavailableError()
   }
 }
 
-export async function getTenantDbById(tenantId: string | null | undefined, forceFresh = false): Promise<PrismaClient> {
-  if (!tenantId) {
-    return db
-  }
+export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): Promise<PrismaClient> {
+  const tenant = await db.tenant.findFirst({
+    where: { OR: [{ id: tenantIdOrSlug }, { slug: tenantIdOrSlug }] },
+    select: { id: true, databaseUrl: true, slug: true },
+  })
+  return resolveTenantClient(tenant, forceFresh)
+}
 
+export async function getTenantDbById(tenantId: string | null | undefined, forceFresh = false): Promise<PrismaClient> {
+  if (!tenantId) return db
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId },
-    select: { databaseUrl: true, slug: true }
+    select: { id: true, databaseUrl: true, slug: true },
   })
-
-  if (!tenant) {
-    return db
-  }
-
-  let dedicatedUrl = tenant.databaseUrl
-  if (!dedicatedUrl) {
-    const master = await getOwnerMasterInfra(tenantId)
-    dedicatedUrl = master.databaseUrl
-  }
-  if (!dedicatedUrl) {
-    return db
-  }
-
-  if (isHostKnownUnreachable(dedicatedUrl)) {
-    console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
-    return db
-  }
-
-  try {
-    return acquireTenantClient(dedicatedUrl, tenant.slug, forceFresh)
-  } catch (error) {
-    console.error(`[Database] Failed to initialize dedicated DB by ID ${tenantId}:`, error)
-    return db
-  }
+  return resolveTenantClient(tenant, forceFresh)
 }

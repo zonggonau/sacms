@@ -189,6 +189,100 @@ describe("updateContentEntry — status-only transitions must still validate the
   })
 })
 
+describe("Studio saves for a selected locale", () => {
+  const updatedAt = new Date("2025-01-01T00:00:00Z")
+  const savedEntry = {
+    id: "entry-en",
+    documentId: "entry-en",
+    contentTypeId: "ct1",
+    tenantId: "t1",
+    locale: "en",
+    status: "PUBLISHED",
+    data: { title: "Original" },
+    updatedAt,
+  }
+  const actor = { kind: "staff", role: "owner", userId: "editor" } as const
+
+  it("saves with the selected row's timestamp and preserves publication when status is omitted", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 })
+    const persisted = { ...savedEntry, data: { title: "Edited" } }
+    const client = makeClient({
+      contentEntry: { findFirst: vi.fn().mockResolvedValue(savedEntry) },
+      $transaction: vi.fn(async (run) => run({
+        contentEntry: { updateMany, findUnique: vi.fn().mockResolvedValue(persisted) },
+        contentVersion: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      })),
+    })
+
+    const result = await updateContentEntry(ctx(client), actor, {
+      contentTypeSlug: "posts",
+      entryId: savedEntry.id,
+      locale: "en",
+      expectedUpdatedAt: updatedAt.toISOString(),
+      data: { title: "Edited" },
+    })
+
+    expect(result).toEqual({ ok: true, data: persisted })
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: savedEntry.id, updatedAt, deletedAt: null },
+      data: { updatedBy: "editor", data: { title: "Edited" } },
+    })
+  })
+
+  it("does not snapshot or save when another writer updates the row before the guarded write", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 0 })
+    const createVersion = vi.fn()
+    const client = makeClient({
+      contentEntry: { findFirst: vi.fn().mockResolvedValue(savedEntry) },
+      $transaction: vi.fn(async (run) => run({
+        contentEntry: { updateMany },
+        contentVersion: { create: createVersion },
+      })),
+    })
+
+    const result = await updateContentEntry(ctx(client), actor, {
+      contentTypeSlug: "posts",
+      entryId: savedEntry.id,
+      locale: "en",
+      expectedUpdatedAt: updatedAt,
+      data: { title: "Edited" },
+    })
+
+    expect(result).toMatchObject({ ok: false, code: "conflict" })
+    expect(createVersion).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite a new translation created before taking the document lock", async () => {
+    const create = vi.fn()
+    const lock = vi.fn()
+    const findTranslation = vi.fn().mockResolvedValue({ id: "entry-id" })
+    const client = makeClient({
+      tenantLocale: { findMany: vi.fn().mockResolvedValue([{ locale: "en" }, { locale: "id" }]) },
+      contentEntry: { findFirst: vi.fn().mockResolvedValueOnce(savedEntry).mockResolvedValueOnce(null) },
+      $transaction: vi.fn(async (run) => run({
+        $queryRaw: lock,
+        contentEntry: { create, findFirst: findTranslation },
+      })),
+    })
+
+    const result = await updateContentEntry(ctx(client), actor, {
+      contentTypeSlug: "posts",
+      entryId: savedEntry.id,
+      locale: "id",
+      expectedLocaleMissing: true,
+      data: { title: "Terjemahan" },
+    })
+
+    expect(result).toMatchObject({ ok: false, code: "conflict" })
+    expect(lock).toHaveBeenCalledOnce()
+    expect(findTranslation).toHaveBeenCalledWith({
+      where: { documentId: savedEntry.documentId, locale: "id", contentTypeId: "ct1", tenantId: "t1", deletedAt: null },
+      select: { id: true },
+    })
+    expect(create).not.toHaveBeenCalled()
+  })
+})
+
 describe("deleteContentEntry", () => {
   beforeEach(() => vi.clearAllMocks())
 

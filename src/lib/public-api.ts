@@ -2,70 +2,9 @@ import { cache } from "react"
 import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
 import { db } from "@/lib/database"
 
-export const getLandingData = cache(async function getLandingData() {
+async function getLandingPricing() {
+  const defaults = DEFAULT_LANDING_PAGE_DATA
   try {
-    // Platform-level content (the "sacms-landing-page" Single Type and the
-    // "posts" Collection) now lives entirely at tenantId: null — it has no
-    // workspace owner at all since the former "SaCMS Global" tenant was
-    // retired. Both the schema rows AND their data assignment are null here,
-    // unlike before when only the schema was null and the data assignment
-    // was scoped to that tenant's id.
-    const singleTypes = await db.singleType.findMany({
-      where: { tenantId: null },
-      include: {
-        tenants: {
-          where: { tenantId: null }
-        }
-      }
-    })
-
-    const singleTypesData = singleTypes.reduce((acc, st) => {
-      let data = st.tenants[0]?.data || {}
-      if (typeof data === 'string') {
-        try { data = JSON.parse(data) } catch (e) {}
-      }
-      acc[st.slug] = data
-      return acc
-    }, {} as Record<string, any>)
-
-    const contentTypes = await db.contentType.findMany({
-      where: { tenantId: null }
-    })
-
-    // Landing page teaser: exactly 6 (3 cards on top, 3 below, on the
-    // 3-column grid TemplateGallery renders) — the full catalog is at
-    // /templates (see getPublishedWebsiteTemplates below), linked from a
-    // "Lihat Semua Template" CTA under this teaser.
-    const websiteTemplateRows = await db.websiteTemplate.findMany({
-      where: { published: true },
-      select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
-      orderBy: { createdAt: "desc" },
-      take: 6,
-    })
-
-    const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: null, deletedAt: null }
-    })
-
-    const collectionsData = contentTypes.reduce((acc, ct) => {
-      const entries = contentEntries.filter(e => e.contentTypeId === ct.id).map(e => {
-        let data = e.data;
-        if (typeof data === 'string') {
-          try { data = JSON.parse(data) } catch (e) {}
-        }
-        return data;
-      })
-      acc[ct.slug] = entries
-      return acc
-    }, {} as Record<string, any>)
-
-    // Mapping format baru: "sacms-landing-page" berisi object komplit
-    const lp = singleTypesData?.["sacms-landing-page"] || {};
-
-    // Pricing & addons now live in dedicated tables (src/lib/pricing.ts), not
-    // CMS collections — mapped back into the same CMS-shaped field names
-    // (plan_slug, max_workspaces, is_popular, ...) the landing-page
-    // components already consume, so no downstream component changes.
     const { getAccountPlans, getWorkspacePlans, getAddons } = await import("@/lib/pricing")
     const [accountPlanRows, workspacePlanRows, addonRows] = await Promise.all([
       getAccountPlans(),
@@ -134,6 +73,83 @@ export const getLandingData = cache(async function getLandingData() {
       billing_period: a.billingPeriod || "",
       features: Array.isArray(a.features) ? a.features : [],
     }));
+    return {
+      pricingAccounts: pricingAccounts.length > 0 ? pricingAccounts : (defaults["sacms-account-pricing"] || []),
+      pricingWorkspaces,
+      addons: addons.length > 0 ? addons : (defaults["sacms-addons"] || []),
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+      console.warn("[LandingPricing] Catalog lookup failed:", error)
+    }
+    return {
+      pricingAccounts: [],
+      pricingWorkspaces: defaults["sacms-workspace-pricing"] || [],
+      addons: defaults["sacms-addons"] || [],
+    }
+  }
+}
+
+export const getLandingData = cache(async function getLandingData() {
+  const pricing = getLandingPricing()
+  try {
+    // Platform-level content (the "sacms-landing-page" Single Type and the
+    // "posts" Collection) now lives entirely at tenantId: null — it has no
+    // workspace owner at all since the former "SaCMS Global" tenant was
+    // retired. Both the schema rows AND their data assignment are null here,
+    // unlike before when only the schema was null and the data assignment
+    // was scoped to that tenant's id.
+    const singleTypes = await db.singleType.findMany({
+      where: { tenantId: null },
+      include: {
+        tenants: {
+          where: { tenantId: null }
+        }
+      }
+    })
+
+    const singleTypesData = singleTypes.reduce((acc, st) => {
+      let data = st.tenants[0]?.data || {}
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data) } catch (e) {}
+      }
+      acc[st.slug] = data
+      return acc
+    }, {} as Record<string, any>)
+
+    const contentTypes = await db.contentType.findMany({
+      where: { tenantId: null }
+    })
+
+    // Landing page teaser: exactly 6 (3 cards on top, 3 below, on the
+    // 3-column grid TemplateGallery renders) — the full catalog is at
+    // /templates (see getPublishedWebsiteTemplates below), linked from a
+    // "Lihat Semua Template" CTA under this teaser.
+    const websiteTemplateRows = await db.websiteTemplate.findMany({
+      where: { published: true },
+      select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    })
+
+    const contentEntries = await db.contentEntry.findMany({
+      where: { tenantId: null, deletedAt: null }
+    })
+
+    const collectionsData = contentTypes.reduce((acc, ct) => {
+      const entries = contentEntries.filter(e => e.contentTypeId === ct.id).map(e => {
+        let data = e.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) {}
+        }
+        return data;
+      })
+      acc[ct.slug] = entries
+      return acc
+    }, {} as Record<string, any>)
+
+    // Mapping format baru: "sacms-landing-page" berisi object komplit
+    const lp = singleTypesData?.["sacms-landing-page"] || {};
 
     const def = DEFAULT_LANDING_PAGE_DATA
 
@@ -147,9 +163,7 @@ export const getLandingData = cache(async function getLandingData() {
         cta_secondary: lp.hero_cta_secondary || def["sacms-hero"]?.cta_secondary || "",
       },
       features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
-      pricingAccounts: pricingAccounts.length > 0 ? pricingAccounts : (def["sacms-account-pricing"] || []),
-      pricingWorkspaces: pricingWorkspaces,
-      addons: addons.length > 0 ? addons : (def["sacms-addons"] || []),
+      ...await pricing,
       workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
       faq: (lp.faqs && lp.faqs.length > 0) ? lp.faqs : (def["sacms-faq"] || []),
       whatsapp: lp.whatsapp || def["sacms-whatsapp"] || null,
@@ -187,7 +201,7 @@ export const getLandingData = cache(async function getLandingData() {
     if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
       console.warn("[LandingData] Database query fallback:", err?.message || err)
     }
-    return getDefaultData()
+    return { ...getDefaultData(), ...await pricing }
   }
 })
 
@@ -218,9 +232,6 @@ function getDefaultData() {
   return {
     hero: landing["sacms-hero"],
     features: landing["sacms-features"],
-    addons: landing["sacms-addons"],
-    pricingAccounts: [],
-    pricingWorkspaces: landing["sacms-workspace-pricing"] || [],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],
     whatsapp: landing["sacms-whatsapp"],

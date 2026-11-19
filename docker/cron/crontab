@@ -1,4 +1,9 @@
 # min hour day month weekday — times are UTC
+# Content publishing and recovery workers.
+*/5 * * * * . /etc/cron.env; curl -fsS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/publish
+*/2 * * * * . /etc/cron.env; curl -fsS --max-time 110 -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/webhook-retry
+*/5 * * * * . /etc/cron.env; curl -fsS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/payment-fulfillment
+15 3 * * * . /etc/cron.env; curl -fsS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/cleanup-logs
 # 01:00 UTC = 08:00 WIB: storage add-on and managed database/storage reminders and expiry
 0 1 * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/billing-reminders
 # Hourly: re-validate the enterprise license (offline RSA+expiry, online if
@@ -8,11 +13,5 @@
 # 02:00 UTC daily: hard-delete content entries that have sat in the trash
 # past their restore window (TRASH_RESTORE_WINDOW_DAYS, entry-service.ts).
 0 2 * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/purge-trash
-# 03:00 UTC daily: generate invoices for subscriptions whose billing period
-# has ended. Was never actually wired into this crontab before — the admin
-# UI's manual "Jalankan Siklus Tagihan" button was the only intended
-# trigger, and it didn't work either (see generate-invoices/route.ts) — so
-# no subscription invoice was ever created automatically. The route's own
-# skip-conditions make re-running this safe (a period already advanced
-# isn't re-billed).
-0 3 * * * . /etc/cron.env; curl -fsS -H "Authorization: Bearer $CRON_SECRET" -X POST http://app:3000/api/admin/billing/generate-invoices
+# 03:00 UTC daily: generate invoices for subscriptions whose billing period has ended.
+0 3 * * * . /etc/cron.env; curl -fsS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" http://app:3000/api/cron/generate-invoices

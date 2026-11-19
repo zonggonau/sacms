@@ -1,14 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import type { Prisma } from "@/lib/database"
 
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/tenant-access", () => ({ getTenantAccess: vi.fn() }))
 
-const { fakeTenantDb } = vi.hoisted(() => ({
+const { fakeTenantDb, fakeSetting } = vi.hoisted(() => ({
   fakeTenantDb: {
     contentType: { findFirst: vi.fn() },
     singleType: { findFirst: vi.fn() },
     component: { findFirst: vi.fn() },
+  },
+  fakeSetting: {
+    findUnique: vi.fn<() => Promise<{ value: string } | null>>(),
+    upsert: vi.fn<(args: Prisma.SettingUpsertArgs) => Promise<{ value: string }>>(),
+    updateMany: vi.fn<(args: Prisma.SettingUpdateManyArgs) => Promise<{ count: number }>>(),
+    deleteMany: vi.fn<(args?: Prisma.SettingDeleteManyArgs) => Promise<{ count: number }>>(),
   },
 }))
 
@@ -16,6 +23,8 @@ vi.mock("@/lib/database", () => ({
   db: {
     websiteTemplate: { findUnique: vi.fn() },
     tenant: { update: vi.fn().mockResolvedValue({}) },
+    setting: fakeSetting,
+    $transaction: vi.fn(),
   },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
@@ -75,6 +84,23 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     fakeTenantDb.contentType.findFirst.mockResolvedValue(null)
     fakeTenantDb.singleType.findFirst.mockResolvedValue(null)
     fakeTenantDb.component.findFirst.mockResolvedValue(null)
+    let state: string | null = null
+    fakeSetting.findUnique.mockImplementation(async () => state ? { value: state } : null)
+    fakeSetting.upsert.mockImplementation(async ({ create }) => {
+      state ??= create.value
+      return { value: state }
+    })
+    fakeSetting.updateMany.mockImplementation(async ({ where, data }) => {
+      if (state !== where?.value) return { count: 0 }
+      state = data.value as string
+      return { count: 1 }
+    })
+    fakeSetting.deleteMany.mockImplementation(async ({ where } = {}) => {
+      if (state !== where?.value) return { count: 0 }
+      state = null
+      return { count: 1 }
+    })
+    vi.mocked(db.$transaction).mockImplementation(async (run: any) => run(db))
   })
 
   it("404s when the website template doesn't exist", async () => {
@@ -117,7 +143,13 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(fakeTenantDb, "tenant1", fakeTemplate.schemaTemplate.schema)
+    expect(fakeTenantDb.singleType.findFirst).toHaveBeenCalledWith({
+      where: { tenantId: "tenant1", slug: { not: "site-settings" } },
+      select: { id: true },
+    })
+    expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(fakeTenantDb, "tenant1", fakeTemplate.schemaTemplate.schema, {}, {
+      mergeSingleTypeSlug: "site-settings",
+    })
     expect(deployTenantFrontend).toHaveBeenCalledWith(
       "tenant1",
       "acme",
@@ -134,13 +166,18 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     })
   })
 
-  it("still reports success even if persisting sourceWebsiteTemplateId fails — informational only, never gates the apply", async () => {
+  it("resumes deployment after a failed attempt without reimporting the schema", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
     vi.mocked(isTenantPlanPaid).mockReturnValue(true)
-    vi.mocked(db.tenant.update).mockRejectedValueOnce(new Error("db hiccup"))
+    vi.mocked(deployTenantFrontend).mockRejectedValueOnce(new Error("hosting temporarily unavailable"))
 
-    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
-    expect(res.status).toBe(200)
+    const first = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(first.status).toBe(500)
+    fakeTenantDb.contentType.findFirst.mockResolvedValue({ id: "imported-ct" })
+    const retry = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(retry.status).toBe(200)
+    expect(materializeSchemaIntoTenant).toHaveBeenCalledTimes(1)
+    expect(deployTenantFrontend).toHaveBeenCalledTimes(2)
   })
 
   it("merges the template's resolved env vars into the Environment tab BEFORE deploying", async () => {

@@ -86,6 +86,7 @@ export async function materializeSchemaIntoTenant(
   tenantId: string,
   schema: SchemaBlob,
   extraData: Record<string, unknown> = {},
+  options: { mergeSingleTypeSlug?: string } = {},
 ): Promise<{ imported: number }> {
   return tenantDb.$transaction(async (tx) => {
     let imported = 0
@@ -169,7 +170,30 @@ export async function materializeSchemaIntoTenant(
     for (const st of schema.singleTypes || []) {
       if (!st.slug || !st.name) continue
       const exists = await tx.singleType.findFirst({ where: { slug: st.slug, tenantId } })
-      if (exists) continue
+      if (exists) {
+        if (st.slug === options.mergeSingleTypeSlug) {
+          const existing = await tx.schemaField.findMany({
+            where: { singleTypeId: exists.id },
+            select: { slug: true, type: true, order: true },
+          })
+          const bySlug = new Map(existing.map((field) => [field.slug, field]))
+          const fields = fieldsToCreateInput(st.fields)
+          for (const field of fields) {
+            const prior = bySlug.get(field.slug)
+            if (prior && prior.type !== field.type) {
+              throw new Error(`Field "${field.slug}" in ${st.slug} conflicts with the existing workspace setting.`)
+            }
+          }
+          const missing = fields.filter((field) => !bySlug.has(field.slug))
+          if (missing.length) {
+            const nextOrder = Math.max(-1, ...existing.map((field) => field.order)) + 1
+            await tx.schemaField.createMany({
+              data: missing.map((field, index) => ({ ...field, order: nextOrder + index, singleTypeId: exists.id })),
+            })
+          }
+        }
+        continue
+      }
       await tx.singleType.create({
         data: {
           tenantId,

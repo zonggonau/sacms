@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -179,7 +180,10 @@ export function SchemaGeneratorClient({
                 tenantSlug={tenantSlug}
                 isGlobal={isGlobal}
                 currentRole={currentRole}
-                isWorkspaceEmpty={schema.contentTypes.length + schema.singleTypes.length + schema.components.length === 0}
+                isWorkspaceEmpty={
+                  schema.contentTypes.length === 0 && schema.components.length === 0 &&
+                  schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)
+                }
                 onApplied={() => {
                   setActiveTab("diagram")
                   setRefreshKey((k) => k + 1)

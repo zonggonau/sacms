@@ -167,7 +167,7 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
 }
 
 import { getPaymentProvider } from "@/lib/payment"
-import { applyPaymentOutcome } from "@/lib/billing/payment-success"
+import { applyPaymentOutcome, isPaymentAwaitingFulfillment, paymentStatusForCheckout } from "@/lib/billing/payment-success"
 
 export async function checkTransactionStatusAction(orderId: string) {
   try {
@@ -202,7 +202,11 @@ export async function checkTransactionStatusAction(orderId: string) {
     }
 
     if (transaction.status === "success") {
-      return { success: true, status: "success", message: "Already paid" }
+      if (isPaymentAwaitingFulfillment(transaction)) {
+        await applyPaymentOutcome(orderId, "success")
+      }
+      const payment = await db.paymentTransaction.findUniqueOrThrow({ where: { id: transaction.id } })
+      return { success: true, status: paymentStatusForCheckout(payment) }
     }
 
     const provider = getPaymentProvider()
@@ -222,14 +226,15 @@ export async function checkTransactionStatusAction(orderId: string) {
       } else {
         // Still pending on the provider's side — just mirror the raw status,
         // no fulfillment side effects yet.
-        await db.paymentTransaction.update({
-          where: { id: transaction.id },
+        await db.paymentTransaction.updateMany({
+          where: { id: transaction.id, status: { notIn: ["success", "failed"] } },
           data: { status: result.status, paymentType: result.paymentType, transactionId: result.transactionId },
         })
       }
     }
 
-    return { success: true, status: result.status }
+    const payment = await db.paymentTransaction.findUniqueOrThrow({ where: { id: transaction.id } })
+    return { success: true, status: paymentStatusForCheckout(payment) }
   } catch (error: any) {
     console.error("Error checking transaction status:", error)
     return { success: false, error: error.message || "Failed to check status" }

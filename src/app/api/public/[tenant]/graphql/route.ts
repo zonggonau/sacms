@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import {
-  graphql, buildSchema, parse, validate, specifiedRules,
+  buildSchema, execute, getOperationAST, parse, validate, specifiedRules,
   NoSchemaIntrospectionCustomRule, GraphQLError,
   type ValidationRule, type ASTNode,
 } from "graphql"
@@ -56,12 +56,11 @@ const breadthLimitRule: ValidationRule = (context) => ({
 })
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
-import { buildDynamicTypeDefs, buildDynamicResolvers } from "@/lib/graphql-schema"
+import { buildTenantGraphQL } from "@/lib/graphql-schema"
 import { validateBody } from "@/lib/validate"
 import { graphqlRequestSchema } from "@/lib/validations"
 import { logApiRequest } from "@/lib/monitoring"
-import DataLoader from "dataloader"
-import { getCache, setCache } from "@/lib/cache"
+import { getCache, invalidatePattern, setCache } from "@/lib/cache"
 import { createHash } from "crypto"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -91,8 +90,10 @@ export async function POST(
   try {
     const { tenant: tenantSlug } = await params
     resolvedTenantId = tenantSlug
+    let resolvedTenantSlug = tenantSlug
 
     let allowMutations = false
+    let staff: { role: string; userId: string } | undefined
     let rateLimitResult = { success: true, limit: 100, remaining: 99 }
     let apiTokenId: string | null = null
     let isApiKey = false
@@ -158,6 +159,7 @@ export async function POST(
       rateLimitResult = { success: limitRes.success, limit: limitRes.limit ?? 100, remaining: limitRes.remaining ?? 99 }
 
       resolvedTenantId = tenantId
+      resolvedTenantSlug = tenantSlugFromDb ?? tenantSlug
 
       // Verify tenant matches (check both ID and Slug)
       const isMatchingTenant = tenantId === tenantSlug || tenantSlugFromDb === tenantSlug
@@ -196,6 +198,8 @@ export async function POST(
       }
 
       resolvedTenantId = access.tenantId
+      resolvedTenantSlug = access.tenant.slug
+      staff = { role: access.role, userId: access.userId }
       // Mirrors the REST/server-action write gate (checkPermission against
       // content.update) instead of hardcoding role names — editor already
       // holds unrestricted CONTENT_UPDATE there, so it shouldn't be the only
@@ -222,7 +226,7 @@ export async function POST(
         { status: 400 }
       ))
     }
-    const { query, variables } = validationResult.data
+    const { query, variables, operationName } = validationResult.data
 
     if (!resolvedTenantId) {
       return logResponse(NextResponse.json({ errors: [{ message: "Tenant ID is missing" }] }, { status: 400 }))
@@ -237,16 +241,6 @@ export async function POST(
       ))
     }
 
-    // Build dynamic schema for this tenant using the correct DB client
-    const { getTenantDb } = await import("@/lib/database")
-    const tenantDb = await getTenantDb(resolvedTenantId)
-
-    const typeDefs = await buildDynamicTypeDefs(resolvedTenantId, allowMutations, tenantDb)
-    const schema = buildSchema(typeDefs)
-    const resolvers = buildDynamicResolvers(resolvedTenantId, tenantDb)
-
-    // Depth limit always; disable introspection for API-token callers
-    // (workspace sessions may still introspect for the playground).
     let document
     try {
       document = parse(query)
@@ -256,8 +250,31 @@ export async function POST(
         { status: 400 },
       ))
     }
+
+    const operation = getOperationAST(document, operationName)
+    if (!operation) {
+      return logResponse(NextResponse.json(
+        { errors: [{ message: "Select a valid GraphQL operation with operationName" }] },
+        { status: 400 }
+      ))
+    }
+
+    const isMutation = operation.operation === "mutation"
+    if (isMutation && !allowMutations) {
+      return logResponse(NextResponse.json(
+        { errors: [{ message: "Mutations require a full-access API token or an authorized workspace role" }] },
+        { status: 403 }
+      ))
+    }
+
+    // Build the schema and its root functions from the same workspace assignments.
+    const { getTenantDb } = await import("@/lib/database")
+    const tenantDb = await getTenantDb(resolvedTenantId)
+    const { typeDefs, rootValue } = await buildTenantGraphQL(resolvedTenantId, { includeMutations: allowMutations, staff }, tenantDb)
+    const schema = buildSchema(typeDefs)
+
     const rules: ValidationRule[] = [...specifiedRules, depthLimitRule, breadthLimitRule]
-    if (!allowMutations) rules.push(NoSchemaIntrospectionCustomRule)
+    if (!allowMutations && !staff) rules.push(NoSchemaIntrospectionCustomRule)
     const validationErrors = validate(schema, document, rules)
     if (validationErrors.length > 0) {
       return logResponse(NextResponse.json(
@@ -266,22 +283,11 @@ export async function POST(
       ))
     }
 
-    // Check if query contains mutation and token/session doesn't allow it
-    const isMutation = /^\s*(mutation\b|mutation\s*\{)/i.test(query) || query.trim().startsWith("mutation")
-    if (isMutation && !allowMutations) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "Mutations require a full-access API token or admin workspace role" }] },
-        { status: 403 }
-      ))
-    }
+    // Full-access queries may explicitly load drafts and always read fresh data.
+    const queryHash = createHash("sha256").update(JSON.stringify([query, variables, operationName])).digest("hex")
+    const cacheKey = `graphql:${resolvedTenantId}:v2:ro:${queryHash}`
 
-    // Execute query
-    let gqlResult: any
-    // Include the caller's privilege in the key — a full-access result (draft
-    // content visible) must not be served to a read-only token.
-    const cacheKey = `graphql:${resolvedTenantId}:${allowMutations ? "rw" : "ro"}:${Buffer.from(query).toString("base64")}:${JSON.stringify(variables || {})}`
-
-    if (!isMutation) {
+    if (!allowMutations) {
       const cached = await getCache(cacheKey)
       if (cached) {
         return logResponse(NextResponse.json(cached, {
@@ -289,29 +295,27 @@ export async function POST(
             "X-RateLimit-Limit": String(rateLimitResult.limit),
             "X-RateLimit-Remaining": String(rateLimitResult.remaining),
             "X-Cache": "HIT",
-            "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+            "Cache-Control": "private, no-store",
           }
         }))
       }
     }
 
-    const entryLoader = new DataLoader(async (keys: readonly string[]) => {
-      const entries = await tenantDb.contentEntry.findMany({
-        where: { id: { in: keys as string[] }, tenantId: resolvedTenantId }
-      })
-      const entryMap = new Map(entries.map((e: any) => [e.id, e]))
-      return keys.map(k => entryMap.get(k) || null)
-    })
-
-    gqlResult = await graphql({
+    const gqlResult = await execute({
       schema,
-      source: query,
-      rootValue: isMutation ? resolvers.Mutation : resolvers.Query,
-      contextValue: { tenantId: resolvedTenantId, tenantDb, loaders: { entryLoader } },
+      document,
+      rootValue,
+      operationName,
       variableValues: variables,
     })
 
-    if (!isMutation && !gqlResult.errors) {
+    if (isMutation) {
+      // One field may have committed even when another field reports an error.
+      await Promise.all([
+        invalidatePattern(`graphql:${resolvedTenantId}:*`),
+        invalidatePattern(`public_api*:${resolvedTenantSlug}:*`),
+      ])
+    } else if (!allowMutations && !gqlResult.errors) {
       await setCache(cacheKey, gqlResult, 300)
     }
 
@@ -335,7 +339,7 @@ export async function POST(
         "X-RateLimit-Limit": String(rateLimitResult.limit),
         "X-RateLimit-Remaining": String(rateLimitResult.remaining),
         "X-Cache": "MISS",
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "Cache-Control": "private, no-store",
       },
     }))
   } catch (error) {

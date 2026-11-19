@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { triggerWebhooks } from "@/lib/webhooks"
 import { GET } from "../../src/app/api/cron/publish/route"
 
@@ -18,6 +18,7 @@ describe("Scheduled Publishing Cron API", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getTenantDbById).mockResolvedValue(db)
     process.env = { ...originalEnv, CRON_SECRET: "my_cron_secret" }
   })
 
@@ -85,23 +86,13 @@ describe("Scheduled Publishing Cron API", () => {
       },
     ]
 
-    // Mock finding scheduled entries
-    ;(db.contentEntry.findMany as any).mockResolvedValue(mockScheduledEntries)
-
-    // Mock finding tenants
     ;(db.tenant.findMany as any).mockResolvedValue([{ id: "tenant-1", slug: "tenant-1", databaseUrl: "" }])
-    
-    // Mock contentType
-    ;(db.contentType.findFirst as any).mockResolvedValue({ slug: "articles" })
-    ;(db.contentType.findUnique as any).mockResolvedValue({ slug: "articles" })
-
-    // Mock updating entries
-    ;(db.contentEntry.update as any).mockResolvedValue({})
-
-    // Mock contentVersion query and creation
-    const mockVersion = { version: 2 }
-    ;(db.contentVersion.findFirst as any).mockResolvedValue(mockVersion)
-    ;(db.contentVersion.create as any).mockResolvedValue({})
+    const dedicated = {
+      contentEntry: { findMany: vi.fn().mockResolvedValue(mockScheduledEntries), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      contentVersion: { findFirst: vi.fn().mockResolvedValue({ version: 2 }), create: vi.fn() },
+      $transaction: vi.fn((run) => run(dedicated)),
+    }
+    vi.mocked(getTenantDbById).mockResolvedValue(dedicated as unknown as typeof db)
 
     const response = await GET(request)
     expect(response.status).toBe(200)
@@ -110,8 +101,9 @@ describe("Scheduled Publishing Cron API", () => {
     expect(body.published).toBe(1)
 
     // Verify db updates were called correctly
-    expect(db.contentEntry.update).toHaveBeenCalledWith({
-      where: { id: "entry-scheduled-1" },
+    expect(db.contentType.findFirst).not.toHaveBeenCalled()
+    expect(dedicated.contentEntry.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ id: "entry-scheduled-1", tenantId: "tenant-1", status: "SCHEDULED" }),
       data: expect.objectContaining({
         status: "PUBLISHED",
         scheduledAt: null,
@@ -119,12 +111,12 @@ describe("Scheduled Publishing Cron API", () => {
     })
 
     // Verify version creation
-    expect(db.contentVersion.findFirst).toHaveBeenCalledWith({
+    expect(dedicated.contentVersion.findFirst).toHaveBeenCalledWith({
       where: { contentEntryId: "entry-scheduled-1" },
       orderBy: { version: "desc" },
     })
 
-    expect(db.contentVersion.create).toHaveBeenCalledWith({
+    expect(dedicated.contentVersion.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         contentEntryId: "entry-scheduled-1",
         version: 3,

@@ -163,16 +163,6 @@ export async function withAiRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Pro
  * call refundAiQuota so a failed generation stays free, same as before.
  */
 export async function enforceAiQuota(config: AIConfig): Promise<void> {
-  if (config.userId) {
-    const { reserveUserAiCredits } = await import("./plan-enforcement")
-    const reservation = await reserveUserAiCredits(config.userId, config.creditsCost || 1)
-    if (!reservation.allowed) {
-      const error: any = new Error(reservation.message)
-      error.status = 429
-      throw error
-    }
-  }
-
   if (config.tenantId) {
     const tenant = await db.tenant.findUnique({
       where: { id: config.tenantId },
@@ -198,6 +188,17 @@ export async function enforceAiQuota(config: AIConfig): Promise<void> {
         error.status = 429
         throw error
       }
+    }
+  }
+
+  // Nothing that can reject workspace quota comes after reserving account credit.
+  if (config.userId) {
+    const { reserveUserAiCredits } = await import("./plan-enforcement")
+    const reservation = await reserveUserAiCredits(config.userId, config.creditsCost || 1)
+    if (!reservation.allowed) {
+      const error: any = new Error(reservation.message)
+      error.status = 429
+      throw error
     }
   }
 }

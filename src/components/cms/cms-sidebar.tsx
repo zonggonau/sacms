@@ -10,13 +10,10 @@ import {
   Moon,
   Sun,
   LogOut,
-  Menu,
-  X,
   Layers,
   PenTool,
   FileText,
   Clock,
-  Code2,
   ArrowLeft,
   ArrowRight,
   Plus,
@@ -31,6 +28,7 @@ import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
+import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
 import { buildGroupTree, pruneEmptyGroups, type FlatContentTypeGroup } from "@/lib/content-type-groups"
 import { GroupNode, ContentTypeRow, type SidebarContentType } from "@/components/cms/cms-sidebar-group-node"
@@ -48,7 +46,6 @@ export function CMSSidebar({ tenantId, contentTypes = [], contentTypeGroups = []
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const href = (path: string) => `/dashboard/${tenantId}/cms${path}`
@@ -77,7 +74,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], contentTypeGroups = []
       {/* CMS Header */}
       <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} showBackBtn={canGoBack} portalBadge="Studio" />
 
-      <div className="flex-1 min-h-0 overflow-hidden py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto py-4">
         <div className="px-3 space-y-6">
           {/* General */}
           <div className="space-y-1">
@@ -271,22 +268,9 @@ export function CMSSidebar({ tenantId, contentTypes = [], contentTypeGroups = []
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/80 backdrop-blur border-border rounded-xl shadow-xs text-foreground"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
-      )}
-
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 transition-transform duration-200 md:hidden", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+      <MobilePortalMenu portal="CMS Studio" className="fixed top-3 left-3 z-40 bg-card/80 shadow-xs backdrop-blur">
         {renderSidebarContent()}
-      </aside>
+      </MobilePortalMenu>
 
       <aside className="hidden md:block w-64 shrink-0 sticky top-0 h-screen">
         {renderSidebarContent()}

@@ -4,11 +4,12 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-  Key, Webhook, Play, BookOpen, Plug,
+  Key, Webhook, Plug,
   Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight,
   Terminal, Rocket
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
+import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
 
 interface DeveloperSidebarProps {
   tenantId: string
@@ -32,8 +33,8 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
     { title: "Hosting & Infrastruktur", href: `/dashboard/${tenantId}/developer/infrastructure`, icon: Rocket },
   ]
 
-  return (
-    <div className="w-64 border-r border-border/80 bg-card shrink-0 flex flex-col justify-between h-full">
+  const navigation = (
+    <nav aria-label="Navigasi Developer" className="flex h-full flex-col justify-between border-r border-border/80 bg-card">
       <div className="overflow-y-auto">
         <NestedSidebarHeader 
           tenantId={tenantId} 
@@ -129,6 +130,16 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
           </div>
         </Link>
       </div>
-    </div>
+    </nav>
+  )
+
+  return (
+    <>
+      <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-4 py-2 md:hidden">
+        <MobilePortalMenu portal="Developer Portal">{navigation}</MobilePortalMenu>
+        <span className="text-sm font-semibold">Developer Portal</span>
+      </div>
+      <aside className="hidden w-64 shrink-0 md:block">{navigation}</aside>
+    </>
   )
 }

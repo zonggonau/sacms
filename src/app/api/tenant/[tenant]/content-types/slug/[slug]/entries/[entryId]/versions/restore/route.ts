@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { findEntryInTenant } from "@/lib/content/entry-access"
+import { invalidateContentCaches } from "@/lib/content/entry-service"
 import { z } from "zod"
 
 const RestoreSchema = z.object({ versionId: z.string().min(1) })
@@ -29,17 +30,16 @@ export const POST = withStaffAuth(
       return apiError("not_found", { message: "Target version not found" })
     }
 
-    const lastVersion = await tenantDb.contentVersion.findFirst({
-      where: { contentEntryId: entryId },
-      orderBy: { version: "desc" },
-    })
-    const newVersionNumber = (lastVersion?.version || 0) + 1
-
-    const updatedEntry = await tenantDb.$transaction(async (tx) => {
+    const { updatedEntry, newVersionNumber } = await tenantDb.$transaction(async (tx) => {
       const entry = await tx.contentEntry.update({
         where: { id: entryId },
         data: { data: targetVersion.data as any, updatedBy: session.user.id },
       })
+      const lastVersion = await tx.contentVersion.findFirst({
+        where: { contentEntryId: entryId },
+        orderBy: { version: "desc" },
+      })
+      const newVersionNumber = (lastVersion?.version || 0) + 1
       await tx.contentVersion.create({
         data: {
           contentEntryId: entryId,
@@ -51,7 +51,7 @@ export const POST = withStaffAuth(
           changeSummary: `Restored from version ${targetVersion.version}`,
         },
       })
-      return entry
+      return { updatedEntry: entry, newVersionNumber }
     })
 
     logAudit({
@@ -63,6 +63,7 @@ export const POST = withStaffAuth(
       data: { restoredFromVersion: targetVersion.version, newVersion: newVersionNumber },
     })
 
+    await invalidateContentCaches(tenantSlug, slug, access.tenantId)
     return NextResponse.json({ success: true, entry: updatedEntry })
   },
   { minRole: "editor" },

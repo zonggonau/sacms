@@ -35,8 +35,6 @@ Edge rate limiting is separate from monthly API caps:
 
 ## Getting started
 
-## Getting started
-
 ```bash
 bun install
 bun run db:generate
@@ -66,7 +64,7 @@ bun run cli migrate:fts         # Setup index PostgreSQL Full-Text Search
 # QA & Pengujian
 bun run cli qa:audit            # Audit kesehatan route & latensi real-time
 bun run cli qa:security         # Security smoke tests (SSRF, auth gates)
-bun run test                    # Jalankan test suite Vitest (307 tests 100% PASS)
+bun run test                    # Jalankan suite unit dan kontrak dengan Vitest
 
 # Operasional & Backup
 bun run cli cron:publish        # Eksekusi scheduled publishing worker
@@ -74,5 +72,5 @@ bun run cli db:backup           # Backup database harian dengan rotasi 7 hari
 ```
 
 Panduan lengkap arsitektur skrip tersedia di [scripts/README.md](./scripts/README.md).  
-Untuk deployment guide, runbook, dan spesifikasi API, rujuk ke [docs/00-README.md](./docs/00-README.md).
+Panduan rilis memuat langkah verifikasi skema dedicated dan pengujian integrasi PostgreSQL. [Panduan deployment](./docs/07-Deployment_Guide.md) · [Indeks dokumentasi](./docs/00-README.md)
 

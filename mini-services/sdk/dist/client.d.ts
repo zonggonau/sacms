@@ -115,9 +115,9 @@ export declare class QueryBuilder<T> {
      */
     select(fields: string[]): this;
     /**
-     * Select specific relations to populate. E.g. .populate(['author'])
+     * Select specific relations to populate. E.g. .populate(['author']) or .populate('*') for every relation.
      */
-    populate(fields: string[]): this;
+    populate(fields: string[] | "*"): this;
     /**
      * Sort results. E.g. .sort('createdAt:desc') or .sort('title:asc')
      */

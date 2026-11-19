@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { resolveYearlyPrice } from "@/lib/billing/plan-price"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 
 export default function CheckoutPage() {
@@ -339,7 +340,7 @@ export default function CheckoutPage() {
   const isAiPack = plan.id?.startsWith("ai_pack_") || plan.type === "ai_plan"
   const basePrice = isAiPack || plan.isTopup 
     ? plan.price 
-    : interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10) : plan.price
+    : interval === 'year' ? resolveYearlyPrice(plan.price, plan.yearlyPrice) : plan.price
   const credit = proration?.credit || 0
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)

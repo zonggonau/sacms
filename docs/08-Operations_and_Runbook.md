@@ -25,7 +25,7 @@ Dokumen ini adalah panduan *Operations Manual* untuk memulihkan layanan (Runbook
 **Gejala:** Aplikasi memunculkan `PrismaClientKnownRequestError` atau kehabisan koneksi (*Connection Pool Exhausted*).
 **Langkah Mitigasi:**
 1. Cek PostgreSQL *connection pool* (PgBouncer/Supabase dashboard).
-2. Verifikasi penggunaan koneksi database via `getTenantDb()` (pastikan tidak ada memori *leak* koneksi yang tidak terputus).
+2. Verifikasi koneksi efektif workspace, termasuk koneksi yang diwarisi dari pemilik akun. Request ke database dedicated yang gagal dihentikan pada koneksi tersebut. Endpoint tenant yang memakai handler standar mengembalikan HTTP 503 dengan `Retry-After`.
 3. Jika disk penuh, pertimbangkan *scale-up storage* atau hapus *Archive Logs*.
 4. Lakukan *restore backup* dari jam sebelumnya jika terjadi kerusakan data yang parah (via fitur *Point-in-Time Recovery* penyedia DB Anda).
 
@@ -33,8 +33,14 @@ Dokumen ini adalah panduan *Operations Manual* untuk memulihkan layanan (Runbook
 **Gejala:** *Webhook* tidak terkirim ke pelanggan (*tenant endpoint* mati).
 **Langkah Mitigasi:**
 1. Pemicu utama kegagalan Webhook otomatis ditransfer ke tabel *Dead Letter Queue (DLQ)* di DB.
-2. *Cron job* `/api/cron/webhook-retry` berjalan setiap 2 menit pada `vercel.json` saat ini dengan skema *exponential backoff*.
+2. *Cron job* `/api/cron/webhook-retry` dijadwalkan setiap 2 menit untuk Vercel dan profil `cron` di Docker, dengan skema *exponential backoff*.
 3. Periksa `WebhookLog`, `WebhookDeadLetter`, dan halaman Webhooks tenant; Sentry hanya tambahan jika dikonfigurasi.
+
+### Skenario E. Pembayaran lunas dan pesanan tertunda
+
+1. Cari ID pesanan di Admin → Billing → Transaksi dan lihat status pembayaran serta pemenuhan pesanan.
+2. Untuk pemenuhan yang tertunda, periksa log `/api/cron/payment-fulfillment`. Cron akan mencoba ulang transaksi yang manfaatnya belum diberikan. Transaksi lama tanpa penanda pemenuhan memerlukan rekonsiliasi berdasarkan invoice dan catatan manfaat.
+3. Gunakan filter **Perlu Ditinjau** untuk pesanan domain dengan hasil registrar yang belum pasti. Cocokkan nama domain dan transaksi dengan catatan registrar sebelum menyelesaikan pesanan atau menyetujui pembelian ulang.
 
 ---
 
@@ -69,6 +75,8 @@ Setiap terjadi *downtime* sistem > 10 menit atau kebocoran data, Tim DevOps haru
 
 ### 1.1. Database Backups & Restore Automation
 SaCMS menyertakan skrip otomatisasi backup dan restore berbasis `pg_dump` dengan kompresi tingkat tinggi dan rotasi otomatis 7 hari:
+
+Simpan dump dan sesi autentikasi Playwright di luar file yang dilacak Git. Sesi autentikasi lokal dibuat di `e2e/.auth/storageState.json`.
 
 **Menjalankan Backup:**
 ```bash

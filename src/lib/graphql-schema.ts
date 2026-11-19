@@ -1,48 +1,65 @@
-import { PrismaClient } from "@prisma/client"
+import type { ContentEntry, Prisma, PrismaClient, SchemaField, SingleType } from "@/lib/database"
 import { db } from "@/lib/database"
 import { processAutoSlugs } from "@/lib/slug"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { canTransition } from "@/lib/content-workflow"
+import { canTransition, canUserTransition, isWorkflowStatus } from "@/lib/content-workflow-rules"
 import { resolveContentData } from "@/lib/content-resolver"
 import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 import { snapshotVersion } from "@/lib/content/entry-service"
+import { validateContentEntry } from "@/lib/content-validations"
+import { validateDynamicContent } from "@/lib/validations/dynamic-validator"
+import { parseSingleTypeData, readSingleTypeAssignment } from "@/lib/single-type-publication"
 
-// Dynamically build GraphQL schema from content types and single types
-export async function buildDynamicTypeDefs(
-  tenantId: string, 
-  includeMutations = false,
-  _db: PrismaClient = db
-): Promise<string> {
-  // Get assigned content types with fields
-  const contentTypeAssignments = await _db.tenantContentTypeAssignment.findMany({
-    where: { tenantId, enabled: true },
-    include: {
-      contentType: {
-        include: { schemaFields: { orderBy: { order: "asc" } } },
-      },
-    },
-  })
+interface CollectionArgs {
+  page?: number
+  limit?: number
+  sort?: string
+  order?: string
+  published?: boolean
+  locale?: string
+  status?: string
+}
 
-  // Get assigned single types with fields
-  const singleTypeAssignments = await _db.tenantSingleTypeAssignment.findMany({
-    where: { tenantId, enabled: true },
-    include: {
-      singleType: {
-        include: { schemaFields: { orderBy: { order: "asc" } } },
-      },
-    },
-  })
+const collectionSortFields = new Set([
+  "id", "locale", "status", "createdAt", "updatedAt", "publishedAt", "scheduledAt", "archivedAt",
+])
+
+interface SchemaAccess {
+  includeMutations: boolean
+  staff?: { role: string; userId: string }
+}
+
+export async function buildTenantGraphQL(tenantId: string, access: SchemaAccess, client: PrismaClient = db) {
+  const { includeMutations, staff } = access
+  const [contentTypeAssignments, singleTypeAssignments] = await Promise.all([
+    client.tenantContentTypeAssignment.findMany({
+      where: { tenantId, enabled: true, contentType: { draftTemplateId: null } },
+      orderBy: { contentType: { tenantId: { sort: "desc", nulls: "last" } } },
+      include: { contentType: { include: { schemaFields: { orderBy: { order: "asc" } } } } },
+    }),
+    client.tenantSingleTypeAssignment.findMany({
+      where: { tenantId, enabled: true, singleType: { draftTemplateId: null } },
+      distinct: ["singleTypeId"],
+      orderBy: { singleType: { tenantId: { sort: "desc", nulls: "last" } } },
+      include: { singleType: { include: { schemaFields: { orderBy: { order: "asc" } } } } },
+    }),
+  ])
 
   const typeDefinitions: string[] = []
   const queryFields: string[] = []
   const mutationFields: string[] = []
-  const contentTypeSlugs: string[] = []
+  const registeredTypeNames = new Set<string>()
+  // GraphQL.js calls rootValue methods with args first. The resolver already
+  // closes over the tenant and authorization determined by the route handler.
+  const rootValue: Record<string, unknown> = {}
 
   // Generate types for each content type
   for (const assignment of contentTypeAssignments) {
     const ct = assignment.contentType
     const typeName = toPascalCase(ct.slug)
-    contentTypeSlugs.push(ct.slug)
+    const queryName = sanitizeFieldName(ct.slug)
+    if (registeredTypeNames.has(typeName)) continue
+    registeredTypeNames.add(typeName)
     const fields = ct.schemaFields
       .filter((f) => !["id", "locale", "status", "publishedAt", "createdAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
       .map((f) => `  ${sanitizeFieldName(f.slug)}: ${mapFieldTypeToGraphQL(f.type, f.required)}`)
@@ -65,9 +82,13 @@ type ${typeName}Collection {
 }`)
 
     queryFields.push(
-      `  ${sanitizeFieldName(ct.slug)}(page: Int, limit: Int, sort: String, order: String, published: Boolean, locale: String, status: String): ${typeName}Collection`,
-      `  ${sanitizeFieldName(ct.slug)}ById(id: ID!): ${typeName}`
+      `  ${queryName}(page: Int, limit: Int, sort: String, order: String, published: Boolean, locale: String, status: String): ${typeName}Collection`,
+      `  ${queryName}ById(id: ID!): ${typeName}`
     )
+    rootValue[queryName] = (args: CollectionArgs) =>
+      resolveContentCollection(tenantId, ct, args, includeMutations, client)
+    rootValue[`${queryName}ById`] = ({ id }: { id: string }) =>
+      resolveContentEntryById(tenantId, ct, id, includeMutations, client)
 
     if (includeMutations) {
       mutationFields.push(
@@ -76,6 +97,14 @@ type ${typeName}Collection {
         `  delete${typeName}(id: ID!): DeleteResult!`,
         `  publish${typeName}(id: ID!): ${typeName}`
       )
+      rootValue[`create${typeName}`] = (args: { data: unknown; locale?: string; status?: string }) =>
+        resolveMutationCreate(tenantId, ct, args, client, staff?.userId, staff?.role)
+      rootValue[`update${typeName}`] = (args: { id: string; data: unknown }) =>
+        resolveMutationUpdate(tenantId, ct, args, client, staff?.userId)
+      rootValue[`delete${typeName}`] = ({ id }: { id: string }) =>
+        resolveMutationDelete(tenantId, ct, id, client, staff?.userId)
+      rootValue[`publish${typeName}`] = ({ id }: { id: string }) =>
+        resolveMutationPublish(tenantId, ct, id, client, staff?.userId, staff?.role)
     }
   }
 
@@ -83,6 +112,9 @@ type ${typeName}Collection {
   for (const assignment of singleTypeAssignments) {
     const st = assignment.singleType
     const typeName = toPascalCase(st.slug) + "Single"
+    const queryName = sanitizeFieldName(st.slug)
+    if (registeredTypeNames.has(typeName) || Object.hasOwn(rootValue, queryName)) continue
+    registeredTypeNames.add(typeName)
     const fields = st.schemaFields
       .filter((f) => !["publishedAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
       .map((f) => `  ${sanitizeFieldName(f.slug)}: ${mapFieldTypeToGraphQL(f.type, f.required)}`)
@@ -95,10 +127,12 @@ type ${typeName} {
 ${fields}
 }`)
 
-    queryFields.push(`  ${sanitizeFieldName(st.slug)}(locale: String): ${typeName}`)
+    queryFields.push(`  ${queryName}(locale: String, draft: Boolean): ${typeName}`)
+    rootValue[queryName] = ({ locale, draft }: { locale?: string; draft?: boolean }) =>
+      resolveSingleType(tenantId, st, locale, includeMutations && draft === true, client)
   }
 
-  return `
+  const typeDefs = `
 scalar JSON
 
 type CollectionMeta {
@@ -124,138 +158,42 @@ ${mutationFields.join("\n")}
 }
 ` : ""}
 `
-}
-
-// Build resolvers dynamically
-export function buildDynamicResolvers(tenantId: string, _db: PrismaClient = db) {
-  return {
-    Query: new Proxy(
-      {},
-      {
-        get(_target, prop: string) {
-          // Check if it's a "byId" query
-          if (prop.endsWith("ById")) {
-            const sanitizedSlug = prop.replace("ById", "")
-            return async (_parent: unknown, args: { id: string }, context: any) => {
-              // Find content type that matches sanitized slug
-              const allContentTypes = await _db.contentType.findMany({
-                where: { 
-                  OR: [
-                    { tenantId },
-                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-                  ]
-                }
-              })
-              const ct = allContentTypes.find(c => sanitizeFieldName(c.slug) === sanitizedSlug)
-              if (!ct) return null
-              return resolveContentEntryById(tenantId, ct.slug, args.id, _db, context)
-            }
-          }
-          // Otherwise it could be a collection query or single type
-          return async (
-            _parent: unknown,
-            args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string },
-            context: any
-          ) => {
-            // Fetch all assigned content types and single types to find match by sanitized name
-            const [contentTypes, singleTypes] = await Promise.all([
-              _db.contentType.findMany({
-                where: { 
-                  OR: [
-                    { tenantId },
-                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-                  ]
-                },
-              }),
-              _db.singleType.findMany({
-                where: { 
-                  OR: [
-                    { tenantId },
-                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-                  ]
-                },
-              })
-            ])
-
-            const ct = contentTypes.find(c => sanitizeFieldName(c.slug) === prop)
-            if (ct) {
-              return resolveContentCollection(tenantId, ct.id, args, _db, context)
-            }
-
-            const st = singleTypes.find(s => sanitizeFieldName(s.slug) === prop)
-            if (st) {
-              return resolveSingleType(tenantId, st.slug, _db, args.locale)
-            }
-
-            return null
-          }
-        },
-      }
-    ),
-    Mutation: new Proxy(
-      {},
-      {
-        get(_target, prop: string) {
-          // create{TypeName}
-          if (prop.startsWith("create")) {
-            const slug = toSlug(prop.replace("create", ""))
-            return async (_parent: unknown, args: { data: any; locale?: string; status?: string }) => {
-              return resolveMutationCreate(tenantId, slug, args, _db)
-            }
-          }
-          // update{TypeName}
-          if (prop.startsWith("update")) {
-            const slug = toSlug(prop.replace("update", ""))
-            return async (_parent: unknown, args: { id: string; data: any }) => {
-              return resolveMutationUpdate(tenantId, slug, args, _db)
-            }
-          }
-          // delete{TypeName}
-          if (prop.startsWith("delete")) {
-            const slug = toSlug(prop.replace("delete", ""))
-            return async (_parent: unknown, args: { id: string }) => {
-              return resolveMutationDelete(tenantId, slug, args.id, _db)
-            }
-          }
-          // publish{TypeName}
-          if (prop.startsWith("publish")) {
-            const slug = toSlug(prop.replace("publish", ""))
-            return async (_parent: unknown, args: { id: string }) => {
-              return resolveMutationPublish(tenantId, slug, args.id, _db)
-            }
-          }
-          return null
-        },
-      }
-    ),
-  }
+  return { typeDefs, rootValue }
 }
 
 async function resolveContentCollection(
   tenantId: string,
-  contentTypeId: string,
-  args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string } = {},
-  _db: PrismaClient = db,
-  context?: any
+  contentType: { id: string; schemaFields: SchemaField[] },
+  args: CollectionArgs,
+  includeUnpublished: boolean,
+  client: PrismaClient,
 ) {
-  const page = args?.page ?? 1
-  const limit = Math.min(args?.limit ?? 25, 100)
-  const sort = args?.sort ?? "createdAt"
-  const order = args?.order ?? "desc"
+  const page = Math.max(args.page ?? 1, 1)
+  const limit = Math.min(Math.max(args.limit ?? 25, 1), 100)
+  const sort = args.sort ?? "createdAt"
+  const order = args.order ?? "desc"
+  if (!collectionSortFields.has(sort) || (order !== "asc" && order !== "desc")) {
+    throw new Error("Invalid sort field or order")
+  }
+  const status = args.status ?? "PUBLISHED"
+  if (!isWorkflowStatus(status)) throw new Error("Invalid content status")
 
-  const where: any = {
-    contentTypeId,
+  const where: Prisma.ContentEntryWhereInput = {
+    contentTypeId: contentType.id,
     tenantId,
-    status: args?.status ?? "PUBLISHED",
     deletedAt: null,
   }
-  if (args?.locale) where.locale = args.locale
-  // Legacy support: published=false returns all statuses
-  if (args?.published === false) delete where.status
+  if (args.locale) where.locale = args.locale
+  if (includeUnpublished) {
+    if (args.status || args.published !== false) where.status = status
+  } else {
+    where.status = "PUBLISHED"
+    if (args.status) where.AND = { status }
+  }
 
   const [total, entries] = await Promise.all([
-    _db.contentEntry.count({ where }),
-    _db.contentEntry.findMany({
+    client.contentEntry.count({ where }),
+    client.contentEntry.findMany({
       where,
       orderBy: { [sort]: order },
       skip: (page - 1) * limit,
@@ -263,30 +201,14 @@ async function resolveContentCollection(
     }),
   ])
 
-  let schemaFields: any[] = []
-  if (context?.loaders?.entryLoader) {
-    const ct = await _db.contentType.findUnique({ where: { id: contentTypeId }, include: { schemaFields: true } })
-    if (ct) {
-      schemaFields = ct.schemaFields
-    }
-  }
-
   const data = await Promise.all(entries.map(async (entry) => {
-    let parsedData: any = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {})
-
-    if (schemaFields.length > 0 && context?.loaders?.entryLoader) {
-      parsedData = await resolveContentData(tenantId, parsedData, schemaFields)
-    }
-
-    return {
-      id: entry.id,
-      ...parsedData,
+    const data = await resolveContentData(tenantId, parseSingleTypeData(entry.data), contentType.schemaFields, {
+      client,
+      includeUnpublished: includeUnpublished && entry.status !== "PUBLISHED",
+      includeSingleTypeDraft: false,
       locale: entry.locale,
-      status: entry.status,
-      publishedAt: entry.publishedAt?.toISOString() ?? null,
-      createdAt: entry.createdAt.toISOString(),
-      updatedAt: entry.updatedAt.toISOString(),
-    }
+    })
+    return graphQLEntry(entry, data)
   }))
 
   return {
@@ -295,59 +217,48 @@ async function resolveContentCollection(
   }
 }
 
-async function resolveContentEntryById(tenantId: string, slug: string, id: string, _db: PrismaClient = db, context?: any) {
-  const contentType = await _db.contentType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
+async function resolveContentEntryById(
+  tenantId: string,
+  contentType: { id: string; schemaFields: SchemaField[] },
+  id: string,
+  includeUnpublished: boolean,
+  client: PrismaClient,
+) {
+  const entry = await client.contentEntry.findFirst({
+    where: {
+      id, contentTypeId: contentType.id, tenantId, deletedAt: null,
+      ...(!includeUnpublished && { status: "PUBLISHED" as const }),
     },
-    include: { schemaFields: true }
-  })
-  if (!contentType) return null
-
-  const entry = await _db.contentEntry.findFirst({
-    where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
   })
   if (!entry) return null
 
-  let parsedData: any = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {})
-
-  if (contentType.schemaFields.length > 0 && context?.loaders?.entryLoader) {
-    parsedData = await resolveContentData(tenantId, parsedData, contentType.schemaFields)
-  }
-
-  return {
-    id: entry.id,
-    ...parsedData,
+  const data = await resolveContentData(tenantId, parseSingleTypeData(entry.data), contentType.schemaFields, {
+    client,
+    includeUnpublished: includeUnpublished && entry.status !== "PUBLISHED",
+    includeSingleTypeDraft: false,
     locale: entry.locale,
-    status: entry.status,
-    publishedAt: entry.publishedAt?.toISOString() ?? null,
-    createdAt: entry.createdAt.toISOString(),
-    updatedAt: entry.updatedAt.toISOString(),
-  }
+  })
+  return graphQLEntry(entry, data)
 }
 
 export async function resolveMutationCreate(
   tenantId: string,
-  slug: string,
-  args: { data: any; locale?: string; status?: string },
+  model: ModelReference,
+  args: { data: unknown; locale?: string; status?: string },
   _db: PrismaClient = db,
-  userId?: string // Optional: track who made the change
+  userId?: string,
+  staffRole?: string,
 ) {
-  const contentType = await _db.contentType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
-    },
-    include: { schemaFields: true }
-  })
-  if (!contentType) throw new Error(`Content type '${slug}' not found`)
+  assertContentData(args.data)
+  const status = args.status ?? "DRAFT"
+  if (!isWorkflowStatus(status)) throw new Error("Invalid content status")
+  if (status === "SCHEDULED") throw new Error("Scheduled publication requires a date and time")
+  if (staffRole && status !== "DRAFT" && !canUserTransition("DRAFT", status, staffRole)) {
+    throw new Error(`You do not have permission to create content with status '${status}'`)
+  }
+
+  const contentType = await requireWritableModel(tenantId, model, _db)
+  const { slug } = contentType
 
   // B5 Fix: Resolve default locale from TenantLocale instead of hardcoding "en"
   let resolvedLocale = args.locale
@@ -375,15 +286,17 @@ export async function resolveMutationCreate(
     'content',
     _db
   )
+  const validatedData = await validateMutationData(_db, tenantId, contentType, dataWithSlugs, status !== "DRAFT")
 
   const entry = await _db.$transaction(async (tx) => {
     const newEntry = await tx.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
         tenantId,
-        data: dataWithSlugs as any,
+        data: validatedData as Prisma.InputJsonObject,
         locale: resolvedLocale,
-        status: (args.status as any) ?? "DRAFT",
+        status,
+        publishedAt: status === "PUBLISHED" ? new Date() : null,
         createdBy: userId,
       },
     })
@@ -422,35 +335,19 @@ export async function resolveMutationCreate(
     source: "graphql",
   })
 
-  return {
-    id: entry.id,
-    ...(entry.data as any),
-    locale: entry.locale,
-    status: entry.status,
-    publishedAt: entry.publishedAt?.toISOString() ?? null,
-    createdAt: entry.createdAt.toISOString(),
-    updatedAt: entry.updatedAt.toISOString(),
-  }
+  return graphQLEntry(entry, parseSingleTypeData(entry.data))
 }
 
 export async function resolveMutationUpdate(
   tenantId: string,
-  slug: string,
-  args: { id: string; data: any },
+  model: ModelReference,
+  args: { id: string; data: unknown },
   _db: PrismaClient = db,
   userId?: string
 ) {
-  const contentType = await _db.contentType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
-    },
-    include: { schemaFields: true }
-  })
-  if (!contentType) throw new Error(`Content type '${slug}' not found`)
+  assertContentData(args.data)
+  const contentType = await requireWritableModel(tenantId, model, _db)
+  const { slug } = contentType
 
   const existing = await _db.contentEntry.findFirst({
     where: { id: args.id, contentTypeId: contentType.id, tenantId, deletedAt: null },
@@ -464,7 +361,7 @@ export async function resolveMutationUpdate(
   }
   const hookData = hookResult.modifiedData ?? args.data
 
-  const fullData = { ...(existing.data as any), ...hookData }
+  const fullData = { ...parseSingleTypeData(existing.data), ...hookData }
   const dataWithSlugs = await processAutoSlugs(
     tenantId,
     contentType.id,
@@ -474,12 +371,13 @@ export async function resolveMutationUpdate(
     'content',
     _db
   )
+  const validatedData = await validateMutationData(_db, tenantId, contentType, dataWithSlugs, existing.status !== "DRAFT", args.id)
 
   const updated = await _db.$transaction(async (tx) => {
     const result = await tx.contentEntry.update({
       where: { id: args.id },
       data: {
-        data: dataWithSlugs as any,
+        data: validatedData as Prisma.InputJsonObject,
         updatedBy: userId,
         updatedAt: new Date()
       },
@@ -506,34 +404,18 @@ export async function resolveMutationUpdate(
     source: "graphql",
   })
 
-  return {
-    id: updated.id,
-    ...(updated.data as any),
-    locale: updated.locale,
-    status: updated.status,
-    publishedAt: updated.publishedAt?.toISOString() ?? null,
-    createdAt: updated.createdAt.toISOString(),
-    updatedAt: updated.updatedAt.toISOString(),
-  }
+  return graphQLEntry(updated, parseSingleTypeData(updated.data))
 }
 
 async function resolveMutationDelete(
   tenantId: string, 
-  slug: string, 
+  model: ModelReference,
   id: string, 
   _db: PrismaClient = db,
   userId?: string
 ) {
-  const contentType = await _db.contentType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
-    }
-  })
-  if (!contentType) throw new Error(`Content type '${slug}' not found`)
+  const contentType = await requireWritableModel(tenantId, model, _db)
+  const { slug } = contentType
 
   const existing = await _db.contentEntry.findFirst({
     where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
@@ -575,21 +457,14 @@ async function resolveMutationDelete(
 
 async function resolveMutationPublish(
   tenantId: string, 
-  slug: string, 
+  model: ModelReference,
   id: string, 
   _db: PrismaClient = db,
-  userId?: string
+  userId?: string,
+  staffRole?: string,
 ) {
-  const contentType = await _db.contentType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
-    }
-  })
-  if (!contentType) throw new Error(`Content type '${slug}' not found`)
+  const contentType = await requireWritableModel(tenantId, model, _db)
+  const { slug } = contentType
 
   const existing = await _db.contentEntry.findFirst({
     where: { id, contentTypeId: contentType.id, tenantId, deletedAt: null },
@@ -603,6 +478,10 @@ async function resolveMutationPublish(
       `Current status must be DRAFT or APPROVED.`
     )
   }
+  if (staffRole && !canUserTransition(existing.status, "PUBLISHED", staffRole)) {
+    throw new Error("You do not have permission to publish this entry")
+  }
+  await validateMutationData(_db, tenantId, contentType, parseSingleTypeData(existing.data), true, id)
 
   // B2 Fix: Execute sync hooks (beforePublish) before publishing
   const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_PUBLISH, {
@@ -639,98 +518,107 @@ async function resolveMutationPublish(
     source: "graphql",
   })
 
-  return {
-    id: updated.id,
-    ...(updated.data as any),
-    locale: updated.locale,
-    status: updated.status,
-    publishedAt: updated.publishedAt?.toISOString() ?? null,
-    createdAt: updated.createdAt.toISOString(),
-    updatedAt: updated.updatedAt.toISOString(),
-  }
+  return graphQLEntry(updated, parseSingleTypeData(updated.data))
 }
 
 async function resolveSingleType(
   tenantId: string,
-  slug: string,
-  _db: PrismaClient = db,
-  locale?: string
+  singleType: Pick<SingleType, "id"> & { schemaFields: SchemaField[] },
+  locale: string | undefined,
+  includeDraft: boolean,
+  client: PrismaClient,
 ) {
-  const singleType = await _db.singleType.findFirst({
-    where: { 
-      slug,
-      OR: [
-        { tenantId },
-        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-      ]
-    },
-    include: { schemaFields: true }
-  })
-  if (!singleType) return null
-
-  // Resolve locale: use arg → tenant default → "en"
-  let resolvedLocale = locale
-  if (!resolvedLocale) {
-    const defaultLocale = await _db.tenantLocale.findFirst({
-      where: { tenantId, isDefault: true },
-      select: { locale: true },
-    })
-    resolvedLocale = defaultLocale?.locale ?? "id"
-  }
-
-  // Try requested locale first, then fall back to "en"
-  let assignment = await _db.tenantSingleTypeAssignment.findUnique({
+  const defaultLocale = (await client.tenantLocale.findFirst({
+    where: { tenantId, isEnabled: true, isDefault: true },
+    select: { locale: true },
+  }))?.locale ?? "id"
+  const requestedLocale = locale || defaultLocale
+  const findAssignment = (locale: string) => client.tenantSingleTypeAssignment.findFirst({
     where: {
-      tenantId_singleTypeId_locale: { 
-        tenantId, 
-        singleTypeId: singleType.id,
-        locale: resolvedLocale,
-      },
+      tenantId, singleTypeId: singleType.id, locale, enabled: true,
+      ...(!includeDraft && { publishedAt: { not: null } }),
     },
   })
+  const assignment = await findAssignment(requestedLocale) ??
+    (requestedLocale === defaultLocale ? null : await findAssignment(defaultLocale))
+  if (!assignment) return null
 
-  // Fallback to default locale if no data found for requested locale
-  if ((!assignment || !assignment.data) && resolvedLocale !== "id") {
-    assignment = await _db.tenantSingleTypeAssignment.findUnique({
-      where: {
-        tenantId_singleTypeId_locale: { 
-          tenantId, 
-          singleTypeId: singleType.id,
-          locale: "id",
-        },
-      },
-    })
-  }
-
-  if (!assignment || !assignment.data) return null
-
-  let parsedData: any = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
-
-  if (singleType.schemaFields.length > 0) {
-    parsedData = await resolveContentData(tenantId, parsedData, singleType.schemaFields)
-  }
+  const snapshot = readSingleTypeAssignment(assignment, includeDraft)
+  const data = await resolveContentData(tenantId, snapshot.data, singleType.schemaFields, {
+    client, includeUnpublished: includeDraft, includeSingleTypeDraft: includeDraft, locale: assignment.locale,
+  })
 
   return {
-    ...parsedData,
+    ...graphQLData(data),
     publishedAt: assignment.publishedAt?.toISOString() ?? null,
-    updatedAt: assignment.updatedAt.toISOString(),
+    updatedAt: snapshot.updatedAt.toISOString(),
   }
 }
 
 // Helpers
+
+type ModelReference = string | { id: string; slug: string }
+
+async function requireWritableModel(tenantId: string, model: ModelReference, client: PrismaClient) {
+  const slug = typeof model === "string" ? model : model.slug
+  const contentType = await client.contentType.findFirst({
+    where: {
+      slug, draftTemplateId: null,
+      ...(typeof model !== "string" && { id: model.id }),
+      OR: [{ tenantId }, { tenantId: null }],
+      tenants: { some: { tenantId, enabled: true } },
+    },
+    orderBy: { tenantId: { sort: "desc", nulls: "last" } },
+    include: { schemaFields: true },
+  })
+  if (!contentType) throw new Error(`Content type '${slug}' not found`)
+  return contentType
+}
+
+async function validateMutationData(
+  client: PrismaClient,
+  tenantId: string,
+  contentType: { id: string; schemaFields: SchemaField[] },
+  data: Record<string, unknown>,
+  enforceRequired: boolean,
+  entryId?: string,
+) {
+  if (contentType.schemaFields.length === 0) return data
+
+  const validation = await validateContentEntry(contentType.schemaFields, data, { enforceRequired })
+  if (!validation.success) throw new Error(Object.values(validation.errors ?? {}).join(". ") || "Invalid content data")
+
+  const normalized = { ...data, ...validation.data }
+  const dynamic = await validateDynamicContent(contentType.id, tenantId, normalized, entryId, { client, enforceRequired })
+  if (!dynamic.success) throw new Error(Object.values(dynamic.errors ?? {}).join(". ") || "Invalid content data")
+  return normalized
+}
+
+function graphQLEntry(entry: ContentEntry, data: Record<string, unknown>) {
+  return {
+    ...graphQLData(data),
+    id: entry.id,
+    locale: entry.locale,
+    status: entry.status,
+    publishedAt: entry.publishedAt?.toISOString() ?? null,
+    createdAt: entry.createdAt.toISOString(),
+    updatedAt: entry.updatedAt.toISOString(),
+  }
+}
+
+function graphQLData(data: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(data).map(([slug, value]) => [sanitizeFieldName(slug), value]))
+}
+
+function assertContentData(data: unknown): asserts data is Record<string, unknown> {
+  if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("Content data must be an object")
+}
 
 function toPascalCase(slug: string): string {
   return slug
     .split(/[-_]/)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join("")
-}
-
-/** Reverse of toPascalCase — convert PascalCase back to kebab-case slug */
-function toSlug(pascal: string): string {
-  return pascal
-    .replace(/([A-Z])/g, (m, l, offset) => (offset > 0 ? "-" : "") + l.toLowerCase())
-    .replace(/^-/, "")
 }
 
 function sanitizeFieldName(slug: string): string {

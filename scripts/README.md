@@ -81,6 +81,7 @@ bun run cli seed:pricing
 
 # Migrations & Tenant DB
 bun run cli migrate:tenant <tenantSlugOrId>
+bun run db:tenant:push --all
 bun run cli migrate:media --apply
 bun run cli migrate:fts
 
@@ -95,6 +96,8 @@ bun run cli db:backup
 bun run cli db:restore <backup_file>
 bun run cli auth:rotate-key
 ```
+
+Pembaruan skema dedicated menggunakan koneksi efektif setiap workspace. Tambahkan `--accept-data-loss` hanya setelah meninjau perubahan destruktif dan menentukan target eksplisit. Perintah `bun scripts/migrate/verify-release-schema.ts` memeriksa kolom yang diperlukan rilis pada database utama dan dedicated.
 
 ---
 

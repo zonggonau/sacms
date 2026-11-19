@@ -94,14 +94,14 @@ export default async function HargaPage() {
         </section>
 
         {/* Workspace Pricing Grid */}
-        <div id="pricing">
+        <div id="pricing" className="scroll-mt-24">
           <PricingGrid plans={pricingWorkspaces} />
         </div>
 
         {/* Account Plans (if any) */}
         {pricingAccounts.length > 0 && (
           <div className="pt-8">
-            <PricingGrid plans={pricingAccounts} bgClass="bg-card" />
+            <PricingGrid plans={pricingAccounts} label="Paket Akun" title="Pilih Paket Akun SaCMS" />
           </div>
         )}
 

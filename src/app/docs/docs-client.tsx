@@ -1127,7 +1127,7 @@ export function DocsClient() {
               REST API
             </a>
             <Link
-              href="/login"
+              href="/dashboard"
               className="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all hover:scale-102"
             >
               Dashboard
@@ -1319,7 +1319,7 @@ export function DocsClient() {
         </aside>
 
         {/* Documentation Content Area */}
-        <main className="flex-1 min-w-0 space-y-20">
+        <main className="min-w-0 flex-1 space-y-20 [&_code]:[overflow-wrap:anywhere] [&_pre]:max-w-full [&_pre]:overflow-x-auto">
           {/* ================================================================= */}
           {/* MODEL CONTEXT PROTOCOL (MCP) — MAIN SPOTLIGHT SECTION */}
           {/* ================================================================= */}
@@ -1519,7 +1519,12 @@ export function DocsClient() {
                               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Parameters / Arguments
                               </h4>
-                              <div className="overflow-x-auto rounded-lg border border-border bg-background">
+                              <div
+                                role="region"
+                                aria-label={`Parameters for ${tool.name}`}
+                                tabIndex={0}
+                                className="max-w-full overflow-x-auto rounded-lg border border-border bg-background focus-visible:outline-2 focus-visible:outline-ring"
+                              >
                                 <table className="w-full text-left text-xs">
                                   <thead className="bg-muted/80 text-foreground/80 font-semibold border-b border-border">
                                     <tr>

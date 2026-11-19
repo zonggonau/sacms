@@ -61,6 +61,7 @@ async function resolveWriteContext(
     ok: true,
     ctx: {
       client: tenantDb,
+      localeClient: db,
       tenantId: access.tenantId,
       tenantSlug,
       isGlobal: access.isGlobal,
@@ -406,12 +407,10 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
       entry = await tenantDb.contentEntry.findFirst({
         where: {
           documentId,
+          contentTypeId: baseEntry.contentTypeId,
+          tenantId: baseEntry.tenantId,
           locale,
           deletedAt: null,
-          OR: [
-            { tenantId: access.tenantId },
-            { tenantId: null }
-          ]
         },
         include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
       })
@@ -508,7 +507,14 @@ export async function duplicateEntryAction(tenantSlug: string, contentTypeSlug: 
 /**
  * Update an entry (or create translation)
  */
-export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; locale: string; scheduledAt?: Date | null; expectedUpdatedAt?: Date | string | null }) {
+export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: {
+  data: any
+  status?: string
+  locale: string
+  scheduledAt?: Date | null
+  expectedUpdatedAt?: Date | string | null
+  expectedLocaleMissing?: boolean
+}) {
   try {
     const resolved = await resolveWriteContext(tenantSlug)
     if (!resolved.ok) return actionError(resolved.error)
@@ -529,6 +535,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
       locale: payload.locale,
       scheduledAt: payload.scheduledAt ?? null,
       expectedUpdatedAt: payload.expectedUpdatedAt ?? null,
+      expectedLocaleMissing: payload.expectedLocaleMissing,
     })
     if (!result.ok) return serviceFailure(result)
 

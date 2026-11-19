@@ -444,7 +444,9 @@ model TenantSingleTypeAssignment {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   locale       String     @default("id")
+  // The published payload (or legacy data). Pending edits stay in draftData.
   data         Json?
+  draftData    Json?
   singleType   SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
   tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -543,6 +545,7 @@ model PaymentTransaction {
   paymentMethod   String?
   amount          Float
   status          String
+  fulfillmentStatus String?
   transactionId   String?
   transactionTime DateTime?
   fraudStatus     String?
@@ -551,6 +554,7 @@ model PaymentTransaction {
   rawResponse     Json?
   subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
 
+  @@index([status, fulfillmentStatus])
   @@map("payment_transactions")
 }
 

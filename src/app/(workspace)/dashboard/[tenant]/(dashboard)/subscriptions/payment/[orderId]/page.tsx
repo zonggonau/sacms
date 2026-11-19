@@ -14,7 +14,7 @@ export default function PaymentResultPage() {
   const tenantSlug = params?.tenant as string
   const orderId = params?.orderId as string
 
-  const [status, setStatus] = useState<"loading" | "success" | "failed" | "pending">("loading")
+  const [status, setStatus] = useState<"loading" | "success" | "failed" | "pending" | "needs_review">("loading")
   const [transaction, setTransaction] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -40,6 +40,8 @@ export default function PaymentResultPage() {
           setStatus("success")
         } else if (data.status === "failed") {
           setStatus("failed")
+        } else if (data.status === "needs_review") {
+          setStatus("needs_review")
         } else {
           setStatus("pending")
         }
@@ -86,6 +88,7 @@ export default function PaymentResultPage() {
             <XCircle className="h-10 w-10" />
           </div>
         )
+      case "needs_review":
       case "pending":
         return (
           <div className="w-16 h-16 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 animate-pulse">
@@ -109,6 +112,8 @@ export default function PaymentResultPage() {
         return "Payment Failed"
       case "pending":
         return "Payment Pending"
+      case "needs_review":
+        return "Pesanan Sedang Ditinjau"
       default:
         return "Processing Payment"
     }
@@ -117,11 +122,16 @@ export default function PaymentResultPage() {
   const getStatusMessage = () => {
     switch (status) {
       case "success":
-        return "Your subscription has been activated successfully. You can now access all the features of your new plan."
+        return "Pembayaran dikonfirmasi dan pesanan Anda sudah selesai diproses."
       case "failed":
         return "We couldn't process your payment. Please try again or contact support if the problem persists."
       case "pending":
+        if (transaction?.paymentStatus === "success") {
+          return "Pembayaran sudah dikonfirmasi. Pesanan Anda sedang diproses."
+        }
         return "Your payment is being processed. This may take a few moments. Please wait while we confirm your payment."
+      case "needs_review":
+        return "Pembayaran sudah dikonfirmasi. Hubungi dukungan dengan ID pesanan di bawah agar kami dapat menyelesaikannya."
       default:
         return "Please wait while we confirm your payment status..."
     }

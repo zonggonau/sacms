@@ -1,4 +1,6 @@
-import { db } from "@/lib/database"
+import { db, type Prisma } from "@/lib/database"
+
+type StorageAddonClient = Pick<Prisma.TransactionClient, "storageAddon">
 
 /**
  * Storage add-on: extra storage on top of a workspace's plan quota, sold as
@@ -35,10 +37,10 @@ export function addOneYear(date: Date): Date {
 }
 
 /** Why a renewal of `addonId` cannot be bought, or null when it can. */
-export async function storageAddonRenewalRefusal(tenantId: string, addonId: string): Promise<string | null> {
-  const addon = await db.storageAddon.findFirst({ where: { id: addonId, tenantId } })
+export async function storageAddonRenewalRefusal(tenantId: string, addonId: string, client: StorageAddonClient = db): Promise<string | null> {
+  const addon = await client.storageAddon.findFirst({ where: { id: addonId, tenantId } })
   if (!addon) return "Add-on storage yang ingin diperpanjang tidak ditemukan di workspace ini."
-  const renewal = await db.storageAddon.findUnique({ where: { renewsAddonId: addon.id } })
+  const renewal = await client.storageAddon.findUnique({ where: { renewsAddonId: addon.id } })
   if (renewal) return "Add-on storage ini sudah diperpanjang."
   return null
 }
@@ -56,21 +58,22 @@ export async function grantStorageAddon(
   tenantId: string,
   orderId: string,
   bytes: number,
-  options: { renewsAddonId?: string | null; now?: Date } = {},
+  options: { renewsAddonId?: string | null; now?: Date; client?: StorageAddonClient } = {},
 ) {
+  const client = options.client ?? db
   const now = options.now ?? new Date()
   let startsAt = now
   let renewsAddonId: string | undefined
 
-  if (options.renewsAddonId && !(await storageAddonRenewalRefusal(tenantId, options.renewsAddonId))) {
-    const renewed = await db.storageAddon.findFirst({ where: { id: options.renewsAddonId, tenantId } })
+  if (options.renewsAddonId && !(await storageAddonRenewalRefusal(tenantId, options.renewsAddonId, client))) {
+    const renewed = await client.storageAddon.findFirst({ where: { id: options.renewsAddonId, tenantId } })
     if (renewed) {
       renewsAddonId = renewed.id
       if (renewed.expiresAt > now) startsAt = renewed.expiresAt
     }
   }
 
-  return db.storageAddon.upsert({
+  return client.storageAddon.upsert({
     where: { orderId },
     update: {},
     create: {

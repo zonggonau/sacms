@@ -1,4 +1,5 @@
 import { getTenantDbById } from "@/lib/database"
+import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
 
 /**
  * Fixed slug every Website Template, MCP agent, and CMS user can rely on —
@@ -9,7 +10,7 @@ import { getTenantDbById } from "@/lib/database"
  * worst this adds a second, guaranteed-shape Single Type alongside it rather
  * than silently skipping provisioning because of a near-miss name match.
  */
-export const SITE_SETTINGS_SLUG = "site-settings"
+export { SITE_SETTINGS_SLUG }
 
 const SITE_SETTINGS_FIELDS: Array<{ name: string; slug: string; type: string; options?: Record<string, unknown> }> = [
   { name: "Nama Brand", slug: "brand-name", type: "text" },

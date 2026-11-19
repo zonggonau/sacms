@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useCallback, useState, useEffect, useMemo, useRef } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -90,6 +90,9 @@ export function MediaLibraryView({
 
   const [media, setMedia] = useState<MediaFile[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [mediaPermissions, setMediaPermissions] = useState({ upload: false, delete: false })
+  const uploadInput = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedMedia, setSelectedMedia] = useState<MediaFile[]>([])
@@ -120,40 +123,44 @@ export function MediaLibraryView({
     }
   }, [status, router])
 
-  const fetchMedia = async () => {
+  const fetchMedia = useCallback(async (signal?: AbortSignal) => {
     if (!tenantSlug) return
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/media`)
-      if (res.ok) {
-        const data = await res.json()
-        setMedia(data.media || [])
-      }
+      const res = await fetch(`/api/tenant/${tenantSlug}/media`, { signal })
+      if (!res.ok) throw new Error(`Media request failed (${res.status})`)
+      const data = await res.json()
+      if (signal?.aborted) return
+      setMedia(data.media || [])
+      setMediaPermissions({ upload: data.permissions?.upload === true, delete: data.permissions?.delete === true })
+      setLoadError(false)
     } catch (error) {
+      if (signal?.aborted) return
       console.error("Failed to fetch media:", error)
+      setLoadError(true)
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
-  }
+  }, [tenantSlug])
 
-  const fetchStorageUsage = async () => {
+  const fetchStorageUsage = useCallback(async (signal?: AbortSignal) => {
     if (!tenantSlug) return
     try {
       const [usageRes, infraRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/billing/usage`),
-        fetch(`/api/tenant/${tenantSlug}/infrastructure`),
+        fetch(`/api/tenant/${tenantSlug}/billing/usage`, { signal }),
+        fetch(`/api/tenant/${tenantSlug}/infrastructure`, { signal }),
       ])
 
       if (usageRes.ok) {
         const data = await usageRes.json()
         const storageUsage = data.usage?.find((u: any) => u.label === "Media Storage")
-        if (storageUsage) {
+        if (storageUsage && !signal?.aborted) {
           setStorageLimit(storageUsage.limit)
           setCurrentStorage(storageUsage.current)
           setIsLimitReached(storageUsage.current >= storageUsage.limit)
         }
       }
 
-      if (infraRes.ok) {
+      if (infraRes.ok && !signal?.aborted) {
         const infraData = await infraRes.json()
         if (infraData.isCustomStorageConfigured) {
           setStorageProvider("Storage Khusus (Enterprise)")
@@ -164,16 +171,23 @@ export function MediaLibraryView({
         }
       }
     } catch (error) {
-      console.error("Failed to fetch storage usage:", error)
+      if (!signal?.aborted) console.error("Failed to fetch storage usage:", error)
     }
-  }
+  }, [tenantSlug])
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchMedia()
-      fetchStorageUsage()
-    }
-  }, [tenantSlug, session?.user?.id])
+    if (!session?.user?.id || !tenantSlug) return
+    const request = new AbortController()
+    setLoading(true)
+    setMedia([])
+    setLoadError(false)
+    setMediaPermissions({ upload: false, delete: false })
+    setSelectedMedia([])
+    setPreviewMedia(null)
+    void fetchMedia(request.signal)
+    void fetchStorageUsage(request.signal)
+    return () => request.abort()
+  }, [tenantSlug, session?.user?.id, fetchMedia, fetchStorageUsage])
 
   useEffect(() => {
     if (previewMedia) {
@@ -185,12 +199,12 @@ export function MediaLibraryView({
     }
   }, [previewMedia])
 
-  const handleFileUpload = async (files: FileList) => {
+  const handleFileUpload = async (files: File[]) => {
     if (files.length === 0) return
     setUploading(true)
 
     const formData = new FormData()
-    Array.from(files).forEach((file) => {
+    files.forEach((file) => {
       formData.append("files", file)
     })
 
@@ -200,14 +214,26 @@ export function MediaLibraryView({
         body: formData,
       })
 
-      if (res.ok) {
-        toast({ title: "Berhasil Diunggah", description: "File media telah berhasil diunggah" })
-        fetchMedia()
-        fetchStorageUsage()
-      } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Gagal Unggah", description: err.error || "Terjadi kesalahan saat mengunggah" })
+      const result = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast({
+          variant: "destructive",
+          title: "Gagal Unggah",
+          description: result.error || "Terjadi kesalahan saat mengunggah",
+        })
+        return
       }
+
+      const uploaded = Array.isArray(result.media) ? result.media.length : 0
+      const failures: Array<{ name: string; error: string }> = result.failures ?? []
+      toast({
+        variant: failures.length > 0 ? "destructive" : "default",
+        title: failures.length > 0 ? "Sebagian Berkas Gagal Diunggah" : "Berhasil Diunggah",
+        description: failures.length > 0
+          ? `${uploaded} berhasil, ${failures.length} gagal. ${failures.map(({ name }) => name).join(", ")}`
+          : `${uploaded} berkas ditambahkan ke Media Library.`,
+      })
+      await Promise.all([fetchMedia(), fetchStorageUsage()])
     } catch (error) {
       console.error("Upload error:", error)
       toast({ variant: "destructive", title: "Koneksi Error", description: "Gagal menghubungi server" })
@@ -259,34 +285,33 @@ export function MediaLibraryView({
   const confirmBulkDelete = async () => {
     if (selectedMedia.length === 0) return
     setIsBulkDeleting(true)
+    const selection = selectedMedia
     try {
-      const ids = selectedMedia.map(m => m.id)
-      let successCount = 0
-
-      await Promise.all(
-        ids.map(async (id) => {
-          const res = await fetch(`/api/tenant/${tenantSlug}/media/${id}`, {
+      const results = await Promise.allSettled(
+        selection.map(async ({ id }) => {
+          const response = await fetch(`/api/tenant/${tenantSlug}/media/${id}`, {
             method: "DELETE",
           })
-          if (res.ok) successCount++
+          return response.ok || response.status === 404
         })
       )
-
-      if (successCount > 0) {
-        toast({ 
-          title: "Media Berhasil Dihapus", 
-          description: `${successCount} berkas media telah berhasil dihapus dari workspace.` 
-        })
-        setMedia((prev) => prev.filter((m) => !ids.includes(m.id)))
-        setSelectedMedia([])
-        if (previewMedia && ids.includes(previewMedia.id)) setPreviewMedia(null)
-        fetchStorageUsage()
-      } else {
-        toast({ 
-          variant: "destructive", 
-          title: "Gagal Menghapus Media", 
-          description: "Tidak dapat menghapus berkas terpilih." 
-        })
+      const removedIds = new Set(selection.filter((_, index) => {
+        const result = results[index]
+        return result.status === "fulfilled" && result.value
+      }).map(({ id }) => id))
+      const failed = selection.length - removedIds.size
+      toast({
+        variant: failed > 0 ? "destructive" : "default",
+        title: failed > 0 ? "Penghapusan Belum Selesai" : "Media Berhasil Dihapus",
+        description: failed > 0
+          ? `${removedIds.size} dihapus, ${failed} gagal. Berkas yang gagal masih terpilih.`
+          : `${removedIds.size} berkas media dihapus dari workspace.`,
+      })
+      if (removedIds.size > 0) {
+        setMedia((prev) => prev.filter((m) => !removedIds.has(m.id)))
+        setSelectedMedia((prev) => prev.filter((m) => !removedIds.has(m.id)))
+        setPreviewMedia((prev) => prev && removedIds.has(prev.id) ? null : prev)
+        await fetchStorageUsage()
       }
     } catch (error) {
       console.error("Bulk delete error:", error)
@@ -418,7 +443,7 @@ export function MediaLibraryView({
               </Button>
             </div>
 
-            {selectedMedia.length > 0 && (
+            {mediaPermissions.delete && selectedMedia.length > 0 && (
               <Button 
                 variant="destructive" 
                 size="sm" 
@@ -430,33 +455,32 @@ export function MediaLibraryView({
               </Button>
             )}
 
-            <label>
-              <Button 
-                disabled={isLimitReached || uploading} 
+            {mediaPermissions.upload && (
+              <Button
+                type="button"
+                disabled={isLimitReached || uploading}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs cursor-pointer disabled:cursor-not-allowed"
-                asChild={!isLimitReached && !uploading}
+                onClick={() => uploadInput.current?.click()}
               >
-                {isLimitReached || uploading ? (
-                  <span className="flex items-center">
-                    {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
-                    Unggah File
-                  </span>
-                ) : (
-                  <span className="cursor-pointer flex items-center">
-                    <Upload className="mr-1.5 h-3.5 w-3.5" />
-                    Unggah File
-                  </span>
-                )}
+                {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                Unggah File
               </Button>
+            )}
+            {mediaPermissions.upload && (
               <input
+                ref={uploadInput}
                 type="file"
                 multiple
-                accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
+                accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.avif,.mp4,.webm,.mov,.pdf,.doc,.docx,.zip"
                 className="hidden"
                 disabled={isLimitReached || uploading}
-                onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                onChange={(e) => {
+                  const files = Array.from(e.currentTarget.files ?? [])
+                  e.currentTarget.value = ""
+                  void handleFileUpload(files)
+                }}
               />
-            </label>
+            )}
           </div>
         </div>
 
@@ -515,7 +539,13 @@ export function MediaLibraryView({
         )}
 
         {/* Media Grid/List */}
-        {filteredMedia.length === 0 ? (
+        {loadError && (
+          <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 p-3 text-sm">
+            <p>Gagal memuat daftar aset media.</p>
+            <Button type="button" size="sm" variant="outline" onClick={() => void fetchMedia()}>Coba Lagi</Button>
+          </div>
+        )}
+        {loadError && media.length === 0 ? null : filteredMedia.length === 0 ? (
           <Card className="border border-dashed border-border/80 py-20 bg-card rounded-2xl shadow-xs">
             <CardContent className="text-center">
               <div className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-3 border border-border/60">
@@ -523,35 +553,22 @@ export function MediaLibraryView({
               </div>
               <h3 className="text-sm font-bold text-foreground">Tidak Ada Aset Ditemukan</h3>
               <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-1 mb-5">
-                {searchQuery ? "Sesuaikan kata kunci pencarian atau filter Anda." : "Mulai bangun galeri media dengan mengunggah gambar atau dokumen."}
+                {searchQuery || mimeFilter !== "all"
+                  ? "Sesuaikan kata kunci pencarian atau filter Anda."
+                  : "Workspace ini belum memiliki aset media."}
               </p>
-              <label>
-                <Button 
-                  disabled={isLimitReached || uploading} 
+              {mediaPermissions.upload && media.length === 0 && (
+                <Button
+                  type="button"
+                  disabled={isLimitReached || uploading}
                   variant="outline"
                   className="rounded-xl text-xs font-bold h-9 shadow-xs cursor-pointer"
-                  asChild={!isLimitReached && !uploading}
+                  onClick={() => uploadInput.current?.click()}
                 >
-                  {isLimitReached || uploading ? (
-                    <span className="flex items-center">
-                      {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
-                      Unggah Media Pertama
-                    </span>
-                  ) : (
-                    <span className="cursor-pointer flex items-center">
-                      <Upload className="mr-1.5 h-3.5 w-3.5" />
-                      Unggah Media Pertama
-                    </span>
-                  )}
+                  {uploading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                  Unggah Media Pertama
                 </Button>
-                <input
-                  type="file"
-                  multiple
-                  className="hidden"
-                  disabled={isLimitReached || uploading}
-                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                />
-              </label>
+              )}
             </CardContent>
           </Card>
         ) : viewMode === "grid" ? (
@@ -583,11 +600,13 @@ export function MediaLibraryView({
                   
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
-                    <div className="flex gap-1.5">
+                    {mediaPermissions.delete && <div className="flex gap-1.5">
                       <Button
                         variant="secondary"
                         size="icon"
                         className="h-7 w-7 rounded-full cursor-pointer"
+                        aria-label={isSelected ? "Batalkan pilihan aset" : "Pilih aset"}
+                        aria-pressed={Boolean(isSelected)}
                         onClick={(e) => { e.stopPropagation(); toggleSelect(item) }}
                       >
                         {isSelected ? <Check className="h-3.5 w-3.5 text-primary" /> : <ImageIcon className="h-3.5 w-3.5" />}
@@ -596,6 +615,7 @@ export function MediaLibraryView({
                         variant="secondary"
                         size="icon"
                         className="h-7 w-7 rounded-full hover:text-destructive cursor-pointer"
+                        aria-label="Hapus aset"
                         onClick={(e) => { 
                           e.stopPropagation()
                           setDeleteItem({ id: item.id, name: item.originalName || item.name }) 
@@ -603,7 +623,7 @@ export function MediaLibraryView({
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
-                    </div>
+                    </div>}
                     <p className="text-[10px] text-white font-bold px-1 text-center truncate w-full">{item.originalName}</p>
                   </div>
                   
@@ -657,7 +677,7 @@ export function MediaLibraryView({
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </Button>
-                        <Button 
+                        {mediaPermissions.delete && <Button
                           variant="ghost" 
                           size="icon" 
                           className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer"
@@ -665,7 +685,7 @@ export function MediaLibraryView({
                           title="Hapus Media"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                        </Button>}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -717,6 +737,7 @@ export function MediaLibraryView({
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Tampilan Aset</Label>
                       <Input 
                         value={editData.name} 
+                        readOnly={!mediaPermissions.upload}
                         onChange={e => setEditData({...editData, name: e.target.value})} 
                         className="h-8 bg-muted/30 border-border/80 rounded-xl text-xs"
                       />
@@ -725,6 +746,7 @@ export function MediaLibraryView({
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alt Text (SEO & Aksesibilitas)</Label>
                       <Input 
                         value={editData.alt} 
+                        readOnly={!mediaPermissions.upload}
                         onChange={e => setEditData({...editData, alt: e.target.value})} 
                         placeholder="Deskripsi untuk screen reader..."
                         className="h-8 bg-muted/30 border-border/80 rounded-xl text-xs"
@@ -734,6 +756,7 @@ export function MediaLibraryView({
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Keterangan (Caption)</Label>
                       <Textarea 
                         value={editData.caption} 
+                        readOnly={!mediaPermissions.upload}
                         onChange={e => setEditData({...editData, caption: e.target.value})} 
                         placeholder="Keterangan opsional..."
                         className="bg-muted/30 border-border/80 rounded-xl text-xs min-h-[70px]"
@@ -764,17 +787,17 @@ export function MediaLibraryView({
                 </div>
 
                 <div className="pt-4 mt-4 border-t border-border/60 space-y-2">
-                  <Button className="w-full h-8 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer" onClick={handleSaveMetadata} disabled={savingMetadata}>
+                  {mediaPermissions.upload && <Button className="w-full h-8 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer" onClick={handleSaveMetadata} disabled={savingMetadata}>
                     {savingMetadata ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                     Simpan Perubahan
-                  </Button>
+                  </Button>}
                   <div className="flex gap-2">
                     <Button variant="outline" className="flex-1 h-8 text-xs font-bold rounded-xl cursor-pointer" asChild>
                       <a href={previewMedia?.url} download target="_blank" rel="noreferrer">
                         <Download className="h-3.5 w-3.5 mr-1.5" /> Unduh
                       </a>
                     </Button>
-                    <Button 
+                    {mediaPermissions.delete && <Button
                       variant="outline" 
                       size="icon" 
                       className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer" 
@@ -782,7 +805,7 @@ export function MediaLibraryView({
                       title="Hapus Media"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
               </div>

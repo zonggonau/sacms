@@ -36,11 +36,13 @@
     "next-env.d.ts",
     "next.config.ts",
     "vitest.config.ts",
+    "vitest.integration.config.ts",
     "playwright.config.ts",
     "sentry.*.config.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "__tests__/**/*.ts",
+    "integration/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

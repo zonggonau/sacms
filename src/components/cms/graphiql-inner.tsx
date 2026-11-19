@@ -2,6 +2,10 @@
 
 import { useTheme } from "next-themes"
 import { useEffect, useRef, useState } from "react"
+import { Button } from "@/components/ui/button"
+import { copyToClipboard } from "@/lib/clipboard"
+
+const STARTER_QUERY = "query WorkspaceRoot {\n  __typename\n}"
 
 interface GraphiQLInnerProps {
   endpoint: string
@@ -69,13 +73,7 @@ export default function GraphiQLInner({ endpoint, headers }: GraphiQLInnerProps)
             target: containerRef.current,
             initialEndpoint: endpoint,
             initialState: {
-              // Introspection is disabled server-side for any caller the
-              // GraphQL route doesn't grant mutation access to (viewer,
-              // subscriber, author, contributor) — seeding an introspection
-              // query by default made the playground fail validation
-              // immediately for most roles. A plain placeholder works for
-              // everyone; privileged roles can still introspect on demand.
-              document: '# Write a query or mutation, then press the Run button.\\n',
+              document: STARTER_QUERY,
               variables: {},
               headers: JSON.parse(headersKey),
               includeCookies,
@@ -116,17 +114,22 @@ export default function GraphiQLInner({ endpoint, headers }: GraphiQLInnerProps)
   }
 
   return (
-    <div className="h-full w-full bg-background flex flex-col" style={{ minHeight: 'calc(100vh - 4rem)' }}>
-      <label className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground border-b border-border shrink-0 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          checked={includeCookies}
-          onChange={(e) => setIncludeCookies(e.target.checked)}
-          className="h-3.5 w-3.5"
-        />
-        Jalankan dengan sesi login saya (diperlukan untuk query/mutation sungguhan — nonaktif secara default demi keamanan)
-      </label>
-      <div ref={containerRef} className="w-full flex-1" style={{ width: '100%' }} />
+    <div className="flex h-full min-h-0 w-full flex-col bg-background">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-1.5">
+        <label className="flex min-w-0 cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={includeCookies}
+            onChange={(e) => setIncludeCookies(e.target.checked)}
+            className="h-3.5 w-3.5 shrink-0"
+          />
+          Jalankan dengan sesi login saya
+        </label>
+        <Button type="button" variant="ghost" size="sm" onClick={() => copyToClipboard(STARTER_QUERY)}>
+          Salin contoh kueri
+        </Button>
+      </div>
+      <div ref={containerRef} className="min-h-0 w-full flex-1" />
     </div>
   )
 }

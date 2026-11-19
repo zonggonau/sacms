@@ -20,14 +20,14 @@ export function GraphQLTab({ tenantSlug, selectedToken }: GraphQLTabProps) {
     <div className="space-y-4 animate-in fade-in duration-300">
       <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
         <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-pink-500/10 text-pink-600 dark:text-pink-400 flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold text-foreground">GraphQL Endpoint:</span>
-                <code className="text-xs font-mono bg-muted/50 px-2 py-0.5 rounded-lg border border-border/60 text-primary font-semibold">
+                <code className="min-w-0 rounded-lg border border-border/60 bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-primary [overflow-wrap:anywhere]">
                   {endpoint}
                 </code>
               </div>

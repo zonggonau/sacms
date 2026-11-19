@@ -1,4 +1,13 @@
+import type { Prisma, PrismaClient } from "@/lib/database"
 import { db } from "@/lib/database"
+import { parseSingleTypeData, readSingleTypeAssignment } from "@/lib/single-type-publication"
+
+interface ContentResolutionOptions {
+  client?: PrismaClient
+  includeUnpublished?: boolean
+  includeSingleTypeDraft?: boolean
+  locale?: string
+}
 
 /**
  * Resolves a content entry or single type data by resolving its relations and components.
@@ -8,10 +17,22 @@ import { db } from "@/lib/database"
 export async function resolveContentData(
   tenantId: string,
   data: any,
-  schemaFields: any[]
+  schemaFields: any[],
+  options: ContentResolutionOptions = {},
+): Promise<any> {
+  return resolveFields(tenantId, data, schemaFields, options, new Set())
+}
+
+async function resolveFields(
+  tenantId: string,
+  data: any,
+  schemaFields: any[],
+  settings: ContentResolutionOptions,
+  ancestors: ReadonlySet<string>,
 ): Promise<any> {
   if (!data || !schemaFields || schemaFields.length === 0) return data
 
+  const client = settings.client ?? db
   const resolvedData = { ...data }
 
   for (const field of schemaFields) {
@@ -29,10 +50,10 @@ export async function resolveContentData(
       // Resolve relation (single or multiple)
       if (Array.isArray(value)) {
         resolvedData[field.slug] = await Promise.all(
-          value.map((id) => resolveRelation(tenantId, id, targetModel))
+          value.map((id) => resolveRelation(tenantId, id, targetModel, settings, ancestors))
         )
       } else if (typeof value === 'string' && value.length > 0) {
-        resolvedData[field.slug] = await resolveRelation(tenantId, value, targetModel)
+        resolvedData[field.slug] = await resolveRelation(tenantId, value, targetModel, settings, ancestors)
       }
     } else if (field.type === "component") {
       // Resolve component fields
@@ -40,9 +61,10 @@ export async function resolveContentData(
       const repeatable = options?.repeatable || false
 
       if (componentSlug) {
-        const component = await db.component.findFirst({
+        const component = await client.component.findFirst({
           where: { 
             slug: componentSlug,
+            draftTemplateId: null,
             OR: [
               { tenantId: tenantId },
               { tenantId: null }
@@ -57,10 +79,10 @@ export async function resolveContentData(
         if (component) {
           if (repeatable && Array.isArray(value)) {
             resolvedData[field.slug] = await Promise.all(
-              value.map((item) => resolveContentData(tenantId, item, component.schemaFields))
+              value.map((item) => resolveFields(tenantId, item, component.schemaFields, settings, ancestors))
             )
           } else if (!repeatable && value && typeof value === 'object') {
-            resolvedData[field.slug] = await resolveContentData(tenantId, value, component.schemaFields)
+            resolvedData[field.slug] = await resolveFields(tenantId, value, component.schemaFields, settings, ancestors)
           }
         }
       }
@@ -74,28 +96,41 @@ export async function resolveContentData(
  * Resolves a single relation by ID or Slug. 
  * Supports both ContentEntry and SingleType data.
  */
-async function resolveRelation(tenantId: string, idOrSlug: string, targetModel: string): Promise<any> {
+async function resolveRelation(
+  tenantId: string,
+  idOrSlug: string,
+  targetModel: string,
+  options: ContentResolutionOptions,
+  ancestors: ReadonlySet<string>,
+): Promise<any> {
   if (typeof idOrSlug !== "string") return idOrSlug
+
+  const relationKey = `${targetModel}:${idOrSlug}`
+  if (ancestors.has(relationKey)) return idOrSlug
+  const nextAncestors = new Set(ancestors).add(relationKey)
+  const client = options.client ?? db
 
   // If we specifically know it's a single-type (from field config options.targetModel)
   if (targetModel === 'single-type') {
-    const singleType = await db.singleType.findFirst({
-      where: { slug: idOrSlug, OR: [{ tenantId }, { tenantId: null }] },
-      include: { schemaFields: true }
+    const includeDraft = options.includeSingleTypeDraft === true
+    const singleType = await client.singleType.findFirst({
+      where: { slug: idOrSlug, draftTemplateId: null, OR: [{ tenantId }, { tenantId: null }] },
+      include: { schemaFields: true },
+      orderBy: { tenantId: { sort: "desc", nulls: "last" } },
     })
     
     if (singleType) {
-      const assignment = await db.tenantSingleTypeAssignment.findFirst({
-        where: { tenantId, singleTypeId: singleType.id }
-      })
-      
-      if (assignment?.data) {
-        let parsedData = assignment.data
-        if (typeof parsedData === 'string') {
-          try { parsedData = JSON.parse(parsedData) } catch { parsedData = {} }
-        }
-        
-        const resolvedData = await resolveContentData(tenantId, parsedData, singleType.schemaFields)
+      const where: Prisma.TenantSingleTypeAssignmentWhereInput = {
+        tenantId, singleTypeId: singleType.id, enabled: true,
+        ...(!includeDraft && { publishedAt: { not: null } }),
+      }
+      const assignment = (options.locale && await client.tenantSingleTypeAssignment.findFirst({
+        where: { ...where, locale: options.locale },
+      })) || await client.tenantSingleTypeAssignment.findFirst({ where, orderBy: { locale: "asc" } })
+
+      if (assignment) {
+        const { data } = readSingleTypeAssignment(assignment, includeDraft)
+        const resolvedData = await resolveFields(tenantId, data, singleType.schemaFields, options, nextAncestors)
         return {
           id: idOrSlug, // using slug as ID for single type references
           ...resolvedData,
@@ -111,7 +146,7 @@ async function resolveRelation(tenantId: string, idOrSlug: string, targetModel: 
   }
 
   if (targetModel === 'member') {
-    const member = await db.member.findFirst({
+    const member = await client.member.findFirst({
       where: { id: idOrSlug, tenantId },
       select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
     })
@@ -122,17 +157,23 @@ async function resolveRelation(tenantId: string, idOrSlug: string, targetModel: 
   }
 
   // Try to find as content entry (default)
-  const entry = await db.contentEntry.findFirst({
-    where: { id: idOrSlug, tenantId, deletedAt: null },
+  const entry = await client.contentEntry.findFirst({
+    where: {
+      id: idOrSlug, tenantId, deletedAt: null,
+      contentType: { draftTemplateId: null },
+      ...(options.includeUnpublished === false && { status: "PUBLISHED" as const }),
+    },
     include: { contentType: { include: { schemaFields: true } } },
   })
 
   if (entry) {
     // Recursively resolve the entry's data
-    const resolvedEntryData = await resolveContentData(
+    const resolvedEntryData = await resolveFields(
       tenantId,
-      entry.data as any,
-      entry.contentType.schemaFields
+      parseSingleTypeData(entry.data),
+      entry.contentType.schemaFields,
+      options,
+      nextAncestors,
     )
 
     return {

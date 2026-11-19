@@ -4,6 +4,8 @@ import { Check, Sparkles, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { sanitizeHtml } from "@/lib/sanitize-html"
+import { resolveYearlyPrice } from "@/lib/billing/plan-price"
+import { formatRupiah } from "@/lib/utils"
 
 interface PricingGridProps {
   plans?: any[]
@@ -42,13 +44,15 @@ export function PricingGrid({
     return []
   }
 
-  const formatRupiah = (val: any) => {
-    const num = typeof val === 'number' ? val : parseInt(String(val).replace(/[^\d]/g, ''), 10) || 0
-    return `Rp ${num.toLocaleString('id-ID')}`
+  const parsePrice = (value: unknown) => {
+    if (typeof value === "number") return value
+    if (typeof value !== "string") return undefined
+    const digits = value.replace(/[^\d]/g, "")
+    return digits ? Number(digits) : undefined
   }
 
   return (
-    <section id="pricing" className={`py-24 sm:py-32 relative ${bgClass} border-t border-border/50 scroll-mt-24 overflow-hidden`}>
+    <section className={`py-24 sm:py-32 relative ${bgClass} border-t border-border/50 scroll-mt-24 overflow-hidden`}>
       {/* Background Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-5xl h-[600px] opacity-25 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-blue-500/10 to-amber-500/10 blur-[120px] rounded-full" />
@@ -79,10 +83,9 @@ export function PricingGrid({
             const slug = getPlanSlug(plan)
             const isPopular = plan.is_popular === true || plan.popular === true || plan.isPopular === true || slug === 'pro'
             const features = parseFeatures(plan.features)
-            const price = typeof plan.price === 'number' ? plan.price : parseInt(String(plan.price || 0).replace(/[^\d]/g, ''), 10) || 0
-            const yearlyPrice = plan.yearly_price !== undefined
-              ? (typeof plan.yearly_price === 'number' ? plan.yearly_price : parseInt(String(plan.yearly_price).replace(/[^\d]/g, ''), 10) || price * 10)
-              : price * 10
+            const price = parsePrice(plan.price) ?? 0
+            const yearlyPrice = resolveYearlyPrice(price, parsePrice(plan.yearly_price))
+            const displayPrice = yearlyPrice > 0 ? yearlyPrice : price
 
             return (
               <div
@@ -117,16 +120,16 @@ export function PricingGrid({
                     <div className="mb-6 pb-6 border-b border-border/60">
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                          {yearlyPrice > 0 ? formatRupiah(yearlyPrice) : "Gratis"}
+                          {displayPrice > 0 ? formatRupiah(displayPrice) : "Gratis"}
                         </span>
-                        {yearlyPrice > 0 && (
-                          <span className="text-xs text-muted-foreground font-semibold">/tahun</span>
+                        {displayPrice > 0 && (
+                          <span className="text-xs text-muted-foreground font-semibold">/{yearlyPrice > 0 ? "tahun" : "bulan"}</span>
                         )}
                       </div>
-                      {price > 0 && (
+                      {yearlyPrice > 0 && (
                         <div className="text-[11px] font-semibold text-muted-foreground mt-1 text-primary/90 flex items-center gap-1">
                           <ShieldCheck className="h-3 w-3 text-emerald-500 shrink-0" />
-                          Setara {formatRupiah(price)}/bln (Tagihan Tahunan)
+                          Setara sekitar {formatRupiah(Math.round(yearlyPrice / 12))}/bulan dengan tagihan tahunan
                         </div>
                       )}
                     </div>
@@ -147,17 +150,18 @@ export function PricingGrid({
                   </div>
 
                   {/* CTA Button */}
-                  <Link href={`/register?plan=${slug}`} className="mt-auto block">
-                    <Button
-                      className={`w-full h-11 rounded-2xl font-bold text-xs transition-all duration-300 shadow-sm ${
+                  <Button
+                      asChild
+                      className={`mt-auto w-full h-11 rounded-2xl font-bold text-xs transition-all duration-300 shadow-sm ${
                         isPopular
                           ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01]"
                           : "bg-muted hover:bg-muted/80 text-foreground hover:text-primary hover:scale-[1.01]"
                       }`}
                     >
-                      {plan.cta_text || plan.cta || (price === 0 ? "Mulai Gratis" : "Langganan Sekarang")}
-                    </Button>
-                  </Link>
+                    <Link href={`/register?plan=${encodeURIComponent(slug)}`}>
+                      {plan.cta_text || plan.cta || (displayPrice === 0 ? "Mulai Gratis" : "Langganan Sekarang")}
+                    </Link>
+                  </Button>
                 </div>
               </div>
             )

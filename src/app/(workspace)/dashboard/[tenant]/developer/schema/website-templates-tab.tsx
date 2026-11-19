@@ -62,6 +62,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
   const [reviewId, setReviewId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<"card" | "table">("card")
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
 
@@ -71,6 +72,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.templates) setTemplates(data.templates)
+        setPendingTemplateId(data?.pendingTemplateId ?? null)
       })
       .catch(() => {})
       .finally(() => setIsLoading(false))
@@ -142,6 +144,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
       toast({ variant: "destructive", title: "Gagal Menerapkan", description: err.message })
     } finally {
       setApplyingId(null)
+      fetchTemplates()
     }
   }
 
@@ -419,6 +422,9 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
   // that is just a clearer failure mode than letting them click it and
   // get a 403 back.
   const canApply = currentRole === "owner" || currentRole === "admin"
+  const canApplyTemplate = (id: string) =>
+    canApply && !isResetting && applyingId === null &&
+    (pendingTemplateId ? pendingTemplateId === id : isWorkspaceEmpty)
 
   const ResetBanner = () => (
     <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
@@ -604,12 +610,12 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
                   <Button
                     size="sm"
                     onClick={() => handleApply(t)}
-                    disabled={applyingId === t.id || !isWorkspaceEmpty || !canApply}
-                    title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
+                    disabled={!canApplyTemplate(t.id)}
+                    title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !canApplyTemplate(t.id) ? "Lanjutkan template yang tertunda atau reset workspace" : undefined}
                     className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
                   >
                     {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                    Terapkan
+                    {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
                   </Button>
                 </div>
               </CardContent>
@@ -658,12 +664,12 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
                         <Button
                           size="sm"
                           onClick={() => handleApply(t)}
-                          disabled={applyingId === t.id || !isWorkspaceEmpty || !canApply}
-                          title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !isWorkspaceEmpty ? "Reset workspace ini dulu sebelum menerapkan template lain" : undefined}
+                          disabled={!canApplyTemplate(t.id)}
+                          title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !canApplyTemplate(t.id) ? "Lanjutkan template yang tertunda atau reset workspace" : undefined}
                           className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
                         >
                           {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                          Terapkan
+                          {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
                         </Button>
                       </div>
                     </TableCell>

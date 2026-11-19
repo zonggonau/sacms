@@ -50,6 +50,7 @@ import {
   type ContentActor,
 } from "@/lib/content/entry-service"
 import { revalidatePath } from "next/cache"
+import { invalidateSingleTypePublication, singleTypeContentWrite } from "@/lib/single-type-publication"
 import {
   getFullSchemaForTenant,
   listContentTypesForTenant,
@@ -1559,6 +1560,7 @@ const handler = createMcpHandler(
         })
         if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
+        const content = singleTypeContentWrite(data, true)
         const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
           where: {
             tenantId_singleTypeId_locale: {
@@ -1567,18 +1569,15 @@ const handler = createMcpHandler(
               locale: targetLocale
             }
           },
-          update: {
-            data: data || {},
-            publishedAt: new Date(),
-          },
+          update: content,
           create: {
             tenantId: auth.tenantId,
             singleTypeId: st.id,
             locale: targetLocale,
-            data: data || {},
-            publishedAt: new Date(),
+            ...content,
           }
         })
+        await invalidateSingleTypePublication(auth.tenantId, st.slug, targetLocale)
 
         return {
           content: [{

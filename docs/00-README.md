@@ -18,7 +18,7 @@ Selamat datang di direktori dokumentasi resmi **SaCMS (v1.3.0)** — SaaS Headle
 
 ### 👨‍💻 Fase Pengembangan & Pengujian
 5. 📄 **[05-Development_Guidelines.md](./05-Development_Guidelines.md)**: Standar penulisan kode (TypeScript, Bun, Zod v4, *Naming Conventions*), struktur *folder*, integrasi Next.js 16 App Router, dan panduan kontribusi (*Git Workflow*).
-6. 📄 **[06-Testing_Plan.md](./06-Testing_Plan.md)**: Skenario pengujian (*Unit test* via Vitest 41 suites / 307 tests 100% PASS, automated QA route auditor, dan *E2E test* via Playwright & gstack browser QA).
+6. 📄 **[06-Testing_Plan.md](./06-Testing_Plan.md)** — Skenario unit test Vitest, pengujian integrasi PostgreSQL, auditor endpoint, dan E2E Playwright.
 
 ### 🚀 Fase Deployment, Operasional & Keamanan
 7. 📄 **[07-Deployment_Guide.md](./07-Deployment_Guide.md)**: Strategi peluncuran (Vercel, Docker Compose, Self-Hosted Enterprise), **CI/CD GitHub Actions**, daftar lengkap *Environment Variables*, dan *Database Migration*.

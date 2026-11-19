@@ -18,6 +18,8 @@ jobs:
   build-and-push:
     name: ⚡ Fast Test, Build & Push (GHCR)
     runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.image.outputs.digest }}
     env:
       DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
       NEXTAUTH_SECRET: "ci-secret-placeholder-must-be-long-enough-32char"
@@ -79,9 +81,10 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Build & Push Ultra-Fast Image (5s)
+        id: image
         if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v6
         with:
@@ -92,9 +95,45 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
+  critical-flows:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-test
+          POSTGRES_DB: sacms_workflow_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      SACMS_WORKFLOW_CI: "1"
+      DATABASE_URL: postgresql://postgres:ci-test@127.0.0.1:5432/sacms_workflow_ci
+      DIRECT_URL: postgresql://postgres:ci-test@127.0.0.1:5432/sacms_workflow_ci
+      SACMS_DEDICATED_CI_DATABASE_URL: postgresql://postgres:ci-test@127.0.0.1:5432/sacms_dedicated_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun x prisma generate
+      - name: Prepare disposable databases
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -v ON_ERROR_STOP=1 -U postgres -d postgres -c 'CREATE DATABASE sacms_dedicated_ci'
+          bun x prisma db push --skip-generate
+          DATABASE_URL="$SACMS_DEDICATED_CI_DATABASE_URL" DIRECT_URL="$SACMS_DEDICATED_CI_DATABASE_URL" bun x prisma db push --skip-generate
+      - name: Run tenant, payment, and template integration flows
+        run: bun x vitest run --config vitest.integration.config.ts
+
   deploy:
     name: 🚀 Live Zero-Downtime Deploy (164.68.116.79)
-    needs: [build-and-push]
+    needs: [build-and-push, critical-flows]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     # `develop` and `master` both deploy to this one production VPS — there is
@@ -157,6 +196,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         env:
           ENV_CONTENT: ${{ secrets.ENV_PRODUCTION }}
+          RELEASE_IMAGE: ghcr.io/${{ github.repository_owner }}/sacms@${{ needs.build-and-push.outputs.image-digest }}
         with:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
@@ -165,9 +205,15 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 30m
-          envs: ENV_CONTENT
+          envs: ENV_CONTENT,RELEASE_IMAGE
           script: |
             set -e
+            RELEASE_IMAGE=$(printf '%s' "$RELEASE_IMAGE" | tr '[:upper:]' '[:lower:]')
+            if ! printf '%s\n' "$RELEASE_IMAGE" | grep -Eq '^ghcr\.io/[a-z0-9_.-]+/sacms@sha256:[0-9a-f]{64}$'; then
+              echo "Build did not supply a valid immutable image reference."
+              exit 1
+            fi
+            export SACMS_APP_IMAGE="$RELEASE_IMAGE"
             echo "==> [1/7] Checking Docker environment..."
             if ! command -v docker &> /dev/null; then
               echo "Error: Docker is not installed on this server. Run scripts/vps-setup.sh first."
@@ -239,7 +285,7 @@ jobs:
             echo "==> [3/7] Authenticating to GHCR..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            echo "==> [4/7] Pulling latest SaCMS image (with auto-retry)..."
+            echo "==> [4/7] Pulling this run's SaCMS image (with auto-retry)..."
             PULL_SUCCESS=0
             for attempt in 1 2 3 4 5; do
               echo "Pull attempt $attempt/5..."
@@ -288,7 +334,7 @@ jobs:
             for sql in db/manual-migrations/*.sql; do
               [ -e "$sql" ] || continue
               echo "==> Applying reviewed manual migration: $(basename "$sql")"
-              docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$DB_USER" -d "$DB_USER" < "$sql" || {
+              docker compose exec -T postgres sh -c 'exec psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < "$sql" || {
                 echo "❌ Manual migration $(basename "$sql") failed — aborting deploy."
                 exit 1
               }
@@ -297,33 +343,16 @@ jobs:
             # reviewed idempotent SQL file in db/manual-migrations/ first (see README
             # there), not silently applied by an unattended deploy pipeline.
             #
-            # Each call below is bounded by `timeout -k 10 90` and followed
-            # by the same leaked-container cleanup — db push/seed scripts
-            # finish in well under a second per the real logs ("Done in
-            # 414ms"), so 90s is pure safety margin for the work itself; a
-            # real failure still surfaces well inside that window. Plain
-            # `timeout 90` (no -k) isn't enough on its own: it only SENDS
-            # SIGTERM at the deadline and then waits for the child to
-            # actually exit — if `docker compose run` doesn't honour SIGTERM
-            # while blocked on the restart-loop hang above, `timeout` itself
-            # hangs right along with it, reproducing the exact same bug.
-            # `-k 10` forces a SIGKILL 10s later if SIGTERM didn't work,
-            # which the kernel can't fail to act on. Exit 124 (SIGTERM) or
-            # 137 (SIGKILL via -k) both mean "timeout fired on the
-            # post-success teardown hang", not that the command failed —
-            # only some OTHER exit code aborts the deploy for db push, and
-            # the two seed calls keep tolerating any failure exactly as
-            # before.
-            set +e
-            timeout -k 10 90 docker compose run --rm app bun x prisma db push --skip-generate
-            DB_PUSH_STATUS=$?
-            set -e
-            cleanup_leaked_app_run
-            if [ "$DB_PUSH_STATUS" -ne 0 ] && [ "$DB_PUSH_STATUS" -ne 124 ] && [ "$DB_PUSH_STATUS" -ne 137 ]; then
-              echo "❌ Prisma db push failed (exit $DB_PUSH_STATUS) — aborting deploy."
+            if ! timeout -k 10 90 docker compose run --rm --no-deps app bun x prisma db push --skip-generate; then
+              cleanup_leaked_app_run
+              echo "❌ Prisma db push failed or timed out. Deployment stopped."
               exit 1
             fi
-            [ "$DB_PUSH_STATUS" -eq 124 -o "$DB_PUSH_STATUS" -eq 137 ] && echo "⚠️ db push hung during container teardown after completing — continuing (see output above)."
+            if ! timeout -k 10 240 docker compose run --rm --no-deps app bun scripts/migrate/verify-release-schema.ts; then
+              cleanup_leaked_app_run
+              echo "❌ Release schema verification failed on a configured database. Deployment stopped."
+              exit 1
+            fi
 
             timeout -k 10 90 docker compose run --rm app bun run seed:permissions || true
             cleanup_leaked_app_run
@@ -332,6 +361,9 @@ jobs:
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans
+            if docker compose config --services | grep -qx cron; then
+              docker compose up -d --no-deps --force-recreate cron
+            fi
 
             echo "==> [7/7] Verifying live system health..."
             HEALTHY=0
@@ -339,10 +371,6 @@ jobs:
               HEALTH_RES=$(curl -sf http://127.0.0.1:3000/api/health 2>/dev/null || echo "")
               if echo "$HEALTH_RES" | grep -q '"status":"healthy"'; then
                 echo "✅ SaCMS App, Database & Services are 100% HEALTHY! 🚀"
-                HEALTHY=1
-                break
-              elif echo "$HEALTH_RES" | grep -q '"database":{"status":"ok"}'; then
-                echo "✅ SaCMS Database is connected and healthy!"
                 HEALTHY=1
                 break
               fi

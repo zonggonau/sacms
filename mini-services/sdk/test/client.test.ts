@@ -223,6 +223,64 @@ describe("SaCMS client", () => {
     expect(init.signal).toBe(controller.signal)
   })
 
+  // Seventh external audit: a caller-aborted signal used to still go
+  // through the same retry-with-backoff path as a generic network
+  // failure (~7s before the caller finally saw their own cancellation) —
+  // it must fail immediately instead, same as a deliberate timeout does.
+  it("fails immediately (no retry) when the CALLER's own signal is aborted, instead of treating it like a network failure", async () => {
+    const controller = new AbortController()
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener("abort", () => {
+        const err = new Error("aborted")
+        err.name = "AbortError"
+        reject(err)
+      })
+    }))
+
+    const promise = client().collection("articles").findMany(undefined, { signal: controller.signal })
+    controller.abort()
+    await expect(promise).rejects.toMatchObject({ name: "SaCMSError", message: expect.stringContaining("aborted by the caller") })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  // Seventh external audit: the timeout used to be cleared the moment
+  // fetch() itself resolved (i.e. once HEADERS arrived, per the Fetch
+  // spec) — a server that sends headers immediately but trickles the
+  // body slowly sailed straight through a short timeoutMs with nothing
+  // enforcing it at all.
+  it("the timeout also covers a slow body read, not just the wait for headers", async () => {
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: new Headers(),
+      json: () => new Promise((_resolve, reject) => {
+        init.signal?.addEventListener("abort", () => {
+          const err = new Error("aborted")
+          err.name = "AbortError"
+          reject(err)
+        })
+      }),
+    }))
+
+    await expect(client().collection("articles").findMany(undefined, { timeoutMs: 50 })).rejects.toMatchObject({
+      name: "SaCMSError",
+      message: expect.stringContaining("timed out after 50ms"),
+    })
+  })
+
+  // Seventh external audit: findOne() already handled populate: "*"
+  // correctly; findMany() crashed on it with a raw TypeError instead of
+  // a SaCMSError — `populate?.length` is truthy for the STRING "*" too
+  // (strings have .length), falling through to `.map()`, which strings
+  // don't have.
+  it("findMany() accepts populate: '*' without crashing", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
+    await client().collection("articles").findMany({ populate: "*" })
+
+    const [url] = fetchMock.mock.calls[0]
+    expect(url).toContain("populate=*")
+  })
+
   // Sixth external audit: Content-Type: application/json used to be sent
   // unconditionally, including on a GET with no body — a non-empty,
   // non-form Content-Type on a cross-origin request forces an extra CORS

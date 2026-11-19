@@ -3,11 +3,12 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { redirect } from "next/navigation"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
+import type { WorkspacePlan, AddonPlan } from "@/components/dashboard/workspace-creation-dialog"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { isPlatformStaff } from "@/lib/platform-roles"
-import { getStorageQuota } from "@/lib/plan-enforcement"
+import { enforceUserPlanLimit, getStorageQuota, validateWorkspacePlanBinding } from "@/lib/plan-enforcement"
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
@@ -165,16 +166,20 @@ export default async function WorkspaceSelectionPage() {
 
   // Fetch global dependencies for the creation dialog
   let dbTemplates: any[] = []
-  let workspacePlans: any[] = []
-  let addonPlans: any[] = []
+  let workspacePlans: WorkspacePlan[] = []
+  let addonPlans: AddonPlan[] = []
+  let freePlanUnavailableReason: string | null = "Kelayakan paket Gratis belum dapat diperiksa."
   let usage: any = null
 
   try {
     const { getWorkspacePlans, getAddons } = await import("@/lib/pricing")
-    const [wPlans, aPlans] = await Promise.all([
+    const [wPlans, aPlans, freeBinding, limitResult] = await Promise.all([
       getWorkspacePlans(),
       getAddons(),
+      validateWorkspacePlanBinding(session.user.id, "free"),
+      enforceUserPlanLimit(session.user.id, "workspaces"),
     ])
+    freePlanUnavailableReason = freeBinding.allowed ? null : freeBinding.message
 
     workspacePlans = wPlans.map(p => ({
       id: p.slug,
@@ -182,27 +187,15 @@ export default async function WorkspaceSelectionPage() {
       name: p.name || "Workspace Plan",
       desc: p.description || "",
       priceAmount: p.price,
-      yearlyPrice: p.yearlyPrice ?? p.price * 10,
+      yearlyPrice: p.yearlyPrice,
       max_content_types: p.maxContentTypes,
       max_content_entries: p.maxContentEntries,
       max_storage: p.maxStorageMb,
       max_team_members: p.maxTeamMembers,
       max_locales: p.maxLocales,
       max_api_calls: p.maxApiCalls,
-      features: Array.isArray(p.features) ? p.features : []
+      features: Array.isArray(p.features) ? p.features.filter(value => typeof value === "string") : []
     })).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
-
-    // Free workspace tier only when BOTH hold: the account's own plan is
-    // itself "free" (a Starter/Pro/Business account never gets a free
-    // workspace, full stop), AND it hasn't used its one free workspace
-    // allowance yet (see User.freeWorkspaceUsed). Every workspace created
-    // from this "new workspace" flow is brand new by definition, so
-    // there's no "already on free, keep showing it" exception to make
-    // here like the per-tenant subscriptions page has.
-    const dbUser = await db.user.findUnique({ where: { id: session.user.id }, select: { plan: true, freeWorkspaceUsed: true } })
-    if (dbUser && (dbUser.plan !== "free" || dbUser.freeWorkspaceUsed)) {
-      workspacePlans = workspacePlans.filter(p => p.plan_slug !== "free")
-    }
 
     addonPlans = aPlans.map(a => ({
       id: a.slug,
@@ -210,12 +203,12 @@ export default async function WorkspaceSelectionPage() {
       desc: a.description || "",
       priceLabel: a.priceLabel || "",
       priceAmount: a.price ?? 0,
+      yearlyPrice: a.yearlyPrice,
+      isTopup: a.isTopup,
       icon: a.icon || "Sparkles"
     }))
 
     // Check user plan limits using centralized enforcement (handles enterprise/admin bypasses)
-    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
-    const limitResult = await enforceUserPlanLimit(session.user.id, "workspaces")
     usage = {
       current: tenants.length, // Ensure it matches the list we fetched
       max: limitResult.max,
@@ -268,6 +261,7 @@ export default async function WorkspaceSelectionPage() {
       dbTemplates={dbTemplates}
       workspacePlans={workspacePlans}
       addonPlans={addonPlans}
+      freePlanUnavailableReason={freePlanUnavailableReason}
       isSuperAdmin={isSuperAdmin}
       isAccountEnterpriseLicensed={isGlobalEnterprise}
     />

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useId, useState, useMemo } from "react"
 import {
   Loader2,
   Building2,
@@ -29,7 +29,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { toast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
+import { cn, formatRupiah } from "@/lib/utils"
+import { resolveYearlyPrice } from "@/lib/billing/plan-price"
 import { createTenantAction } from "@/actions/tenant"
 import { useRouter } from "next/navigation"
 
@@ -39,7 +40,7 @@ export interface WorkspacePlan {
   name: string
   desc: string
   priceAmount: number
-  yearlyPrice: number
+  yearlyPrice: number | null
   max_content_types?: number
   max_content_entries?: number
   max_storage?: number
@@ -55,6 +56,8 @@ export interface AddonPlan {
   desc?: string
   priceLabel?: string
   priceAmount: number
+  yearlyPrice?: number | null
+  isTopup?: boolean
   icon?: string
 }
 
@@ -63,6 +66,7 @@ interface WorkspaceCreationDialogProps {
   onOpenChange: (open: boolean) => void
   workspacePlans?: WorkspacePlan[]
   addonPlans?: AddonPlan[]
+  freePlanUnavailableReason: string | null
   dbTemplates?: any[]
   initialTemplateId?: string
   /** When true, `workspacePlans` is the single license-covered plan the
@@ -147,23 +151,14 @@ export function WorkspaceCreationDialog({
   onOpenChange,
   workspacePlans = [],
   addonPlans = [],
+  freePlanUnavailableReason,
   isEnterpriseLicensed = false,
 }: WorkspaceCreationDialogProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const freePlanHint = useId()
 
-  // Every admin-defined workspace tier from /admin/pricing, in whatever
-  // order the caller already sorted them (page.tsx sorts by price
-  // ascending) — "enterprise" is excluded since that's a dedicated-DB
-  // license grant, not a pickable tier here (see isEnterpriseLicensed
-  // branch below for that case). A fixed free/pro/business lookup here
-  // used to silently drop any OTHER tier (confirmed live: the new Starter
-  // plan never appeared in this dialog even though the real catalog
-  // already had it) and backfill missing ones with stale hardcoded
-  // prices that no longer matched the real catalog at all.
   const standardPlans = useMemo(() => {
-    // Enterprise-licensed account: show exactly the one plan the server
-    // already prepared, not the normal tier list below.
     if (isEnterpriseLicensed) {
       return workspacePlans.length > 0 ? workspacePlans : [{
         id: "enterprise-license",
@@ -176,47 +171,40 @@ export function WorkspaceCreationDialog({
       }]
     }
 
-    const cleanPlans = workspacePlans.filter(p => {
+    return workspacePlans.filter(p => {
       const s = `${p.plan_slug || ""} ${p.id || ""} ${p.name || ""}`.toLowerCase()
       return !s.includes("vps") && !s.includes("vds") && !s.includes("storage") && !s.includes("enterprise")
     })
-
-    if (cleanPlans.length > 0) return cleanPlans
-
-    // Defensive fallback only for a completely empty/misconfigured
-    // catalog (should never happen once /admin/pricing is seeded) — a
-    // single generic tier, not fabricated per-plan prices that would
-    // drift from reality.
-    return [{
-      id: "free",
-      plan_slug: "free",
-      name: "Free",
-      desc: "Paket dasar gratis untuk memulai proyek CMS Anda.",
-      priceAmount: 0,
-      yearlyPrice: 0,
-      max_content_types: 999999,
-      max_content_entries: 500,
-      max_team_members: 1,
-      max_storage: 100,
-      features: ["Unlimited Content Schemas", "500 Entri Konten", "1 Anggota Tim", "100 MB Object Storage"],
-    }]
   }, [workspacePlans, isEnterpriseLicensed])
-
-  const defaultPlanSlug = standardPlans[0]?.plan_slug || standardPlans[0]?.id || "free"
 
   const [newWorkspace, setNewWorkspace] = useState({
     name: "",
     description: "",
-    plan: defaultPlanSlug,
+    plan: null as string | null,
     selectedAddons: [] as string[]
   })
 
-  const selectedPlanObj = useMemo(() => {
-    return standardPlans.find(p => (p.plan_slug || p.id) === newWorkspace.plan) || standardPlans[0]
-  }, [standardPlans, newWorkspace.plan])
+  const freePlan = standardPlans.find(plan => (plan.plan_slug || plan.id) === "free")
+  const defaultPlan = isEnterpriseLicensed ? standardPlans[0] : freePlanUnavailableReason ? undefined : freePlan
+  const selectedPlanObj = standardPlans.find(plan => {
+    const slug = plan.plan_slug || plan.id
+    return slug === newWorkspace.plan && (slug !== "free" || !freePlanUnavailableReason)
+  }) ?? defaultPlan
+  const selectedPlanSlug = selectedPlanObj?.plan_slug ?? selectedPlanObj?.id
+  const monthlyPrice = selectedPlanObj?.priceAmount ?? 0
+  const yearlyPrice = resolveYearlyPrice(monthlyPrice, selectedPlanObj?.yearlyPrice)
+  const useYearlyPrice = yearlyPrice > 0 || monthlyPrice === 0
+  const getAddonPrice = (addon: AddonPlan) => addon.isTopup || !useYearlyPrice
+    ? addon.priceAmount
+    : resolveYearlyPrice(addon.priceAmount, addon.yearlyPrice)
+  const addonTotal = addonPlans
+    .filter(addon => newWorkspace.selectedAddons.includes(addon.id))
+    .reduce((total, addon) => total + getAddonPrice(addon), 0)
+  const estimatedTotal = (useYearlyPrice ? yearlyPrice : monthlyPrice) + addonTotal
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!selectedPlanSlug || isSubmitting) return
     if (!newWorkspace.name.trim()) {
       toast({ variant: "destructive", title: "Validasi Gagal", description: "Nama workspace wajib diisi." })
       return
@@ -227,7 +215,7 @@ export function WorkspaceCreationDialog({
       const res = await createTenantAction({
         name: newWorkspace.name.trim(),
         description: newWorkspace.description.trim(),
-        plan: newWorkspace.plan,
+        plan: selectedPlanSlug,
         addons: newWorkspace.selectedAddons
       })
 
@@ -255,23 +243,6 @@ export function WorkspaceCreationDialog({
           : [...prev.selectedAddons, addonId]
       }
     })
-  }
-
-  const calculateTotalPrice = () => {
-    if (!selectedPlanObj) return 0
-
-    let basePrice = Number(selectedPlanObj.priceAmount) || 0
-    let yearlyPrice = selectedPlanObj.yearlyPrice !== undefined && selectedPlanObj.yearlyPrice > 0
-      ? Number(selectedPlanObj.yearlyPrice)
-      : basePrice * 10
-
-    let addonPrice = newWorkspace.selectedAddons.reduce((sum, addonId) => {
-      const addon = addonPlans.find(a => a.id === addonId)
-      const aPrice = Number(addon?.priceAmount) || 0
-      return sum + (aPrice * 12)
-    }, 0)
-
-    return yearlyPrice + addonPrice
   }
 
   return (
@@ -348,17 +319,22 @@ export function WorkspaceCreationDialog({
                   title={isEnterpriseLicensed ? "Paket Workspace" : "Pilih Paket Cloud"}
                   description={isEnterpriseLicensed
                     ? "Workspace ini otomatis memakai Lisensi Enterprise akun Anda — tidak perlu memilih paket."
-                    : `Pilih salah satu dari ${standardPlans.length} paket Cloud bawaan. Butuh kapasitas storage lebih besar? Upgrade kapan saja dari dashboard workspace setelah dibuat.`}
+                    : "Pilih paket yang akan digunakan workspace ini."}
                 />
 
-                <div className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : planGridCols(standardPlans.length))}>
+                {freePlan && freePlanUnavailableReason && (
+                  <p id={freePlanHint} className="text-xs text-muted-foreground">{freePlanUnavailableReason}</p>
+                )}
+                {standardPlans.length === 0 && (
+                  <p className="text-sm text-muted-foreground" role="status">Katalog paket workspace belum tersedia.</p>
+                )}
+                <div role="radiogroup" aria-label="Paket Workspace" className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : planGridCols(standardPlans.length))}>
                     {standardPlans.map((plan) => {
                       const planSlug = plan.plan_slug || plan.id
-                      const isSelected = newWorkspace.plan === planSlug
-                      const price = Number(plan.priceAmount) || 0
-                      const displayPrice = plan.yearlyPrice !== undefined && plan.yearlyPrice > 0
-                        ? Number(plan.yearlyPrice)
-                        : price * 10
+                      const isSelected = selectedPlanSlug === planSlug
+                      const isUnavailable = planSlug === "free" && !!freePlanUnavailableReason
+                      const annualPrice = resolveYearlyPrice(plan.priceAmount, plan.yearlyPrice)
+                      const displayPrice = annualPrice > 0 ? annualPrice : plan.priceAmount
                       const accent = getTierAccent(planSlug)
                       const AccentIcon = accent.icon
                       const limitRows = planLimitRows(plan)
@@ -367,14 +343,25 @@ export function WorkspaceCreationDialog({
                       return (
                         <Card
                           key={plan.id}
-                          onClick={() => setNewWorkspace(prev => ({ ...prev, plan: planSlug }))}
                           className={cn(
-                            "cursor-pointer rounded-2xl border py-0 overflow-hidden transition-all duration-200 flex flex-col bg-card hover:shadow-sm relative",
+                            "relative flex flex-col overflow-hidden rounded-2xl border bg-card py-0 transition-all duration-200 focus-within:ring-2 focus-within:ring-ring",
+                            isUnavailable && "opacity-70",
                             isSelected
                               ? "border-primary ring-2 ring-primary shadow-sm"
-                              : "border-border/80 hover:border-primary/50"
+                              : !isUnavailable && "border-border/80 hover:border-primary/50"
                           )}
                         >
+                          <input
+                            type="radio"
+                            name="workspace-plan"
+                            value={planSlug}
+                            aria-label={plan.name}
+                            aria-describedby={isUnavailable ? freePlanHint : undefined}
+                            checked={isSelected}
+                            disabled={isUnavailable}
+                            onChange={() => setNewWorkspace(prev => ({ ...prev, plan: planSlug }))}
+                            className="absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                          />
                           {accent.ribbon && (
                             <div className="bg-primary text-primary-foreground text-[10px] font-black uppercase py-1 text-center tracking-wider">
                               {accent.ribbon}
@@ -409,10 +396,10 @@ export function WorkspaceCreationDialog({
                             <div className="mt-3 pt-3 border-t border-border/50">
                               <div className="flex items-baseline gap-1">
                                 <span className="text-2xl font-black text-foreground">
-                                  {isEnterpriseLicensed ? "Termasuk dalam Lisensi" : displayPrice === 0 ? "Gratis" : `Rp ${displayPrice.toLocaleString('id-ID')}`}
+                                  {isEnterpriseLicensed ? "Termasuk dalam Lisensi" : formatRupiah(displayPrice)}
                                 </span>
                                 {!isEnterpriseLicensed && displayPrice > 0 && (
-                                  <span className="text-xs text-muted-foreground font-semibold">/thn</span>
+                                  <span className="text-xs text-muted-foreground font-semibold">/{annualPrice > 0 ? "tahun" : "bulan"}</span>
                                 )}
                               </div>
                             </div>
@@ -459,14 +446,14 @@ export function WorkspaceCreationDialog({
                   <SectionHeader
                     step={3}
                     title="Add-on & Fitur Ekstra (Opsional)"
-                    description="Tingkatkan performa workspace dengan fitur tambahan (tahunan)."
+                    description="Tambahkan fitur atau kuota sesuai kebutuhan workspace."
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {addonPlans.map(addon => {
                       const isChecked = newWorkspace.selectedAddons.includes(addon.id)
-                      const price = Number(addon.priceAmount) || 0
-                      const displayPrice = price * 12
+                      const displayPrice = getAddonPrice(addon)
+                      const period = addon.isTopup ? "sekali bayar" : useYearlyPrice ? "per tahun" : "per bulan"
 
                       return (
                         <div
@@ -488,7 +475,7 @@ export function WorkspaceCreationDialog({
                               <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{addon.desc}</p>
                             )}
                             <p className="text-xs font-bold text-primary mt-1">
-                              {displayPrice === 0 ? "Gratis" : `+Rp ${displayPrice.toLocaleString('id-ID')}/thn`}
+                              {displayPrice === 0 ? "Gratis" : `+${formatRupiah(displayPrice)} ${period}`}
                             </p>
                           </div>
                           <div className={cn(
@@ -514,17 +501,20 @@ export function WorkspaceCreationDialog({
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
-                  {isEnterpriseLicensed ? "Status Billing" : "Total Estimasi Tagihan"}
+                  {isEnterpriseLicensed ? "Status Billing" : "Estimasi sebelum pajak"}
                 </p>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <h3 className="text-lg font-black text-foreground truncate">
                     {isEnterpriseLicensed
                       ? "Tidak Ada Tagihan Tambahan"
-                      : calculateTotalPrice() === 0 ? "Rp 0 (Gratis Selamanya)" : `Rp ${calculateTotalPrice().toLocaleString('id-ID')}`}
+                      : selectedPlanObj ? formatRupiah(estimatedTotal) : "Pilih paket terlebih dahulu"}
                   </h3>
                   {selectedPlanObj && (
                     <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-md border-border/80 shrink-0">
-                      {isEnterpriseLicensed ? `Paket ${selectedPlanObj.name}` : <>Paket {selectedPlanObj.name} &bull; Tahunan</>}
+                      Paket {selectedPlanObj.name}
+                      {!isEnterpriseLicensed && (yearlyPrice > 0 || monthlyPrice > 0) && (
+                        <> &bull; {useYearlyPrice ? "Tahunan" : "Bulanan"}</>
+                      )}
                     </Badge>
                   )}
                 </div>
@@ -544,7 +534,7 @@ export function WorkspaceCreationDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !newWorkspace.name.trim()}
+                disabled={isSubmitting || !selectedPlanSlug || !newWorkspace.name.trim()}
                 size="sm"
                 className="text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs cursor-pointer px-4 bg-primary hover:bg-primary/90 text-primary-foreground"
               >

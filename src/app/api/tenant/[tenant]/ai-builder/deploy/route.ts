@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getWebsiteTemplateRun, websiteTemplateRunKey } from "@/lib/infrastructure/website-template-run"
 import { db, getTenantDb } from "@/lib/database"
 import { addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
@@ -190,6 +191,10 @@ export const POST = withStaffAuth(
 
       const lockError = await assertSchemaEditable(tenantId)
       if (lockError) return apiError("forbidden", { message: lockError.error })
+      const applying = await getWebsiteTemplateRun(tenantId)
+      if (applying && applying.expiresAt > Date.now()) {
+        return apiError("conflict", { message: "Tunggu sampai penerapan Website Template selesai sebelum mereset workspace." })
+      }
 
       const existingProjectId = await db.setting.findUnique({ where: { key: `${tenantId}_vercelProjectId` } })
       const projectId = existingProjectId?.value || (tenant as any).vercelProjectId
@@ -216,6 +221,7 @@ export const POST = withStaffAuth(
 
       const tenantDb = await getTenantDb(tenantSlug)
       const deletedSchema = await wipeTenantSchema(tenantDb, tenantId)
+      await db.setting.deleteMany({ where: { key: websiteTemplateRunKey(tenantId) } })
 
       return NextResponse.json({ success: true, deletedSchema })
     }

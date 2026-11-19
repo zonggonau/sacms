@@ -6,7 +6,7 @@ import { processScheduledContent } from "./core/scheduled-publish";
 
 const isDryRun = process.argv.includes("--dry-run");
 processScheduledContent({ dryRun: isDryRun })
-  .then(() => process.exit(0))
+  .then(({ totalErrors }) => process.exit(totalErrors > 0 ? 1 : 0))
   .catch((e) => {
     console.error(e);
     process.exit(1);

@@ -49,7 +49,7 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
   const [members, setMembers] = useState<Member[]>([])
   const [reviewers, setReviewers] = useState<Reviewer[]>([])
 
-  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug)
+  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
   const effectiveRole = session?.user?.role === "super_admin" ? "owner" : tenantMembership?.role
   const canManageReviewers =
     (effectiveRole === "owner" || effectiveRole === "admin") &&

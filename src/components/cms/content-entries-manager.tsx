@@ -350,6 +350,11 @@ export function ContentEntriesManager({
   const importFileInputRef = useRef<HTMLInputElement>(null)
   const [isExportingEntries, setIsExportingEntries] = useState(false)
   const [isImportingEntries, setIsImportingEntries] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    imported: number
+    failed: number
+    failures: Array<{ index: number; error: string }>
+  } | null>(null)
 
   const handleExportEntries = async () => {
     setIsExportingEntries(true)
@@ -464,12 +469,12 @@ export function ContentEntriesManager({
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal mengimpor data")
 
-      toast({
-        title: "Data Diimpor",
-        description: `${data.imported} entri baru ditambahkan sebagai draft.${data.failed > 0 ? ` ${data.failed} entri gagal (lihat konsol).` : ""}`,
-      })
-      if (data.failed > 0) console.warn("[Import Entries] Failures:", data.failures)
-      router.refresh()
+      if (data.failed > 0) {
+        setImportResult(data)
+      } else {
+        toast({ title: "Data Diimpor", description: `${data.imported} entri baru ditambahkan sebagai draf.` })
+      }
+      if (data.imported > 0) router.refresh()
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal Mengimpor Data", description: err.message })
     } finally {
@@ -870,6 +875,32 @@ export function ContentEntriesManager({
   return (
     <div className="flex flex-1 flex-col w-full">
       {confirmDialog}
+
+      <Dialog open={importResult !== null} onOpenChange={(open) => { if (!open) setImportResult(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hasil Impor Data</DialogTitle>
+            <DialogDescription>
+              {importResult?.imported} entri ditambahkan sebagai draf. {importResult?.failed} entri gagal.
+            </DialogDescription>
+          </DialogHeader>
+          {importResult && (
+            <div className="max-h-64 space-y-2 overflow-y-auto text-sm">
+              <ul className="list-disc space-y-1 pl-5">
+                {importResult.failures.map(({ index, error }) => (
+                  <li key={index} className="break-words">Entri ke-{index + 1} — {error}</li>
+                ))}
+              </ul>
+              {importResult.failed > importResult.failures.length && (
+                <p className="text-muted-foreground">Ditampilkan {importResult.failures.length} kegagalan pertama.</p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button type="button" onClick={() => setImportResult(null)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl">

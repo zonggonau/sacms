@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { getTenantDb } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
+import { getStudioLocales } from "@/lib/content/studio-locales"
 import CMSEditEntryClient from "./edit-entry-client"
 
 export default async function CMSEditEntryPage({
@@ -45,65 +46,34 @@ export default async function CMSEditEntryPage({
     fields: formattedFields
   }
 
-  // Fetch entry
-  const entry = await tenantDb.contentEntry.findFirst({
-    where: {
-      id: entryId,
-      contentTypeId: contentType.id,
-      tenantId: access.tenantId,
-    }
-  })
+  const [entry, availableLocales, previewSetting] = await Promise.all([
+    tenantDb.contentEntry.findFirst({
+      where: {
+        id: entryId,
+        contentTypeId: contentType.id,
+        tenantId: access.tenantId,
+        deletedAt: null,
+      },
+    }),
+    getStudioLocales(access.tenantId),
+    db.setting.findUnique({
+      where: { key: `${access.tenantId}_previewUrl` },
+      select: { value: true },
+    }),
+  ])
 
   if (!entry) notFound()
 
-  let parsedData = entry.data
-  if (typeof entry.data === 'string') {
-    try { parsedData = JSON.parse(entry.data) } catch { parsedData = {} }
-  }
-
-  const initialEntry = {
-    ...entry,
-    data: parsedData as Record<string, unknown>,
-    createdAt: entry.createdAt.toISOString(),
-    updatedAt: entry.updatedAt.toISOString(),
-    publishedAt: entry.publishedAt ? entry.publishedAt.toISOString() : null,
-    scheduledAt: entry.scheduledAt ? entry.scheduledAt.toISOString() : null,
-  }
-
-  // Fetch available locales
-  let availableLocales = [{ locale: "id", name: "Bahasa Indonesia" }]
-  try {
-    const dbLocales = await (tenantDb as any).locale?.findMany({
-      where: { tenantId: access.tenantId },
-      orderBy: { isDefault: 'desc' }
-    })
-    if (dbLocales && dbLocales.length > 0) {
-      availableLocales = dbLocales.map((l: any) => ({ locale: l.code, name: l.name }))
-    }
-  } catch {
-    // Fallback default
-  }
-
-  // Preview URL setting
-  let previewUrl: string | null = null
-  try {
-    const setting = await tenantDb.setting.findFirst({
-      where: { key: { in: [`${access.tenantId}_previewUrl`, "previewUrl"] } }
-    })
-    if (setting?.value) previewUrl = setting.value
-  } catch {
-    // Ignore setting fetch error
-  }
-
   return (
     <CMSEditEntryClient 
+      key={entry.id}
       tenantSlug={tenantSlug} 
       contentTypeSlug={contentTypeSlug} 
       entryId={entryId}
-      initialEntry={initialEntry as any}
+      initialEntry={entry}
       initialContentType={mappedContentType as any}
       initialAvailableLocales={availableLocales}
-      initialPreviewUrl={previewUrl}
+      previewUrl={previewSetting?.value}
       userRole={access.role}
       customPermissions={(access as any).customPermissions}
     />

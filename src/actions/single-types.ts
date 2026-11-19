@@ -1,7 +1,6 @@
 "use server"
 // Trigger Next.js rebuild for SingleType showInCms patch v4
 
-import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
@@ -13,6 +12,12 @@ import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
 import { validateContentEntry } from "@/lib/content-validations"
 import { assertSchemaEditable } from "@/lib/schema-lock"
+import {
+  getSingleTypeLocales,
+  invalidateSingleTypePublication,
+  readSingleTypeAssignment,
+  singleTypeContentWrite,
+} from "@/lib/single-type-publication"
 
 // Halaman Statis (Single Types) content is meant to be entered by the
 // workspace owner/admin, not regular members — unlike normal Content Types,
@@ -22,7 +27,7 @@ function isStaticPageManager(role: string): boolean {
   return role === "owner" || role === "admin"
 }
 
-export async function getSingleTypesAction(tenantSlug: string) {
+export async function getSingleTypesAction(tenantSlug: string, scope?: "studio") {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -37,12 +42,14 @@ export async function getSingleTypesAction(tenantSlug: string) {
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
+    const [{ locale }] = await getSingleTypeLocales(tenantId)
 
     const singleTypes = await tenantDb.singleType.findMany({
       where: {
         // See ContentType's getContentTypesAction — same draft-template
         // tagging convention, kept out of the normal list.
         draftTemplateId: null,
+        ...(scope === "studio" ? { showInCms: true } : {}),
         OR: [
           { tenantId: tenantId },
           {
@@ -59,28 +66,23 @@ export async function getSingleTypesAction(tenantSlug: string) {
     })
 
     const assignments = await tenantDb.tenantSingleTypeAssignment.findMany({
-      where: { tenantId: tenantId }
+      where: { tenantId, locale }
     })
+    const assignmentsByType = new Map(assignments.map((assignment) => [assignment.singleTypeId, assignment]))
 
     const singleTypesMap = new Map()
 
     for (const st of singleTypes) {
-      const assignment = assignments.find(a => a.singleTypeId === st.id)
-
-      let parsedData = {}
-      if (assignment?.data) {
-        try {
-          parsedData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
-        } catch { parsedData = {} }
-      }
+      const assignment = assignmentsByType.get(st.id)
 
       const formattedFields = parseSchemaFieldOptions(st.schemaFields)
 
       const mappedSt = {
         ...st,
         fields: formattedFields,
-        data: parsedData,
+        data: assignment ? readSingleTypeAssignment(assignment, true).data : {},
         publishedAt: assignment?.publishedAt || null,
+        ...(scope === "studio" ? { updatedAt: assignment?.updatedAt ?? null } : {}),
         isGlobal: st.tenantId === null,
       }
 
@@ -96,7 +98,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
   }
 }
 
-export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string, locale?: string) {
+export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string, locale?: string, scope?: "studio") {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -111,12 +113,15 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
+    const locales = await getSingleTypeLocales(tenantId)
+    const targetLocale = locale || locales[0].locale
 
     // No draftTemplateId:null filter — single-item lookup by slug is also
     // how the edit page reaches a template's materialized draft rows.
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         slug,
+        ...(scope === "studio" ? { draftTemplateId: null, showInCms: true } : {}),
         OR: [
           { tenantId: tenantId },
           {
@@ -128,21 +133,15 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
       },
       include: {
         schemaFields: { orderBy: { order: 'asc' } }
-      }
+      },
+      ...(scope === "studio" ? { orderBy: { tenantId: { sort: "desc", nulls: "last" } } } : {}),
     })
 
     if (!singleType) return { error: "Single type not found" }
 
     const assignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId: tenantId, singleTypeId: singleType.id, locale: locale || "id" }
+      where: { tenantId, singleTypeId: singleType.id, locale: targetLocale }
     })
-
-    let parsedData = {}
-    if (assignment?.data) {
-      try {
-        parsedData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
-      } catch { parsedData = {} }
-    }
 
     const formattedFields = parseSchemaFieldOptions(singleType.schemaFields)
 
@@ -150,8 +149,10 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
       singleType: {
         ...singleType,
         fields: formattedFields,
-        data: parsedData,
-        locale: locale || "id",
+        data: assignment ? readSingleTypeAssignment(assignment, true).data : {},
+        locale: targetLocale,
+        locales,
+        hasPendingDraft: assignment?.draftData != null,
         publishedAt: assignment?.publishedAt || null,
         isGlobal: singleType.tenantId === null,
       }
@@ -392,7 +393,14 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
   }
 }
 
-export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId: string, data: any, publish?: boolean, locale?: string) {
+export async function saveSingleTypeDataAction(
+  tenantSlug: string,
+  singleTypeId: string,
+  data: unknown,
+  publish?: boolean,
+  locale?: string,
+  scope?: "studio",
+) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -409,15 +417,20 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
     // we validate against its `data` sub-schema, not the whole object.
     const result = saveSingleTypeDataSchema.shape.data.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
+    if (!result.data) return { error: "Data konten wajib diisi" }
+    const shouldPublish = publish === true
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
-    const targetLocale = locale || "id"
+    const locales = await getSingleTypeLocales(tenantId)
+    const targetLocale = locale || locales[0].locale
+    if (!locales.some((language) => language.locale === targetLocale)) return { error: "Bahasa tidak aktif di workspace ini" }
 
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         id: singleTypeId,
         draftTemplateId: null,
+        ...(scope === "studio" ? { showInCms: true } : {}),
         OR: [
           { tenantId: tenantId },
           { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
@@ -428,72 +441,46 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
 
     if (!singleType) return { error: "Single type not found" }
 
-    let processedData = result.data
-    if (processedData) {
-      // Validate against the SingleType's own field definitions (types,
-      // required) before persisting — the zod shape check above only knows
-      // this is *some* record, not that it matches this schema.
-      const schemaValidation = await validateContentEntry(singleType.schemaFields as any, processedData, {
-        enforceRequired: !!publish,
-      })
-      if (!schemaValidation.success) {
-        return { error: "Validasi gagal", details: schemaValidation.errors ?? undefined } as any
-      }
-
-      processedData = await processAutoSlugs(
-        tenantId,
-        singleTypeId,
-        singleType.schemaFields,
-        processedData,
-        undefined,
-        'single',
-        tenantDb
-      )
+    const schemaFields = parseSchemaFieldOptions(singleType.schemaFields)
+    const fieldsForValidation = scope === "studio"
+      ? schemaFields.map((field) => field.showInCms ? field : { ...field, required: false })
+      : schemaFields
+    const schemaValidation = await validateContentEntry(fieldsForValidation, result.data, {
+      enforceRequired: shouldPublish,
+    })
+    if (!schemaValidation.success) {
+      return { error: "Validasi gagal", details: schemaValidation.errors }
     }
 
-    const existingAssignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId: tenantId, singleTypeId, locale: targetLocale },
+    const processedData = await processAutoSlugs(
+      tenantId,
+      singleTypeId,
+      schemaFields,
+      result.data,
+      undefined,
+      "single",
+      tenantDb,
+    )
+    const content = singleTypeContentWrite(processedData, shouldPublish)
+    const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
+      where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale: targetLocale } },
+      create: { tenantId, singleTypeId, locale: targetLocale, ...content },
+      update: content,
     })
 
-    let assignment
-    if (!existingAssignment) {
-      assignment = await tenantDb.tenantSingleTypeAssignment.create({
-        data: {
-          tenantId: tenantId,
-          singleTypeId,
-          locale: targetLocale,
-          enabled: true,
-          data: (processedData ? processedData : Prisma.JsonNull) as any,
-          publishedAt: publish ? new Date() : null,
-        },
-        include: { singleType: true },
-      })
-    } else {
-      assignment = await tenantDb.tenantSingleTypeAssignment.update({
-        where: { id: existingAssignment.id },
-        data: {
-          // Store the object directly (Json column) — matching the create
-          // branch above and the public API's PUT route. The previous
-          // JSON.stringify(...) here double-encoded it, forcing every
-          // reader to defensively check typeof === 'string'.
-          data: processedData ? (processedData as any) : undefined,
-          publishedAt: publish ? new Date() : undefined,
-        },
-        include: { singleType: true },
-      })
-    }
+    if (shouldPublish) await invalidateSingleTypePublication(tenantId, singleType.slug, targetLocale)
 
     revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return {
       singleType: {
-        ...assignment.singleType,
-        data: assignment.data
-          ? (typeof assignment.data === "string" ? JSON.parse(assignment.data) : assignment.data)
-          : null,
+        ...singleType,
+        data: readSingleTypeAssignment(assignment, true).data,
         publishedAt: assignment.publishedAt,
+        hasPendingDraft: assignment.draftData != null,
       }
     }
   } catch (error) {

@@ -301,13 +301,15 @@ export function buildOpenApiSpec(options: {
     for (const f of st.fields) fieldProps[f.slug] = fieldSchema(f)
 
     schemas[schemaName] = { type: "object", description: `Singleton data for ${st.name}`, properties: fieldProps }
+    const localeParameter = { name: "locale", in: "query", description: "Defaults to the workspace language.", schema: { type: "string" } }
 
     paths[`/single/${st.slug}`] = {
       get: {
         summary: `Get ${st.name} data`,
+        description: "Returns the published content by default. Draft preview requires a write-capable token.",
         operationId: `get${schemaName}`,
         tags: ["Single Types"],
-        parameters: [{ name: "locale", in: "query", schema: { type: "string", default: "id" } }],
+        parameters: [localeParameter, { name: "draft", in: "query", schema: { type: "boolean", default: false } }],
         responses: {
           "200": {
             description: `Retrieved ${st.name} content data.`,
@@ -323,18 +325,28 @@ export function buildOpenApiSpec(options: {
               },
             },
           },
-          "404": { description: "Single type not found" },
+          "403": { description: "Draft preview requires write access." },
+          "404": { description: "Single type is unavailable or has no published content." },
         },
       },
       put: {
         summary: `Update ${st.name} data`,
+        description: "Saves a draft by default. Set publish to true to make the supplied content live.",
         operationId: `update${schemaName}`,
         tags: ["Single Types"],
+        parameters: [localeParameter],
         requestBody: {
           required: true,
           content: {
             "application/json": {
-              schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${schemaName}` }, locale: { type: "string", default: "id" } }, required: ["data"] },
+              schema: {
+                type: "object",
+                properties: {
+                  data: { $ref: `#/components/schemas/${schemaName}` },
+                  publish: { type: "boolean", default: false },
+                },
+                required: ["data"],
+              },
             },
           },
         },

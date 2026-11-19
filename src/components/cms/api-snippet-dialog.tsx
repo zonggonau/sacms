@@ -206,7 +206,7 @@ curl -X GET "${apiUrl}?page=1&limit=10" \\
                 </Button>
               </div>
               <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 overflow-x-auto">
-                <span className="truncate">GraphQL Playground: <code className="text-primary font-mono select-all">{graphqlUrl}</code></span>
+                <span className="truncate">Endpoint GraphQL <code className="text-primary font-mono select-all">{graphqlUrl}</code></span>
               </div>
             </TabsContent>
 

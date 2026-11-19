@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getTenantDb } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { createContentEntry, type EntryWriteContext, type ContentActor } from "@/lib/content/entry-service"
@@ -39,6 +39,7 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
   const contentType = await tenantDb.contentType.findFirst({
     where: {
       slug: contentTypeSlug,
+      draftTemplateId: null,
       OR: [
         { tenantId: access.tenantId },
         { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -49,6 +50,7 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
 
   const ctx: EntryWriteContext = {
     client: tenantDb,
+    localeClient: db,
     tenantId: access.tenantId,
     tenantSlug,
     enforcePlan: true,
@@ -57,26 +59,53 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
 
   let imported = 0
   const failures: Array<{ index: number; error: string }> = []
+  const importedDocuments = new Map<string, { id: string; locales: Set<string> }>()
 
   for (let i = 0; i < body.entries.length; i++) {
     const row = body.entries[i]
-    if (!row || typeof row !== "object" || !row.data || typeof row.data !== "object") {
+    if (!row || typeof row !== "object" || !row.data || typeof row.data !== "object" || Array.isArray(row.data)) {
       failures.push({ index: i, error: "Missing or invalid 'data' object" })
+      continue
+    }
+    if (row.deletedAt) {
+      failures.push({ index: i, error: "Deleted entries cannot be imported" })
+      continue
+    }
+
+    const locale = typeof row.locale === "string" ? row.locale.trim() || undefined : undefined
+    const sourceDocumentId = locale && typeof row.documentId === "string" ? row.documentId.trim() : ""
+    const document = importedDocuments.get(sourceDocumentId)
+    if (locale && document?.locales.has(locale)) {
+      failures.push({ index: i, error: `Document contains more than one entry for locale '${locale}'` })
       continue
     }
 
     // Imported content always lands as DRAFT regardless of the source's
     // recorded status — an imported row hasn't been reviewed in this
     // workspace, so it shouldn't silently appear as published.
-    const result = await createContentEntry(ctx, actor, {
-      contentTypeSlug,
-      data: row.data,
-      status: "DRAFT",
-      locale: typeof row.locale === "string" ? row.locale : undefined,
-    })
+    try {
+      const result = await createContentEntry(ctx, actor, {
+        contentTypeSlug,
+        data: row.data,
+        status: "DRAFT",
+        locale,
+        importDocumentId: document?.id,
+      })
+      if (!result.ok) {
+        const details = result.details ? Object.values(result.details).join(", ") : ""
+        failures.push({ index: i, error: details ? `${result.message} (${details})` : result.message })
+        continue
+      }
 
-    if (result.ok) imported++
-    else failures.push({ index: i, error: result.message })
+      imported++
+      if (sourceDocumentId) {
+        if (document) document.locales.add(result.data.locale)
+        else importedDocuments.set(sourceDocumentId, { id: result.data.id, locales: new Set([result.data.locale]) })
+      }
+    } catch (error) {
+      console.error("[entries import] Row creation failed:", error)
+      failures.push({ index: i, error: "Could not create entry" })
+    }
   }
 
   return NextResponse.json({

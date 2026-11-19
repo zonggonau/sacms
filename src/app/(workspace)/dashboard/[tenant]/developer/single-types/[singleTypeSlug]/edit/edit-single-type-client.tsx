@@ -279,6 +279,11 @@ export default function EditSingleTypeClient({
       options.targetSlug = field.targetSlug ?? options.targetSlug ?? ""
     }
 
+    if (field.type === "component") {
+      options.componentSlug = field.componentSlug ?? options.componentSlug
+      options.repeatable = field.repeatable ?? options.repeatable
+    }
+
     return options
   }
 

@@ -1,118 +1,53 @@
-import { execSync } from "child_process";
-import { db } from "@/lib/database";
+import { execFileSync } from "node:child_process"
+import { db, getTenantDatabaseUrl } from "@/lib/database"
 
-export interface PushSchemaOptions {
-  acceptDataLoss?: boolean;
-}
+export async function pushTenantSchema(tenantIdentifier?: string, options: { acceptDataLoss?: boolean } = {}) {
+  const select = { id: true, slug: true, databaseUrl: true } as const
+  const explicit = tenantIdentifier && tenantIdentifier !== "--all"
+  const tenants = explicit
+    ? await db.tenant.findMany({ where: { OR: [{ id: tenantIdentifier }, { slug: tenantIdentifier }] }, select })
+    : await db.tenant.findMany({ select })
+  if (explicit && tenants.length !== 1) throw new Error("Use an unambiguous workspace ID or slug.")
 
-/**
- * Push Prisma schema to dedicated tenant database.
- * Supports:
- *   - bun scripts/migrate/push-tenant-schema.ts [tenantSlugOrId]
- *   - bun scripts/migrate/push-tenant-schema.ts --all
- */
-export async function pushTenantSchema(tenantIdentifier?: string, options: PushSchemaOptions = { acceptDataLoss: true }) {
-  try {
-    if (tenantIdentifier === "--all") {
-      const tenants = await db.tenant.findMany({
-        where: { databaseUrl: { not: null } },
-        select: { id: true, slug: true, name: true, databaseUrl: true },
-      });
-
-      if (tenants.length === 0) {
-        console.log("ℹ️ No tenants configured with dedicated database.");
-        return;
-      }
-
-      console.log(`🚀 Found ${tenants.length} tenants with dedicated database. Pushing schemas...`);
-      for (const t of tenants) {
-        await pushToSingleTenant(t.slug, t.databaseUrl!, options);
-      }
-      return;
-    }
-
-    let tenant = null;
-
-    if (tenantIdentifier) {
-      tenant = await db.tenant.findFirst({
-        where: {
-          OR: [{ id: tenantIdentifier }, { slug: tenantIdentifier }],
-        },
-        select: { id: true, slug: true, name: true, databaseUrl: true },
-      });
-
-      if (!tenant) {
-        console.error(`❌ Tenant '${tenantIdentifier}' not found.`);
-        process.exitCode = 1;
-        return;
-      }
-    } else {
-      // Find the first tenant with a dedicated databaseUrl
-      const dedicatedTenants = await db.tenant.findMany({
-        where: { databaseUrl: { not: null } },
-        select: { id: true, slug: true, name: true, databaseUrl: true },
-      });
-
-      if (dedicatedTenants.length === 0) {
-        console.log("ℹ️ No dedicated tenant databases found in the system.");
-        console.log("👉 Shared multi-tenant instances use the master database via `bun run db:push`.");
-        return;
-      }
-
-      if (dedicatedTenants.length === 1) {
-        tenant = dedicatedTenants[0];
-        console.log(`ℹ️ Auto-selected dedicated tenant: ${tenant.name} (${tenant.slug})`);
-      } else {
-        console.log("⚠️ Multiple tenants have dedicated databases. Please specify one:");
-        for (const t of dedicatedTenants) {
-          console.log(`  - ${t.slug} (${t.name})`);
-        }
-        console.log("\nUsage: bun scripts/migrate/push-tenant-schema.ts <slug|id> OR --all");
-        return;
-      }
-    }
-
-    if (!tenant.databaseUrl) {
-      console.warn(`⚠️ Tenant '${tenant.slug}' does not have a dedicated databaseUrl configured.`);
-      return;
-    }
-
-    await pushToSingleTenant(tenant.slug, tenant.databaseUrl, options);
-  } catch (error) {
-    console.error("❌ Schema push execution failed:", error);
-    process.exitCode = 1;
+  const targets = new Map<string, string>()
+  for (const tenant of tenants) {
+    const url = await getTenantDatabaseUrl(tenant)
+    if (url && !targets.has(url)) targets.set(url, tenant.slug)
   }
-}
+  if (targets.size === 0) {
+    console.log("No configured dedicated database matched.")
+    return
+  }
+  if (!tenantIdentifier && targets.size > 1) {
+    throw new Error("Specify a workspace ID, slug, or --all to update multiple dedicated databases.")
+  }
 
-async function pushToSingleTenant(slug: string, databaseUrl: string, options: PushSchemaOptions) {
-  console.log(`\n⏳ Pushing schema to dedicated DB for tenant '${slug}'...`);
-  const dataLossFlag = options.acceptDataLoss ? "--accept-data-loss" : "";
-
-  try {
-    // schema.prisma declares both `url` and `directUrl`; `db push`/`migrate`
-    // always connect via directUrl, so DATABASE_URL alone is silently
-    // ignored and the push lands on the default DB instead. Override both.
-    // Uses Bun's bunx instead of npm/npx according to project guidelines
-    execSync(`bunx prisma db push ${dataLossFlag}`, {
+  const args = ["x", "prisma", "db", "push", "--skip-generate"]
+  if (options.acceptDataLoss) args.push("--accept-data-loss")
+  for (const [databaseUrl, slug] of targets) {
+    console.log(`Updating the dedicated database for "${slug}".`)
+    execFileSync("bun", args, {
       env: { ...process.env, DATABASE_URL: databaseUrl, DIRECT_URL: databaseUrl },
       stdio: "inherit",
-    });
-    console.log(`✅ Schema push succeeded for tenant '${slug}'!`);
-  } catch (error) {
-    console.error(`❌ Schema push failed for tenant '${slug}':`, error);
-    throw error;
+    })
   }
 }
 
-// Execute when run as CLI
-if (import.meta.main) {
-  const target = process.argv[2];
-  pushTenantSchema(target)
-    .catch((err) => {
-      console.error(err);
-      process.exit(1);
-    })
-    .finally(async () => {
-      await db.$disconnect();
-    });
+export async function runTenantSchemaPush(args: string[]) {
+  try {
+    const acceptDataLoss = args.includes("--accept-data-loss")
+    const targets = args.filter((arg) => arg !== "--accept-data-loss")
+    if (targets.length > 1 || targets.some((arg) => arg.startsWith("-") && arg !== "--all") ||
+        (acceptDataLoss && targets.length === 0)) {
+      throw new Error("Usage: db:tenant:push <workspace-id|slug|--all> [--accept-data-loss]")
+    }
+    await pushTenantSchema(targets[0], { acceptDataLoss })
+  } catch (error) {
+    console.error(error)
+    process.exitCode = 1
+  } finally {
+    await db.$disconnect()
+  }
 }
+
+if (import.meta.main) await runTenantSchemaPush(process.argv.slice(2))

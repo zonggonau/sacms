@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ArrowLeft, Save, Send, FileText, CheckCircle2, 
@@ -24,12 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { allowedInitialStatuses } from "@/lib/content-workflow-rules"
@@ -69,7 +63,6 @@ import { ValidationField } from "@/components/content/field-renderers/validation
 import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
-import { getContentTypeBySlugAction } from "@/actions/content-types"
 import { createEntryAction } from "@/actions/content"
 
 interface Field {
@@ -131,38 +124,30 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 export default function CMSCreateEntryClient({
   tenantSlug,
   contentTypeSlug,
-  initialContentType,
-  initialAvailableLocales,
-  initialIsLimitReached,
-  initialEntriesLimit,
-  initialPreviewUrl,
+  initialContentType: contentType,
+  initialAvailableLocales: availableLocales,
+  initialIsLimitReached: isLimitReached,
+  initialEntriesLimit: entriesLimit,
   userRole,
   customPermissions: initialCustomPermissions,
 }: {
   tenantSlug: string
   contentTypeSlug: string
-  initialContentType?: ContentType | null
-  initialAvailableLocales?: any[]
-  initialIsLimitReached?: boolean
-  initialEntriesLimit?: number
-  initialPreviewUrl?: string | null
+  initialContentType: ContentType
+  initialAvailableLocales: { locale: string; name: string }[]
+  initialIsLimitReached: boolean
+  initialEntriesLimit: number
   userRole?: string
   customPermissions?: string[] | null
 }) {
   const { data: session } = useSession()
   const router = useRouter()
 
-  const [loading, setLoading] = useState(!initialContentType)
   const [saving, setSaving] = useState(false)
-  const [contentType, setContentType] = useState<ContentType | null>(initialContentType || null)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [entryStatus, setEntryStatus] = useState<string>("DRAFT")
-  const [locale, setLocale] = useState<string>(initialAvailableLocales?.[0]?.locale || "id")
+  const [locale, setLocale] = useState(availableLocales[0].locale)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
-  const [availableLocales, setAvailableLocales] = useState<any[]>(initialAvailableLocales || [{ locale: "id", name: "Bahasa Indonesia" }])
-  const [isLimitReached, setIsLimitReached] = useState(initialIsLimitReached || false)
-  const [entriesLimit, setEntriesLimit] = useState(initialEntriesLimit || 0)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialPreviewUrl || null)
 
   const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
   const effectiveRole = userRole || (isPlatformStaff(session?.user?.role) ? "owner" : (tenantMembership?.role || "viewer"))
@@ -177,43 +162,24 @@ export default function CMSCreateEntryClient({
   const canPublish = availableStatuses.includes("PUBLISHED")
   const canSchedule = availableStatuses.includes("SCHEDULED")
 
-  const fetchData = useCallback(async () => {
-    if (!tenantSlug || !contentTypeSlug) return
-    try {
-      if (!contentType) setLoading(true)
-      const ctData = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
-      if (ctData?.contentType) {
-        setContentType(ctData.contentType as any)
-      }
-    } catch {
-      // Keep initial content type
-    } finally {
-      setLoading(false)
-    }
-  }, [tenantSlug, contentTypeSlug, contentType])
-
-  useEffect(() => {
-    if (!initialContentType) fetchData()
-  }, [fetchData, initialContentType])
-
-  const handleSave = async (publishNow: boolean = false, targetOverride?: string) => {
+  const handleSave = async (targetStatus: string) => {
     if (isLimitReached) {
       toast({ variant: "destructive", title: "Batas Kuota Tercapai", description: "Tingkatkan paket untuk membuat entri baru." })
       return
     }
+    if (targetStatus === "SCHEDULED" && (!scheduledAt || scheduledAt.getTime() <= Date.now())) {
+      toast({ variant: "destructive", title: "Jadwal Belum Valid", description: "Pilih tanggal dan waktu publikasi yang akan datang." })
+      return
+    }
 
     setSaving(true)
-    let targetStatus = publishNow ? "PUBLISHED" : (targetOverride || entryStatus)
-    if (!publishNow && scheduledAt && targetStatus !== "ARCHIVED") {
-      targetStatus = "SCHEDULED"
-    }
 
     try {
       const res = await createEntryAction(tenantSlug, contentTypeSlug, {
         data: formData,
         status: targetStatus,
         locale,
-        scheduledAt: scheduledAt || null
+        scheduledAt: targetStatus === "SCHEDULED" ? scheduledAt : undefined,
       })
 
       if (res.error) {
@@ -225,7 +191,7 @@ export default function CMSCreateEntryClient({
         toast({ variant: "destructive", title: "Gagal Menyimpan", description: errorDesc })
       } else {
         toast({ 
-          title: publishNow ? "Entri Berhasil Dipublikasikan" : "Entri Berhasil Disimpan",
+          title: targetStatus === "PUBLISHED" ? "Entri Berhasil Dipublikasikan" : "Entri Berhasil Disimpan",
           description: `Data untuk ${contentType?.name || 'konten'} berhasil dibuat.`
         })
         router.push(`/dashboard/${tenantSlug}/cms/content/${contentTypeSlug}`)
@@ -431,14 +397,6 @@ export default function CMSCreateEntryClient({
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    )
-  }
-
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
   const StatusIcon = statusCfg.icon
 
@@ -489,7 +447,7 @@ export default function CMSCreateEntryClient({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleSave(false, "DRAFT")}
+                onClick={() => handleSave("DRAFT")}
                 disabled={saving || isLimitReached}
                 className="rounded-xl h-9 text-xs font-bold border-border/80"
               >
@@ -500,7 +458,7 @@ export default function CMSCreateEntryClient({
               {canPublish && (
                 <Button
                   size="sm"
-                  onClick={() => handleSave(true)}
+                  onClick={() => handleSave("PUBLISHED")}
                   disabled={saving || isLimitReached}
                   className="rounded-xl h-9 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                 >
@@ -536,8 +494,8 @@ export default function CMSCreateEntryClient({
                     {availableLocales.length > 1 && (
                       <div className="flex items-center gap-2">
                         <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Select value={locale} onValueChange={setLocale}>
-                          <SelectTrigger className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
+                        <Select value={locale} onValueChange={setLocale} disabled={saving}>
+                          <SelectTrigger aria-label="Bahasa entri" className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="rounded-xl border-border">
@@ -594,7 +552,7 @@ export default function CMSCreateEntryClient({
                   {/* Status Selector */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold text-foreground">Status Awal</Label>
-                    <Select value={entryStatus} onValueChange={setEntryStatus}>
+                    <Select value={entryStatus} onValueChange={setEntryStatus} disabled={saving}>
                       <SelectTrigger className="h-9 rounded-xl text-xs font-bold bg-background border-border/80">
                         <SelectValue />
                       </SelectTrigger>
@@ -612,46 +570,19 @@ export default function CMSCreateEntryClient({
                   </div>
 
                   {/* Scheduled Publishing */}
-                  {canSchedule && (
+                  {canSchedule && entryStatus === "SCHEDULED" && (
                     <div className="space-y-2 pt-3 border-t border-border/60">
-                      <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Label htmlFor="publication-schedule" className="text-xs font-bold text-foreground flex items-center gap-1.5">
                         <CalendarIcon className="h-3.5 w-3.5 text-purple-500" /> Jadwal Publikasi Otomatis
                       </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "w-full h-9 justify-start text-left text-xs font-normal rounded-xl border-border/80",
-                              !scheduledAt && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                            {scheduledAt ? format(scheduledAt, "PPP HH:mm") : "Pilih Tanggal & Waktu"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 rounded-2xl border-border bg-card" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={scheduledAt}
-                            onSelect={setScheduledAt}
-                            disabled={(date) => date < new Date()}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {scheduledAt && (
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                          <span>Akan terbit: {format(scheduledAt, "dd/MM/yyyy HH:mm")}</span>
-                          <button 
-                            type="button" 
-                            onClick={() => setScheduledAt(undefined)}
-                            className="text-destructive hover:underline font-semibold"
-                          >
-                            Batal Jadwal
-                          </button>
-                        </div>
-                      )}
+                      <Input
+                        id="publication-schedule"
+                        type="datetime-local"
+                        value={scheduledAt ? format(scheduledAt, "yyyy-MM-dd'T'HH:mm") : ""}
+                        onChange={(event) => setScheduledAt(event.currentTarget.value ? new Date(event.currentTarget.value) : undefined)}
+                        disabled={saving}
+                        className="h-9 rounded-xl text-xs border-border/80"
+                      />
                     </div>
                   )}
 
@@ -659,7 +590,7 @@ export default function CMSCreateEntryClient({
                   <div className="pt-3 border-t border-border/60">
                     <Button
                       className="w-full h-10 font-bold rounded-xl text-xs bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
-                      onClick={() => handleSave(entryStatus === "PUBLISHED")}
+                      onClick={() => handleSave(entryStatus)}
                       disabled={saving || isLimitReached}
                     >
                       {saving ? (

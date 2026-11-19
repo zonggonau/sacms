@@ -6,7 +6,7 @@ import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries/export
  *
- * Exports every entry of a content type as a single JSON document. Distinct
+ * Exports active entries of a content type as a single JSON document. Distinct
  * from ai-builder/export-schema, which exports the schema (field
  * definitions) — this exports the actual data rows, so tenants can back up,
  * migrate, or bulk-seed a workspace's real content, not just its structure.
@@ -26,6 +26,7 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
   const contentType = await tenantDb.contentType.findFirst({
     where: {
       slug: contentTypeSlug,
+      draftTemplateId: null,
       OR: [
         { tenantId: access.tenantId },
         { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
@@ -36,14 +37,12 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
   if (!contentType) return apiError("not_found", { message: "Content type not found" })
 
   const entries = await tenantDb.contentEntry.findMany({
-    where: { contentTypeId: contentType.id, tenantId: access.tenantId },
-    orderBy: { createdAt: "asc" },
+    where: { contentTypeId: contentType.id, tenantId: access.tenantId, deletedAt: null },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   })
 
   const exportedEntries = entries.map((e) => ({
-    // documentId/id are export-only metadata for traceability — import
-    // always creates fresh rows rather than trying to overwrite by id, so a
-    // re-import never collides with the source tenant's own data.
+    // Import uses the source document ID to group translations under a new ID.
     sourceId: e.id,
     documentId: e.documentId,
     locale: e.locale,

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import type { Prisma } from "@/lib/database"
 
 // schema-wipe.ts (imported transitively via route.ts) starts with
 // `import "server-only"` — not an npm package vitest's plain Node
@@ -9,17 +10,18 @@ vi.mock("next-auth", () => ({ getServerSession: vi.fn() }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/tenant-access", () => ({ getTenantAccess: vi.fn() }))
 
-const { fakeTenantDb } = vi.hoisted(() => ({
+const { fakeTenantDb, findSetting } = vi.hoisted(() => ({
   fakeTenantDb: {
     contentType: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     singleType: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     component: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
+  findSetting: vi.fn<(args: Prisma.SettingFindUniqueArgs) => Promise<{ value: string } | null>>(),
 }))
 
 vi.mock("@/lib/database", () => ({
   db: {
-    setting: { findUnique: vi.fn(), deleteMany: vi.fn().mockResolvedValue({}) },
+    setting: { findUnique: findSetting, deleteMany: vi.fn().mockResolvedValue({}) },
     tenant: { update: vi.fn().mockResolvedValue({}) },
   },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
@@ -78,7 +80,9 @@ describe("POST /api/tenant/[tenant]/ai-builder/deploy — action: reset-website"
     mockSession.mockResolvedValue({ user: { id: "user1", role: "owner" } } as any)
     mockAccess.mockResolvedValue(regularAccess as any)
     vi.mocked(assertSchemaEditable).mockResolvedValue(null as any)
-    vi.mocked(db.setting.findUnique).mockResolvedValue({ value: "prj_1" } as any)
+    findSetting.mockImplementation(async ({ where }) =>
+      where.key?.endsWith("_vercelProjectId") ? { value: "prj_1" } : null,
+    )
     vi.mocked(deleteVercelProject).mockResolvedValue({ ok: true } as any)
   })
 
@@ -108,7 +112,7 @@ describe("POST /api/tenant/[tenant]/ai-builder/deploy — action: reset-website"
   })
 
   it("still wipes the schema and clears tenant fields when there is no Vercel project to delete", async () => {
-    vi.mocked(db.setting.findUnique).mockResolvedValue(null)
+    findSetting.mockResolvedValue(null)
     mockAccess.mockResolvedValue({ ...regularAccess, tenant: { ...regularAccess.tenant, vercelProjectId: null } } as any)
 
     const res = await POST(req({ action: "reset-website" }), ctx({ tenant: "acme" }))

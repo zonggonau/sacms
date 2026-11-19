@@ -42,7 +42,7 @@ import { copyToClipboard } from "@/lib/clipboard"
 import { deleteTenantAction } from "@/actions/tenant"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { WorkspaceCreationDialog } from "./workspace-creation-dialog"
+import { WorkspaceCreationDialog, type WorkspacePlan, type AddonPlan } from "./workspace-creation-dialog"
 import { EnterpriseLicenseBanner } from "./enterprise-license-banner"
 
 interface Tenant {
@@ -77,8 +77,9 @@ interface WorkspaceManagerProps {
   initialTenants: Tenant[]
   usage: { current: number; max: number | null; allowed: boolean; plan: string } | null
   dbTemplates: any[]
-  workspacePlans: any[]
-  addonPlans: any[]
+  workspacePlans: WorkspacePlan[]
+  addonPlans: AddonPlan[]
+  freePlanUnavailableReason: string | null
   isSuperAdmin?: boolean
   /** Account-level Enterprise License active (see getOwnerStorageLicense()
    *  in plan-enforcement.ts) — tells the creation dialog to show the single
@@ -92,6 +93,7 @@ export function WorkspaceManager({
   dbTemplates,
   workspacePlans,
   addonPlans,
+  freePlanUnavailableReason,
   isSuperAdmin,
   isAccountEnterpriseLicensed
 }: WorkspaceManagerProps) {
@@ -697,6 +699,7 @@ export function WorkspaceManager({
         dbTemplates={dbTemplates}
         workspacePlans={workspacePlans}
         addonPlans={addonPlans}
+        freePlanUnavailableReason={freePlanUnavailableReason}
         isEnterpriseLicensed={isAccountEnterpriseLicensed}
         initialTemplateId={creationTemplateId}
       />

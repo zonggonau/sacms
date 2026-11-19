@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
-import { invalidatePattern } from "@/lib/cache"
+import { invalidateContentCaches } from "@/lib/content/entry-service"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 /**
@@ -58,7 +58,7 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       return apiError("validation", { message: "Invalid action" })
   }
 
-  invalidatePattern(`public_api:${tenantSlug}:${contentTypeSlug}:*`).catch(() => {})
+  await invalidateContentCaches(access.tenant.slug, contentTypeSlug, access.tenantId)
   logAudit({
     tenantId: access.tenantId,
     userId: session.user.id,
