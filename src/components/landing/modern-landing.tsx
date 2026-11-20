@@ -11,20 +11,38 @@ import { CtaBanner } from "./sections/cta-banner"
 import { FadeIn } from "@/components/ui/fade-in"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getIcon } from "./icon-map"
 import {
   ArrowRight,
   Sparkles,
-  Database,
-  Cpu,
-  ShieldCheck,
-  Zap,
-  Globe,
-  Layers,
   Users2,
   BookOpen,
   CheckCircle2,
 } from "lucide-react"
-import type { LandingData } from "./types"
+import type { FeatureItem, LandingData } from "./types"
+
+// Shown only when the admin hasn't marked anything "Fitur Utama" — keeps the
+// homepage teaser non-empty, same fallback idea as FeaturesBento's own
+// defaultFeatures on /fitur.
+const DEFAULT_HIGHLIGHT_FEATURES: FeatureItem[] = [
+  {
+    icon: "Database",
+    title: "Dedicated Database Appliance",
+    description: "Pilihan isolasi total dengan PostgreSQL 17 mandiri per tenant untuk kepatuhan regulasi data enterprise dan audit independen.",
+  },
+  {
+    icon: "Cpu",
+    title: "AI Schema Generator & Website Template",
+    description: "Bangun skema konten dan relasi data kompleks cukup dari satu prompt teks, atau langsung mulai dari galeri Website Template siap pakai dengan live demo.",
+  },
+  {
+    icon: "Globe",
+    title: "Edge Custom DNS & Dynamic API",
+    description: "Routing custom domain instan dengan verifikasi TXT challenge serta auto-generated REST dan GraphQL endpoint.",
+  },
+]
+
+const HIGHLIGHT_ACCENTS = ["text-blue-500 bg-blue-500/10", "text-primary bg-primary/10", "text-emerald-500 bg-emerald-500/10"]
 
 export function ModernLanding({ data }: { data: LandingData }) {
   const {
@@ -37,6 +55,12 @@ export function ModernLanding({ data }: { data: LandingData }) {
     localPride = null,
     websiteTemplates = [],
   } = data
+
+  // "Fitur Utama" (is_main) picks which admin-edited features surface as the
+  // homepage's 3-card teaser; the full list lives on /fitur (FeaturesBento).
+  const mainFeatures = features.filter((f: any) => f.is_main)
+  const highlightFeatures = (mainFeatures.length > 0 ? mainFeatures : features).slice(0, 3)
+  const activeHighlights = highlightFeatures.length > 0 ? highlightFeatures : DEFAULT_HIGHLIGHT_FEATURES
 
   return (
     <div className="bg-card text-foreground selection:bg-primary/30">
@@ -80,56 +104,31 @@ export function ModernLanding({ data }: { data: LandingData }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="group relative p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/60 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Database className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                Dedicated Database Appliance
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-                Pilihan isolasi total dengan PostgreSQL 17 mandiri per tenant untuk kepatuhan regulasi data enterprise dan audit independen.
-              </p>
-              <div className="flex items-center text-xs font-bold text-primary gap-1">
-                <span>Pelajari Isolasi DB</span>
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <Link href="/fitur#database" className="absolute inset-0" aria-label="Dedicated Database" />
-            </div>
-
-            <div className="group relative p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/60 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Cpu className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                AI Schema Generator &amp; Website Template
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-                Bangun skema konten dan relasi data kompleks cukup dari satu prompt teks, atau langsung mulai dari galeri Website Template siap pakai dengan live demo.
-              </p>
-              <div className="flex items-center text-xs font-bold text-primary gap-1">
-                <span>Pelajari AI Generator</span>
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <Link href="/fitur#ai" className="absolute inset-0" aria-label="AI Generator" />
-            </div>
-
-            <div className="group relative p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/60 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                <Globe className="h-6 w-6" />
-              </div>
-              <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                Edge Custom DNS &amp; Dynamic API
-              </h3>
-              <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
-                Routing custom domain instan dengan verifikasi TXT challenge serta auto-generated REST dan GraphQL endpoint.
-              </p>
-              <div className="flex items-center text-xs font-bold text-primary gap-1">
-                <span>Pelajari Edge Routing</span>
-                <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <Link href="/fitur#dns" className="absolute inset-0" aria-label="Custom DNS" />
-            </div>
+            {activeHighlights.map((feature, idx) => {
+              const Icon = getIcon(feature.icon)
+              const accent = HIGHLIGHT_ACCENTS[idx % HIGHLIGHT_ACCENTS.length]
+              return (
+                <div
+                  key={`${feature.title}-${idx}`}
+                  className="group relative p-7 rounded-3xl bg-card/60 backdrop-blur-xl border border-border/60 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300"
+                >
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform ${accent}`}>
+                    <Icon className="h-6 w-6" />
+                  </div>
+                  <h3 className="text-lg font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
+                    {feature.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground font-medium leading-relaxed mb-4">
+                    {feature.description}
+                  </p>
+                  <div className="flex items-center text-xs font-bold text-primary gap-1">
+                    <span>Pelajari Lebih Lanjut</span>
+                    <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <Link href="/fitur" className="absolute inset-0" aria-label={feature.title} />
+                </div>
+              )
+            })}
           </div>
         </div>
       </section>
