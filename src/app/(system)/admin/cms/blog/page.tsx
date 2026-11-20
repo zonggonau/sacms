@@ -18,7 +18,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -60,10 +62,22 @@ interface BlogPost {
   content?: string
   category?: string
   cover_image?: string
+  excerpt?: string
+  author?: string
+  is_featured?: boolean
   updatedAt: string | Date
 }
 
-const EMPTY_FORM = { title: "", slug: "", content: "", category: "Artikel", cover_image: "" }
+const EMPTY_FORM = {
+  title: "",
+  slug: "",
+  content: "",
+  category: "Artikel",
+  cover_image: "",
+  excerpt: "",
+  author: "",
+  is_featured: false,
+}
 
 function slugify(text: string) {
   return text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-")
@@ -120,6 +134,9 @@ export default function AdminCmsBlogPage() {
       content: post.content || "",
       category: post.category || "Artikel",
       cover_image: post.cover_image || "",
+      excerpt: post.excerpt || "",
+      author: post.author || "",
+      is_featured: post.is_featured || false,
     })
     setPublishOnSave(post.status === "PUBLISHED")
     setDialogOpen(true)
@@ -217,7 +234,12 @@ export default function AdminCmsBlogPage() {
                   posts.map((p) => (
                     <tr key={p.id} className="hover:bg-muted/10 transition-colors">
                       <td className="p-4">
-                        <p className="text-xs font-bold text-foreground">{p.title}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-foreground">{p.title}</p>
+                          {p.is_featured && (
+                            <Badge variant="outline" className="text-[9px] font-bold rounded-full border-primary/30 text-primary">Unggulan</Badge>
+                          )}
+                        </div>
                         <p className="text-[10px] text-muted-foreground font-mono">/blog/{p.slug}</p>
                       </td>
                       <td className="p-4 text-xs text-muted-foreground">{p.category}</td>
@@ -310,6 +332,36 @@ export default function AdminCmsBlogPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Penulis</Label>
+                <Input
+                  value={form.author}
+                  onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))}
+                  className="h-9 text-xs rounded-xl"
+                  placeholder="Tim SaCMS"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold">Post Unggulan</Label>
+                <div className="h-9 flex items-center gap-2 px-3 rounded-xl border border-border/80">
+                  <Switch
+                    checked={form.is_featured}
+                    onCheckedChange={(v) => setForm((f) => ({ ...f, is_featured: v }))}
+                  />
+                  <span className="text-xs text-muted-foreground">Tampilkan sebagai spotlight di /blog</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold">Excerpt</Label>
+              <Textarea
+                value={form.excerpt}
+                onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))}
+                className="text-xs rounded-xl min-h-[70px]"
+                placeholder="Ringkasan singkat (opsional) — jika kosong, diambil otomatis dari awal konten."
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold">Isi Konten</Label>

@@ -196,6 +196,16 @@ interface BlogPostInput {
   content: string
   category: string
   cover_image: string
+  excerpt?: string
+  author?: string
+  is_featured?: boolean
+}
+
+/** "25 Agustus 2026" — matches the plain-string `date` field BlogExplorer
+ *  (src/components/blog/blog-explorer.tsx) renders directly, same format
+ *  the seeded sample posts in default-landing-page.ts already use. */
+function formatIndonesianDate(date: Date): string {
+  return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
 }
 
 export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRAFT" | "PUBLISHED") {
@@ -212,14 +222,15 @@ export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRA
     })
     if (dup) return { error: "Slug sudah digunakan oleh post lain" }
 
+    const publishedAt = status === "PUBLISHED" ? new Date() : null
     const entry = await db.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
         tenantId: null,
         locale: "id",
-        data: input as any,
+        data: { ...input, date: publishedAt ? formatIndonesianDate(publishedAt) : null } as any,
         status,
-        publishedAt: status === "PUBLISHED" ? new Date() : null,
+        publishedAt,
         createdBy: session!.user.id,
         updatedBy: session!.user.id,
       },
@@ -262,13 +273,14 @@ export async function updateCmsBlogPostAction(id: string, input: BlogPostInput, 
     if (dup) return { error: "Slug sudah digunakan oleh post lain" }
 
     const oldSlug = (existing.data as any)?.slug
+    const publishedAt = status === "PUBLISHED" ? (existing.publishedAt ?? new Date()) : null
 
     await db.contentEntry.update({
       where: { id },
       data: {
-        data: input as any,
+        data: { ...input, date: publishedAt ? formatIndonesianDate(publishedAt) : null } as any,
         status,
-        publishedAt: status === "PUBLISHED" ? (existing.publishedAt ?? new Date()) : null,
+        publishedAt,
         updatedBy: session!.user.id,
       },
     })
