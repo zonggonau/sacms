@@ -63,6 +63,18 @@ describe("CMS portal and backups against PostgreSQL", () => {
     expect(related.error).toBeUndefined()
     expect(related.entries?.map(entry => entry.id)).toEqual([captured.id])
     expect(related.meta?.pagination.total).toBe(1)
+
+    // The browser sends explicit local-day boundaries as instants.
+    const localDay = { dateFrom: "2026-04-16T00:00:00+09:00", dateBefore: "2026-04-16T09:00:00+09:00" }
+    const localSearch = await getEntriesAction(tenant.slug, articles.slug, {
+      ...localDay, search: "Relation Needle", searchField: "contact.name",
+    })
+    expect(localSearch.error).toBeUndefined()
+    expect(localSearch.entries?.map(entry => entry.id)).toEqual([captured.id])
+
+    const localList = await getEntriesAction(tenant.slug, articles.slug, localDay)
+    expect(localList.error).toBeUndefined()
+    expect(localList.entries?.map(entry => entry.id)).toEqual([captured.id])
   })
 
   it("restores a portable backup and its locale to the right databases without duplicating entries", async () => {

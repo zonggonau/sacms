@@ -30,17 +30,20 @@ describe("workspace dashboard with PostgreSQL", () => {
   it("reads actual tenant-scoped request telemetry and scheduled entries", async () => {
     const first = await db.tenant.create({ data: { name: "Operations CI", slug: "operations-ci", useOwnerInfra: false } })
     const second = await db.tenant.create({ data: { name: "Other Operations CI", slug: "other-operations-ci", useOwnerInfra: false } })
+    const now = new Date()
+    const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3600_000)
     await db.apiRequest.createMany({ data: [
-      { tenantId: first.id, endpoint: "/content", method: "GET", statusCode: 200, duration: 20 },
-      { tenantId: first.id, endpoint: "/content", method: "GET", statusCode: 500, duration: 120 },
-      { tenantId: second.id, endpoint: "/content", method: "GET", statusCode: 200, duration: 800 },
+      { tenantId: first.id, endpoint: "/content", method: "GET", statusCode: 200, duration: 20, createdAt: hoursAgo(23) },
+      { tenantId: first.id, endpoint: "/content", method: "GET", statusCode: 500, duration: 120, createdAt: hoursAgo(1) },
+      { tenantId: first.id, endpoint: "/content", method: "GET", statusCode: 200, duration: 150, createdAt: hoursAgo(25) },
+      { tenantId: second.id, endpoint: "/content", method: "GET", statusCode: 200, duration: 800, createdAt: hoursAgo(1) },
     ] })
     const type = await db.contentType.create({ data: { tenantId: first.id, name: "Test posts", slug: "test-posts" } })
     const scheduledAt = new Date(Date.now() + 3600_000)
     const entry = await db.contentEntry.create({
       data: { tenantId: first.id, contentTypeId: type.id, status: "SCHEDULED", scheduledAt, data: {} },
     })
-    expect(await getWorkspaceMonitoring(first.id)).toMatchObject({
+    expect(await getWorkspaceMonitoring(first.id, now)).toMatchObject({
       api: { total: 2, errors: 1, averageMs: 70, p95Ms: 120 },
       webhooks: { total: 0, success: 0, averageMs: null },
       content: { entries: 1, createdEntries: 1, publishedEntries: 0 },

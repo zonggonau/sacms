@@ -273,14 +273,17 @@ export async function getEntriesAction(
         paramIdx++
       }
 
+      // Prisma stores DateTime columns as UTC timestamps without a time zone.
+      // Match that type explicitly so PostgreSQL's session timezone cannot
+      // shift the timestamp comparison.
       if (dateFrom && !isNaN(dateFrom.getTime())) {
-        whereParts.push(`entry."${dateField}" >= $${paramIdx}`)
+        whereParts.push(`entry."${dateField}" >= ($${paramIdx}::timestamptz AT TIME ZONE 'UTC')`)
         queryParams.push(dateFrom)
         paramIdx++
       }
 
       if (dateBefore || (dateTo && !isNaN(dateTo.getTime()))) {
-        whereParts.push(`entry."${dateField}" ${dateBefore || hasCalendarEnd ? "<" : "<="} $${paramIdx}`)
+        whereParts.push(`entry."${dateField}" ${dateBefore || hasCalendarEnd ? "<" : "<="} ($${paramIdx}::timestamptz AT TIME ZONE 'UTC')`)
         queryParams.push(dateBefore ?? dateTo)
         paramIdx++
       }

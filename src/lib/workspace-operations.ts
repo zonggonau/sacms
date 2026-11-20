@@ -15,7 +15,7 @@ export async function getWorkspaceMonitoring(tenantId: string, now = new Date())
              AVG(duration)::float8 AS "averageMs",
              percentile_disc(0.95) WITHIN GROUP (ORDER BY duration) AS "p95Ms"
       FROM api_requests
-      WHERE "tenantId" = ${tenantId} AND "createdAt" >= ${start}
+      WHERE "tenantId" = ${tenantId} AND "createdAt" >= (${start}::timestamptz AT TIME ZONE 'UTC')
     `,
     db.webhookLog.aggregate({ where: deliveries, _count: { _all: true }, _avg: { duration: true } }),
     db.webhookLog.count({ where: { ...deliveries, success: true } }),
