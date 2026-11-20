@@ -12,5 +12,12 @@ import DOMPurify from "isomorphic-dompurify"
  */
 export function sanitizeHtml(html: string | null | undefined): string {
   if (!html) return ""
-  return DOMPurify.sanitize(html)
+  const clean = DOMPurify.sanitize(html)
+  // Quill turns every space in pasted text into a non-breaking space
+  // (`&nbsp;`/U+00A0) under some clipboard sources (Word, WhatsApp, PDFs) —
+  // confirmed live on a real blog post, where it made a whole paragraph one
+  // unbreakable run that overflowed its container instead of wrapping.
+  // Collapsing it back to a normal space is safe for prose; nothing here
+  // renders in a context (like <pre>) where exact whitespace matters.
+  return clean.replace(/&nbsp;/g, " ").replace(/ /g, " ")
 }

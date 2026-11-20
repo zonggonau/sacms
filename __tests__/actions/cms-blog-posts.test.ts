@@ -96,4 +96,18 @@ describe("Blog post actions — auto-derived `date` field", () => {
     expect(call.data.publishedAt).toBeNull()
     expect(call.data.data.date).toBeNull()
   })
+
+  it("create: normalizes pasted non-breaking spaces in title/content/excerpt before saving", async () => {
+    mockDb.contentEntry.create.mockResolvedValue({ id: "entry-1" })
+
+    await createCmsBlogPostAction(
+      { ...INPUT, title: "Judul&nbsp;Post", content: "<p>Ingin&nbsp;meminta&nbsp;data</p>", excerpt: "Ring kasan" },
+      "PUBLISHED"
+    )
+
+    const call = mockDb.contentEntry.create.mock.calls[0][0]
+    expect(call.data.data.title).toBe("Judul Post")
+    expect(call.data.data.content).toBe("<p>Ingin meminta data</p>")
+    expect(call.data.data.excerpt).toBe("Ring kasan")
+  })
 })

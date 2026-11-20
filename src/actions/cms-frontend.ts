@@ -201,6 +201,16 @@ interface BlogPostInput {
   is_featured?: boolean
 }
 
+/** Pasted text (Word, WhatsApp, PDFs) often carries non-breaking spaces
+ *  instead of regular ones — Quill then saves them as literal `&nbsp;`/
+ *  U+00A0 in the HTML, which can make a whole paragraph one unbreakable
+ *  run that overflows its container instead of wrapping. sanitizeHtml()
+ *  normalizes this again at render time (covers content saved before this
+ *  fix too); this just keeps newly-saved data itself clean. */
+function normalizeNbsp(text: string): string {
+  return text.replace(/&nbsp;/g, " ").replace(/ /g, " ")
+}
+
 /** "25 Agustus 2026" — matches the plain-string `date` field BlogExplorer
  *  (src/components/blog/blog-explorer.tsx) renders directly, same format
  *  the seeded sample posts in default-landing-page.ts already use. */
@@ -212,6 +222,13 @@ export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRA
   const { session, error } = await requireSuperAdmin()
   if (error) return { error }
   if (!input.title?.trim() || !input.slug?.trim()) return { error: "Judul dan slug wajib diisi" }
+
+  input = {
+    ...input,
+    title: normalizeNbsp(input.title),
+    content: normalizeNbsp(input.content || ""),
+    excerpt: input.excerpt ? normalizeNbsp(input.excerpt) : input.excerpt,
+  }
 
   try {
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
@@ -259,6 +276,13 @@ export async function updateCmsBlogPostAction(id: string, input: BlogPostInput, 
   const { session, error } = await requireSuperAdmin()
   if (error) return { error }
   if (!input.title?.trim() || !input.slug?.trim()) return { error: "Judul dan slug wajib diisi" }
+
+  input = {
+    ...input,
+    title: normalizeNbsp(input.title),
+    content: normalizeNbsp(input.content || ""),
+    excerpt: input.excerpt ? normalizeNbsp(input.excerpt) : input.excerpt,
+  }
 
   try {
     const contentType = await db.contentType.findFirst({ where: { slug: BLOG_CONTENT_TYPE_SLUG, tenantId: null } })
