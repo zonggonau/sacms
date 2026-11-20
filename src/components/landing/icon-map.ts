@@ -6,6 +6,7 @@ import {
   Landmark, Newspaper, ShoppingBag, Palmtree, Coffee,
   Package, Building2, Lightbulb,
   Server, HardDrive, Layers, ShieldCheck, Activity, Link, Users, PlusCircle, Table, Banknote,
+  Palette, GraduationCap, HeartPulse,
   type LucideIcon,
 } from "lucide-react"
 
@@ -17,6 +18,7 @@ export const iconMap: Record<string, LucideIcon> = {
   Landmark, Newspaper, ShoppingBag, Palmtree, Coffee,
   Package, Building2, Lightbulb,
   Server, HardDrive, Layers, ShieldCheck, Activity, Link, Users, PlusCircle, Table, Banknote,
+  Palette, GraduationCap, HeartPulse,
 }
 
 export function getIcon(name: string, fallback: LucideIcon = Sparkles): LucideIcon {

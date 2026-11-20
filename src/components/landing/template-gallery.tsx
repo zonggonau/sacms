@@ -33,7 +33,7 @@ export function TemplateGallery({
             key={t.id}
             type="button"
             onClick={() => setActive(t)}
-            className="group text-left relative rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
+            className="group text-left relative border border-border/60 bg-card/60 backdrop-blur-xl hover:border-primary/40 hover:shadow-xl hover:shadow-primary/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col"
           >
             {/* A live <iframe> here rendered blank — every deployed
                 template's own frame-ancestors/X-Frame-Options header
@@ -84,7 +84,7 @@ export function TemplateGallery({
       )}
 
       <Dialog open={!!active} onOpenChange={(open) => !open && setActive(null)}>
-        <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 rounded-2xl border border-border overflow-hidden">
+        <DialogContent className="max-w-4xl w-[95vw] p-0 gap-0 rounded-none border border-border overflow-hidden">
           <DialogHeader className="p-4 pb-3 border-b border-border/60 text-left">
             <DialogTitle className="text-sm font-bold flex items-center gap-2">
               <span className="text-base">{active?.icon}</span> {active?.name}
