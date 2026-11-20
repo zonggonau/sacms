@@ -34,7 +34,13 @@ export function MediaLibraryDialog({
   mediaType = "both",
   tenantSlug,
 }: MediaLibraryDialogProps) {
-  const [activeTab, setActiveTab] = useState<"library" | "upload" | "url">("library")
+  // There is no global media library/upload backend — Media.tenantId is a
+  // required FK to a real Tenant row (no tenantId: null support, unlike the
+  // landing-page content tables), and the "SaCMS Global" tenant that could
+  // once anchor it was retired. Without a tenantSlug (global/admin usage,
+  // e.g. /admin/cms), only the URL tab actually works — the other two
+  // always 404'd against /api/admin/media[/upload], which never existed.
+  const [activeTab, setActiveTab] = useState<"library" | "upload" | "url">(tenantSlug ? "library" : "url")
   const [libraryItems, setLibraryItems] = useState<MediaItem[]>([])
   const [loading, setLoading] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
@@ -44,20 +50,16 @@ export function MediaLibraryDialog({
 
   // Fetch library items
   useEffect(() => {
-    if (open && activeTab === "library") {
+    if (open && activeTab === "library" && tenantSlug) {
       fetchLibraryItems()
     }
-  }, [open, activeTab])
+  }, [open, activeTab, tenantSlug])
 
   const fetchLibraryItems = async () => {
+    if (!tenantSlug) return
     setLoading(true)
     try {
-      // Use tenant API if slug is provided, otherwise global admin API
-      const endpoint = tenantSlug 
-        ? `/api/tenant/${tenantSlug}/media` 
-        : `/api/admin/media?type=${mediaType}`
-        
-      const response = await fetch(endpoint)
+      const response = await fetch(`/api/tenant/${tenantSlug}/media`)
       if (!response.ok) {
         let errorMessage = "Failed to fetch media"
         try {
@@ -91,19 +93,14 @@ export function MediaLibraryDialog({
   }
 
   const handleUpload = async () => {
-    if (!uploadFile) return
+    if (!uploadFile || !tenantSlug) return
 
     setUploading(true)
     try {
       const formData = new FormData()
       formData.append("files", uploadFile) // Use "files" key to match tenant API
 
-      // Use tenant upload API if slug is provided
-      const endpoint = tenantSlug 
-        ? `/api/tenant/${tenantSlug}/media` 
-        : "/api/admin/media/upload"
-
-      const response = await fetch(endpoint, {
+      const response = await fetch(`/api/tenant/${tenantSlug}/media`, {
         method: "POST",
         body: formData,
       })
@@ -114,8 +111,7 @@ export function MediaLibraryDialog({
       }
 
       const data = await response.json()
-      // Tenant API returns { media: Media[] }
-      const uploadedFile = tenantSlug ? data.media[0] : data
+      const uploadedFile = data.media[0]
 
       onSelect({
         url: uploadedFile.url,
@@ -163,14 +159,18 @@ export function MediaLibraryDialog({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4 border-b bg-card">
             <TabsList className="bg-muted/50 p-1 rounded-none border border-border">
-              <TabsTrigger value="library" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
-                <ImageIcon className="h-4 w-4 mr-2" />
-                Library
-              </TabsTrigger>
-              <TabsTrigger value="upload" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
-                <Upload className="h-4 w-4 mr-2" />
-                Upload New
-              </TabsTrigger>
+              {tenantSlug && (
+                <>
+                  <TabsTrigger value="library" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Library
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload New
+                  </TabsTrigger>
+                </>
+              )}
               <TabsTrigger value="url" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
                 <Link className="h-4 w-4 mr-2" />
                 From URL
