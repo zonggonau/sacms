@@ -322,6 +322,25 @@ export async function uploadTenantMedia(
   return uploadToLocal(tenant.slug, buffer, filename, mimeType)
 }
 
+/**
+ * Upload platform-wide, non-tenant-scoped media (e.g. blog cover images
+ * and other images picked from /admin/cms, which has no real Tenant row to
+ * anchor a Media record to — the retired "SaCMS Global" tenant left none
+ * behind). Goes straight to the shared platform bucket (or local disk in
+ * dev, same as every other tenant's own fallback) under a literal "global"
+ * key prefix — no Media row is created, since Media.tenantId is a required
+ * FK; callers get back a plain URL to store directly (e.g. as a CMS
+ * section's `image` field value), same pattern as avatar/backup uploads.
+ */
+export async function uploadGlobalMedia(
+  buffer: Buffer,
+  filename: string,
+  mimeType: string,
+): Promise<UploadResult> {
+  if (isObjectStorageConfigured()) return uploadToSharedStorage("global", buffer, filename, mimeType)
+  return uploadToLocal("global", buffer, filename, mimeType)
+}
+
 async function putWithVariants(
   s3: S3Client,
   bucket: string,
