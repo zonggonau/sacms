@@ -1,9 +1,11 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Sparkles, LayoutTemplate } from "lucide-react"
-import { getPublishedWebsiteTemplates } from "@/lib/public-api"
+import { db } from "@/lib/database"
 import { getSiteUrl, SEO_CONFIG } from "@/lib/seo"
-import { TemplateGallery } from "@/components/landing/template-gallery"
+import { TemplatesInfinite } from "./templates-infinite"
+
+const PAGE_SIZE = 21 // 3 columns x 7 rows
 
 export const revalidate = 60
 
@@ -35,7 +37,21 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function TemplatesPage() {
-  const templates = await getPublishedWebsiteTemplates()
+  const rows = await db.websiteTemplate.findMany({
+    where: { published: true },
+    select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
+    orderBy: { createdAt: "desc" },
+    take: PAGE_SIZE + 1,
+  })
+  const hasMore = rows.length > PAGE_SIZE
+  const templates = rows.slice(0, PAGE_SIZE).map((t) => ({
+    id: t.id,
+    name: t.name,
+    slug: t.slug,
+    icon: t.icon,
+    description: t.description || "",
+    demoUrl: t.demoUrl || null,
+  }))
 
   return (
     <main className="flex-1 pt-24 pb-16">
@@ -66,7 +82,7 @@ export default async function TemplatesPage() {
             </Link>
           </div>
         ) : (
-          <TemplateGallery templates={templates} />
+          <TemplatesInfinite initialTemplates={templates} initialHasMore={hasMore} />
         )}
       </section>
     </main>
