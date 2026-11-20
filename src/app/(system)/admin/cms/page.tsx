@@ -37,6 +37,7 @@ export default function AdminCmsPage() {
   const [data, setData] = useState<SectionData>({})
   const [activeKey, setActiveKey] = useState(CMS_SECTIONS[0].key)
   const [saving, setSaving] = useState(false)
+  const [savingAll, setSavingAll] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = session?.user?.role === "super_admin"
@@ -100,13 +101,19 @@ export default function AdminCmsPage() {
     })
   }
 
+  /** Export every section combined into one JSON file — keyed by each
+   *  CMS_SECTIONS section's own `key`, so a round-trip import (below) can
+   *  split it back out per section automatically. */
   const handleExport = () => {
-    const payload = data[activeKey] ?? (activeSection.kind === "array" ? [] : {})
+    const payload: SectionData = {}
+    for (const s of CMS_SECTIONS) {
+      payload[s.key] = data[s.key] ?? (s.kind === "array" ? [] : {})
+    }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `cms-${activeKey}.json`
+    a.download = "cms-landing-page.json"
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -116,19 +123,60 @@ export default function AdminCmsPage() {
       const text = await file.text()
       const parsed = JSON.parse(text)
 
-      if (activeSection.kind === "array" && !Array.isArray(parsed)) {
-        toast({ variant: "destructive", title: "Format Salah", description: `Section "${activeSection.label}" butuh JSON berupa array.` })
-        return
-      }
-      if (activeSection.kind === "object" && (Array.isArray(parsed) || typeof parsed !== "object" || parsed === null)) {
-        toast({ variant: "destructive", title: "Format Salah", description: `Section "${activeSection.label}" butuh JSON berupa object.` })
+      if (Array.isArray(parsed) || typeof parsed !== "object" || parsed === null) {
+        toast({ variant: "destructive", title: "Format Salah", description: "File harus berupa satu object JSON berisi semua section (hasil Export)." })
         return
       }
 
-      setData((prev) => ({ ...prev, [activeKey]: parsed }))
-      toast({ title: "Import Berhasil", description: `Section "${activeSection.label}" diperbarui dari file. Klik Simpan untuk menerapkannya ke website.` })
+      const updates: SectionData = {}
+      const skipped: string[] = []
+
+      for (const s of CMS_SECTIONS) {
+        if (!(s.key in parsed)) continue
+        const value = parsed[s.key]
+        const validShape = s.kind === "array" ? Array.isArray(value) : (typeof value === "object" && value !== null && !Array.isArray(value))
+        if (!validShape) {
+          skipped.push(s.label)
+          continue
+        }
+        updates[s.key] = value
+      }
+
+      if (Object.keys(updates).length === 0) {
+        toast({ variant: "destructive", title: "Tidak Ada Section Dikenali", description: "File tidak berisi key section yang cocok (hero, features, faqs, dst)." })
+        return
+      }
+
+      setData((prev) => ({ ...prev, ...updates }))
+      const count = Object.keys(updates).length
+      toast({
+        title: "Import Berhasil",
+        description: skipped.length > 0
+          ? `${count} section diperbarui dari file. Dilewati (format salah): ${skipped.join(", ")}. Klik Simpan Semua untuk menerapkannya ke website.`
+          : `${count} section diperbarui dari file. Klik Simpan Semua untuk menerapkannya ke website.`,
+      })
     } catch {
       toast({ variant: "destructive", title: "Gagal Import", description: "File bukan JSON yang valid." })
+    }
+  }
+
+  const handleSaveAll = async () => {
+    setSavingAll(true)
+    try {
+      const failed: string[] = []
+      for (const s of CMS_SECTIONS) {
+        const res = await updateCmsLandingSectionAction(s.key, data[s.key])
+        if ("error" in res && res.error) failed.push(s.label)
+      }
+      if (failed.length > 0) {
+        toast({ variant: "destructive", title: "Sebagian Gagal Disimpan", description: `Gagal: ${failed.join(", ")}` })
+      } else {
+        toast({ title: "Semua Section Tersimpan", description: "Seluruh section tersimpan dan langsung tampil di website." })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
+    } finally {
+      setSavingAll(false)
     }
   }
 
@@ -188,6 +236,16 @@ export default function AdminCmsPage() {
           </Button>
           <Button variant="outline" size="sm" onClick={handleExport} className="h-8 rounded-lg text-[11px] font-bold border-border/80">
             <Download className="h-3.5 w-3.5 mr-1.5" /> Export JSON
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSaveAll}
+            disabled={savingAll}
+            className="h-8 rounded-lg text-[11px] font-bold border-border/80"
+          >
+            {savingAll ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+            Simpan Semua
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving} className="h-8 rounded-lg text-[11px] font-bold">
             {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
