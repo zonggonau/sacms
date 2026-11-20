@@ -1,5 +1,4 @@
 import {
-  Sparkles,
   LayoutGrid,
   Workflow,
   HelpCircle,
@@ -14,8 +13,6 @@ import {
   Zap,
   CreditCard,
   Users2,
-  Code2,
-  Bot,
   type LucideIcon,
 } from "lucide-react"
 
@@ -48,21 +45,6 @@ export interface CmsSectionConfig {
  * shape in src/lib/default-landing-page.ts.
  */
 export const CMS_SECTIONS: CmsSectionConfig[] = [
-  {
-    key: "hero",
-    label: "Hero",
-    icon: Sparkles,
-    kind: "object",
-    description: "Bagian paling atas halaman utama — judul, sub judul, dan tombol aksi.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul Utama", type: "text" },
-      { key: "subtitle", label: "Sub Judul", type: "textarea" },
-      { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
-      { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-      { key: "image", label: "Gambar Hero", type: "image" },
-    ],
-  },
   {
     key: "fitur_hero",
     label: "Header Halaman Fitur",
@@ -103,31 +85,6 @@ export const CMS_SECTIONS: CmsSectionConfig[] = [
       { key: "description", label: "Deskripsi", type: "textarea" },
       { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
       { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-    ],
-  },
-  {
-    key: "homepage_tech_intro",
-    label: "Homepage: Intro Teknologi",
-    icon: Code2,
-    kind: "object",
-    description: "Badge, judul, deskripsi, dan teks tombol di atas 3 kartu fitur unggulan homepage.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      { key: "cta_label", label: "Teks Tombol", type: "text" },
-    ],
-  },
-  {
-    key: "homepage_ai_agent_intro",
-    label: "Homepage: Intro AI Agent",
-    icon: Bot,
-    kind: "object",
-    description: "Badge, judul, dan deskripsi di atas daftar AI IDE/agent yang didukung.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
     ],
   },
   {

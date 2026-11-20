@@ -187,12 +187,9 @@ export interface SectionIntroData {
 }
 
 export interface LandingData {
-  hero: HeroData | null
   fiturHero?: PageHeroData | null
   hargaHero?: PageHeroData | null
   tentangHero?: PageHeroData | null
-  homepageTechIntro?: SectionIntroData | null
-  homepageAiAgentIntro?: SectionIntroData | null
   features: FeatureItem[]
   pricingAccounts: PricingPlan[]
   pricingWorkspaces: PricingPlan[]

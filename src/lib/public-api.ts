@@ -154,19 +154,9 @@ export const getLandingData = cache(async function getLandingData() {
     const def = DEFAULT_LANDING_PAGE_DATA
 
     return {
-      hero: {
-        headline: lp.hero_title || def["sacms-hero"]?.headline || "",
-        subheadline: lp.hero_subtitle || def["sacms-hero"]?.subheadline || "",
-        badge_text: lp.hero_badge || def["sacms-hero"]?.badge_text || "",
-        image_url: lp.hero_image || def["sacms-hero"]?.image_url || "",
-        cta_primary: lp.hero_cta_primary || def["sacms-hero"]?.cta_primary || "",
-        cta_secondary: lp.hero_cta_secondary || def["sacms-hero"]?.cta_secondary || "",
-      },
       fiturHero: lp.fitur_hero || null,
       hargaHero: lp.harga_hero || null,
       tentangHero: lp.tentang_hero || null,
-      homepageTechIntro: lp.homepage_tech_intro || null,
-      homepageAiAgentIntro: lp.homepage_ai_agent_intro || null,
       features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
       ...await pricing,
       workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
@@ -235,12 +225,9 @@ export const getPublishedWebsiteTemplates = cache(async function getPublishedWeb
 function getDefaultData() {
   const landing = DEFAULT_LANDING_PAGE_DATA;
   return {
-    hero: landing["sacms-hero"],
     fiturHero: null,
     hargaHero: null,
     tentangHero: null,
-    homepageTechIntro: null,
-    homepageAiAgentIntro: null,
     features: landing["sacms-features"],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],

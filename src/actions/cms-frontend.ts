@@ -5,7 +5,6 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { revalidatePath } from "next/cache"
-import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
 
 const LANDING_PAGE_SLUG = "sacms-landing-page"
 const BLOG_CONTENT_TYPE_SLUG = "posts"
@@ -33,20 +32,15 @@ function revalidateMarketingPages() {
   }
 }
 
-const EMPTY_HERO = { badge: "", title: "", subtitle: "", cta_primary: "", cta_secondary: "", image: "" }
+const EMPTY_PAGE_HERO = { badge: "", title: "", description: "", cta_primary: "", cta_secondary: "" }
 const EMPTY_LOCAL_PRIDE = { badge: "", title: "", description: "" }
 const EMPTY_CTA_BANNER = { title: "", description: "", button_primary_text: "", button_secondary_text: "" }
 const EMPTY_ABOUT = { title: "", description: "", mission: "", founded: "", image: "" }
 const EMPTY_WHATSAPP = { phone: "", message: "", label: "", is_active: true }
 const EMPTY_FOOTER = { brand_name: "", description: "", copyright: "" }
 
-/**
- * Reads the single `sacms-landing-page` entry and reshapes it into one
- * object per editable section — flattening the `hero_*` root-level keys
- * into a `hero` object to match every other section's own shape, since
- * that's the one section stored flat on the SingleType's data (see
- * seed-all-global.ts's "Landing Page" field list).
- */
+/** Reads the single `sacms-landing-page` entry and reshapes it into one
+ *  object per editable section (see CMS_SECTIONS in cms-section-config.ts). */
 export async function getCmsLandingDataAction() {
   const { error } = await requireSuperAdmin()
   if (error) return { error }
@@ -66,18 +60,11 @@ export async function getCmsLandingDataAction() {
       try { lp = JSON.parse(lp) } catch { lp = {} }
     }
 
-    const def = DEFAULT_LANDING_PAGE_DATA
-
     return {
       data: {
-        hero: {
-          badge: lp.hero_badge ?? def["sacms-hero"]?.badge_text ?? EMPTY_HERO.badge,
-          title: lp.hero_title ?? def["sacms-hero"]?.headline ?? EMPTY_HERO.title,
-          subtitle: lp.hero_subtitle ?? def["sacms-hero"]?.subheadline ?? EMPTY_HERO.subtitle,
-          cta_primary: lp.hero_cta_primary ?? def["sacms-hero"]?.cta_primary ?? EMPTY_HERO.cta_primary,
-          cta_secondary: lp.hero_cta_secondary ?? def["sacms-hero"]?.cta_secondary ?? EMPTY_HERO.cta_secondary,
-          image: lp.hero_image ?? def["sacms-hero"]?.image_url ?? EMPTY_HERO.image,
-        },
+        fitur_hero: lp.fitur_hero ?? EMPTY_PAGE_HERO,
+        harga_hero: lp.harga_hero ?? EMPTY_PAGE_HERO,
+        tentang_hero: lp.tentang_hero ?? EMPTY_PAGE_HERO,
         features: lp.features ?? [],
         workflows: lp.workflows ?? [],
         faqs: lp.faqs ?? [],
@@ -108,8 +95,7 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
   if (error) return { error }
 
   const VALID_SECTIONS = [
-    "hero", "fitur_hero", "harga_hero", "tentang_hero",
-    "homepage_tech_intro", "homepage_ai_agent_intro",
+    "fitur_hero", "harga_hero", "tentang_hero",
     "features", "workflows", "faqs", "owners", "testimonials",
     "sectors", "local_pride", "cta_banner", "about", "whatsapp", "footer",
   ]
@@ -129,20 +115,7 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
       try { lp = JSON.parse(lp) } catch { lp = {} }
     }
 
-    if (section === "hero") {
-      const h = value as typeof EMPTY_HERO
-      lp = {
-        ...lp,
-        hero_badge: h.badge ?? "",
-        hero_title: h.title ?? "",
-        hero_subtitle: h.subtitle ?? "",
-        hero_cta_primary: h.cta_primary ?? "",
-        hero_cta_secondary: h.cta_secondary ?? "",
-        hero_image: h.image ?? "",
-      }
-    } else {
-      lp = { ...lp, [section]: value }
-    }
+    lp = { ...lp, [section]: value }
 
     // Can't use upsert's compound-unique `where` here — Prisma's generated
     // tenantId_singleTypeId_locale selector requires tenantId to be a real
