@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -34,7 +35,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { RichTextEditor } from "@/components/rich-text-editor"
 import { MediaLibraryDialog } from "@/components/media-library-dialog"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -43,6 +43,12 @@ import {
   updateCmsBlogPostAction,
   deleteCmsBlogPostAction,
 } from "@/actions/cms-frontend"
+
+// quill/quill-cursors reference the browser-only `self` global at module
+// top-level — loading them on the server (even for a "use client" page's
+// initial SSR pass) crashes with "self is not defined". Same fix already
+// used by src/components/content/field-renderers/rich-text-field.tsx.
+const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then((mod) => mod.RichTextEditor), { ssr: false })
 
 const CATEGORIES = ["Berita", "Artikel", "Pengumuman"]
 

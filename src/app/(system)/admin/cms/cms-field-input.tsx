@@ -1,15 +1,21 @@
 "use client"
 
 import { useState } from "react"
+import dynamic from "next/dynamic"
 import { ImageIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
-import { RichTextEditor } from "@/components/rich-text-editor"
 import { MediaLibraryDialog } from "@/components/media-library-dialog"
 import type { CmsFieldConfig } from "./cms-section-config"
+
+// quill/quill-cursors reference the browser-only `self` global at module
+// top-level — loading them on the server (even for a "use client" page's
+// initial SSR pass) crashes with "self is not defined". Same fix already
+// used by src/components/content/field-renderers/rich-text-field.tsx.
+const RichTextEditor = dynamic(() => import("@/components/rich-text-editor").then((mod) => mod.RichTextEditor), { ssr: false })
 
 interface CmsFieldInputProps {
   field: CmsFieldConfig
