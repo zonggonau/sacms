@@ -155,6 +155,12 @@ model Tenant {
   /// automatic inheritance; an owner can flip individual workspaces to
   /// false to keep them on SaCMS's dedicated DB / Enterprise storage pool.
   useOwnerInfra                   Boolean                       @default(true)
+  /// Whether this tenant's deployed public frontend (its sites.sacms.cloud
+  /// subdomain and verified custom domain, if any) currently has a Vercel
+  /// domain-level redirect pointing visitors to /suspended — kept in sync
+  /// by the enforce-site-lock cron so it only calls the Vercel API on an
+  /// actual state transition, not on every run. See src/lib/tenant-lock.ts.
+  siteLockRedirectActive          Boolean                       @default(false)
   apiKeys                         ApiKey[]
   apiRequests                     ApiRequest[]
   apiTokens                       ApiToken[]

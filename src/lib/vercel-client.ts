@@ -1070,6 +1070,66 @@ export async function removeDomainFromProject(projectId: string, domain: string)
 }
 
 /**
+ * Point a domain already attached to a Vercel project at a redirect target
+ * (Vercel's own per-domain `redirect`/`redirectStatusCode` config — no
+ * project reassignment, no DNS change, takes effect within seconds). Used
+ * to send a locked tenant's visitors from `<slug>.sites.sacms.cloud` or
+ * their verified custom domain straight to `${ROOT_DOMAIN}/suspended`
+ * without touching the tenant's own deployed project/files. See
+ * `clearDomainRedirect` for the reverse, and the `enforce-site-lock` cron
+ * for where both are called.
+ */
+export async function setDomainRedirect(
+  projectId: string,
+  domain: string,
+  redirectUrl: string,
+  redirectStatusCode: 301 | 302 | 307 | 308 = 307
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getVercelToken()
+  if (!token) {
+    if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
+    return { ok: true }
+  }
+
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}/domains/${domain}${await getTeamQuery()}`, {
+    method: "PATCH",
+    headers: await getVercelHeaders(),
+    body: JSON.stringify({ redirect: redirectUrl, redirectStatusCode }),
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }))
+    return { ok: false, error: error.error?.message || error.message || res.statusText }
+  }
+  return { ok: true }
+}
+
+/** Reverse of `setDomainRedirect` — clears the redirect so the domain goes
+ *  back to serving the tenant's own deployed project normally. */
+export async function clearDomainRedirect(
+  projectId: string,
+  domain: string
+): Promise<{ ok: boolean; error?: string }> {
+  const token = await getVercelToken()
+  if (!token) {
+    if (!isMockAllowed("vercel", false)) requireCredentialOutsideMock("vercel", "VERCEL_ACCESS_TOKEN")
+    return { ok: true }
+  }
+
+  const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}/domains/${domain}${await getTeamQuery()}`, {
+    method: "PATCH",
+    headers: await getVercelHeaders(),
+    body: JSON.stringify({ redirect: null, redirectStatusCode: null }),
+  })
+
+  if (!res.ok && res.status !== 404) {
+    const error = await res.json().catch(() => ({ message: res.statusText }))
+    return { ok: false, error: error.error?.message || error.message || res.statusText }
+  }
+  return { ok: true }
+}
+
+/**
  * Get the recommended DNS configuration for a domain
  */
 export async function getDomainConfig(domain: string): Promise<{
