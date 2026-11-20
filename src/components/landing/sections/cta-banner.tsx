@@ -15,9 +15,9 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
   const isAuthenticated = status === "authenticated" && session?.user
 
   const title = cta?.title || "Build smarter. Manage easier. Scale faster."
-  const description = cta?.description || "Daftar sekarang di SaCMS (Smart Content Management System) dan nikmati kemudahan mengelola konten multi-tenant dengan teknologi kelas dunia."
+  const description = cta?.description || "Mulai gunakan SaCMS (Smart Content Management System) hari ini. Nikmati arsitektur multi-tenant murni, performa secepat kilat, dan tagihan otomatis."
   const buttonPrimary = cta?.button_primary_text || "Mulai Gratis Sekarang"
-  const buttonSecondary = cta?.button_secondary_text || "Hubungi Penjualan"
+  const buttonSecondary = cta?.button_secondary_text || "Baca Dokumentasi API"
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-background">

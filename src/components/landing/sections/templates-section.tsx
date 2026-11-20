@@ -21,9 +21,9 @@ export function TemplatesSection({ templates = [] }: { templates?: WebsiteTempla
           </p>
         </div>
 
-        {/* Exactly 6 cards (data layer already caps it) in a 3-column
-            grid — 3 on top, 3 below, same proportions as vercel.com/templates'
-            own homepage teaser. */}
+        {/* Exactly 9 cards (data layer already caps it) in a 3-column,
+            3x3 grid, same proportions as vercel.com/templates' own
+            homepage teaser. */}
         <TemplateGallery templates={templates} viewAllHref="/templates" />
       </div>
     </section>

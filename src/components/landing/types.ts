@@ -186,26 +186,6 @@ export interface SectionIntroData {
   cta_label?: string
 }
 
-export interface PricingSpotlightData {
-  badge?: string
-  title?: string
-  description?: string
-  checklist_1?: string
-  checklist_2?: string
-  checklist_3?: string
-  cta_primary?: string
-  cta_secondary?: string
-}
-
-export interface AboutDocsBannerData {
-  about_label?: string
-  about_title?: string
-  about_description?: string
-  docs_label?: string
-  docs_title?: string
-  docs_description?: string
-}
-
 export interface LandingData {
   hero: HeroData | null
   fiturHero?: PageHeroData | null
@@ -213,8 +193,6 @@ export interface LandingData {
   tentangHero?: PageHeroData | null
   homepageTechIntro?: SectionIntroData | null
   homepageAiAgentIntro?: SectionIntroData | null
-  homepagePricingSpotlight?: PricingSpotlightData | null
-  homepageAboutDocsBanner?: AboutDocsBannerData | null
   features: FeatureItem[]
   pricingAccounts: PricingPlan[]
   pricingWorkspaces: PricingPlan[]

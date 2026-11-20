@@ -16,8 +16,6 @@ import {
   Users2,
   Code2,
   Bot,
-  Banknote,
-  BookOpen,
   type LucideIcon,
 } from "lucide-react"
 
@@ -130,38 +128,6 @@ export const CMS_SECTIONS: CmsSectionConfig[] = [
       { key: "badge", label: "Teks Badge", type: "text" },
       { key: "title", label: "Judul", type: "text" },
       { key: "description", label: "Deskripsi", type: "textarea" },
-    ],
-  },
-  {
-    key: "homepage_pricing_spotlight",
-    label: "Homepage: Spotlight Harga",
-    icon: Banknote,
-    kind: "object",
-    description: "Banner ajakan lihat paket harga sebelum testimoni.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      { key: "checklist_1", label: "Poin Checklist 1", type: "text" },
-      { key: "checklist_2", label: "Poin Checklist 2", type: "text" },
-      { key: "checklist_3", label: "Poin Checklist 3", type: "text" },
-      { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
-      { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-    ],
-  },
-  {
-    key: "homepage_about_docs_banner",
-    label: "Homepage: Banner Tentang & Dokumentasi",
-    icon: BookOpen,
-    kind: "object",
-    description: "Dua kartu tautan (Tentang SaCMS & Dokumentasi Developer) sebelum CTA penutup.",
-    fields: [
-      { key: "about_label", label: "Label Kartu Tentang", type: "text" },
-      { key: "about_title", label: "Judul Kartu Tentang", type: "text" },
-      { key: "about_description", label: "Deskripsi Kartu Tentang", type: "text" },
-      { key: "docs_label", label: "Label Kartu Dokumentasi", type: "text" },
-      { key: "docs_title", label: "Judul Kartu Dokumentasi", type: "text" },
-      { key: "docs_description", label: "Deskripsi Kartu Dokumentasi", type: "text" },
     ],
   },
   {

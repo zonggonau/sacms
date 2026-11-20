@@ -121,15 +121,15 @@ export const getLandingData = cache(async function getLandingData() {
       where: { tenantId: null }
     })
 
-    // Landing page teaser: exactly 6 (3 cards on top, 3 below, on the
-    // 3-column grid TemplateGallery renders) — the full catalog is at
-    // /templates (see getPublishedWebsiteTemplates below), linked from a
-    // "Lihat Semua Template" CTA under this teaser.
+    // Landing page teaser: exactly 9 (3x3 on the 3-column grid
+    // TemplateGallery renders) — the full catalog is at /templates (see
+    // getPublishedWebsiteTemplates below), linked from a "Lihat Semua
+    // Template" CTA under this teaser.
     const websiteTemplateRows = await db.websiteTemplate.findMany({
       where: { published: true },
       select: { id: true, name: true, slug: true, icon: true, description: true, demoUrl: true },
       orderBy: { createdAt: "desc" },
-      take: 6,
+      take: 9,
     })
 
     const contentEntries = await db.contentEntry.findMany({
@@ -167,8 +167,6 @@ export const getLandingData = cache(async function getLandingData() {
       tentangHero: lp.tentang_hero || null,
       homepageTechIntro: lp.homepage_tech_intro || null,
       homepageAiAgentIntro: lp.homepage_ai_agent_intro || null,
-      homepagePricingSpotlight: lp.homepage_pricing_spotlight || null,
-      homepageAboutDocsBanner: lp.homepage_about_docs_banner || null,
       features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
       ...await pricing,
       workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
@@ -243,8 +241,6 @@ function getDefaultData() {
     tentangHero: null,
     homepageTechIntro: null,
     homepageAiAgentIntro: null,
-    homepagePricingSpotlight: null,
-    homepageAboutDocsBanner: null,
     features: landing["sacms-features"],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],
