@@ -3,11 +3,15 @@ import { HeroSection } from "@/components/landing/sections/hero-section"
 import { TemplatesSection } from "@/components/landing/sections/templates-section"
 import { AiAgentFrontendSection } from "@/components/landing/sections/ai-agent-frontend-section"
 import { TechIntroSection } from "@/components/landing/sections/tech-intro-section"
+import { LocalPrideStrip } from "@/components/landing/sections/papua-pride-strip"
+import { TestimonialsSection } from "@/components/landing/sections/testimonials-section"
+import { PricingTeaserSection } from "@/components/landing/sections/pricing-teaser-section"
+import { FaqSection } from "@/components/landing/sections/faq-section"
 import { CtaBanner } from "@/components/landing/sections/cta-banner"
-import { getPublishedWebsiteTemplates } from "@/lib/public-api"
-import { getSiteUrl, SEO_CONFIG, generatePlatformJsonLd } from "@/lib/seo"
+import { getLandingData } from "@/lib/public-api"
+import { getSiteUrl, SEO_CONFIG, generatePlatformJsonLd, generateFaqJsonLd } from "@/lib/seo"
 
-// ISR: Rebuild every 60s — only the Template gallery is a real DB query now.
+// ISR: Rebuild landing page every 60s from cache. getLandingData() is a direct DB query, not HTTP — caching is safe.
 export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -41,16 +45,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /**
- * The homepage's marketing copy is intentionally static (hardcoded in each
- * section component's own fallback) rather than driven by /admin/cms —
- * only the Website Template gallery stays real/dynamic, pulled straight
- * from the database. /fitur, /harga, and /tentang are untouched and still
- * fully editable via /admin/cms as before.
+ * The hero/AI-agent-intro/tech-intro/CTA-banner copy is intentionally
+ * static (hardcoded in each section's own fallback) rather than driven by
+ * /admin/cms. Website Templates, Testimonials, Pricing, FAQ, and the Local
+ * Pride strip below are real data (never fabricated), same arrays /fitur,
+ * /harga, and /tentang already read from the same getLandingData() call.
  */
 export default async function HomePage() {
-  const templates = (await getPublishedWebsiteTemplates()).slice(0, 9)
+  const data = await getLandingData()
 
   const platformJsonLd = generatePlatformJsonLd()
+  const faqJsonLd = generateFaqJsonLd(data.faq || [])
 
   return (
     <>
@@ -58,12 +63,22 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(platformJsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
 
       <main className="flex-1">
         <HeroSection data={null} />
-        <TemplatesSection templates={templates} />
+        <TemplatesSection templates={data.websiteTemplates} />
         <AiAgentFrontendSection data={null} />
         <TechIntroSection intro={null} features={[]} />
+        <LocalPrideStrip data={data.localPride} />
+        <TestimonialsSection testimonials={data.testimonials} />
+        <PricingTeaserSection plans={data.pricingWorkspaces} />
+        <FaqSection faq={(data.faq || []).slice(0, 4)} />
         <CtaBanner cta={null} />
       </main>
     </>

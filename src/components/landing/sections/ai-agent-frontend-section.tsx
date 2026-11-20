@@ -3,7 +3,7 @@
 import {
   Code2, Sparkles, Bot, Github, Workflow,
   Rocket, MousePointer2, Wind, Terminal, MessageSquare, Hand,
-  FlaskConical, Sprout, Braces, LayoutTemplate
+  Sprout, Braces, LayoutTemplate
 } from "lucide-react"
 import type { SectionIntroData } from "../types"
 
@@ -21,7 +21,6 @@ const AI_DEV_TOOLS = [
   { icon: Terminal, label: "Cline", color: "text-emerald-500" },
   { icon: MessageSquare, label: "ChatGPT", color: "text-green-500" },
   { icon: Hand, label: "Manus", color: "text-rose-500" },
-  { icon: FlaskConical, label: "Google AI Studio", color: "text-red-500" },
   { icon: Sprout, label: "Emergent", color: "text-lime-500" },
   { icon: Braces, label: "Qoder", color: "text-indigo-500" },
   { icon: LayoutTemplate, label: "v0.dev", color: "text-muted-foreground" },
