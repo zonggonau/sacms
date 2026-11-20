@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -14,6 +14,8 @@ import {
   Newspaper,
   BookOpen,
   Monitor,
+  Download,
+  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -35,6 +37,7 @@ export default function AdminCmsPage() {
   const [data, setData] = useState<SectionData>({})
   const [activeKey, setActiveKey] = useState(CMS_SECTIONS[0].key)
   const [saving, setSaving] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
 
   const isAdmin = session?.user?.role === "super_admin"
 
@@ -97,6 +100,38 @@ export default function AdminCmsPage() {
     })
   }
 
+  const handleExport = () => {
+    const payload = data[activeKey] ?? (activeSection.kind === "array" ? [] : {})
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `cms-${activeKey}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportFile = async (file: File) => {
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+
+      if (activeSection.kind === "array" && !Array.isArray(parsed)) {
+        toast({ variant: "destructive", title: "Format Salah", description: `Section "${activeSection.label}" butuh JSON berupa array.` })
+        return
+      }
+      if (activeSection.kind === "object" && (Array.isArray(parsed) || typeof parsed !== "object" || parsed === null)) {
+        toast({ variant: "destructive", title: "Format Salah", description: `Section "${activeSection.label}" butuh JSON berupa object.` })
+        return
+      }
+
+      setData((prev) => ({ ...prev, [activeKey]: parsed }))
+      toast({ title: "Import Berhasil", description: `Section "${activeSection.label}" diperbarui dari file. Klik Simpan untuk menerapkannya ke website.` })
+    } catch {
+      toast({ variant: "destructive", title: "Gagal Import", description: "File bukan JSON yang valid." })
+    }
+  }
+
   if (status === "loading" || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -131,6 +166,28 @@ export default function AdminCmsPage() {
             <a href="/" target="_blank" rel="noreferrer">
               <Monitor className="h-3.5 w-3.5 mr-1.5" /> Lihat Website
             </a>
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImportFile(file)
+              e.target.value = ""
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => importInputRef.current?.click()}
+            className="h-8 rounded-lg text-[11px] font-bold border-border/80"
+          >
+            <Upload className="h-3.5 w-3.5 mr-1.5" /> Import JSON
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExport} className="h-8 rounded-lg text-[11px] font-bold border-border/80">
+            <Download className="h-3.5 w-3.5 mr-1.5" /> Export JSON
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving} className="h-8 rounded-lg text-[11px] font-bold">
             {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
