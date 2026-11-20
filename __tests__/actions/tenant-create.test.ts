@@ -7,9 +7,10 @@ import { createTenantAction } from "@/actions/tenant"
 vi.mock("@/lib/database", () => {
   const mockDb = {
     tenant: { findUnique: vi.fn(), create: vi.fn() },
-    tenantMember: { create: vi.fn() },
+    tenantMember: { create: vi.fn(), count: vi.fn() },
     subscription: { create: vi.fn() },
-    user: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn(), updateMany: vi.fn() },
+    $queryRaw: vi.fn(),
     $transaction: vi.fn((cb) => cb(mockDb)),
   }
   return {
@@ -28,8 +29,12 @@ vi.mock("next-auth", () => ({
 
 // Mock Plan Enforcement
 vi.mock("@/lib/plan-enforcement", () => ({
-  enforceUserPlanLimit: vi.fn().mockResolvedValue({ allowed: true, planSlug: "pro" }),
+  enforceUserPlanLimit: vi.fn().mockResolvedValue({ allowed: true, planSlug: "pro", max: 2, current: 0 }),
   validateWorkspacePlanBinding: vi.fn().mockReturnValue({ allowed: true }),
+}))
+
+vi.mock("@/lib/settings", () => ({
+  getGlobalWorkspaceId: vi.fn().mockResolvedValue("global"),
 }))
 
 // Mock Tenant Plan
@@ -52,6 +57,9 @@ describe("Tenant Creation Action with Addons", () => {
     vi.mocked(getServerSession).mockResolvedValue({
       user: { id: "user-123", email: "user@example.com", role: "admin" }
     } as any)
+    vi.mocked(db.$queryRaw).mockResolvedValue([{ id: "user-123" }])
+    vi.mocked(db.tenant.findUnique).mockResolvedValue(null)
+    vi.mocked(db.tenantMember.count).mockResolvedValue(0)
   })
 
   it("should successfully create tenant and add-on subscriptions when addons are provided", async () => {
@@ -98,5 +106,26 @@ describe("Tenant Creation Action with Addons", () => {
         status: "active",
       })
     }))
+  })
+
+  it("stops creation when a concurrent request already claimed the Free allowance", async () => {
+    vi.mocked(db.user.updateMany).mockResolvedValue({ count: 0 })
+
+    const result = await createTenantAction({ name: "Free workspace", plan: "FREE" })
+
+    expect(result).toEqual({ error: expect.stringContaining("Jatah Workspace Gratis") })
+    expect(db.user.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: "user-123", plan: "free", freeWorkspaceUsed: false },
+    }))
+    expect(db.tenant.create).not.toHaveBeenCalled()
+  })
+
+  it("rechecks the account cap in the transaction before creating the workspace", async () => {
+    vi.mocked(db.tenantMember.count).mockResolvedValue(2)
+
+    const result = await createTenantAction({ name: "One more workspace", plan: "pro" })
+
+    expect(result).toEqual({ error: expect.stringContaining("(2/2)") })
+    expect(db.tenant.create).not.toHaveBeenCalled()
   })
 })

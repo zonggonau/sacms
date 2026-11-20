@@ -109,6 +109,22 @@ describe("createContentEntry", () => {
     if (!res.ok) expect(res.code).toBe("validation")
   })
 
+  it("allows Studio to publish with a hidden field still required for other callers", async () => {
+    const client = makeClient({
+      contentType: { findFirst: vi.fn().mockResolvedValue({
+        id: "ct1", slug: "posts", tenantId: "t1",
+        schemaFields: [
+          { slug: "title", name: "Title", type: "text", required: true },
+          { slug: "internal", name: "Internal", type: "text", required: true, options: { showInCms: false } },
+        ],
+        tenants: [{ tenantId: "t1", enabled: true }],
+      }) },
+    })
+    const input = { contentTypeSlug: "posts", data: { title: "Ready" }, status: "PUBLISHED" }
+    expect(await createContentEntry(ctx(client), { kind: "system" }, input)).toMatchObject({ ok: false, code: "validation" })
+    expect(await createContentEntry({ ...ctx(client), studio: true }, { kind: "system" }, input)).toMatchObject({ ok: true })
+  })
+
   it("creates a DRAFT entry for a system actor", async () => {
     const res = await createContentEntry(ctx(makeClient()), { kind: "system" }, {
       contentTypeSlug: "posts",

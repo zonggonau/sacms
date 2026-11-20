@@ -1,18 +1,18 @@
 import { db } from "@/lib/database"
-import { getDynamicWorkspacePrices, getDynamicAccountPrices, resolveSubscriptionMonthlyPrice } from "@/lib/midtrans"
+import { getDynamicWorkspacePrices, getDynamicAccountPrices, getSubscriptionCatalogPrice } from "@/lib/midtrans"
+import { advanceBillingPeriod } from "./plan-price"
+import { loadLegacyBillingTerms, resolveSubscriptionTerms } from "./subscription-terms"
 
 export async function generateMonthlyInvoices() {
   // Get all active subscriptions
   const activeSubscriptions = await db.subscription.findMany({
     where: {
       status: "active",
+      tenantSlugSnapshot: null,
+      OR: [{ userId: { not: null } }, { tenantId: { not: null } }],
       NOT: {
         cancelAtPeriodEnd: true,
       },
-    },
-    include: {
-      tenant: true,
-      user: true,
     },
   })
 
@@ -32,8 +32,11 @@ export async function generateMonthlyInvoices() {
   // Get current date
   const now = new Date()
 
-  const dynamicWorkspacePrices = await getDynamicWorkspacePrices()
-  const dynamicAccountPrices = await getDynamicAccountPrices()
+  const [dynamicWorkspacePrices, dynamicAccountPrices, checkoutTerms] = await Promise.all([
+    getDynamicWorkspacePrices({ includeInactive: true }),
+    getDynamicAccountPrices({ includeInactive: true }),
+    loadLegacyBillingTerms(activeSubscriptions),
+  ])
 
   for (const subscription of activeSubscriptions) {
     try {
@@ -65,7 +68,7 @@ export async function generateMonthlyInvoices() {
         continue
       }
 
-      // Check if billing is overdue by more than 7 days
+      // Keep deeply overdue periods out of the automatic renewal cycle.
       const daysOverdue = Math.floor(
         (now.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24)
       )
@@ -82,37 +85,9 @@ export async function generateMonthlyInvoices() {
         continue
       }
 
-      const isAccountPlan = !subscription.tenantId
-      const planPrice = resolveSubscriptionMonthlyPrice(subscription.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
-
-      if (planPrice === 0) {
-        // Free plan - extend period
-        const newPeriodEnd = new Date(periodEnd)
-        newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1)
-
-        await db.subscription.updateMany({
-          where: { id: subscription.id, status: "active", cancelAtPeriodEnd: false, currentPeriodEnd: periodEnd },
-          data: {
-            currentPeriodStart: periodEnd,
-            currentPeriodEnd: newPeriodEnd,
-          },
-        })
-
-        results.skipped++
-        results.invoices.push({
-          subscriptionId: subscription.id,
-          tenantId: subscription.tenantId,
-          amount: 0,
-          status: "skipped",
-          error: "Free plan - period extended",
-        })
-        continue
-      }
-
-      // Generate invoice
-      const newPeriodStart = periodEnd
-      const newPeriodEnd = new Date(periodEnd)
-      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1)
+      const catalog = getSubscriptionCatalogPrice(subscription.plan, !subscription.tenantId, dynamicWorkspacePrices, dynamicAccountPrices)
+      const { interval, amount } = resolveSubscriptionTerms(subscription, catalog, checkoutTerms)
+      const newPeriodEnd = advanceBillingPeriod(periodEnd, interval)
 
       // Both writes must land together — an invoice created without its
       // subscription's period advancing (or vice versa) would make the
@@ -121,13 +96,19 @@ export async function generateMonthlyInvoices() {
       const invoiced = await db.$transaction(async (tx) => {
         const claimed = await tx.subscription.updateMany({
           where: { id: subscription.id, status: "active", cancelAtPeriodEnd: false, currentPeriodEnd: periodEnd },
-          data: { currentPeriodStart: newPeriodStart, currentPeriodEnd: newPeriodEnd },
+          data: {
+            currentPeriodStart: periodEnd,
+            currentPeriodEnd: newPeriodEnd,
+            billingInterval: interval,
+            ...(amount > 0 ? { recurringAmount: amount } : {}),
+          },
         })
         if (claimed.count === 0) return false
+        if (amount === 0) return true
         await tx.invoice.create({
           data: {
             subscriptionId: subscription.id,
-            amount: planPrice,
+            amount,
             currency: "IDR",
             status: "pending",
             createdAt: now,
@@ -139,12 +120,23 @@ export async function generateMonthlyInvoices() {
         results.skipped++
         continue
       }
+      if (amount === 0) {
+        results.skipped++
+        results.invoices.push({
+          subscriptionId: subscription.id,
+          tenantId: subscription.tenantId,
+          amount: 0,
+          status: "skipped",
+          error: "Zero-priced period extended",
+        })
+        continue
+      }
 
       results.processed++
       results.invoices.push({
         subscriptionId: subscription.id,
         tenantId: subscription.tenantId,
-        amount: planPrice,
+        amount,
         status: "created",
       })
 

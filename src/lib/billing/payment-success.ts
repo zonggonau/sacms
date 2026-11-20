@@ -2,7 +2,7 @@ import { db, type Prisma } from "@/lib/database"
 import { fulfillAddonOrder, mergeProviderResponse } from "./addon-fulfillment"
 import { triggerWebhooks } from "@/lib/webhooks"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { calculatePeriodEndDate, type PlanType } from "@/lib/midtrans"
+import { advanceBillingPeriod } from "./plan-price"
 import { AI_CREDIT_PACKS } from "@/lib/constants/tenant-limits"
 
 export type PaymentOutcome = "success" | "failed"
@@ -150,6 +150,7 @@ export async function applyPaymentOutcome(
 
     const domain = isDomain ? await attachRegisteredDomain(tx, confirmed) : undefined
     const plan = isDomain ? undefined : await grantLocalBenefits(tx, confirmed)
+    const requiresReview = !isDomain && !!confirmed.subscriptionId && !plan
     let invoiceId = confirmed.invoiceId
     if (invoiceId) {
       await tx.invoice.update({ where: { id: invoiceId }, data: { status: "paid", paidAt: new Date() } })
@@ -169,7 +170,10 @@ export async function applyPaymentOutcome(
     if (invoiceId && invoiceId !== confirmed.invoiceId) {
       await tx.paymentTransaction.update({ where: { id: confirmed.id }, data: { invoiceId } })
     }
-    return { plan, domain }
+    if (requiresReview) {
+      await tx.paymentTransaction.update({ where: { id: confirmed.id }, data: { fulfillmentStatus: "needs_review" } })
+    }
+    return { plan, domain, requiresReview }
   })
   if (!fulfillment) return { applied: false, alreadyProcessed: true, status: "success" }
 
@@ -178,33 +182,47 @@ export async function applyPaymentOutcome(
     const { getRedis } = await import("@/lib/redis")
     await getRedis()?.set(`domain:${name}`, slug).catch((error) => console.warn("[payment] Domain cache update failed:", error))
   }
-  notifyPayment(confirmed, "success", fulfillment.plan)
+  if (!fulfillment.requiresReview) notifyPayment(confirmed, "success", fulfillment.plan)
   return { applied: true, status: "success" }
 }
 
 async function grantLocalBenefits(tx: Prisma.TransactionClient, payment: PaymentRow) {
   const { orderId, subscription: sub } = payment
-  if (!sub) return
+  if (!sub || sub.status === "archived") return
   const raw = rawCheckout(payment)
   if (orderId.startsWith("SUB") || orderId.startsWith("ACC")) {
-    const plan: PlanType = raw.intendedPlan || sub.plan
-    const periodEnd = calculatePeriodEndDate(plan, raw.intendedInterval === "year" ? "year" : "month")
-    await tx.subscription.update({
-      where: { id: sub.id },
-      data: { status: "active", plan, currentPeriodStart: new Date(), currentPeriodEnd: periodEnd },
+    const isWorkspace = orderId.startsWith("SUB")
+    const plan = typeof raw.intendedPlan === "string" ? raw.intendedPlan : sub.plan
+    const interval = raw.intendedInterval === "year" ? "year" : "month"
+    const recurringAmount = typeof raw.intendedRecurringAmount === "number" &&
+      Number.isFinite(raw.intendedRecurringAmount) && raw.intendedRecurringAmount >= 0
+      ? raw.intendedRecurringAmount : null
+    const now = new Date()
+    const periodEnd = advanceBillingPeriod(now, interval)
+    const updated = await tx.subscription.updateMany({
+      where: {
+        id: sub.id,
+        status: { not: "archived" },
+        ...(isWorkspace
+          ? { tenant: { status: { not: "deleting" } } }
+          : { userId: { not: null }, tenantId: null, tenantSlugSnapshot: null }),
+      },
+      data: { status: "active", plan, billingInterval: interval, recurringAmount, currentPeriodStart: now, currentPeriodEnd: periodEnd },
     })
-    if (orderId.startsWith("SUB") && sub.tenantId) {
+    if (!updated.count) return
+    if (isWorkspace && sub.tenantId) {
       await tx.tenant.update({
         where: { id: sub.tenantId },
         data: { plan, hostingStatus: "active", hostingExpiresAt: periodEnd },
       })
-    } else if (sub.userId) {
+    } else if (!isWorkspace && sub.userId) {
       await tx.user.update({ where: { id: sub.userId }, data: { plan } })
     }
     return plan
   }
 
-  if (orderId.startsWith("AIC") && sub.userId) {
+  if (orderId.startsWith("AIC")) {
+    if (!sub.userId) return
     const credits = Number(raw.credits || 0) || AI_CREDIT_PACKS.find((pack) => pack.id === raw.addonId)?.credits || 0
     if (credits > 0) {
       await tx.user.update({ where: { id: sub.userId }, data: { aiCreditsExtra: { increment: credits } } })
@@ -215,7 +233,8 @@ async function grantLocalBenefits(tx: Prisma.TransactionClient, payment: Payment
     return sub.plan
   }
 
-  if (!orderId.startsWith("ADD") || !sub.tenantId) return sub.plan
+  if (!orderId.startsWith("ADD")) return sub.plan
+  if (!sub.tenantId) return
   const tenantId = sub.tenantId
   const addonId = raw.addonId
   if (addonId === "topup_ai_500k" || addonId === "topup_ai_2m") {
@@ -264,6 +283,11 @@ async function registerPaidDomain(payment: PaymentRow): Promise<boolean> {
   let registered = false
   try {
     if (!raw.tenantId || !raw.domainName) throw new Error("Missing domain checkout details")
+    const workspace = await db.tenant.findFirst({
+      where: { id: raw.tenantId, status: { not: "deleting" } },
+      select: { id: true },
+    })
+    if (!workspace) throw new Error("Workspace no longer available for domain registration")
     const { purchaseDomain } = await import("@/lib/vercel-registrar")
     const result = await purchaseDomain(raw.domainName, {
       expectedPrice: raw.expectedPriceUsd || 14,

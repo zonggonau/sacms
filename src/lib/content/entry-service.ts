@@ -23,6 +23,7 @@ import { randomUUID } from "crypto"
 import type { PrismaClient, ContentEntry } from "@/lib/database"
 import { db } from "@/lib/database"
 import { validateContentEntry } from "@/lib/content-validations"
+import { isStudioFieldEnabled } from "@/lib/field-visibility"
 import { validateDynamicContent } from "@/lib/validations/dynamic-validator"
 import { processAutoSlugs } from "@/lib/slug"
 import { parseSchemaFieldOptions, validateScheduledPublicationDate } from "@/actions/content-pipeline"
@@ -255,6 +256,8 @@ export interface EntryWriteContext {
   isGlobal?: boolean
   /** When true, enforce the workspace plan's content-entry limit on create. */
   enforcePlan?: boolean
+  /** Studio cannot supply fields hidden from its forms. */
+  studio?: boolean
 }
 
 function assertActorStatusAllowed(actor: ContentActor, status: string): ServiceResult<WorkflowStatus> {
@@ -337,7 +340,8 @@ export async function createContentEntry(
 
   const enforceRequired = targetStatus !== "DRAFT"
 
-  const schemaValidation = await validateContentEntry(fields as any, input.data, { enforceRequired })
+  const validationFields = ctx.studio ? fields.map((field) => ({ ...field, required: field.required && isStudioFieldEnabled(field) })) : fields
+  const schemaValidation = await validateContentEntry(validationFields as any, input.data, { enforceRequired })
   if (!schemaValidation.success) {
     return fail("validation", "Validation failed", schemaValidation.errors ?? undefined)
   }
@@ -347,6 +351,7 @@ export async function createContentEntry(
     const dynamic = await validateDynamicContent(contentType.id, tenantId, validatedData, undefined, {
       enforceRequired,
       client,
+      studio: ctx.studio,
     })
     if (!dynamic.success) return fail("validation", "Validation failed", dynamic.errors ?? undefined)
   }
@@ -567,7 +572,8 @@ export async function updateContentEntry(
       client,
     )
 
-    const schemaValidation = await validateContentEntry(fields as any, withSlugs, { enforceRequired })
+    const validationFields = ctx.studio ? fields.map((field) => ({ ...field, required: field.required && isStudioFieldEnabled(field) })) : fields
+    const schemaValidation = await validateContentEntry(validationFields as any, withSlugs, { enforceRequired })
     if (!schemaValidation.success) {
       return fail("validation", "Validation failed", schemaValidation.errors ?? undefined)
     }
@@ -576,6 +582,7 @@ export async function updateContentEntry(
       const dynamic = await validateDynamicContent(contentType.id, tenantId, withSlugs, existingLocaleEntry?.id, {
         enforceRequired,
         client,
+        studio: ctx.studio,
       })
       if (!dynamic.success) return fail("validation", "Validation failed", dynamic.errors ?? undefined)
     }

@@ -40,7 +40,7 @@ export function MobilePortalMenu({ portal, className, children }: {
       </SheetTrigger>
       <SheetContent side="left" className="w-[min(20rem,100vw)] gap-0 overflow-hidden p-0">
         <SheetTitle className="shrink-0 border-b px-4 py-3 text-sm">{portal}</SheetTitle>
-        <SheetDescription className="sr-only">Menu navigasi workspace.</SheetDescription>
+        <SheetDescription className="sr-only">Menu navigasi {portal}.</SheetDescription>
         <div className="min-h-0 flex-1" onClickCapture={closeOnLink}>
           {children}
         </div>

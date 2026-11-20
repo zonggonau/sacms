@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
@@ -49,7 +48,6 @@ import {
   Eye,
   Globe,
   Send,
-  Plus,
   Image as ImageIcon,
   Lock,
   Copy,
@@ -76,7 +74,7 @@ export default function TenantSettingsPage() {
   useEffect(() => {
     const tab = searchParams?.get("tab")
     if (tab === "domains") {
-      router.replace(`/dashboard/${tenantSlug}/deployments?tab=domains`)
+      router.replace(`/dashboard/${tenantSlug}/infrastructure?tab=domains`)
     } else if (tab === "infrastructure") {
       router.replace(`/dashboard/${tenantSlug}/infrastructure`)
     } else if (tab) {
@@ -110,12 +108,6 @@ export default function TenantSettingsPage() {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
   const [previewUrl, setPreviewUrl] = useState("")
 
-  // Security settings
-  const [twoFactorRequired, setTwoFactorRequired] = useState(false)
-  const [ipWhitelist, setIpWhitelist] = useState(false)
-  const [allowedIps, setAllowedIps] = useState("")
-  const [auditLogging, setAuditLogging] = useState(true)
-  const [detectedIp, setDetectedIp] = useState<string | null>(null)
 
   // Email settings
   const [smtpHost, setSmtpHost] = useState("")
@@ -151,18 +143,6 @@ export default function TenantSettingsPage() {
     }
   }, [status, router])
 
-  // Try to detect user client IP for IP whitelist helper
-  useEffect(() => {
-    fetch("https://api.ipify.org?format=json")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.ip) setDetectedIp(data.ip)
-      })
-      .catch(() => {
-        // Silently ignore if offline / ad-blocked
-      })
-  }, [])
-
   useEffect(() => {
     async function fetchData() {
       if (!tenantSlug || !session?.user) return
@@ -189,10 +169,6 @@ export default function TenantSettingsPage() {
           setSubscriptionStatus(settings.subscriptionStatus || null)
           setDaysRemaining(settings.daysRemaining ?? null)
           setPreviewUrl(settings.previewUrl || "")
-          setTwoFactorRequired(settings.twoFactorRequired || false)
-          setIpWhitelist(settings.ipWhitelist || false)
-          setAllowedIps(settings.allowedIps || "")
-          setAuditLogging(settings.auditLogging ?? true)
 
           setSmtpHost(settings.smtpHost || "")
           setSmtpPort(settings.smtpPort || "")
@@ -235,10 +211,6 @@ export default function TenantSettingsPage() {
             name,
             description,
             previewUrl,
-            twoFactorRequired,
-            ipWhitelist,
-            allowedIps,
-            auditLogging,
             smtpHost,
             smtpPort,
             smtpUser,
@@ -361,19 +333,6 @@ export default function TenantSettingsPage() {
     }
   }
 
-  // Handle Add Detected IP to Whitelist
-  const handleAddCurrentIp = () => {
-    if (!detectedIp) return
-    const lines = allowedIps.split("\n").map((l) => l.trim()).filter(Boolean)
-    if (!lines.includes(detectedIp)) {
-      lines.push(detectedIp)
-      setAllowedIps(lines.join("\n"))
-      toast.success(`Alamat IP ${detectedIp} ditambahkan ke daftar whitelist.`)
-    } else {
-      toast.info(`IP ${detectedIp} sudah ada dalam daftar.`)
-    }
-  }
-
   const handleExport = async () => {
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/export`)
@@ -387,7 +346,7 @@ export default function TenantSettingsPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
-        toast.success("Data workspace berhasil diekspor!")
+        toast.success("Cadangan skema dan konten berhasil diunduh.")
       } else {
         toast.error("Gagal mengekspor data workspace")
       }
@@ -403,12 +362,14 @@ export default function TenantSettingsPage() {
 
     if (
       !(await confirm({
-        title: "Impor berkas konfigurasi ini?",
-        description: "Pengaturan workspace saat ini akan ditimpa oleh isi berkas.",
-        confirmLabel: "Impor konfigurasi",
+        title: "Impor cadangan skema dan konten?",
+        description: "Skema dan entri yang cocok dengan berkas akan diperbarui.",
+        confirmLabel: "Impor cadangan",
       }))
-    )
+    ) {
+      e.target.value = ""
       return
+    }
 
     setSaving(true)
     try {
@@ -420,11 +381,18 @@ export default function TenantSettingsPage() {
         body: formData,
       })
 
-      if (res.ok) {
-        toast.success("Data berhasil diimpor! Halaman akan dimuat ulang.")
-        setTimeout(() => window.location.reload(), 1000)
+      const data = await res.json()
+      if (res.ok && data.partial) {
+        const skipped = (data.skipped ?? []) as { section: string; count: number; reason: string }[]
+        toast.warning("Cadangan dipulihkan sebagian", {
+          description: skipped.map(({ section, count, reason }) => `${section} (${count}): ${reason}`).join(" · "),
+          duration: 12000,
+        })
+        router.refresh()
+      } else if (res.ok) {
+        toast.success("Skema dan konten dalam cadangan berhasil dipulihkan.")
+        router.refresh()
       } else {
-        const data = await res.json()
         toast.error(data.error || "Gagal mengimpor data")
       }
     } catch (error) {
@@ -1145,71 +1113,18 @@ export default function TenantSettingsPage() {
                     Kebijakan Keamanan & Audit Log
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    2FA, IP whitelist, dan audit log.
+                    Status kebijakan keamanan workspace.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="p-5 space-y-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-xs font-semibold text-foreground">Wajibkan Two-Factor Authentication (2FA)</Label>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Wajibkan 2FA untuk semua anggota tim.
-                      </p>
-                    </div>
-                    <Switch checked={twoFactorRequired} onCheckedChange={setTwoFactorRequired} />
+                <CardContent className="space-y-4 p-5 text-sm">
+                  <div>
+                    <p className="font-medium">Audit Log</p>
+                    <p className="text-muted-foreground">Tindakan yang mendukung audit dicatat secara otomatis.</p>
                   </div>
-
                   <Separator />
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-xs font-semibold text-foreground">Pembatasan IP (IP Whitelist)</Label>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Batasi akses hanya dari IP tepercaya.
-                        </p>
-                      </div>
-                      <Switch checked={ipWhitelist} onCheckedChange={setIpWhitelist} />
-                    </div>
-
-                    {ipWhitelist && (
-                      <div className="space-y-2 pt-1">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold text-foreground">Daftar IP yang Diizinkan</Label>
-                          {detectedIp && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleAddCurrentIp}
-                              className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary/90"
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Tambahkan IP Saya ({detectedIp})
-                            </Button>
-                          )}
-                        </div>
-                        <Textarea
-                          placeholder="Masukkan IP atau subnet CIDR per baris:&#10;103.120.10.1&#10;192.168.1.0/24"
-                          rows={4}
-                          value={allowedIps}
-                          onChange={(e) => setAllowedIps(e.target.value)}
-                          className="rounded-xl text-xs font-mono bg-background border-border/80"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-xs font-semibold text-foreground">Pencatatan Audit Log Lengkap</Label>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Catat riwayat perubahan skema, konten, dan login.
-                      </p>
-                    </div>
-                    <Switch checked={auditLogging} onCheckedChange={setAuditLogging} />
+                  <div>
+                    <p className="font-medium">2FA dan pembatasan IP per workspace</p>
+                    <p className="text-muted-foreground">Belum tersedia sebagai kebijakan workspace.</p>
                   </div>
                 </CardContent>
               </Card>
@@ -1226,10 +1141,10 @@ export default function TenantSettingsPage() {
                 <CardHeader className="p-5 pb-3 border-b border-rose-500/20 bg-rose-500/10">
                   <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    Ekspor & Impor Data Cadangan Workspace
+                    Cadangan Skema dan Konten
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Ekspor atau pulihkan data dari berkas JSON.
+                    Cadangan JSON berisi skema, locale, dan entri. Media, akun tim, riwayat versi, billing, dan hosting memerlukan pemulihan tersendiri.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
@@ -1287,35 +1202,6 @@ export default function TenantSettingsPage() {
                     Kosongkan Konten
                   </Button>
                 </CardContent>
-              </Card>
-
-              {/* Instant Snapshot Backup */}
-              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div>
-                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Download className="h-4 w-4 text-primary" />
-                      Cadangkan Data Workspace (Instant Snapshot Backup)
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Ekspor seluruh data workspace ke satu berkas JSON.
-                    </CardDescription>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      window.location.href = `/api/tenant/${tenantSlug}/export`
-                      toast.success("Mengunduh Snapshot Backup", {
-                        description: "Berkas cadangan JSON sedang diunduh ke perangkat Anda.",
-                      })
-                    }}
-                    className="rounded-xl text-xs font-bold h-9 border-border/80 flex items-center gap-1.5 shrink-0"
-                  >
-                    <Download className="h-3.5 w-3.5 text-primary" />
-                    Unduh Snapshot Backup
-                  </Button>
-                </CardHeader>
               </Card>
 
               {/* Danger: Delete Workspace */}

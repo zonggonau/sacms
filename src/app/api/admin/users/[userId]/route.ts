@@ -136,7 +136,7 @@ export const DELETE = withAdminAuth(
 
     const targetUser = await db.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, role: true },
+      select: { id: true, email: true, name: true, role: true },
     })
 
     if (!targetUser) return apiError("not_found", { message: "User not found" })
@@ -173,17 +173,14 @@ export const DELETE = withAdminAuth(
 
     // Delete all related records in transaction to prevent foreign key constraint violations
     await db.$transaction(async (tx) => {
-      const userSubs = await tx.subscription.findMany({
-        where: { userId },
-        select: { id: true },
+      await tx.subscription.updateMany({
+        where: { userId, tenantId: null },
+        data: { status: "archived", cancelAtPeriodEnd: true },
       })
-      const subIds = userSubs.map((s) => s.id)
-
-      if (subIds.length > 0) {
-        await tx.paymentTransaction.deleteMany({ where: { subscriptionId: { in: subIds } } })
-        await tx.invoice.deleteMany({ where: { subscriptionId: { in: subIds } } })
-        await tx.subscription.deleteMany({ where: { id: { in: subIds } } })
-      }
+      await tx.subscription.updateMany({
+        where: { userId },
+        data: { userId: null, userNameSnapshot: targetUser.name },
+      })
 
       await tx.customPlanOverride.deleteMany({ where: { userId } })
       await tx.aiQuotaLedger.deleteMany({ where: { userId } })
@@ -203,5 +200,4 @@ export const DELETE = withAdminAuth(
 
     return NextResponse.json({ success: true })
   },
-  { allowRoles: ["admin"] },
 )

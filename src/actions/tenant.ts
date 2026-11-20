@@ -6,10 +6,10 @@ import { db } from "@/lib/database"
 import { randomBytes } from "crypto"
 import { provisionTenant } from "@/lib/tenant-provisioning"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { deleteTenantStorage } from "@/lib/r2"
-import { dropEnterpriseDb } from "@/lib/enterprise-db"
+import { removeWorkspace } from "@/lib/workspace-deletion"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -38,23 +38,12 @@ export async function createTenantForUser(
   userId: string,
   data: z.infer<typeof createTenantSchema>,
 ): Promise<{ error: string } | { success: true; tenantId: string }> {
-  const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
-
-  const workspaceEnforcement = await enforceUserPlanLimit(userId, "workspaces")
-  if (!workspaceEnforcement.allowed) {
-    return { error: workspaceEnforcement.message }
-  }
-
-  const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = data
-
-  const planBinding = await validateWorkspacePlanBinding(userId, plan)
-  if (!planBinding.allowed) {
-    return { error: planBinding.message }
-  }
+  const { name, description, plan: requestedPlan = "free", aiPrompt, websiteType, addons = [] } = data
+  const plan = requestedPlan.toLowerCase()
 
   const slug = await generateUniqueSlug()
 
-  const tenant = await db.$transaction(async (tx) => {
+  const creation = await withWorkspaceCreation(userId, plan, async (tx) => {
     const newTenant = await tx.tenant.create({
       data: {
         name,
@@ -87,10 +76,6 @@ export async function createTenantForUser(
       }
     })
 
-    if (plan === "free") {
-      await tx.user.update({ where: { id: userId }, data: { freeWorkspaceUsed: true } })
-    }
-
     if (addons && addons.length > 0) {
       for (const addonId of addons) {
         await tx.subscription.create({
@@ -108,6 +93,8 @@ export async function createTenantForUser(
 
     return newTenant
   })
+  if (!creation.ok) return { error: creation.error }
+  const tenant = creation.value
 
   // Run provisioning in background
   provisionTenant(tenant.id, aiPrompt, websiteType).catch(err => {
@@ -233,17 +220,7 @@ export async function deleteTenantAction(tenantId: string) {
       return { error: "Cannot delete an active paid workspace. Please cancel your subscription or contact support first." }
     }
 
-    if (tenant.slug) {
-      await deleteTenantStorage({ id: tenant.id, slug: tenant.slug })
-    }
-
-    if (tenant.databaseUrl) {
-      await dropEnterpriseDb(tenant.databaseUrl)
-    }
-
-    await db.tenant.delete({
-      where: { id: tenantId }
-    })
+    await removeWorkspace(tenant)
 
     logAudit({
       userId: session.user.id,

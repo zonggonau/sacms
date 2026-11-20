@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { deleteTenantStorage } from "@/lib/r2"
-import { dropEnterpriseDb } from "@/lib/enterprise-db"
+import { removeWorkspace } from "@/lib/workspace-deletion"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export async function DELETE(
   request: NextRequest,
@@ -33,9 +33,10 @@ export async function DELETE(
     const tenant = member?.tenant || await db.tenant.findUnique({ where: { id: tenantId } })
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
-    const tenantName = tenant.name
-    const tenantSlug = tenant.slug
-    const databaseUrl = tenant.databaseUrl
+    const globalId = await getGlobalWorkspaceId()
+    if (tenant.id === globalId || tenant.slug === globalId) {
+      return NextResponse.json({ error: "Use platform administration to delete the global workspace." }, { status: 403 })
+    }
 
     // Check if tenant has an active paid subscription
     const activeSub = await db.subscription.findFirst({
@@ -52,43 +53,7 @@ export async function DELETE(
       }, { status: 403 })
     }
 
-    // 1. Delete physical assets from storage (MinIO bucket or local disk)
-    if (tenantSlug) {
-      await deleteTenantStorage({ id: tenant.id, slug: tenantSlug })
-    }
-
-    // 2. Drop dedicated database if exists (Hybrid Multitenancy)
-    if (databaseUrl) {
-      console.log(`[Tenant Deletion] Dropping dedicated DB for ${tenantSlug}`)
-      await dropEnterpriseDb(databaseUrl)
-    }
-
-    // 3. Clean up any related child records that lack foreign-key cascade in PostgreSQL
-    const tenantSubscriptions = await db.subscription.findMany({
-      where: { tenantId },
-      select: { id: true }
-    })
-    const subIds = tenantSubscriptions.map(s => s.id)
-
-    if (subIds.length > 0) {
-      await db.paymentTransaction.deleteMany({
-        where: { subscriptionId: { in: subIds } }
-      }).catch(err => console.warn("Failed to clean up subscription payment transactions:", err))
-
-      await db.invoice.deleteMany({
-        where: { subscriptionId: { in: subIds } }
-      }).catch(err => console.warn("Failed to clean up subscription invoices:", err))
-    }
-
-    // Clean up custom plan overrides
-    await db.customPlanOverride.deleteMany({
-      where: { tenantId }
-    }).catch(err => console.warn("Failed to clean up custom plan overrides:", err))
-
-    // 4. Delete tenant from master database
-    await db.tenant.delete({
-      where: { id: tenantId }
-    })
+    await removeWorkspace(tenant)
 
     // Log Audit
     logAudit({
@@ -96,7 +61,7 @@ export async function DELETE(
       action: AuditAction.TENANT_DELETED,
       entity: "Tenant",
       entityId: tenantId,
-      data: { name: tenantName },
+      data: { name: tenant.name },
     })
 
     return NextResponse.json({ success: true })

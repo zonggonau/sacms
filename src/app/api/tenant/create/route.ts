@@ -8,6 +8,7 @@ import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
+import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   let slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
@@ -34,13 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Workspace name is required" }, { status: 400 })
     }
 
-    // Check user's workspace limit
-    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
-    const limitResult = await enforceUserPlanLimit(session.user.id, "workspaces")
-    if (!limitResult.allowed) {
-      return NextResponse.json({ error: limitResult.message }, { status: 403 })
-    }
-
     const slug = customSlug ? await generateUniqueSlug(customSlug) : await generateUniqueSlug(name)
 
     // Leaves databaseUrl/storageConfig null — this tenant automatically
@@ -50,7 +44,7 @@ export async function POST(request: NextRequest) {
     // a tenant-level value always wins over the live owner fallback, so a
     // later change to the owner's master config would never reach this
     // tenant again.
-    const tenant = await db.$transaction(async (tx) => {
+    const creation = await withWorkspaceCreation(session.user.id, "starter", async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
           name: name.trim(),
@@ -72,6 +66,8 @@ export async function POST(request: NextRequest) {
 
       return newTenant
     })
+    if (!creation.ok) return NextResponse.json({ error: creation.error }, { status: 403 })
+    const tenant = creation.value
 
     await ensureSiteSettings(tenant.id, tenant.name).catch((err) =>
       console.warn(`[tenant/create] Failed to ensure site-settings for ${tenant.id}:`, err)

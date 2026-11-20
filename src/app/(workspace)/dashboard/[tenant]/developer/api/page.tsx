@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getContentTypesAction } from "@/actions/content-types"
 import { getSingleTypesAction } from "@/actions/single-types"
 import { getApiTokensAction } from "@/actions/api-keys"
+import { resolveExplorerUrl } from "@/lib/api/explorer-url"
 import { recallApiTokenPlain } from "@/lib/api-token-storage"
 import { cn } from "@/lib/utils"
 import { GraphQLTab } from "./graphql-tab"
@@ -344,6 +345,16 @@ function ApiExplorerContent() {
       return
     }
 
+    const url = resolveExplorerUrl(endpoint, window.location.origin, tenantSlug)
+    if (!url) {
+      toast({
+        variant: "destructive",
+        title: "Endpoint tidak didukung",
+        description: "Pilih endpoint API publik workspace ini melalui Quick Path Generator.",
+      })
+      return
+    }
+
     setLoading(true)
     setResponse(null)
     setResponseStatus(null)
@@ -357,7 +368,7 @@ function ApiExplorerContent() {
         "Authorization": `Bearer ${selectedToken.trim()}`
       }
       
-      const options: RequestInit = { method, headers }
+      const options: RequestInit = { method, headers, redirect: "error" }
       
       if (method !== "GET" && method !== "DELETE") {
         try {
@@ -375,7 +386,7 @@ function ApiExplorerContent() {
         }
       }
 
-      const res = await fetch(endpoint, options)
+      const res = await fetch(url, options)
       const endTime = performance.now()
       setResponseTime(Math.round(endTime - startTime))
       setResponseStatus(res.status)
@@ -423,11 +434,13 @@ function ApiExplorerContent() {
 
   const generateCurlSnippet = () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
-    const fullUrl = endpoint.startsWith("http") ? endpoint : `${origin}${endpoint}`
+    const url = resolveExplorerUrl(endpoint, origin, tenantSlug)
+    if (!url) return "Pilih endpoint API publik workspace ini."
+    const quote = (value: string) => `'${value.replaceAll("'", `'\\''`)}'`
     
-    let curl = `curl -X ${method} "${fullUrl}" \\\n  -H "Authorization: Bearer ${selectedToken || "YOUR_API_TOKEN"}" \\\n  -H "Content-Type: application/json"`
+    let curl = `curl -X ${method} ${quote(url.href)} \\\n  -H 'Authorization: Bearer YOUR_API_TOKEN' \\\n  -H 'Content-Type: application/json'`
     if (method === "POST" || method === "PUT") {
-      curl += ` \\\n  -d '${requestBody.replace(/\n/g, "")}'`
+      curl += ` \\\n  -d ${quote(requestBody)}`
     }
     return curl
   }

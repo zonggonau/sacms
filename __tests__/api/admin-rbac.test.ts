@@ -1,50 +1,69 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { getServerSession } from "next-auth"
 import { db } from "@/lib/database"
+import { GET, POST } from "@/app/api/admin/rbac/roles/route"
 
-describe("Admin RBAC Security System", () => {
+vi.mock("next-auth", () => ({ getServerSession: vi.fn() }))
+vi.mock("@/lib/auth", () => ({ authOptions: {} }))
+
+const context = { params: Promise.resolve({}) }
+
+function request(body?: unknown) {
+  return new Request("https://test.local/api/admin/rbac/roles", body === undefined ? {} : {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as never
+}
+
+describe("Platform RBAC catalogue", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "1", role: "super_admin" } })
   })
 
-  it("should have default permissions defined and accessible in DB", async () => {
-    const mockPerms = [
-      { id: "1", name: "workspaces.create", displayName: "Create Workspaces", category: "workspaces" },
-      { id: "2", name: "workspaces.manage_all", displayName: "Manage All Workspaces", category: "workspaces" },
-      { id: "3", name: "billing.manage_own", displayName: "Manage Own Subscriptions", category: "billing" },
-      { id: "4", name: "users.manage_platform", displayName: "Manage Platform Accounts", category: "users" },
-      { id: "5", name: "licenses.manage", displayName: "Manage Enterprise Licenses", category: "security" },
-    ]
-    vi.mocked(db.permission.findMany).mockResolvedValueOnce(mockPerms as any)
+  it("lists effective staff roles and applies explicit catalogue assignment overrides", async () => {
+    vi.mocked(db.permission.findMany).mockResolvedValueOnce([
+      { id: "perm-1", name: "workspaces.create", category: "workspaces" },
+    ] as never)
+    vi.mocked(db.rolePermission.findMany).mockResolvedValueOnce([
+      { roleId: "owner", permissionId: "perm-1", granted: false },
+    ] as never)
 
-    const permissions = await db.permission.findMany()
-    expect(permissions.length).toBe(5)
-
-    const names = permissions.map(p => p.name)
-    expect(names).toContain("workspaces.create")
-    expect(names).toContain("workspaces.manage_all")
-    expect(names).toContain("billing.manage_own")
-    expect(names).toContain("users.manage_platform")
-    expect(names).toContain("licenses.manage")
+    const result = await (await GET(request(), context)).json()
+    expect(result.roles.map((role: { id: string }) => role.id)).toEqual([
+      "super_admin", "developer", "employee", "finance", "owner", "user",
+    ])
+    expect(result.roles.find((role: { id: string }) => role.id === "super_admin").permissions).toHaveLength(1)
+    expect(result.roles.find((role: { id: string }) => role.id === "owner").permissions).toHaveLength(0)
   })
 
-  it("should have global role permissions defined for system roles", async () => {
-    const mockRolePerms = [
-      { id: "rp1", roleId: "super_admin", permissionId: "1", granted: true, tenantId: null },
-      { id: "rp2", roleId: "super_admin", permissionId: "2", granted: true, tenantId: null },
-      { id: "rp3", roleId: "owner", permissionId: "1", granted: true, tenantId: null },
-    ]
-    vi.mocked(db.rolePermission.findMany).mockResolvedValueOnce(mockRolePerms as any)
+  it("updates the selected catalogue assignments in one transaction", async () => {
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 })
+    const lock = vi.fn().mockResolvedValue(0)
+    vi.mocked(db.$transaction).mockImplementationOnce(async (callback: any) => callback({
+      $executeRaw: lock,
+      permission: { findMany: vi.fn().mockResolvedValue([{ id: "perm-1" }, { id: "perm-2" }]) },
+      rolePermission: { updateMany, findMany: vi.fn().mockResolvedValue([]) },
+    }))
 
-    const rolePerms = await db.rolePermission.findMany({
-      where: { tenantId: null }
+    const response = await POST(request({ roleId: "employee", permissionIds: ["perm-1", "perm-2"], granted: true }), context)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ updated: 2 })
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+    expect(lock).toHaveBeenCalledOnce()
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { roleId: "employee", permissionId: "perm-2", tenantId: null },
+      data: { granted: true },
     })
-    expect(rolePerms.length).toBe(3)
+  })
 
-    const superAdminPerms = rolePerms.filter(rp => rp.roleId === "super_admin")
-    expect(superAdminPerms.length).toBe(2)
-
-    const ownerPerms = rolePerms.filter(rp => rp.roleId === "owner")
-    expect(ownerPerms.length).toBe(1)
+  it("keeps Super Admin locked and excludes non-admin staff from edits", async () => {
+    const body = { roleId: "super_admin", permissionId: "perm-1", granted: false }
+    expect((await POST(request(body), context)).status).toBe(400)
+    vi.mocked(getServerSession).mockResolvedValue({ user: { id: "2", role: "employee" } })
+    expect((await POST(request({ ...body, roleId: "owner" }), context)).status).toBe(403)
+    expect(db.$transaction).not.toHaveBeenCalled()
   })
 })
-

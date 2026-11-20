@@ -1,326 +1,86 @@
-"use client"
+import { getServerSession } from "next-auth"
+import { redirect } from "next/navigation"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { RefreshWorkspacePage } from "@/components/dashboard/refresh-workspace-page"
+import { getWorkspaceMonitoring } from "@/lib/workspace-operations"
 
-import { useState, useEffect, useMemo } from "react"
-import { useParams, useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Loader2, Activity, RefreshCw, Zap, Clock,
-  AlertTriangle, CheckCircle2, TrendingUp, TrendingDown,
-  Globe, Webhook, Search as SearchIcon, Database,
-} from "lucide-react"
-interface MonitoringStats {
-  api: {
-    totalRequests: number
-    avgLatency: number
-    p95Latency: number
-    errorRate: number
-    requestsPerMinute: number
-  }
-  webhooks: {
-    total: number
-    successful: number
-    failed: number
-    avgDuration: number
-    successRate: number
-  }
-  search: {
-    totalQueries: number
-    avgLatency: number
-    p95Latency: number
-  }
-  content: {
-    totalEntries: number
-    entriesCreatedToday: number
-    entriesPublishedToday: number
-  }
+const formatInteger = new Intl.NumberFormat("id-ID")
+const formatDecimal = new Intl.NumberFormat("id-ID", { maximumFractionDigits: 1 })
+
+function formatDuration(duration: number | null) {
+  return duration === null ? "Belum tersedia" : formatDecimal.format(duration) + " ms"
 }
 
-export default function SystemMonitoringPage() {
-  const { data: session, status } = useSession()
-  const params = useParams()
-  const router = useRouter()
-  const tenantSlug = params?.tenant as string
+function formatRatio(count: number, total: number) {
+  return total > 0 ? formatDecimal.format(100 * count / total) + "%" : "Belum tersedia"
+}
 
-  const [stats, setStats] = useState<MonitoringStats | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
-
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
-  }, [status, router])
-
-  const fetchStats = async () => {
-    if (!tenantSlug || !session?.user) return
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/stats`)
-      if (res.ok) {
-        const data = await res.json()
-        setStats({
-          api: {
-            totalRequests: data.apiRequests || 0,
-            avgLatency: data.avgLatency || 42,
-            p95Latency: data.p95Latency || 156,
-            errorRate: data.errorRate || 0.5,
-            requestsPerMinute: data.requestsPerMinute || 12,
-          },
-          webhooks: {
-            total: data.webhookTotal || data.webhookCount || 0,
-            successful: data.webhookSuccess || 0,
-            failed: data.webhookFailed || 0,
-            avgDuration: data.webhookAvgDuration || 230,
-            successRate: data.webhookSuccessRate || 98.5,
-          },
-          search: {
-            totalQueries: data.searchQueries || 0,
-            avgLatency: data.searchAvgLatency || 35,
-            p95Latency: data.searchP95Latency || 120,
-          },
-          content: {
-            totalEntries: data.totalEntries || 0,
-            entriesCreatedToday: data.entriesCreatedToday || 0,
-            entriesPublishedToday: data.entriesPublishedToday || 0,
-          },
-        })
-      }
-    } catch (err) {
-      console.error("Failed to fetch monitoring stats:", err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (session?.user?.id) fetchStats()
-  }, [tenantSlug, session?.user?.id])
-
-  if (status === "loading" || loading) {
-    return (
-      <div className="flex bg-background flex-1 flex-col w-full">
-        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
-            <div className="space-y-1.5">
-              <Skeleton className="h-7 w-52 rounded-lg" />
-              <Skeleton className="h-3.5 w-80 rounded-md" />
-            </div>
-            <Skeleton className="h-9 w-28 rounded-xl" />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border border-border/80 shadow-xs bg-card rounded-2xl p-4 space-y-2">
-                <div className="flex justify-between">
-                  <Skeleton className="h-3 w-20 rounded-md" />
-                  <Skeleton className="h-4 w-4 rounded" />
-                </div>
-                <Skeleton className="h-7 w-16 rounded-lg" />
-                <Skeleton className="h-2.5 w-24 rounded-md" />
-              </Card>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-5 space-y-4">
-              <Skeleton className="h-5 w-36 rounded-md" />
-              <div className="space-y-3 pt-2">
-                <Skeleton className="h-10 w-full rounded-xl" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-              </div>
-            </Card>
-            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-5 space-y-4">
-              <Skeleton className="h-5 w-36 rounded-md" />
-              <div className="space-y-3 pt-2">
-                <Skeleton className="h-10 w-full rounded-xl" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-                <Skeleton className="h-10 w-full rounded-xl" />
-              </div>
-            </Card>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const MetricCard = ({ title, value, unit, sub, icon: Icon, color, trend }: {
-    title: string; value: number | string; unit?: string; sub?: string;
-    icon: React.ElementType; color: string; trend?: "up" | "down" | "neutral"
-  }) => (
+function Metrics({ title, rows }: { title: string; rows: [string, string | number][] }) {
+  return (
     <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{title}</span>
-          <Icon className={`h-4 w-4 ${color}`} />
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold">{value}</span>
-          {unit && <span className="text-sm text-muted-foreground">{unit}</span>}
-        </div>
-        {sub && (
-          <div className="flex items-center gap-1 mt-1">
-            {trend === "up" && <TrendingUp className="h-3 w-3 text-emerald-500" />}
-            {trend === "down" && <TrendingDown className="h-3 w-3 text-red-500" />}
-            <p className="text-[11px] text-muted-foreground">{sub}</p>
-          </div>
-        )}
+      <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+      <CardContent>
+        <dl className="divide-y divide-border/70">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-2">
+              <dt className="text-sm text-muted-foreground">{label}</dt>
+              <dd className="font-medium tabular-nums">{typeof value === "number" ? formatInteger.format(value) : value}</dd>
+            </div>
+          ))}
+        </dl>
       </CardContent>
     </Card>
   )
+}
+
+export default async function SystemMonitoringPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) redirect("/login")
+  const { tenant } = await params
+  const access = await getTenantAccess(session, tenant)
+  if (!access) redirect("/dashboard")
+
+  const metrics = await getWorkspaceMonitoring(access.tenantId).catch((error) => {
+    console.error("[workspace monitoring]", error)
+    return null
+  })
 
   return (
-    <div className="flex bg-background flex-1 flex-col w-full">
-<div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-4 md:p-6 lg:p-8 w-full space-y-5">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">System Monitoring</h1>
-              <p className="text-sm text-muted-foreground">API, webhook, and search metrics</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={fetchStats} disabled={loading}>
-              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </div>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : stats ? (
-            <>
-              {/* API Metrics */}
-              <div>
-                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-emerald-500" /> API Performance
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <MetricCard
-                    title="Total Requests" value={stats.api.totalRequests}
-                    sub="All time" icon={Zap} color="text-blue-500"
-                  />
-                  <MetricCard
-                    title="Avg Latency" value={stats.api.avgLatency} unit="ms"
-                    sub={stats.api.avgLatency < 200 ? "Within target (<200ms)" : "Above target"}
-                    icon={Clock} color="text-emerald-500"
-                    trend={stats.api.avgLatency < 200 ? "up" : "down"}
-                  />
-                  <MetricCard
-                    title="P95 Latency" value={stats.api.p95Latency} unit="ms"
-                    sub={stats.api.p95Latency < 200 ? "Within target" : "Needs optimization"}
-                    icon={Activity} color="text-purple-500"
-                    trend={stats.api.p95Latency < 200 ? "up" : "down"}
-                  />
-                  <MetricCard
-                    title="Error Rate" value={`${stats.api.errorRate}%`}
-                    sub={stats.api.errorRate < 1 ? "Healthy" : "Needs attention"}
-                    icon={AlertTriangle} color={stats.api.errorRate < 1 ? "text-emerald-500" : "text-red-500"}
-                    trend={stats.api.errorRate < 1 ? "up" : "down"}
-                  />
-                </div>
-              </div>
-
-              {/* Webhook Metrics */}
-              <div>
-                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Webhook className="h-4 w-4 text-orange-500" /> Webhook Health
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <MetricCard
-                    title="Total Deliveries" value={stats.webhooks.total}
-                    sub="All webhooks" icon={Webhook} color="text-orange-500"
-                  />
-                  <MetricCard
-                    title="Success Rate" value={`${stats.webhooks.successRate}%`}
-                    sub={`${stats.webhooks.successful} successful, ${stats.webhooks.failed} failed`}
-                    icon={CheckCircle2} color="text-emerald-500"
-                    trend={stats.webhooks.successRate > 95 ? "up" : "down"}
-                  />
-                  <MetricCard
-                    title="Avg Duration" value={stats.webhooks.avgDuration} unit="ms"
-                    sub="Per webhook delivery" icon={Clock} color="text-blue-500"
-                  />
-                  <MetricCard
-                    title="Failed" value={stats.webhooks.failed}
-                    sub={stats.webhooks.failed === 0 ? "No failures" : "Check webhook logs"}
-                    icon={AlertTriangle} color={stats.webhooks.failed === 0 ? "text-emerald-500" : "text-red-500"}
-                  />
-                </div>
-                {stats.webhooks.successRate > 0 && (
-                  <Card className="mt-3">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium">Webhook Success Rate</span>
-                        <span className="text-xs font-bold">{stats.webhooks.successRate}%</span>
-                      </div>
-                      <Progress value={stats.webhooks.successRate} className="h-2" />
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* Search Metrics */}
-              <div>
-                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <SearchIcon className="h-4 w-4 text-violet-500" /> Search Performance
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                  <MetricCard
-                    title="Total Queries" value={stats.search.totalQueries}
-                    sub="Full-text search" icon={SearchIcon} color="text-violet-500"
-                  />
-                  <MetricCard
-                    title="Avg Latency" value={stats.search.avgLatency} unit="ms"
-                    sub={stats.search.avgLatency < 200 ? "Within target" : "Needs optimization"}
-                    icon={Clock} color="text-emerald-500"
-                    trend={stats.search.avgLatency < 200 ? "up" : "down"}
-                  />
-                  <MetricCard
-                    title="P95 Latency" value={stats.search.p95Latency} unit="ms"
-                    sub="95th percentile" icon={Activity} color="text-blue-500"
-                    trend={stats.search.p95Latency < 200 ? "up" : "down"}
-                  />
-                </div>
-              </div>
-
-              {/* Content Activity */}
-              <div>
-                <h2 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Database className="h-4 w-4 text-blue-500" /> Content Activity
-                </h2>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                  <MetricCard
-                    title="Total Entries" value={stats.content.totalEntries}
-                    sub="Across all types" icon={Database} color="text-blue-500"
-                  />
-                  <MetricCard
-                    title="Created Today" value={stats.content.entriesCreatedToday}
-                    sub="New entries" icon={TrendingUp} color="text-emerald-500"
-                  />
-                  <MetricCard
-                    title="Published Today" value={stats.content.entriesPublishedToday}
-                    sub="Made live" icon={CheckCircle2} color="text-purple-500"
-                  />
-                </div>
-              </div>
-            </>
-          ) : (
-            <Card>
-              <CardContent className="py-16 text-center">
-                <Activity className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">No monitoring data available</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Metrics will appear as your workspace receives traffic</p>
-              </CardContent>
-            </Card>
-          )}
+    <section className="mx-auto w-full max-w-7xl space-y-5 p-4 md:p-6">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold">Monitoring Workspace</h1>
+          <p className="text-sm text-muted-foreground">Aktivitas yang tercatat dalam 24 jam terakhir.</p>
         </div>
-      </div>
-    </div>
+        <RefreshWorkspacePage />
+      </header>
+      {metrics ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Metrics title="API" rows={[
+            ["Permintaan tercatat", metrics.api.total],
+            ["Respons HTTP 4xx dan 5xx", formatRatio(metrics.api.errors, metrics.api.total)],
+            ["Latensi rata-rata", formatDuration(metrics.api.averageMs)],
+            ["Latensi p95", formatDuration(metrics.api.p95Ms)],
+          ]} />
+          <Metrics title="Webhook" rows={[
+            ["Upaya pengiriman", metrics.webhooks.total],
+            ["Pengiriman berhasil", metrics.webhooks.success],
+            ["Pengiriman gagal", metrics.webhooks.total - metrics.webhooks.success],
+            ["Tingkat keberhasilan", formatRatio(metrics.webhooks.success, metrics.webhooks.total)],
+            ["Durasi rata-rata", formatDuration(metrics.webhooks.averageMs)],
+          ]} />
+          <Metrics title="Konten" rows={[
+            ["Total entri aktif", metrics.content.entries],
+            ["Entri baru dalam 24 jam", metrics.content.createdEntries],
+            ["Entri terbit dalam 24 jam", metrics.content.publishedEntries],
+          ]} />
+          <Metrics title="Pencarian" rows={[["Telemetri pencarian", "Belum tersedia"]]} />
+        </div>
+      ) : (
+        <p role="alert" className="rounded-lg border p-4 text-sm">Gagal memuat metrik workspace. Gunakan Muat ulang untuk mencoba lagi.</p>
+      )}
+    </section>
   )
 }

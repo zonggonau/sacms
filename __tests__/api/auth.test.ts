@@ -92,3 +92,29 @@ describe("Auth Password", () => {
     expect(result).toBe(true)
   })
 })
+
+describe("JWT account state", () => {
+  const activeToken = { id: "staff-1", role: "super_admin", plan: "free", tenants: [] }
+
+  it("uses the current role when a platform administrator is demoted", async () => {
+    const { authOptions } = await import("@/lib/auth")
+    const refreshJwt = authOptions.callbacks!.jwt!
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+      email: "staff@example.test", name: "Staff", image: null, role: "employee", plan: "free",
+    } as never)
+
+    const token = await refreshJwt({ token: { ...activeToken }, user: undefined as never, account: null })
+
+    expect(token.role).toBe("employee")
+    expect(db.user.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "staff-1" } }))
+  })
+
+  it("invalidates a JWT whose account was removed", async () => {
+    const { authOptions } = await import("@/lib/auth")
+    const refreshJwt = authOptions.callbacks!.jwt!
+    vi.mocked(db.user.findUnique).mockResolvedValueOnce(null)
+
+    await expect(refreshJwt({ token: { ...activeToken }, user: undefined as never, account: null }))
+      .rejects.toThrow("Session account no longer exists")
+  })
+})

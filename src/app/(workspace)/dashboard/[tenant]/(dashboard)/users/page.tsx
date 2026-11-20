@@ -5,6 +5,7 @@ import { enforcePlanLimit } from "@/lib/plan-enforcement"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { db } from "@/lib/database"
 
 export default async function TenantUsersPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params
@@ -27,10 +28,15 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
 
   let maxLimit = 5
   let currentUsageCount = 0
+  let primaryOwnerId: string | null = null
   if (access) {
-    const enforcement = await enforcePlanLimit(access.tenantId, "team_members")
+    const [enforcement, workspace] = await Promise.all([
+      enforcePlanLimit(access.tenantId, "team_members"),
+      db.tenant.findUnique({ where: { id: access.tenantId }, select: { ownerId: true } }),
+    ])
     maxLimit = enforcement.max
     currentUsageCount = enforcement.current
+    primaryOwnerId = workspace?.ownerId ?? null
   }
 
   // Safely map members since we know the shape returned by the action
@@ -46,6 +52,8 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
 
       limit={maxLimit}
       current={currentUsageCount}
+      staffRole={access?.role ?? "viewer"}
+      primaryOwnerId={primaryOwnerId}
     />
   )
 }

@@ -5,6 +5,7 @@ import { getRedis } from "@/lib/redis"
 import { getClientIp, isLoopbackIp } from "@/lib/client-ip"
 import { parseDomainInfo } from "@/lib/domain-parser"
 import { db } from "@/lib/database"
+import { resolveWorkspaceApiPolicy } from "@/lib/workspace-api-policy"
 
 // The canonical hostname of this app (without https://)
 const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
@@ -339,7 +340,8 @@ export async function proxy(request: NextRequest) {
     if (pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
-      applyCorsHeaders(response, request)
+      const blocked = await applyWorkspaceApiPolicy(response, request, pathname, ip)
+      if (blocked) return blocked
       response.headers.set("X-Subdomain-Portal", "api")
       if (request.method === "OPTIONS") {
         return new NextResponse(null, { status: 204, headers: response.headers })
@@ -357,7 +359,8 @@ export async function proxy(request: NextRequest) {
       rewriteUrl.pathname = `/api/public/${tenant}/${rest}`
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
-      applyCorsHeaders(response, request)
+      const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+      if (blocked) return blocked
       response.headers.set("X-API-Version", ver)
       response.headers.set("X-Subdomain-Portal", "api")
       if (request.method === "OPTIONS") {
@@ -380,7 +383,8 @@ export async function proxy(request: NextRequest) {
       }
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
-      applyCorsHeaders(response, request)
+      const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+      if (blocked) return blocked
       response.headers.set("X-Subdomain-Portal", "api")
       if (request.method === "OPTIONS") {
         return new NextResponse(null, { status: 204, headers: response.headers })
@@ -430,6 +434,11 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
+      if (pathname.startsWith("/api/public/")) {
+        const blocked = await applyWorkspaceApiPolicy(response, request, pathname, ip)
+        if (blocked) return blocked
+        if (request.method === "OPTIONS") return new NextResponse(null, { status: 204, headers: response.headers })
+      }
       response.headers.set("X-Subdomain-Portal", "cms")
       return response
     }
@@ -500,6 +509,11 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
+      if (pathname.startsWith("/api/public/")) {
+        const blocked = await applyWorkspaceApiPolicy(response, request, pathname, ip)
+        if (blocked) return blocked
+        if (request.method === "OPTIONS") return new NextResponse(null, { status: 204, headers: response.headers })
+      }
       response.headers.set("X-Subdomain-Portal", "admin")
       return response
     }
@@ -617,7 +631,8 @@ export async function proxy(request: NextRequest) {
 
     const response = NextResponse.rewrite(rewriteUrl)
     applySecurityHeaders(response, pathname)
-    applyCorsHeaders(response, request)
+    const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+    if (blocked) return blocked
     response.headers.set("X-Subdomain-Portal", "workspace")
     response.headers.set("X-Tenant-Slug", dynamicSubdomain)
     if (request.method === "OPTIONS") {
@@ -774,7 +789,8 @@ export async function proxy(request: NextRequest) {
         rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath.replace(/^\/api/, "")}`
         const response = NextResponse.rewrite(rewriteUrl)
         applySecurityHeaders(response)
-        applyCorsHeaders(response, request)
+        const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+        if (blocked) return blocked
         response.headers.set("X-API-Version", version)
         response.headers.set("X-Tenant-Domain", host)
         if (request.method === "OPTIONS") {
@@ -890,7 +906,8 @@ export async function proxy(request: NextRequest) {
 
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response)
-      applyCorsHeaders(response, request)
+      const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+      if (blocked) return blocked
       response.headers.set("X-API-Version", version)
       response.headers.set("X-Tenant-Domain", host)
       response.headers.set("X-Domain-Target", domainTarget)
@@ -912,7 +929,8 @@ export async function proxy(request: NextRequest) {
 
     const response = NextResponse.rewrite(rewriteUrl)
     applySecurityHeaders(response, pathname)
-    applyCorsHeaders(response, request)
+    const blocked = await applyWorkspaceApiPolicy(response, request, rewriteUrl.pathname, ip)
+    if (blocked) return blocked
     response.headers.set("X-API-Version", version)
 
     if (request.method === "OPTIONS") {
@@ -926,7 +944,8 @@ export async function proxy(request: NextRequest) {
 
   // CORS for public API routes
   if (pathname.startsWith("/api/public/")) {
-    applyCorsHeaders(response, request)
+    const blocked = await applyWorkspaceApiPolicy(response, request, pathname, ip)
+    if (blocked) return blocked
 
     if (request.method === "OPTIONS") {
       return new NextResponse(null, { status: 204, headers: response.headers })
@@ -1008,6 +1027,67 @@ function applyCorsHeaders(response: NextResponse, request?: NextRequest) {
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type, x-api-key, X-API-Key, X-Tenant-Domain, X-API-Version"
   )
+}
+
+async function applyWorkspaceApiPolicy(
+  response: NextResponse,
+  request: NextRequest,
+  canonicalPath: string,
+  ip: string,
+) {
+  let policy: Awaited<ReturnType<typeof resolveWorkspaceApiPolicy>>
+  try {
+    policy = await resolveWorkspaceApiPolicy(canonicalPath)
+  } catch (error) {
+    if (error instanceof URIError) return NextResponse.json({ error: "Invalid workspace address" }, { status: 400 })
+    console.error("[proxy] Failed to resolve workspace API policy:", error)
+    return NextResponse.json({ error: "Workspace API temporarily unavailable" }, { status: 503 })
+  }
+
+  applyCorsHeaders(response, request)
+  const origin = request.headers.get("origin")
+  if (policy && (policy.origins.length > 0 || policy.invalidCors)) {
+    response.headers.append("Vary", "Origin")
+    response.headers.delete("Access-Control-Allow-Origin")
+    response.headers.delete("Access-Control-Allow-Credentials")
+
+    if (origin) {
+      const sameOrigin = origin === request.nextUrl.origin
+      if (!sameOrigin && !policy.origins.includes(origin)) {
+        return NextResponse.json({ error: "Origin is not allowed by this workspace" }, { status: 403 })
+      }
+      response.headers.set("Access-Control-Allow-Origin", origin)
+      const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
+      if (sameOrigin || isAllowedCorsOrigin(origin, rootDomain)) {
+        response.headers.set("Access-Control-Allow-Credentials", "true")
+      }
+    }
+  }
+
+  if (!policy?.rateLimiting || request.method === "OPTIONS") return null
+
+  const epochSeconds = Math.floor(Date.now() / 1000)
+  const windows = [
+    { limit: policy.burstLimit, windowSeconds: 1 },
+    { limit: policy.requestsPerMinute, windowSeconds: 60 },
+  ]
+  for (const window of windows) {
+    const slot = Math.floor(epochSeconds / window.windowSeconds)
+    const key = `workspace-public:${policy.tenantId}:${ip}:${window.windowSeconds}:${slot}`
+    const result = await rateLimit(key, window)
+    if (!result.success) {
+      const blocked = NextResponse.json({ error: "Workspace API rate limit exceeded" }, {
+        status: 429,
+        headers: { "Retry-After": String((slot + 1) * window.windowSeconds - epochSeconds) },
+      })
+      for (const name of ["Access-Control-Allow-Origin", "Access-Control-Allow-Credentials", "Vary"]) {
+        const value = response.headers.get(name)
+        if (value) blocked.headers.set(name, value)
+      }
+      return blocked
+    }
+  }
+  return null
 }
 
 export const config = {

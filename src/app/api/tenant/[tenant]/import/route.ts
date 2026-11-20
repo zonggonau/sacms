@@ -1,126 +1,72 @@
 import { NextResponse } from "next/server"
-import { getTenantDb } from "@/lib/database"
+import { revalidatePath } from "next/cache"
+import { db, getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { invalidatePattern } from "@/lib/cache"
+import { assertSchemaEditable } from "@/lib/schema-lock"
+import { orderBackupGroups, restoreBackupContent, restoreBackupLocales, workspaceBackupSchema } from "@/lib/workspace-backup"
 
 export const POST = withStaffAuth(
-  async (request, context, { access }) => {
-    const { tenant: tenantSlug } = await context.params
-    const tenantId = access.tenantId
-    const tenantDb = await getTenantDb(tenantSlug)
+  async (request, _context, { access }) => {
+    let file: FormDataEntryValue | null
+    try {
+      file = (await request.formData()).get("file")
+    } catch {
+      return apiError("validation", { message: "Unggah berkas cadangan JSON." })
+    }
+    if (!(file instanceof File)) return apiError("validation", { message: "Berkas cadangan belum dipilih." })
 
-    const formData = await request.formData()
-    const file = formData.get("file") as File
-    if (!file) return apiError("validation", { message: "No file provided" })
-
-    const text = await file.text()
-    const payload = JSON.parse(text)
-
-    if (payload.version !== "1.0" || !payload.data) {
-      return NextResponse.json({ error: "Invalid export file format" }, { status: 400 })
+    let payload: unknown
+    try {
+      payload = JSON.parse(await file.text())
+    } catch {
+      return apiError("validation", { message: "Berkas cadangan bukan JSON yang valid." })
+    }
+    const parsed = workspaceBackupSchema.safeParse(payload)
+    if (!parsed.success) {
+      return apiError("validation", {
+        message: "Format cadangan workspace tidak valid.",
+        details: { fields: parsed.error.issues.slice(0, 15).map(issue => ({ field: issue.path.join("."), message: issue.message })) },
+      })
+    }
+    const groups = orderBackupGroups(parsed.data.data.contentTypeGroups)
+    if (!groups) {
+      return apiError("validation", { message: "Hierarki grup koleksi di cadangan tidak valid." })
     }
 
-    const { data } = payload
+    const tenantId = access.tenantId
+    const tenantSlug = access.tenant.slug
+    const lockError = await assertSchemaEditable(tenantId)
+    if (lockError) return apiError("conflict", { message: lockError.error })
 
-    // We use a transaction to rollback if anything fails
-    await tenantDb.$transaction(async (tx) => {
-      
-      // 1. Locales
-      if (data.locales) {
-        for (const loc of data.locales) {
-          await tx.tenantLocale.upsert({
-            where: { tenantId_locale: { tenantId, locale: loc.locale } },
-            update: { name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled },
-            create: { tenantId, locale: loc.locale, name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled },
-          })
-        }
+    const tenantDb = await getTenantDb(tenantId)
+    const { locales } = parsed.data.data
+    const result = await tenantDb.$transaction(async tx => {
+      const restored = await restoreBackupContent(tx, tenantId, parsed.data, groups)
+      if (tenantDb === db) await restoreBackupLocales(tx, tenantId, locales)
+      return restored
+    }, { timeout: 30000 })
+
+    // In a dedicated workspace, content and locale settings use different
+    // databases. Restore content first so the same backup can safely retry
+    // the locale step without duplicating the data.
+    if (tenantDb !== db && locales.length > 0) {
+      try {
+        await db.$transaction(tx => restoreBackupLocales(tx, tenantId, locales), { timeout: 30000 })
+      } catch (error) {
+        console.error("Could not restore workspace backup locales:", error)
+        result.skipped.push({ section: "locales", count: locales.length, reason: "Bahasa belum dipulihkan. Coba ulang impor berkas yang sama." })
       }
+    }
+    result.imported.locales = result.skipped.some(section => section.section === "locales") ? 0 : locales.length
 
-      // 2. Content Types
-      const contentTypeIdMap: Record<string, string> = {}
-      if (data.contentTypes) {
-        for (const ct of data.contentTypes) {
-          const upserted = await tx.contentType.upsert({
-            where: { tenantId_slug: { tenantId, slug: ct.slug } },
-            update: { name: ct.name, description: ct.description, isPublished: ct.isPublished },
-            create: { tenantId, name: ct.name, slug: ct.slug, description: ct.description, isPublished: ct.isPublished },
-          })
-          contentTypeIdMap[ct.id] = upserted.id
+    for (const key of new Set([tenantId, tenantSlug])) {
+      revalidatePath(`/dashboard/${key}`, "layout")
+      await invalidatePattern(`content:${key}:*`)
+      await invalidatePattern(`api:${key}:*`)
+    }
 
-          // Upsert fields
-          if (ct.fields) {
-            // Delete existing fields first to avoid complex merging
-            await tx.schemaField.deleteMany({ where: { contentTypeId: upserted.id } })
-            for (const field of ct.fields) {
-              await tx.schemaField.create({
-                data: {
-                  contentTypeId: upserted.id,
-                  name: field.name,
-                  slug: field.slug,
-                  type: field.type,
-                  required: field.required,
-                  unique: field.unique,
-                  localizable: field.localizable,
-                  options: field.options,
-                  jsonPath: field.jsonPath,
-                  relationSlug: field.relationSlug,
-                  order: field.order,
-                }
-              })
-            }
-          }
-        }
-      }
-
-      // 3. Content Entries
-      if (data.contentEntries) {
-        for (const entry of data.contentEntries) {
-          const newContentTypeId = contentTypeIdMap[entry.contentTypeId]
-          if (!newContentTypeId) continue // skip if content type is missing
-
-          // Upsert based on documentId + locale if it exists, otherwise just insert
-          if (entry.documentId) {
-            const existing = await tx.contentEntry.findFirst({
-              where: { tenantId, documentId: entry.documentId, locale: entry.locale }
-            })
-            if (existing) {
-              await tx.contentEntry.update({
-                where: { id: existing.id },
-                data: { data: entry.data, status: entry.status }
-              })
-            } else {
-              await tx.contentEntry.create({
-                data: {
-                  tenantId,
-                  contentTypeId: newContentTypeId,
-                  documentId: entry.documentId,
-                  locale: entry.locale,
-                  data: entry.data,
-                  status: entry.status,
-                  createdAt: entry.createdAt ? new Date(entry.createdAt) : undefined,
-                }
-              })
-            }
-          } else {
-            await tx.contentEntry.create({
-              data: {
-                tenantId,
-                contentTypeId: newContentTypeId,
-                locale: entry.locale,
-                data: entry.data,
-                status: entry.status,
-                createdAt: entry.createdAt ? new Date(entry.createdAt) : undefined,
-              }
-            })
-          }
-        }
-      }
-      
-      // Additional entities (Single Types, Components, Media) could be added here following the same pattern
-    }, {
-      timeout: 30000, // allow 30 seconds for large imports
-    })
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, ...result, partial: result.skipped.length > 0 })
   },
   { minRole: "admin" },
 )

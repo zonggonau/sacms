@@ -2,8 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
-import { deleteTenantStorage } from "@/lib/r2"
-import { dropEnterpriseDb } from "@/lib/enterprise-db"
+import { removeWorkspace } from "@/lib/workspace-deletion"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { assertPublicHost, SsrfError } from "@/lib/safe-url"
@@ -199,49 +198,7 @@ export const DELETE = withAdminAuth(async (request, context, { session }) => {
       await migrateGlobalContentToPlatformLevel(tenant.id)
     }
 
-    // 1. Delete physical assets from storage (MinIO bucket or local disk)
-    if (tenant.slug) {
-      await deleteTenantStorage({ id: tenant.id, slug: tenant.slug })
-    }
-
-    // 2. Drop dedicated database if exists (Hybrid Multitenancy)
-    if (tenant.databaseUrl) {
-      console.log(`[Admin Tenant Deletion] Dropping dedicated DB for ${tenant.slug}`)
-      await dropEnterpriseDb(tenant.databaseUrl)
-    }
-
-    // 3. Clean up any related child records that lack foreign-key cascade in PostgreSQL
-    const tenantSubscriptions = await db.subscription.findMany({
-      where: { tenantId },
-      select: { id: true }
-    })
-    const subIds = tenantSubscriptions.map(s => s.id)
-
-    if (subIds.length > 0) {
-      await db.paymentTransaction.deleteMany({
-        where: { subscriptionId: { in: subIds } }
-      }).catch(err => console.warn("Failed to clean up subscription payment transactions:", err))
-
-      await db.invoice.deleteMany({
-        where: { subscriptionId: { in: subIds } }
-      }).catch(err => console.warn("Failed to clean up subscription invoices:", err))
-    }
-
-    // Clean up custom plan overrides
-    await db.customPlanOverride.deleteMany({
-      where: { tenantId }
-    }).catch(err => console.warn("Failed to clean up custom plan overrides:", err))
-
-    // 4. Delete tenant from master database
-    await db.tenant.delete({
-      where: { id: tenantId }
-    })
-
-    // The `globalTenantId` setting now points at a deleted row — clear it
-    // so nothing mistakes the dangling id for a still-live workspace.
-    if (wasGlobalTenant) {
-      await db.setting.delete({ where: { key: "globalTenantId" } }).catch(() => {})
-    }
+    await removeWorkspace(tenant, wasGlobalTenant)
 
     logAudit({
       userId: session.user.id,

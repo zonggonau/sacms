@@ -164,11 +164,20 @@ describe("P1  /api/tenant/[tenant]/members/[memberId] PATCH", () => {
   it("an admin cannot promote a member to owner", async () => {
     mockSession.mockResolvedValue({ user: { id: "admin-1", role: "user" } } as any)
     mockAccess.mockResolvedValue({ tenantId: "t1", role: "admin", userId: "admin-1", tenant: { slug: "acme", name: "A" }, isGlobal: false } as any)
-    vi.mocked(db.tenantMember.findUnique as any).mockResolvedValue({ id: "m", tenantId: "t1", role: "editor", userId: "other" })
+    const updateMember = vi.fn()
+    vi.mocked(db.$transaction).mockImplementationOnce(async (callback: any) => callback({
+      $queryRaw: vi.fn().mockResolvedValue([{ ownerId: "owner-1" }]),
+      tenantMember: {
+        findUnique: vi.fn().mockResolvedValue({ role: "admin" }),
+        findFirst: vi.fn().mockResolvedValue({ id: "m", tenantId: "t1", role: "editor", userId: "other" }),
+        update: updateMember,
+      },
+    }))
 
     const { PATCH } = await import("@/app/api/tenant/[tenant]/members/[memberId]/route")
     const res = await PATCH(jsonReq({ role: "owner" }), ctx({ tenant: "acme", memberId: "m" }) as any)
     expect(res.status).toBe(403)
+    expect(updateMember).not.toHaveBeenCalled()
   })
 
   it("rejects an unknown role string (not in STAFF_ROLES)", async () => {
@@ -179,5 +188,16 @@ describe("P1  /api/tenant/[tenant]/members/[memberId] PATCH", () => {
     const { PATCH } = await import("@/app/api/tenant/[tenant]/members/[memberId]/route")
     const res = await PATCH(jsonReq({ role: "god-mode" }), ctx({ tenant: "acme", memberId: "m" }) as any)
     expect(res.status).toBe(400) // zod enum rejection
+  })
+
+  it("rejects workspace password resets before opening a write transaction", async () => {
+    mockSession.mockResolvedValue({ user: { id: "owner-1", role: "user" } } as any)
+    mockAccess.mockResolvedValue({ tenantId: "t1", role: "owner" } as any)
+
+    const { PATCH } = await import("@/app/api/tenant/[tenant]/members/[memberId]/route")
+    const response = await PATCH(jsonReq({ password: "Example-test-123" }), ctx({ tenant: "acme", memberId: "m" }) as any)
+    expect(response.status).toBe(400)
+    expect(db.user.update).not.toHaveBeenCalled()
+    expect(db.$transaction).not.toHaveBeenCalled()
   })
 })

@@ -86,6 +86,8 @@ export default function CMSSingleTypeDetailPage() {
   
   const [singleType, setSingleType] = useState<SingleType | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [targetLocale, setTargetLocale] = useState<string>()
@@ -112,6 +114,7 @@ export default function CMSSingleTypeDetailPage() {
 
     async function loadPage() {
       setLoading(true)
+      setLoadError(false)
       try {
         const result = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, targetLocale, "studio")
         if (ignore) return
@@ -120,13 +123,13 @@ export default function CMSSingleTypeDetailPage() {
           setFormData(result.singleType.data)
         } else {
           setSingleType(null)
-          toast({ variant: "destructive", title: "Terjadi Kesalahan", description: result.error })
+          setLoadError(true)
         }
       } catch (error) {
         if (ignore) return
         console.error(error)
         setSingleType(null)
-        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat konten halaman" })
+        setLoadError(true)
       } finally {
         if (!ignore) setLoading(false)
       }
@@ -134,7 +137,7 @@ export default function CMSSingleTypeDetailPage() {
 
     void loadPage()
     return () => { ignore = true }
-  }, [canManageStaticPages, session?.user?.id, singleTypeSlug, targetLocale, tenantSlug])
+  }, [canManageStaticPages, session?.user?.id, singleTypeSlug, targetLocale, tenantSlug, loadAttempt])
 
   const handleFieldChange = (fieldSlug: string, value: unknown) => {
     setFormData(prev => ({
@@ -331,7 +334,16 @@ export default function CMSSingleTypeDetailPage() {
     </div>
   )
 
-  if (!singleType) return null
+  if (loadError || !singleType) {
+    return (
+      <div role="alert" className="m-4 flex items-center justify-between gap-3 rounded-lg border border-destructive/40 p-4">
+        <p className="text-sm text-destructive">Halaman statis gagal dimuat.</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => setLoadAttempt(value => value + 1)}>
+          Coba lagi
+        </Button>
+      </div>
+    )
+  }
 
   const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
   // Fail closed: if membership can't be resolved (stale session cache,

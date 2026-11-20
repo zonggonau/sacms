@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { withAdminAuth, readJson, apiError } from "@/lib/api/route-helpers"
 import { addonSchema } from "@/lib/validations/pricing"
 import { toFeaturesJson } from "@/lib/pricing"
+import { recordPricingChange } from "@/lib/billing/pricing-audit"
 
 // amountUnits is a BigInt column (byte counts up to ~1TB) — JSON.stringify
 // throws on a raw BigInt, so every response serializes it to a plain
@@ -17,20 +18,23 @@ export const GET = withAdminAuth(async () => {
   return NextResponse.json({ addons: addons.map(serializeAddon) })
 }, { allowRoles: ["employee", "finance"] })
 
-export const POST = withAdminAuth(async (request) => {
+export const POST = withAdminAuth(async (request, _context, { session }) => {
   const parsed = await readJson(request, addonSchema)
   if (!parsed.ok) return parsed.response
 
-  const existing = await db.addon.findUnique({ where: { slug: parsed.data.slug } })
-  if (existing) return apiError("conflict", { message: `Addon dengan slug "${parsed.data.slug}" sudah ada` })
+  return db.$transaction(async (tx) => {
+    const existing = await tx.addon.findUnique({ where: { slug: parsed.data.slug } })
+    if (existing) return apiError("conflict", { message: `Addon dengan slug "${parsed.data.slug}" sudah ada` })
 
-  const { amountUnits, features, ...rest } = parsed.data
-  const addon = await db.addon.create({
-    data: {
-      ...rest,
-      amountUnits: amountUnits !== undefined && amountUnits !== null ? BigInt(amountUnits) : null,
-      features: toFeaturesJson(features),
-    },
+    const { amountUnits, features, ...rest } = parsed.data
+    const addon = await tx.addon.create({
+      data: {
+        ...rest,
+        amountUnits: amountUnits !== undefined && amountUnits !== null ? BigInt(amountUnits) : null,
+        features: toFeaturesJson(features),
+      },
+    })
+    await recordPricingChange(tx, session.user.id, "addon", "created", addon)
+    return NextResponse.json({ addon: serializeAddon(addon) }, { status: 201 })
   })
-  return NextResponse.json({ addon: serializeAddon(addon) }, { status: 201 })
 }, { allowRoles: ["finance"] })

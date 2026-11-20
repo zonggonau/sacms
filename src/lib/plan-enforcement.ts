@@ -3,6 +3,7 @@ import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
 import { isEnterpriseTenant, validateLicense } from "./license"
 import { isPlatformStaff } from "./platform-roles"
+import { countOwnedWorkspaces } from "./workspace-creation-limit"
 /**
  * Plan Enforcement Module
  *
@@ -802,17 +803,7 @@ async function getUserUsage(userId: string, resource: UserResource): Promise<num
     case "workspaces": {
       const { getGlobalWorkspaceId } = await import('@/lib/settings')
       const globalTenantId = await getGlobalWorkspaceId()
-      // Count workspaces where user is owner (excluding system tenants)
-      return db.tenantMember.count({
-        where: {
-          userId,
-          role: "owner",
-          tenant: { 
-            slug: { notIn: [globalTenantId, "sacms-global", "sacms"] },
-            id: { not: globalTenantId }
-          },
-        },
-      })
+      return countOwnedWorkspaces(db, userId, globalTenantId)
     }
     case "ai_credits": {
       const user = await db.user.findUnique({

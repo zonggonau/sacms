@@ -15,8 +15,6 @@ import {
   Sun,
   LogOut,
   Building2,
-  Menu,
-  X,
   Settings,
   Activity,
   Database,
@@ -38,6 +36,7 @@ import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
+import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
 
 interface NavItem {
   title: string
@@ -136,7 +135,6 @@ export function GlobalAdminSidebar() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [unreadSupportCount, setUnreadSupportCount] = useState(0)
@@ -269,7 +267,6 @@ export function GlobalAdminSidebar() {
                         <Link
                           key={item.title + item.href}
                           href={item.href}
-                          onClick={() => setMobileOpen(false)}
                         >
                           <div
                             className={cn(
@@ -343,22 +340,9 @@ export function GlobalAdminSidebar() {
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/90 backdrop-blur border border-border shadow-xs rounded-xl text-foreground"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
-      )}
-
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 transition-transform duration-200 md:hidden", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+      <MobilePortalMenu portal="Admin" className="fixed left-3 top-3 z-40 bg-card/90 shadow-xs backdrop-blur">
         {renderSidebarContent()}
-      </aside>
+      </MobilePortalMenu>
 
       <aside className="hidden md:block w-64 shrink-0 sticky top-0 h-screen">
         {renderSidebarContent()}

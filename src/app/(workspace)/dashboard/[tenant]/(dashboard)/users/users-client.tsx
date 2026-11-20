@@ -2,7 +2,6 @@
 
 import React, { useState, useTransition, useCallback } from "react"
 import { useSession } from "next-auth/react"
-import { isPlatformStaff } from "@/lib/platform-roles"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,8 +32,6 @@ import {
   Trash2,
   Search,
   Check,
-  Key,
-  Lock,
   AlertCircle,
   Crown,
   Edit3,
@@ -126,6 +123,8 @@ interface UsersClientProps {
   tenantSlug: string
   limit: number
   current: number
+  staffRole: string
+  primaryOwnerId: string | null
 }
 
 const PermissionsMatrix = React.memo(function PermissionsMatrix({
@@ -184,7 +183,7 @@ const PermissionsMatrix = React.memo(function PermissionsMatrix({
   )
 })
 
-export function UsersClient({ initialMembers, tenantSlug, limit, current }: UsersClientProps) {
+export function UsersClient({ initialMembers, tenantSlug, limit, current, staffRole, primaryOwnerId }: UsersClientProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -192,25 +191,21 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isRoleOpen, setIsRoleOpen] = useState(false)
-  const [isPasswordOpen, setIsPasswordOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
 
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null)
   const [newRole, setNewRole] = useState<WorkspaceRole>("viewer")
-  const [newPassword, setNewPassword] = useState("")
 
   const [newMember, setNewMember] = useState<{
     email: string
     role: WorkspaceRole
     name: string
-    password: string
   }>({
     email: "",
     role: "viewer",
     name: "",
-    password: ""
   })
   
   const [createPermissions, setCreatePermissions] = useState<string[]>(
@@ -218,9 +213,8 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   )
   const [editPermissions, setEditPermissions] = useState<string[]>([])
 
-  const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
-  const effectiveRole = isPlatformStaff(session?.user?.role) ? "owner" : (tenantMembership?.role || "viewer")
-  const isOwnerOrAdmin = effectiveRole === "owner" || effectiveRole === "admin"
+  const isOwnerOrAdmin = staffRole === "owner" || staffRole === "admin"
+  const roleOptions = Object.entries(ROLE_LABELS).filter(([role]) => staffRole === "owner" || !["owner", "admin"].includes(role))
   const isLimitReached = current >= limit
 
   const handleCreateRoleChange = useCallback((role: string) => {
@@ -281,12 +275,17 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
         ...newMember,
         customPermissions: createPermissions
       })
-      if (res.error) {
+      if ("error" in res) {
         toast({ variant: "destructive", title: "Gagal Menambahkan", description: res.error })
       } else {
-        toast({ title: "Anggota Ditambahkan", description: "Berhasil mengundang anggota tim baru." })
+        toast({
+          title: "Anggota Ditambahkan",
+          description: res.activationRequired
+            ? "Minta anggota membuka Lupa Kata Sandi di halaman masuk untuk mengaktifkan akun lewat emailnya."
+            : "Anggota dapat masuk dengan akun SaCMS miliknya.",
+        })
         setIsCreateOpen(false)
-        setNewMember({ email: "", role: "viewer", name: "", password: "" })
+        setNewMember({ email: "", role: "viewer", name: "" })
         setCreatePermissions(ROLE_DEFAULT_PERMISSIONS["viewer"] || [])
       }
     })
@@ -299,7 +298,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
         role: newRole,
         customPermissions: editPermissions
       })
-      if (res.error) {
+      if ("error" in res) {
         toast({ variant: "destructive", title: "Gagal Menyimpan", description: res.error })
       } else {
         toast({ title: "Peran Diperbarui", description: "Peran dan izin anggota berhasil disimpan." })
@@ -308,25 +307,11 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
     })
   }
 
-  const handleUpdateMemberPassword = () => {
-    if (!selectedMember) return
-    startTransition(async () => {
-      const res = await updateMemberAction(tenantSlug, selectedMember.id, { password: newPassword })
-      if (res.error) {
-        toast({ variant: "destructive", title: "Gagal Mengubah Sandi", description: res.error })
-      } else {
-        toast({ title: "Sandi Diperbarui", description: "Kata sandi akses anggota berhasil diubah." })
-        setIsPasswordOpen(false)
-        setNewPassword("")
-      }
-    })
-  }
-
   const confirmDeleteMember = () => {
     if (!memberToDelete) return
     startTransition(async () => {
       const res = await deleteMemberAction(tenantSlug, memberToDelete.id)
-      if (res.error) {
+      if ("error" in res) {
         toast({ variant: "destructive", title: "Gagal Menghapus", description: res.error })
       } else {
         toast({ title: "Anggota Dihapus", description: "Pengguna telah dikeluarkan dari workspace ini." })
@@ -454,7 +439,10 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
                 filteredMembers.map((member) => {
                   const roleBadge = getRoleBadge(member.role)
                   const RoleIcon = roleBadge.icon
-                  const isOwner = member.role === "owner"
+                  const canManageMember = isOwnerOrAdmin
+                    && member.user.id !== session?.user?.id
+                    && member.user.id !== primaryOwnerId
+                    && (staffRole === "owner" || !["owner", "admin"].includes(member.role))
 
                   return (
                     <div key={member.id} className="p-4 px-5 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-muted/20 transition-colors gap-4">
@@ -492,21 +480,10 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
                           {roleBadge.label}
                         </Badge>
                         
-                        {isOwnerOrAdmin && (
-                          isOwner ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled
-                              className="h-8 w-8 rounded-xl opacity-30 cursor-not-allowed text-muted-foreground"
-                              title="Owner tidak dapat diubah atau dihapus"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          ) : (
+                        {canManageMember && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-muted" aria-label="Kelola anggota">
                                   <MoreVertical className="h-4 w-4" />
                                 </Button>
                               </DropdownMenuTrigger>
@@ -515,13 +492,10 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
                                 <DropdownMenuItem onClick={() => openEditRoleModal(member)} className="cursor-pointer text-xs rounded-lg">
                                   <Shield className="mr-2 h-3.5 w-3.5 text-primary" /> Ubah Peran & Izin
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setSelectedMember(member); setIsPasswordOpen(true); }} className="cursor-pointer text-xs rounded-lg">
-                                  <Lock className="mr-2 h-3.5 w-3.5 text-primary" /> Atur Ulang Sandi
-                                </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem 
                                   className="text-destructive focus:text-destructive cursor-pointer text-xs rounded-lg"
-                                  disabled={member.user.id === session?.user?.id || isPending}
+                                  disabled={isPending}
                                   onClick={() => {
                                     setMemberToDelete(member)
                                     setIsDeleteOpen(true)
@@ -531,7 +505,6 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                          )
                         )}
                       </div>
                     </div>
@@ -558,7 +531,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
                 onChange={(e) => handleEditRoleChange(e.target.value)}
                 className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
               >
-                {Object.entries(ROLE_LABELS).map(([rKey, rLabel]) => (
+                {roleOptions.map(([rKey, rLabel]) => (
                   <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
                     {rLabel}
                   </option>
@@ -581,49 +554,6 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
             >
               {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Simpan Peran & Izin
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Reset Password Dialog */}
-      <Dialog open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
-        <DialogContent className="rounded-2xl border-border/80 shadow-xl bg-card sm:max-w-[420px]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Key className="h-4 w-4 text-primary" />
-              Atur Ulang Sandi Anggota
-            </DialogTitle>
-            <DialogDescription className="text-xs">Tentukan kata sandi baru untuk {selectedMember?.user.name || selectedMember?.user.email}</DialogDescription>
-          </DialogHeader>
-          <div className="py-3 space-y-3">
-            <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kata Sandi Baru</Label>
-              <Input 
-                type="password" 
-                value={newPassword} 
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Minimal 8 karakter"
-                minLength={8}
-                className="h-9 bg-muted/20 border-border/80 rounded-xl text-xs"
-              />
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl border border-border/60 flex gap-2.5 text-xs text-muted-foreground">
-              <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <p className="leading-relaxed text-[11px]">
-                Berlaku pada sesi masuk berikutnya.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button variant="outline" onClick={() => setIsPasswordOpen(false)} disabled={isPending} className="rounded-xl text-xs font-bold h-9">Batal</Button>
-            <Button 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs"
-              disabled={isPending || newPassword.length < 8}
-              onClick={handleUpdateMemberPassword}
-            >
-              {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Konfirmasi Sandi Baru
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -667,7 +597,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
           <DialogHeader>
             <DialogTitle className="text-base font-bold">Tambah Anggota Workspace</DialogTitle>
             <DialogDescription className="text-xs">
-              Masukkan kredensial anggota baru.
+              Gunakan alamat email pemilik akun. Anggota baru dapat mengaktifkan akun melalui Lupa Kata Sandi.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateMember} className="space-y-3 py-2">
@@ -692,26 +622,13 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kata Sandi Akses *</Label>
-              <Input 
-                type="password" 
-                placeholder="Minimal 8 karakter" 
-                value={newMember.password} 
-                onChange={(e) => setNewMember({ ...newMember, password: e.target.value })}
-                required
-                minLength={8}
-                className="bg-muted/20 border-border/80 rounded-xl h-9 text-xs"
-              />
-              <p className="text-[10px] text-muted-foreground italic">Kata sandi yang digunakan anggota saat login.</p>
-            </div>
-            <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Workspace</Label>
               <select
                 value={newMember.role || "viewer"}
                 onChange={(e) => handleCreateRoleChange(e.target.value)}
                 className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
               >
-                {Object.entries(ROLE_LABELS).map(([rKey, rLabel]) => (
+                {roleOptions.map(([rKey, rLabel]) => (
                   <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
                     {rLabel}
                   </option>

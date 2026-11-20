@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
       try {
         const { getAiCreditPack } = await import("@/lib/pricing")
         const pack = await getAiCreditPack(planId)
+        if (pack && !pack.isActive) {
+          return NextResponse.json({ error: "AI credit pack is inactive" }, { status: 400 })
+        }
         if (pack) {
           amount = pack.price
           planName = pack.name
@@ -78,6 +81,11 @@ export async function POST(request: NextRequest) {
       isAddon = true
     } else if (isAccountPlan) {
       // Logic for account plan pricing
+      const { getAccountPlan } = await import("@/lib/pricing")
+      const plan = await getAccountPlan(planId)
+      if (plan && !plan.isActive) {
+        return NextResponse.json({ error: "Account plan is inactive" }, { status: 400 })
+      }
       const dynamicPrices = await getDynamicAccountPrices()
       const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
       amount = interval === 'year' ? prices.yearly : prices.monthly
@@ -92,7 +100,7 @@ export async function POST(request: NextRequest) {
       })
       dbTenant = tenant
 
-      if (!tenant) {
+      if (!tenant || tenant.status === "deleting") {
         return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
       }
 
@@ -145,6 +153,9 @@ export async function POST(request: NextRequest) {
         const { getWorkspacePlan, getAddon } = await import("@/lib/pricing")
         const workspacePlan = await getWorkspacePlan(planId)
         const addon = workspacePlan ? null : await getAddon(planId)
+        if (workspacePlan?.isActive === false || addon?.isActive === false) {
+          return NextResponse.json({ error: "Plan or add-on is inactive" }, { status: 400 })
+        }
 
         if (workspacePlan) {
           const yearlyPrice = resolveYearlyPrice(workspacePlan.price, workspacePlan.yearlyPrice)
@@ -225,19 +236,25 @@ export async function POST(request: NextRequest) {
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
       where: isAccountScoped
-        ? { userId: session.user.id, tenantId: { equals: null } as any }
-        : { tenantId: dbTenant.id },
+        ? { userId: session.user.id, tenantId: null, tenantSlugSnapshot: null, status: { not: "archived" } }
+        : { tenantId: dbTenant.id, plan: dbTenant.plan, status: { not: "archived" } },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     })
 
     let credit = 0;
-    if (subscription && !isAddon && subscription.status !== 'canceled') {
+    if (subscription?.status === "active" && !isAddon) {
       const { calculateProratedAmount } = await import("@/lib/midtrans")
       const proration = await calculateProratedAmount(
         subscription.plan,
         planId,
         subscription.currentPeriodStart,
         subscription.currentPeriodEnd,
-        isAccountPlan
+        isAccountPlan,
+        {
+          currentBillingInterval: subscription.billingInterval,
+          currentRecurringAmount: subscription.recurringAmount,
+          newInterval: interval,
+        },
       )
       if (proration.isDowngrade && subscription.status === 'active') {
         return NextResponse.json(
@@ -305,7 +322,7 @@ export async function POST(request: NextRequest) {
             ...(addonAmountUnits ? { amountUnits: addonAmountUnits } : {}),
             ...(renewsAddonId && addonQuotaType === STORAGE_QUOTA_TYPE ? { renewsAddonId } : {}),
           }
-        : { intendedPlan: planId, intendedInterval: interval }
+        : { intendedPlan: planId, intendedInterval: interval, intendedRecurringAmount: amount }
 
     // Create payment transaction record
     const transaction = await db.paymentTransaction.create({

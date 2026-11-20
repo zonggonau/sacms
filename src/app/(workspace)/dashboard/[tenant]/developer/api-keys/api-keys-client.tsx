@@ -59,7 +59,6 @@ interface ApiToken {
 
 interface ApiSettings {
   tenantId: string
-  apiVersion: string
   rateLimiting: boolean
   requestsPerMinute: string
   burstLimit: string
@@ -87,7 +86,6 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
   
   // API Configuration state
   const [tenantId] = useState(initialSettings.tenantId || tenantSlug)
-  const [apiVersion, setApiVersion] = useState(initialSettings.apiVersion || "v1")
   const [rateLimiting, setRateLimiting] = useState(initialSettings.rateLimiting ?? true)
   const [requestsPerMinute, setRequestsPerMinute] = useState(String(initialSettings.requestsPerMinute || "60"))
   const [burstLimit, setBurstLimit] = useState(String(initialSettings.burstLimit || "100"))
@@ -145,10 +143,9 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          apiVersion,
           rateLimiting,
-          requestsPerMinute: parseInt(requestsPerMinute) || 60,
-          burstLimit: parseInt(burstLimit) || 100,
+          requestsPerMinute: Number(requestsPerMinute),
+          burstLimit: Number(burstLimit),
           corsOrigins,
         }),
       })
@@ -738,18 +735,10 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                   
                   {/* API Version */}
                   <div className="space-y-2">
-                    <Label className="text-xs font-semibold text-foreground">API Version</Label>
-                    <Select value={apiVersion} onValueChange={setApiVersion}>
-                      <SelectTrigger className="w-56 h-9 rounded-xl text-xs bg-background border-border/80">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl border-border bg-card">
-                        <SelectItem value="v1" className="text-xs">v1 (Stable / Rekomendasi)</SelectItem>
-                        <SelectItem value="v2" className="text-xs">v2 (Beta Preview)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label className="text-xs font-semibold text-foreground">Versi API</Label>
+                    <Badge variant="outline" className="block w-fit">v1</Badge>
                     <p className="text-[11px] text-muted-foreground">
-                      Versi default untuk respons REST API.
+                      Endpoint lama dengan awalan /v2 memakai kontrak API yang sama.
                     </p>
                   </div>
 
@@ -759,12 +748,12 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <Label className="text-xs font-semibold text-foreground">Rate Limiting Terintegrasi</Label>
+                        <Label htmlFor="workspace-api-rate" className="text-xs font-semibold text-foreground">Batas tambahan per workspace</Label>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Batasi jumlah request per menit.
+                          Berlaku per alamat IP pada API konten dan GraphQL. Batas platform selalu aktif.
                         </p>
                       </div>
-                      <Switch checked={rateLimiting} onCheckedChange={setRateLimiting} />
+                      <Switch id="workspace-api-rate" checked={rateLimiting} onCheckedChange={setRateLimiting} />
                     </div>
 
                     {rateLimiting && (
@@ -774,16 +763,20 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                           <Input
                             id="rpm"
                             type="number"
+                            min={1}
+                            max={10000}
                             value={requestsPerMinute}
                             onChange={(e) => setRequestsPerMinute(e.target.value)}
                             className="rounded-xl h-9 text-xs bg-background border-border/80"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="burst" className="text-xs font-semibold text-foreground">Burst Limit</Label>
+                          <Label htmlFor="burst" className="text-xs font-semibold text-foreground">Batas per detik</Label>
                           <Input
                             id="burst"
                             type="number"
+                            min={1}
+                            max={1000}
                             value={burstLimit}
                             onChange={(e) => setBurstLimit(e.target.value)}
                             className="rounded-xl h-9 text-xs bg-background border-border/80"
@@ -807,7 +800,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       className="rounded-xl text-xs font-mono bg-background border-border/80 p-3"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Satu URL domain per baris. Gunakan <code className="bg-muted px-1 py-0.5 rounded font-mono">*</code> untuk semua origin.
+                      Satu origin HTTP(S) per baris, misalnya https://app.example.com. Kosongkan untuk memakai kebijakan CORS platform.
                     </p>
                   </div>
 

@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { getTransactionStatus } from "@/lib/midtrans"
-import { applyPaymentOutcome, isPaymentAwaitingFulfillment, paymentStatusForCheckout } from "@/lib/billing/payment-success"
+import { isPaymentAwaitingFulfillment, paymentStatusForCheckout } from "@/lib/billing/payment-success"
+import { syncPaymentStatus } from "@/lib/billing/sync-payment"
+
+const billingSubscription = { include: { tenant: true } } as const
 
 export async function GET(
   request: NextRequest,
@@ -21,107 +23,50 @@ export async function GET(
     // Find transaction
     let transaction = await db.paymentTransaction.findUnique({
       where: { orderId },
-      include: {
-        subscription: {
-          include: {
-            tenant: {
-              include: {
-                members: true,
-              },
-            },
-          },
-        },
-      },
+      include: { subscription: billingSubscription },
     })
 
     if (!transaction) {
       return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
     }
 
-    // Verify user has access to this tenant (or if it's an account plan, check
-    // userId) BEFORE doing anything that mutates state. This used to run
-    // after the Midtrans sync below, which meant any authenticated user who
-    // knew (or enumerated) another tenant's orderId could trigger that
-    // tenant's plan activation / credit grant before being told "forbidden" —
-    // the mutation already happened by then.
-    let hasAccess = false
-    const isSuperAdmin = session.user.role === "super_admin"
-
-    if (transaction.subscription?.tenant) {
-      const membership = transaction.subscription.tenant.members.find(
-        (m) => m.userId === session.user.id
-      )
-      hasAccess = !!membership || isSuperAdmin
-    } else if (transaction.subscription?.userId) {
-      // Account-level plan
-      hasAccess = transaction.subscription.userId === session.user.id || isSuperAdmin
-    } else if (orderId.startsWith("DOM")) {
-      const raw = (transaction.rawResponse as any) || {}
-      if (raw.tenantId) {
-        const member = await db.tenantMember.findUnique({
-          where: {
-            tenantId_userId: {
-              tenantId: raw.tenantId,
-              userId: session.user.id,
-            },
-          },
-        })
-        hasAccess = !!member || isSuperAdmin
-      } else {
-        hasAccess = isSuperAdmin
-      }
-    } else {
-      hasAccess = isSuperAdmin
-    }
-
+    const isDomainPurchase = orderId.startsWith("DOM-")
+    const raw = transaction.rawResponse
+    const domainTenantId = isDomainPurchase && raw && typeof raw === "object" && !Array.isArray(raw) && typeof raw.tenantId === "string"
+      ? raw.tenantId : null
+    const tenantId = domainTenantId ?? transaction.subscription?.tenantId
+    const membership = tenantId ? await db.tenantMember.findUnique({
+      where: { tenantId_userId: { tenantId, userId: session.user.id } },
+      select: { userId: true },
+    }) : null
+    const hasAccess = session.user.role === "super_admin" || (tenantId
+      ? !!membership
+      : !isDomainPurchase && transaction.subscription?.status !== "archived" && transaction.subscription?.userId === session.user.id)
     if (!hasAccess) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     if (transaction.status === "pending" || isPaymentAwaitingFulfillment(transaction)) {
       try {
-        if (transaction.status === "success") {
-          await applyPaymentOutcome(orderId, "success")
-        } else {
-          const midtransStatus = await getTransactionStatus(orderId)
-          if (midtransStatus && (midtransStatus.transaction_status === "settlement" ||
-            (midtransStatus.transaction_status === "capture" && midtransStatus.fraud_status === "accept"))) {
-            await applyPaymentOutcome(orderId, "success", {
-              rawProviderPayload: midtransStatus,
-              paymentType: midtransStatus.payment_type || null,
-              transactionId: midtransStatus.transaction_id || null,
-              transactionTime: midtransStatus.transaction_time ? new Date(midtransStatus.transaction_time) : new Date(),
-              fraudStatus: midtransStatus.fraud_status || null,
-            })
-          } else if (midtransStatus && ["cancel", "deny", "expire"].includes(midtransStatus.transaction_status)) {
-            await applyPaymentOutcome(orderId, "failed", { rawProviderPayload: midtransStatus })
-          }
-        }
-      } catch (err) {
-        console.error("Failed to sync with Midtrans:", err)
+        await syncPaymentStatus(transaction)
+      } catch (error) {
+        console.error("Failed to synchronize payment status:", error)
       }
-
-      // Re-fetch — applyPaymentOutcome may have updated status/subscription.
       transaction = await db.paymentTransaction.findUnique({
         where: { orderId },
-        include: {
-          subscription: {
-            include: {
-              tenant: {
-                include: {
-                  members: true,
-                },
-              },
-            },
-          },
-        },
+        include: { subscription: billingSubscription },
       })
       if (!transaction) {
         return NextResponse.json({ error: "Transaction not found" }, { status: 404 })
       }
     }
 
+    const workspace = domainTenantId
+      ? await db.tenant.findUnique({ where: { id: domainTenantId }, select: { slug: true, name: true } })
+      : transaction.subscription?.tenant
     return NextResponse.json({
+      isDomainPurchase,
+      workspace: workspace ? { slug: workspace.slug, name: workspace.name } : null,
       orderId: transaction.orderId,
       status: paymentStatusForCheckout(transaction),
       paymentStatus: transaction.status,

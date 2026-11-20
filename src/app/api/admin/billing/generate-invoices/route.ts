@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { getDynamicWorkspacePrices, getDynamicAccountPrices, resolveSubscriptionMonthlyPrice } from "@/lib/midtrans"
+import { getDynamicWorkspacePrices, getDynamicAccountPrices, getSubscriptionCatalogPrice } from "@/lib/midtrans"
+import { loadLegacyBillingTerms, resolveSubscriptionTerms } from "@/lib/billing/subscription-terms"
 import { secureEquals } from "@/lib/secure-compare"
 import { withAdminAuth } from "@/lib/api/route-helpers"
 import { generateMonthlyInvoices } from "@/lib/billing/generate-invoices"
@@ -54,6 +55,8 @@ export const GET = withAdminAuth(async () => {
     const activeSubscriptions = await db.subscription.findMany({
       where: {
         status: "active",
+        tenantSlugSnapshot: null,
+        OR: [{ userId: { not: null } }, { tenantId: { not: null } }],
         NOT: {
           cancelAtPeriodEnd: true,
         },
@@ -66,12 +69,16 @@ export const GET = withAdminAuth(async () => {
 
     const now = new Date()
 
-    const dynamicWorkspacePrices = await getDynamicWorkspacePrices()
-    const dynamicAccountPrices = await getDynamicAccountPrices()
+    const [dynamicWorkspacePrices, dynamicAccountPrices, checkoutTerms] = await Promise.all([
+      getDynamicWorkspacePrices({ includeInactive: true }),
+      getDynamicAccountPrices({ includeInactive: true }),
+      loadLegacyBillingTerms(activeSubscriptions),
+    ])
 
     const preview = activeSubscriptions.map((sub) => {
       const isAccountPlan = !sub.tenantId
-      const price = resolveSubscriptionMonthlyPrice(sub.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
+      const catalog = getSubscriptionCatalogPrice(sub.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
+      const { amount, interval } = resolveSubscriptionTerms(sub, catalog, checkoutTerms)
 
       return {
       subscriptionId: sub.id,
@@ -79,9 +86,11 @@ export const GET = withAdminAuth(async () => {
       tenantSlug: sub.tenant?.slug || 'account-plan',
       plan: sub.plan,
       currentPeriodEnd: sub.currentPeriodEnd,
-      planPrice: price,
+      planPrice: amount,
+      interval,
       needsBilling:
-        sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) <= now,
+        amount > 0 && !!sub.currentPeriodEnd && sub.currentPeriodEnd <= now &&
+        now.getTime() - sub.currentPeriodEnd.getTime() < 31 * 86_400_000,
       daysOverdue:
         sub.currentPeriodEnd
           ? Math.floor(

@@ -277,8 +277,12 @@ export async function forgotPassword(email: string) {
       },
     })
 
-    // Send email
-    await sendPasswordResetEmail(user.email, token)
+    try {
+      await sendPasswordResetEmail(user.email, token)
+    } catch {
+      await db.verificationToken.deleteMany({ where: { token } }).catch(() => {})
+      console.error("Password reset email delivery failed")
+    }
 
     return { 
       success: true, 
@@ -341,18 +345,25 @@ export async function resetPassword(formData: any) {
     // Hash new password
     const hashedPassword = await hashPassword(password)
 
-    // Update password
-    await db.user.update({
-      where: { id: user.id },
-      data: {
-        password: hashedPassword,
-      },
-    })
+    const changed = await db.$transaction(async (tx) => {
+      const [account] = await tx.$queryRaw<Array<{ emailVerified: Date | null }>>`
+        SELECT "emailVerified" FROM "users" WHERE id = ${user.id} AND email = ${email} FOR UPDATE
+      `
+      if (!account) return false
+      const consumed = await tx.verificationToken.deleteMany({
+        where: { token, identifier: verificationToken.identifier, expires: { gt: new Date() } },
+      })
+      if (!consumed.count) return false
 
-    // Clean up token
-    await db.verificationToken.delete({
-      where: { token },
+      // Possession of the link sent to this exact inbox proves ownership.
+      await tx.user.update({
+        where: { id: user.id },
+        data: { password: hashedPassword, emailVerified: account.emailVerified ?? new Date() },
+      })
+      await tx.verificationToken.deleteMany({ where: { identifier: verificationToken.identifier } })
+      return true
     })
+    if (!changed) return { error: "Tautan tidak valid atau sudah kadaluarsa" }
 
     return { 
       success: true, 

@@ -1,5 +1,6 @@
 import { z } from "zod/v4"
 import { db } from "@/lib/database"
+import { isStudioFieldEnabled } from "@/lib/field-visibility"
 import type { PrismaClient } from "../../../prisma/generated-client"
 
 /**
@@ -22,7 +23,7 @@ export async function validateDynamicContent(
   tenantId: string,
   data: Record<string, any>,
   entryId?: string, // Pass entryId for updates to skip self-uniqueness check
-  options: { enforceRequired?: boolean; client?: PrismaClient } = {}
+  options: { enforceRequired?: boolean; client?: PrismaClient; studio?: boolean } = {}
 ): Promise<{ success: boolean; errors?: Record<string, string> }> {
   const enforceRequired = options.enforceRequired ?? true
   const client = options.client ?? db
@@ -37,7 +38,7 @@ export async function validateDynamicContent(
     const value = data[field.slug]
 
     // Check Required
-    if (enforceRequired && field.required) {
+    if (enforceRequired && field.required && (!options.studio || isStudioFieldEnabled(field))) {
       if (value === undefined || value === null || value === "") {
         errors[field.slug] = `${field.name} is required`
         continue

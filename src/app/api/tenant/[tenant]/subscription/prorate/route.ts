@@ -36,7 +36,7 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
 
 /** POST /api/tenant/[tenant]/subscription/prorate — prorated cost for an upgrade. */
 export const POST = withStaffAuth(async (request, _context, { access }) => {
-  const { newPlan } = await request.json()
+  const { newPlan, interval } = await request.json()
   // Validated against the real, admin-editable WorkspacePlan table (see
   // src/lib/pricing.ts) instead of a hardcoded slug list — the previous
   // list ("free"/"starter"/"pro"/"enterprise") was stale account-plan
@@ -51,7 +51,7 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
   }
 
   const subscription = await db.subscription.findFirst({
-    where: { tenantId: access.tenantId },
+    where: { tenantId: access.tenantId, plan: access.tenant.plan, status: { not: "archived" } },
     orderBy: { createdAt: "desc" },
   })
   if (!subscription) return apiError("not_found", { message: "No active subscription found" })
@@ -59,8 +59,14 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
   const proration = await calculateProratedAmount(
     subscription.plan,
     newPlan,
-    subscription.currentPeriodStart,
-    subscription.currentPeriodEnd,
+    subscription.status === "active" ? subscription.currentPeriodStart : null,
+    subscription.status === "active" ? subscription.currentPeriodEnd : null,
+    false,
+    {
+      currentBillingInterval: subscription.billingInterval,
+      currentRecurringAmount: subscription.recurringAmount,
+      newInterval: interval === "year" ? "year" : "month",
+    },
   )
 
   const formatPrice = (price: number) =>
@@ -86,7 +92,7 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
     amountDueFormatted: formatPrice(proration.amountDue),
     currentPeriodStart: subscription.currentPeriodStart,
     currentPeriodEnd: subscription.currentPeriodEnd,
-    isUpgrade: proration.fullPrice > (dynamicPrices[subscription.plan]?.monthly || 0),
+    isUpgrade: (dynamicPrices[newPlan]?.monthly || 0) > (dynamicPrices[subscription.plan]?.monthly || 0),
     isDowngrade: proration.isDowngrade,
     isActive: subscription.status === "active",
     message:

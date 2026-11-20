@@ -290,25 +290,22 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user, account, trigger, session }) {
-      if (trigger === "update") {
-        if (session?.name) {
-          token.name = session.name
-        }
-        if (session?.image !== undefined) {
-          token.picture = session.image
-        }
-        // Securely refetch plan & profile from DB on update trigger
-        if (token.id) {
-          const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { plan: true, name: true, image: true } })
-          if (dbUser) {
-            token.plan = dbUser.plan
-            if (dbUser.name) token.name = dbUser.name
-            token.picture = dbUser.image
-          }
-        }
+    async jwt({ token, user, account }) {
+      if (!user) {
+        if (typeof token.id !== "string") throw new Error("Session has no account")
+        const currentUser = await db.user.findUnique({
+          where: { id: token.id },
+          select: { name: true, email: true, image: true, role: true, plan: true },
+        })
+        // NextAuth v4 clears the JWT session when this callback rejects.
+        if (!currentUser) throw new Error("Session account no longer exists")
+        token.role = currentUser.role === "admin" || currentUser.role === "karyawan" ? "user" : currentUser.role
+        token.plan = currentUser.plan
+        token.name = currentUser.name
+        token.email = currentUser.email
+        token.picture = currentUser.image
       }
-      
+
       if (user) {
         token.id = user.id
         token.role = user.role || "user"

@@ -261,12 +261,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   try {
     const t = await getTransporter()
     if (!t) {
-      console.warn("⚠️ [Mail] No email provider (Resend or SMTP) configured for password reset.")
-      console.log("================================================================")
-      console.log("🔗 [DEV] DIRECT PASSWORD RESET LINK (Copy & Paste to Browser):")
-      console.log(resetUrl)
-      console.log("================================================================")
-      return { success: false, fallbackUrl: resetUrl }
+      throw new Error("No email provider is configured")
     }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
@@ -277,16 +272,8 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     })
     console.log("✅ [Mail] Password reset email sent via SMTP. MessageId:", info.messageId)
     return info
-  } catch (smtpErr: any) {
-    console.error("❌ [Mail] SMTP password reset error:", smtpErr?.message || smtpErr)
-    console.log("================================================================")
-    console.log("🔗 [FALLBACK] DIRECT PASSWORD RESET LINK (Copy & Paste to Browser):")
-    console.log(resetUrl)
-    console.log("================================================================")
-    if (process.env.NODE_ENV !== "production" || baseUrl.includes("localhost")) {
-      return { success: false, fallbackUrl: resetUrl }
-    }
-    throw new Error(smtpErr?.message || "Gagal mengirim email reset kata sandi via SMTP.")
+  } catch {
+    throw new Error("Gagal mengirim email reset kata sandi.")
   }
 }
 

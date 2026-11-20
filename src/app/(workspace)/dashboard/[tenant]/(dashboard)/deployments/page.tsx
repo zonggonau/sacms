@@ -7,7 +7,10 @@ import { redirect } from "next/navigation"
  * page showed, so the two are now one hub (Overview / Hosting / Domains /
  * Environment / Database & Storage). This route only keeps old links working.
  */
-export default async function DeploymentsRedirectPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant } = await params
-  redirect(`/dashboard/${tenant}/infrastructure?tab=hosting`)
+export default async function DeploymentsRedirectPage({ params, searchParams }: {
+  params: Promise<{ tenant: string }>
+  searchParams: Promise<{ tab?: string }>
+}) {
+  const [{ tenant }, { tab }] = await Promise.all([params, searchParams])
+  redirect(`/dashboard/${encodeURIComponent(tenant)}/infrastructure?tab=${tab === "domains" ? "domains" : "hosting"}`)
 }

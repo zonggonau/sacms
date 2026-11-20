@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { master, publish, purchase } = vi.hoisted(() => ({
-  master: { paymentTransaction: { findUnique: vi.fn(), updateMany: vi.fn() }, $transaction: vi.fn() },
+  master: {
+    paymentTransaction: { findUnique: vi.fn(), updateMany: vi.fn() },
+    tenant: { findFirst: vi.fn() },
+    $transaction: vi.fn(),
+  },
   publish: vi.fn(async () => undefined),
   purchase: vi.fn(),
 }))
@@ -9,7 +13,6 @@ const { master, publish, purchase } = vi.hoisted(() => ({
 vi.mock("@/lib/database", () => ({ db: master }))
 vi.mock("@/lib/webhooks", () => ({ triggerWebhooks: publish }))
 vi.mock("@/lib/audit-log", () => ({ AuditAction: { SETTINGS_UPDATED: "settings_updated" }, logAudit: vi.fn() }))
-vi.mock("@/lib/midtrans", () => ({ calculatePeriodEndDate: vi.fn(() => new Date("2027-01-01T00:00:00Z")) }))
 vi.mock("@/lib/vercel-registrar", () => ({ purchaseDomain: purchase }))
 
 import { applyPaymentOutcome, paymentStatusForCheckout } from "@/lib/billing/payment-success"
@@ -29,12 +32,13 @@ const order = () => ({
 let payment: ReturnType<typeof order>
 let creditBalance: number
 const invoice = vi.fn(async () => ({ id: "invoice-1" }))
-const updateSubscription = vi.fn()
+const updateSubscription = vi.fn(async () => ({ count: 1 }))
 
 beforeEach(() => {
   vi.clearAllMocks()
   payment = order()
   creditBalance = 0
+  master.tenant.findFirst.mockResolvedValue({ id: "tenant-1" })
   master.paymentTransaction.findUnique.mockImplementation(async () => structuredClone(payment))
   master.paymentTransaction.updateMany.mockImplementation(async ({ where, data }) => {
     if (where.status?.notIn?.includes(payment.status)) return { count: 0 }
@@ -56,7 +60,7 @@ beforeEach(() => {
         update: async ({ data }: any) => Object.assign(draft, data),
       },
       tenant: { update: async () => { balance += 500_000 } },
-      subscription: { update: updateSubscription },
+      subscription: { updateMany: updateSubscription },
       invoice: { create: invoice },
     })
     payment = draft
@@ -66,6 +70,15 @@ beforeEach(() => {
 })
 
 describe("payment fulfillment", () => {
+  it("persists the yearly recurring charge without using the VAT-inclusive payment total", async () => {
+    payment.orderId = "SUB-123"
+    payment.rawResponse = { intendedPlan: "pro", intendedInterval: "year", intendedRecurringAmount: 120_000 }
+    await expect(applyPaymentOutcome(payment.orderId, "success")).resolves.toMatchObject({ applied: true })
+    expect(updateSubscription).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ billingInterval: "year", recurringAmount: 120_000, plan: "pro" }),
+    }))
+  })
+
   it("retries a confirmed payment when writing its invoice failed, then avoids duplicate credit or notification", async () => {
     invoice.mockRejectedValueOnce(new Error("invoice write failed"))
     await expect(applyPaymentOutcome(payment.orderId, "success")).rejects.toThrow("invoice write failed")

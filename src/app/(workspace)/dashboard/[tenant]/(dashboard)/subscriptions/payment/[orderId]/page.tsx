@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { CheckCircle2, XCircle, Clock, Loader2 } from "lucide-react"
 
 export default function PaymentResultPage() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const router = useRouter()
   const params = useParams()
   const tenantSlug = params?.tenant as string
@@ -19,14 +19,15 @@ export default function PaymentResultPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!session?.user) {
+    if (sessionStatus === "unauthenticated") {
       router.push("/login")
       return
     }
+    if (!session?.user) return
 
     const fetchTransactionStatus = async () => {
       try {
-        const res = await fetch(`/api/billing/payment/${orderId}/status`)
+        const res = await fetch(`/api/billing/payment/${encodeURIComponent(orderId)}/status`)
         
         if (!res.ok) {
           throw new Error("Failed to fetch transaction status")
@@ -64,7 +65,7 @@ export default function PaymentResultPage() {
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [session, orderId, status])
+  }, [session, sessionStatus, orderId, router, status])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -225,11 +226,13 @@ export default function PaymentResultPage() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Button
-                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                onClick={() => router.push(transaction?.isDomainPurchase
+                  ? `/dashboard/${tenantSlug}/infrastructure?tab=domains`
+                  : `/dashboard/${tenantSlug}/subscriptions`)}
                 variant="outline"
                 className="flex-1 rounded-none font-bold uppercase text-xs h-12 shadow-none border-border hover:bg-muted"
               >
-                Back to Subscriptions
+                {transaction?.isDomainPurchase ? "Kembali ke Domain" : "Back to Subscriptions"}
               </Button>
               {status === "success" && (
                 <Button
@@ -239,7 +242,7 @@ export default function PaymentResultPage() {
                   Go to Dashboard
                 </Button>
               )}
-              {(status === "failed" || status === "pending") && (
+              {!transaction?.isDomainPurchase && (status === "failed" || status === "pending") && (
                 <Button
                   onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout`)}
                   className="flex-1 rounded-none font-bold uppercase text-xs h-12 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none"

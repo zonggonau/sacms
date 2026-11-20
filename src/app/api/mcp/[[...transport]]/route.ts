@@ -2006,8 +2006,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-        const webhooks = await tenantDb.webhook.findMany({
+        const webhooks = await db.webhook.findMany({
           where: { tenantId: auth.tenantId },
           orderBy: { createdAt: "desc" },
         })
@@ -2033,8 +2032,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-        const webhook = await tenantDb.webhook.findFirst({
+        const webhook = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId },
         })
         if (!webhook) {
@@ -2081,17 +2079,15 @@ const handler = createMcpHandler(
           return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }], isError: true }
         }
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-
         // One tenant-level cap, same bucket the dashboard's own webhook
         // creation lacks today too — bounded here first since this is a
         // new, easily-scriptable trigger for an unbounded "webhook storm".
-        const existingCount = await tenantDb.webhook.count({ where: { tenantId: auth.tenantId } })
+        const existingCount = await db.webhook.count({ where: { tenantId: auth.tenantId } })
         if (existingCount >= 20) {
           return { content: [{ type: "text" as const, text: `❌ Batas maksimum 20 webhook per workspace sudah tercapai. Hapus webhook yang tidak terpakai sebelum membuat yang baru.` }], isError: true }
         }
 
-        const webhook = await tenantDb.webhook.create({
+        const webhook = await db.webhook.create({
           data: {
             tenantId: auth.tenantId,
             name: name.trim(),
@@ -2132,8 +2128,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-        const existing = await tenantDb.webhook.findFirst({
+        const existing = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
         if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }
@@ -2147,7 +2142,7 @@ const handler = createMcpHandler(
           }
         }
 
-        const updated = await tenantDb.webhook.update({
+        const updated = await db.webhook.update({
           where: { id, tenantId: auth.tenantId },
           data: {
             ...(name ? { name: name.trim() } : {}),
@@ -2182,13 +2177,12 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "delete")) return permissionDenied("delete")
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-        const existing = await tenantDb.webhook.findFirst({
+        const existing = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
         if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }
 
-        await tenantDb.webhook.delete({ where: { id, tenantId: auth.tenantId } })
+        await db.webhook.delete({ where: { id, tenantId: auth.tenantId } })
 
         return {
           content: [{
@@ -2222,8 +2216,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const tenantDb = await getTenantDb(auth.tenantSlug)
-        const webhook = await tenantDb.webhook.findFirst({
+        const webhook = await db.webhook.findFirst({
           where: { id, tenantId: auth.tenantId }
         })
         if (!webhook) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Webhook not found." }, isError: true }

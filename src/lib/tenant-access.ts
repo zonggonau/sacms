@@ -31,7 +31,8 @@ export async function getTenantAccess(
   // Platform staff (super_admin, developer) can access any tenant
   if (isPlatformStaff(session.user.role)) {
     const tenant = await db.tenant.findFirst({
-      where: { 
+      where: {
+        status: { not: "deleting" },
         OR: [
           { id: tenantIdOrSlug },
           { slug: tenantIdOrSlug }
@@ -58,6 +59,7 @@ export async function getTenantAccess(
   const membership = await db.tenantMember.findFirst({
     where: {
       userId: session.user.id,
+      tenant: { status: { not: "deleting" } },
       OR: [
         { tenantId: tenantIdOrSlug },
         { tenant: { slug: tenantIdOrSlug } }

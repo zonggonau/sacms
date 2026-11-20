@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { getSingleTypesAction } from "@/actions/single-types"
 import { isPlatformStaff } from "@/lib/platform-roles"
@@ -37,6 +36,8 @@ export default function CMSSingleTypesPage() {
 
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [searchTerm, setSearchTerm] = useState("")
 
   // Halaman Statis is meant to be entered by the owner/admin only — a
@@ -55,26 +56,23 @@ export default function CMSSingleTypesPage() {
     }
   }, [status, canManageStaticPages, router, tenantSlug])
 
-  const fetchSingleTypes = async () => {
-    if (!tenantSlug) return
-    try {
-      const response = await getSingleTypesAction(tenantSlug, "studio")
-      if (response.singleTypes) {
-        setSingleTypes(response.singleTypes)
-      } else if (response.error) {
-        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: response.error })
-      }
-    } catch (error) {
-      console.error(error)
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat daftar halaman" })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
-    if (session?.user?.id) fetchSingleTypes()
-  }, [tenantSlug, session?.user?.id])
+    if (!tenantSlug || !session?.user?.id || !canManageStaticPages) return
+    let ignore = false
+    setLoading(true)
+    setLoadError(false)
+
+    void getSingleTypesAction(tenantSlug, "studio")
+      .then((response) => {
+        if (ignore) return
+        if (response.singleTypes) setSingleTypes(response.singleTypes)
+        else setLoadError(true)
+      })
+      .catch(() => { if (!ignore) setLoadError(true) })
+      .finally(() => { if (!ignore) setLoading(false) })
+
+    return () => { ignore = true }
+  }, [tenantSlug, session?.user?.id, canManageStaticPages, loadAttempt])
 
   const filteredSingleTypes = useMemo(() => {
     return singleTypes.filter(st => 
@@ -83,7 +81,7 @@ export default function CMSSingleTypesPage() {
     )
   }, [singleTypes, searchTerm])
 
-  if (loading && singleTypes.length === 0) {
+  if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -127,7 +125,14 @@ export default function CMSSingleTypesPage() {
         </div>
       </div>
 
-      {filteredSingleTypes.length === 0 ? (
+      {loadError ? (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 p-4">
+          <p className="text-sm text-destructive">Daftar halaman statis gagal dimuat.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => setLoadAttempt(value => value + 1)}>
+            Coba lagi
+          </Button>
+        </div>
+      ) : filteredSingleTypes.length === 0 ? (
         <Card className="border border-dashed border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden py-16 text-center">
           <CardContent className="flex flex-col items-center justify-center">
             <div className="w-12 h-12 rounded-2xl border border-border/60 bg-muted/60 flex items-center justify-center mb-3">

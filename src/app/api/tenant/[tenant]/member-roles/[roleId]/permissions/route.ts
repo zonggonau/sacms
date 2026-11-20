@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getTenantDbById } from "@/lib/database"
+import { getTenantDbById, Prisma } from "@/lib/database"
 import { invalidatePermissionCache } from "@/lib/permissions-engine"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
@@ -16,11 +16,14 @@ const PermissionsSchema = z.object({
 export const GET = withStaffAuth(async (_request, context, { access }) => {
   const { roleId } = await context.params
   const tenantDb = await getTenantDbById(access.tenantId)
-  const perms = await tenantDb.memberRolePermission.findMany({
-    where: { memberRoleId: roleId },
-    orderBy: [{ contentTypeSlug: "asc" }, { action: "asc" }],
+  const role = await tenantDb.memberRole.findFirst({
+    where: { id: roleId, tenantId: access.tenantId },
+    select: {
+      permissions: { orderBy: [{ contentTypeSlug: "asc" }, { action: "asc" }] },
+    },
   })
-  return NextResponse.json({ permissions: perms })
+  if (!role) return apiError("not_found", { message: "Role not found" })
+  return NextResponse.json({ permissions: role.permissions })
 })
 
 /** PUT replaces the entire permission set for a role (idempotent matrix save). */
@@ -28,30 +31,33 @@ export const PUT = withStaffAuth(
   async (request, context, { access }) => {
     const { roleId } = await context.params
     const tenantDb = await getTenantDbById(access.tenantId)
-    const role = await tenantDb.memberRole.findFirst({ where: { id: roleId, tenantId: access.tenantId } })
-    if (!role) return apiError("not_found", { message: "Role not found" })
-
     const body = await readJson(request, PermissionsSchema)
     if (!body.ok) return body.response
     const { permissions } = body.data
+    const keys = new Set(permissions.map(({ contentTypeSlug, action }) => JSON.stringify([contentTypeSlug, action])))
+    if (keys.size !== permissions.length) return apiError("validation", { message: "Each permission may appear only once" })
 
-    // Sequential, not a batched $transaction([...]) — dedicated-tenant
-    // clients are wrapped in a connection-fallback Proxy (database.ts) whose
-    // .catch() wrapping strips the PrismaPromise branding $transaction's
-    // array form requires, so a batch call throws "All elements of the
-    // array need to be Prisma Client promises." for any tenant with a
-    // dedicated database.
-    await tenantDb.memberRolePermission.deleteMany({ where: { memberRoleId: roleId } })
-    await tenantDb.memberRolePermission.createMany({
-      data: permissions.map((p) => ({
-        memberRoleId: roleId,
-        contentTypeSlug: p.contentTypeSlug,
-        action: p.action,
-        granted: p.granted,
-        conditions: (p.conditions ?? null) as any,
-      })),
-      skipDuplicates: true,
+    const role = await tenantDb.$transaction(async (tx) => {
+      // Concurrent saves for one role must serialize the whole replacement.
+      const [lockedRole] = await tx.$queryRaw<Array<{ slug: string }>>`
+        SELECT slug FROM "member_roles" WHERE id = ${roleId} AND "tenantId" = ${access.tenantId} FOR UPDATE
+      `
+      if (!lockedRole) return null
+      await tx.memberRolePermission.deleteMany({ where: { memberRoleId: roleId } })
+      if (permissions.length > 0) {
+        await tx.memberRolePermission.createMany({
+          data: permissions.map(({ contentTypeSlug, action, granted, conditions }) => ({
+            memberRoleId: roleId,
+            contentTypeSlug,
+            action,
+            granted,
+            conditions: (conditions ?? Prisma.DbNull) as Prisma.InputJsonValue | typeof Prisma.DbNull,
+          })),
+        })
+      }
+      return lockedRole
     })
+    if (!role) return apiError("not_found", { message: "Role not found" })
 
     await invalidatePermissionCache(access.tenantId, role.slug)
     return NextResponse.json({ ok: true, count: permissions.length })

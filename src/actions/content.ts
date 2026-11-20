@@ -66,6 +66,7 @@ async function resolveWriteContext(
       tenantSlug,
       isGlobal: access.isGlobal,
       enforcePlan: true,
+      studio: true,
     },
     actor: {
       kind: "staff",
@@ -152,12 +153,15 @@ export async function getEntriesAction(
     status?: string
     locale?: string
     search?: string
+    searchField?: string
     sortBy?: string
     sortOrder?: "asc" | "desc"
     authorId?: string
     dateField?: string
     dateFrom?: string
     dateTo?: string
+    dateBefore?: string
+    statuses?: WorkflowStatus[]
     trashed?: boolean
   }
 ) {
@@ -198,12 +202,20 @@ export async function getEntriesAction(
 
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
-    const { status, locale, search, authorId } = params
+    const { status, locale, authorId } = params
+    const search = typeof params.search === "string" ? params.search.trim().slice(0, 200) : ""
+    const statuses = Array.isArray(params.statuses) ? params.statuses.filter(isWorkflowStatus) : undefined
     const sortBy = params.sortBy && SORTABLE_COLUMNS.has(params.sortBy) ? params.sortBy : "createdAt"
     const sortOrder: "asc" | "desc" = params.sortOrder === "asc" ? "asc" : "desc"
     const dateField = params.dateField && DATE_FILTER_COLUMNS.has(params.dateField) ? params.dateField : "createdAt"
     const dateFrom = params.dateFrom ? new Date(params.dateFrom) : null
     const dateTo = params.dateTo ? new Date(params.dateTo) : null
+    const exclusiveEnd = params.dateBefore ? new Date(params.dateBefore) : null
+    const dateBefore = exclusiveEnd && !Number.isNaN(exclusiveEnd.getTime()) ? exclusiveEnd : null
+    if (!dateBefore && dateTo && /^\d{4}-\d{2}-\d{2}$/.test(params.dateTo ?? "") && !Number.isNaN(dateTo.getTime())) {
+      dateTo.setUTCDate(dateTo.getUTCDate() + 1)
+    }
+    const hasCalendarEnd = !dateBefore && /^\d{4}-\d{2}-\d{2}$/.test(params.dateTo ?? "")
 
     // Trash is a separate view, never mixed into the normal list — default
     // (trashed: false/undefined) excludes soft-deleted rows; trashed: true
@@ -217,12 +229,13 @@ export async function getEntriesAction(
       deletedAt: trashed ? { not: null } : null,
     }
     if (status) where.status = status
+    else if (statuses) where.status = { in: statuses }
     if (locale) where.locale = locale
     if (authorId) where.createdBy = authorId
-    if (dateFrom || dateTo) {
+    if (dateFrom || dateTo || dateBefore) {
       where[dateField] = {
         ...(dateFrom && !isNaN(dateFrom.getTime()) ? { gte: dateFrom } : {}),
-        ...(dateTo && !isNaN(dateTo.getTime()) ? { lte: dateTo } : {}),
+        ...(dateBefore ? { lt: dateBefore } : dateTo && !isNaN(dateTo.getTime()) ? { [hasCalendarEnd ? "lt" : "lte"]: dateTo } : {}),
       }
     }
 
@@ -231,54 +244,111 @@ export async function getEntriesAction(
 
     if (search) {
       const whereParts: string[] = [
-        `"contentTypeId" = $1`,
-        `"tenantId" = $2`,
-        trashed ? `"deletedAt" IS NOT NULL` : `"deletedAt" IS NULL`,
+        `entry."contentTypeId" = $1`,
+        `entry."tenantId" = $2`,
+        trashed ? `entry."deletedAt" IS NOT NULL` : `entry."deletedAt" IS NULL`,
       ]
       const queryParams: unknown[] = [contentType.id, access.tenantId]
       let paramIdx = 3
 
       if (status) {
-        whereParts.push(`"status" = $${paramIdx}`)
+        whereParts.push(`entry."status"::text = $${paramIdx}`)
         queryParams.push(status)
         paramIdx++
+      } else if (statuses) {
+        whereParts.push(statuses.length === 0 ? "false" : `entry."status"::text IN (${statuses.map((_, index) => `$${paramIdx + index}`).join(", ")})`)
+        queryParams.push(...statuses)
+        paramIdx += statuses.length
       }
 
       if (locale) {
-        whereParts.push(`"locale" = $${paramIdx}`)
+        whereParts.push(`entry."locale" = $${paramIdx}`)
         queryParams.push(locale)
         paramIdx++
       }
 
       if (authorId) {
-        whereParts.push(`"createdBy" = $${paramIdx}`)
+        whereParts.push(`entry."createdBy" = $${paramIdx}`)
         queryParams.push(authorId)
         paramIdx++
       }
 
       if (dateFrom && !isNaN(dateFrom.getTime())) {
-        whereParts.push(`"${dateField}" >= $${paramIdx}`)
+        whereParts.push(`entry."${dateField}" >= $${paramIdx}`)
         queryParams.push(dateFrom)
         paramIdx++
       }
 
-      if (dateTo && !isNaN(dateTo.getTime())) {
-        whereParts.push(`"${dateField}" <= $${paramIdx}`)
-        queryParams.push(dateTo)
+      if (dateBefore || (dateTo && !isNaN(dateTo.getTime()))) {
+        whereParts.push(`entry."${dateField}" ${dateBefore || hasCalendarEnd ? "<" : "<="} $${paramIdx}`)
+        queryParams.push(dateBefore ?? dateTo)
         paramIdx++
       }
 
-      const safeSearch = search.replace(/[&|!():*<>'"\\]/g, " ").trim().slice(0, 200)
-      if (safeSearch) {
-        whereParts.push(`("searchVector" @@ plainto_tsquery('simple', $${paramIdx}) OR "data"::text ILIKE $${paramIdx + 1})`)
-        queryParams.push(safeSearch, `%${safeSearch}%`)
-        paramIdx += 2
+      const [targetField, relationField] = (typeof params.searchField === "string" ? params.searchField : "all").split(".", 2)
+      const matchAll = targetField === "all" && !relationField
+      const field = matchAll ? undefined : contentType.fields.find((candidate) => candidate.slug === targetField)
+      if (!matchAll && !field) return { error: "Invalid search field" }
+
+      const pattern = `$${paramIdx++}`
+      queryParams.push(`%${search.replace(/[\\%_]/g, "\\$&")}%`)
+      const fieldParam = field && !relationField ? `$${paramIdx++}` : null
+      if (fieldParam && field) queryParams.push(field.slug)
+      const directMatch = matchAll
+        ? `(entry."searchVector" @@ plainto_tsquery('english', $${paramIdx++}) OR entry."data"::text ILIKE ${pattern} OR entry."id" ILIKE ${pattern})`
+        : `entry."data" ->> ${fieldParam}::text ILIKE ${pattern}`
+      if (matchAll) queryParams.push(search)
+
+      const relationSlugs = contentType.fields
+        .filter((candidate) => candidate.type === "relation" && (matchAll || candidate.slug === targetField))
+        .map((candidate) => candidate.slug)
+      const matches = relationField ? [] : [directMatch]
+      if (relationSlugs.length > 0) {
+        const relationKeys = relationSlugs.map((slug) => {
+          queryParams.push(slug)
+          return `$${paramIdx++}`
+        })
+        const relatedFieldParam = relationField ? `$${paramIdx++}` : null
+        if (relationField) queryParams.push(relationField)
+        const entryData = relatedFieldParam ? `related."data" ->> ${relatedFieldParam}::text` : `related."data"::text`
+        const singletonData = relatedFieldParam
+          ? `assignment."data" ->> ${relatedFieldParam}::text`
+          : `COALESCE(assignment."data"::text, '') || ' ' || singleton."name"`
+        const memberData = relatedFieldParam
+          ? `jsonb_build_object('name', member."name", 'email', member."email", 'role', member."role") ->> ${relatedFieldParam}::text`
+          : `concat_ws(' ', member."name", member."email", member."role")`
+        matches.push(`EXISTS (
+          SELECT 1
+          FROM jsonb_each(CASE WHEN jsonb_typeof(entry."data") = 'object' THEN entry."data" ELSE '{}'::jsonb END) AS field(key, value)
+          CROSS JOIN LATERAL jsonb_array_elements_text(
+            CASE jsonb_typeof(field.value)
+              WHEN 'array' THEN field.value
+              WHEN 'string' THEN jsonb_build_array(field.value)
+              ELSE '[]'::jsonb
+            END
+          ) AS reference(id)
+          WHERE field.key IN (${relationKeys.join(", ")}) AND (
+            EXISTS (SELECT 1 FROM "content_entries" AS related
+              WHERE related."id" = reference.id AND related."tenantId" = $2
+                AND related."deletedAt" IS NULL AND (${entryData}) ILIKE ${pattern})
+            OR EXISTS (SELECT 1 FROM "single_types" AS singleton
+              LEFT JOIN "tenant_single_type_assignments" AS assignment
+                ON assignment."singleTypeId" = singleton."id" AND assignment."tenantId" = $2 AND assignment."enabled"
+              WHERE singleton."id" = reference.id AND singleton."draftTemplateId" IS NULL
+                AND (singleton."tenantId" = $2 OR (singleton."tenantId" IS NULL AND assignment."id" IS NOT NULL))
+                AND (${singletonData}) ILIKE ${pattern})
+            OR EXISTS (SELECT 1 FROM "members" AS member
+              WHERE member."id" = reference.id AND member."tenantId" = $2 AND (${memberData}) ILIKE ${pattern})
+          )
+        )`)
       }
+      if (matches.length === 0) return { error: "Invalid relation search field" }
+      whereParts.push(`(${matches.join(" OR ")})`)
 
       const whereClause = whereParts.join(" AND ")
 
       const countResult = await tenantDb.$queryRawUnsafe<[{ count: bigint }]>(
-        `SELECT COUNT(*) as count FROM "content_entries" WHERE ${whereClause}`,
+        `SELECT COUNT(*) as count FROM "content_entries" AS entry WHERE ${whereClause}`,
         ...queryParams
       )
       total = Number(countResult[0].count)
@@ -288,17 +358,25 @@ export async function getEntriesAction(
       // raw user input — so interpolating them directly as an identifier/
       // direction here (Postgres can't bind those as query parameters) is
       // safe, unlike the values above which all go through $N placeholders.
-      entries = await tenantDb.$queryRawUnsafe(
-        `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY "${sortBy}" ${sortOrder.toUpperCase()} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      // Fetch IDs through the text search, then hydrate through Prisma. Raw
+      // SELECT * would include searchVector, which Prisma can't deserialize.
+      const matchesAtPage = await tenantDb.$queryRawUnsafe<{ id: string }[]>(
+        `SELECT entry."id" FROM "content_entries" AS entry WHERE ${whereClause} ORDER BY entry."${sortBy}" ${sortOrder.toUpperCase()}, entry."id" DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         ...queryParams,
         pageSize,
         (page - 1) * pageSize
       )
+      const matchedIds = matchesAtPage.map(({ id }) => id)
+      const rows = matchedIds.length === 0 ? [] : await tenantDb.contentEntry.findMany({
+        where: { id: { in: matchedIds }, tenantId: access.tenantId },
+      })
+      const rowsById = new Map(rows.map((row) => [row.id, row]))
+      entries = matchedIds.flatMap((id) => rowsById.get(id) ?? [])
     } else {
       const [rawEntries, count] = await Promise.all([
         tenantDb.contentEntry.findMany({
           where,
-          orderBy: { [sortBy]: sortOrder },
+          orderBy: [{ [sortBy]: sortOrder }, { id: "desc" }],
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),

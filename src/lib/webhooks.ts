@@ -70,7 +70,7 @@ export async function triggerWebhooks(
           id: webhook.id,
           url: webhook.url,
           secret: webhook.secret || undefined,
-          headers: webhook.headers ? String(webhook.headers) : undefined,
+          headers: typeof webhook.headers === "string" ? webhook.headers : webhook.headers ? JSON.stringify(webhook.headers) : undefined,
           events: webhook.events as unknown as string[],
           enabled: webhook.enabled,
           hookType: webhook.hookType as "async" | "sync",

@@ -1,5 +1,6 @@
 import { db } from "@/lib/database"
-import { getDynamicWorkspacePrices, getDynamicAccountPrices, resolveSubscriptionMonthlyPrice } from "@/lib/midtrans"
+import { getDynamicWorkspacePrices, getDynamicAccountPrices, getSubscriptionCatalogPrice } from "@/lib/midtrans"
+import { loadLegacyBillingTerms, resolveSubscriptionTerms } from "./subscription-terms"
 
 export interface PlanEconomics {
   slug: string
@@ -132,18 +133,26 @@ export async function calculateLiveFinancialReports() {
 
   // 3. Active Subscriptions
   const activeSubs = await db.subscription.findMany({
-    where: { status: "active" },
+    where: {
+      status: "active",
+      tenantSlugSnapshot: null,
+      AND: [
+        { OR: [{ userId: { not: null } }, { tenantId: { not: null } }] },
+        { OR: [{ currentPeriodEnd: { not: null } }, { plan: "free" }] },
+      ],
+    },
     include: {
       tenant: true,
       user: { select: { id: true, name: true, email: true } }
     }
   })
 
-  const [dynamicWorkspacePrices, dynamicAccountPrices] = await Promise.all([
-    getDynamicWorkspacePrices(),
-    getDynamicAccountPrices(),
+  const [dynamicWorkspacePrices, dynamicAccountPrices, checkoutTerms, unitEconomics] = await Promise.all([
+    getDynamicWorkspacePrices({ includeInactive: true }),
+    getDynamicAccountPrices({ includeInactive: true }),
+    loadLegacyBillingTerms(activeSubs),
+    getPlansUnitEconomics(),
   ])
-  const unitEconomics = await getPlansUnitEconomics()
   // Keyed by `${category}:${slug}` — workspace and account tables can
   // share a slug ("pro") at a different price, so a single slug-keyed map
   // would let one category's entry silently shadow the other's.
@@ -160,10 +169,7 @@ export async function calculateLiveFinancialReports() {
   const lastMonthInvoices = allPaidInvoices.filter(inv => inv.paidAt && inv.paidAt >= lastMonth && inv.paidAt < startOfMonth)
   const lastMonthRevenue = lastMonthInvoices.reduce((sum, inv) => sum + inv.amount, 0)
 
-  // MRR & Estimated Monthly COGS — each active subscription's revenue is
-  // resolved from the SAME live pricing generate-invoices actually bills
-  // with (resolveSubscriptionMonthlyPrice), never a separate guess, so
-  // this can no longer drift from what tenants are really charged.
+  // Use the same recurring amount as invoicing, normalized to one month.
   let liveMrr = 0
   let liveMonthlyCogs = 0
   let liveMonthlyGatewayFees = 0
@@ -173,7 +179,8 @@ export async function calculateLiveFinancialReports() {
   for (const sub of activeSubs) {
     const isAccountPlan = !sub.tenantId
     const category: "cloud" | "account" = isAccountPlan ? "account" : "cloud"
-    const subMonthlyRevenue = resolveSubscriptionMonthlyPrice(sub.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
+    const catalog = getSubscriptionCatalogPrice(sub.plan, isAccountPlan, dynamicWorkspacePrices, dynamicAccountPrices)
+    const { monthlyAmount: subMonthlyRevenue } = resolveSubscriptionTerms(sub, catalog, checkoutTerms)
 
     // Reuse the catalog entry for this exact (category, slug) if one
     // exists (keeps COGS/gateway-fee math identical to the catalog), else

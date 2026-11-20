@@ -497,21 +497,28 @@ export async function deleteTenantStorage(tenant: { id: string; slug: string }):
     await deleteS3Prefix(platform.s3, platform.bucket, `${tenant.id}/`, tenant.slug)
   }
 
-  await deleteLegacyTenantStorage(tenant.slug)
+  await deleteLegacyTenantStorage(tenant.slug, dedicated)
+}
+
+function isMissingBucket(error: unknown) {
+  return !!error && typeof error === "object" &&
+    ("name" in error && ["NotFound", "NoSuchBucket"].includes(String(error.name)) ||
+     "$metadata" in error && (error.$metadata as { httpStatusCode?: number })?.httpStatusCode === 404)
 }
 
 /** Empties and removes a workspace's own MinIO bucket entirely. */
 async function deleteAndRemoveBucket(s3: S3Client, bucket: string, label: string): Promise<void> {
   try {
     await s3.send(new HeadBucketCommand({ Bucket: bucket }))
-  } catch {
-    return // Bucket never existed — nothing to clean up.
+  } catch (error) {
+    if (isMissingBucket(error)) return
+    throw error
   }
   await deleteS3Prefix(s3, bucket, "", label)
   try {
     await s3.send(new DeleteBucketCommand({ Bucket: bucket }))
-  } catch (e) {
-    console.error(`[Storage] Failed to delete bucket ${bucket} for tenant ${label}:`, e)
+  } catch (error) {
+    if (!isMissingBucket(error)) throw error
   }
 }
 
@@ -522,23 +529,23 @@ async function deleteS3Prefix(s3: S3Client, bucket: string, prefix: string, labe
     do {
       const list: any = await s3.send(new ListObjectsV2Command({ Bucket: bucket, Prefix: prefix, ContinuationToken: continuationToken }))
       if (list.Contents && list.Contents.length > 0) {
-        await s3.send(new DeleteObjectsCommand({
+        const deleted = await s3.send(new DeleteObjectsCommand({
           Bucket: bucket,
           Delete: { Objects: list.Contents.map((obj: any) => ({ Key: obj.Key })), Quiet: true },
         }))
+        if (deleted.Errors?.length) throw new Error("Some workspace assets could not be removed.")
         totalDeleted += list.Contents.length
       }
       continuationToken = list.NextContinuationToken
     } while (continuationToken)
     if (totalDeleted > 0) console.log(`[Storage] Deleted ${totalDeleted} objects from ${bucket} for tenant: ${label}`)
-  } catch (e) {
-    console.error(`[Storage] S3 cleanup failed for tenant ${label} (bucket ${bucket}):`, e)
+  } catch (error) {
+    if (!isMissingBucket(error)) throw error
   }
 }
 
-async function deleteLegacyTenantStorage(tenantSlug: string): Promise<void> {
+async function deleteLegacyTenantStorage(tenantSlug: string, dedicated: StorageConfig | null): Promise<void> {
   const prefix = `upload/${tenantSlug}/`
-  const dedicated = await getTenantStorageConfig(tenantSlug)
 
   if (dedicated) {
     const s3 = createS3Client(dedicated.endpoint, dedicated.accessKey, dedicated.secretKey)
@@ -546,15 +553,9 @@ async function deleteLegacyTenantStorage(tenantSlug: string): Promise<void> {
     return
   }
 
-  try {
-    const tenantPath = path.join(process.cwd(), "public", "upload", tenantSlug)
-    if (fs.existsSync(tenantPath)) {
-      fs.rmSync(tenantPath, { recursive: true, force: true })
-      console.log(`[Storage] Deleted local directory for tenant: ${tenantSlug}`)
-    }
-  } catch (e) {
-    console.error(`[Storage] Local cleanup failed for tenant ${tenantSlug}:`, e)
-  }
+  if (!/^[a-z0-9_-]+$/i.test(tenantSlug)) throw new Error("Invalid workspace slug for legacy media cleanup.")
+  const tenantPath = path.join(process.cwd(), "public", "upload", tenantSlug)
+  fs.rmSync(tenantPath, { recursive: true, force: true })
 }
 
 /**

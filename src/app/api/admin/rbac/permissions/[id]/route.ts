@@ -26,7 +26,6 @@ export const PATCH = withAdminAuth(
 export const DELETE = withAdminAuth(
   async (_request, context) => {
     const { id } = await context.params
-    await db.rolePermission.deleteMany({ where: { permissionId: id } })
     await db.permission.delete({ where: { id } })
     return NextResponse.json({ success: true })
   },

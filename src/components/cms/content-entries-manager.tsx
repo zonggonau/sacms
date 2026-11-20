@@ -65,7 +65,7 @@ import {
   permanentlyDeleteEntryAction,
 } from "@/actions/content"
 import { extractEntryLabel, extractEntrySubtitle, RelationLabelItem } from "@/lib/relation-labels"
-import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
+import { allowedUserTransitions, CONTENT_STATUSES, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   DRAFT:     { label: "Draft",      color: "bg-muted text-muted-foreground border-border/80", icon: FileText },
@@ -81,6 +81,29 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
 // here rather than imported since that module pulls in server-only Prisma/DB
 // code that must never end up in the client bundle.
 const TRASH_RESTORE_WINDOW_DAYS = 30
+const ENTRIES_PAGE_SIZE = 100
+const EMPTY_RELATION_LABELS: Record<string, RelationLabelItem> = {}
+
+function entryPageForCount(count: number) {
+  return Math.max(1, Math.ceil(count / ENTRIES_PAGE_SIZE))
+}
+
+function localDateBoundary(value: string, offsetDays = 0) {
+  if (!value) return undefined
+  const date = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(date.getTime())) return undefined
+  if (offsetDays) date.setDate(date.getDate() + offsetDays)
+  return date.toISOString()
+}
+
+function parseEntryData(entry: any) {
+  if (typeof entry.data !== "string") return entry
+  try {
+    return { ...entry, data: JSON.parse(entry.data) }
+  } catch {
+    return { ...entry, data: {} }
+  }
+}
 
 function stripHtml(html: string) {
   if (!html) return ""
@@ -90,7 +113,7 @@ function stripHtml(html: string) {
 export function ContentEntriesManager({
   contentType,
   initialEntries,
-  initialRelationLabels = {},
+  initialRelationLabels = EMPTY_RELATION_LABELS,
   relatedSchemas = {},
   authors = [],
   tenantSlug,
@@ -123,66 +146,24 @@ export function ContentEntriesManager({
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [searchTargetField, setSearchTargetField] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<string[]>(["DRAFT", "PUBLISHED", "IN_REVIEW", "ARCHIVED", "APPROVED", "SCHEDULED", "REJECTED"])
+  const [statusFilter, setStatusFilter] = useState<WorkflowStatus[]>([...CONTENT_STATUSES])
   const [isApiSnippetOpen, setIsApiSnippetOpen] = useState(false)
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">("table")
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, RelationLabelItem>>(initialRelationLabels)
 
-  const ENTRIES_PAGE_SIZE = 100
-
-  // The server only hands us the first page (see cms/content/[slug]/page.tsx —
-  // capped at 200 for the initial render). Search/filter here run in-memory
-  // over whatever's in `entries`, which used to mean anything past that cap
-  // was silently unreachable — "Muat Lebih Banyak" below fetches further
-  // pages on demand via the same getEntriesAction the server uses, so large
-  // collections stay fully searchable rather than truncated.
-  //
-  // entriesPage tracks how many ENTRIES_PAGE_SIZE-sized pages are ALREADY
-  // covered by what we have — the server's 200-row initial load covers 2
-  // pages' worth at the 100-per-page size "Muat Lebih Banyak" itself uses,
-  // so starting this at 1 (instead of 2) made the very first click re-fetch
-  // rows 101-200, which were already loaded and got silently deduped —
-  // a wasted round-trip with zero new rows to show for it.
-  const initialEntriesPage = (count: number) => Math.max(1, Math.ceil(count / ENTRIES_PAGE_SIZE))
   const [entries, setEntries] = useState<any[]>(initialEntries)
-  const [entriesPage, setEntriesPage] = useState(() => initialEntriesPage(initialEntries.length))
+  const [entriesPage, setEntriesPage] = useState(() => entryPageForCount(initialEntries.length))
   const [hasMoreEntries, setHasMoreEntries] = useState(initialEntries.length >= 200)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
-
-  // router.refresh() after a delete/status-change/bulk action re-runs the
-  // server component and hands us a fresh `initialEntries` prop — but
-  // useState(initialEntries) only applies on mount, so without this the
-  // list would silently keep showing stale data (and any "loaded more"
-  // pages would be lost) on every such refresh. Reset pagination to match
-  // the fresh prop, same formula as the initial state above.
-  useEffect(() => {
-    setEntries(initialEntries)
-    setEntriesPage(initialEntriesPage(initialEntries.length))
-    setHasMoreEntries(initialEntries.length >= 200)
-  }, [initialEntries])
-
-  // ── Server-side search & sort ──────────────────────────────────────────
-  // searchQuery used to only filter whatever happened to already be in
-  // `entries` (the first 200 rows, or however much "Muat Lebih Banyak" had
-  // pulled in) — a collection bigger than that silently hid any match past
-  // the loaded window. getEntriesAction already supports a real `search`
-  // param (Postgres tsvector/ILIKE across the whole collection) and now
-  // also `sortBy`/`sortOrder` (see actions/content.ts) — debounced here so
-  // typing doesn't fire a request per keystroke, and re-fetches page 1
-  // (replacing `entries` outright) whenever the search term or sort
-  // changes. The existing client-side `filteredEntries` below still runs
-  // on top of this for status-filter narrowing and the relation-label-aware
-  // "search inside a related record" refinement the server can't do.
   const [sortBy, setSortBy] = useState<"createdAt" | "updatedAt" | "status">("createdAt")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [isServerSearching, setIsServerSearching] = useState(false)
-  const skipNextServerLoad = useRef(true)
+  const [searchError, setSearchError] = useState<string | null>(null)
+  const [searchAttempt, setSearchAttempt] = useState(0)
+  const activeQuery = useRef<{ cancelled: boolean } | null>(null)
 
-  // Date range + author filters — same server-round-trip model as search
-  // above, since both need to reach entries beyond whatever's loaded in
-  // `entries`. "" means "no filter" for authorFilter/dateFrom/dateTo.
   const [dateField, setDateField] = useState<"createdAt" | "publishedAt">("createdAt")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
@@ -190,60 +171,63 @@ export function ContentEntriesManager({
   const hasDateFilter = Boolean(dateFrom || dateTo)
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400)
+    return () => clearTimeout(timer)
   }, [searchQuery])
 
-  const parseEntryData = (e: any) => {
-    let parsedData = e.data
-    if (typeof e.data === "string") {
-      try { parsedData = JSON.parse(e.data) } catch { parsedData = {} }
-    }
-    return { ...e, data: parsedData }
-  }
-
-  const loadServerEntries = async () => {
-    setIsServerSearching(true)
-    try {
-      const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
-        page: 1,
-        pageSize: ENTRIES_PAGE_SIZE,
-        search: debouncedSearch || undefined,
-        sortBy,
-        sortOrder,
-        authorId: authorFilter || undefined,
-        dateField,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      })
-      if ("error" in result && result.error) {
-        toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
-        return
-      }
-      const newEntries = (result.entries || []).map(parseEntryData)
-      setEntries(newEntries)
-      setRelationLabelsMap(result.relationLabels || {})
-      setEntriesPage(1)
-      const total = result.meta?.pagination?.total ?? newEntries.length
-      setHasMoreEntries(newEntries.length < total)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal Memuat Data", description: err.message || "Terjadi kesalahan" })
-    } finally {
-      setIsServerSearching(false)
-    }
-  }
+  const query = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    searchField: debouncedSearch ? searchTargetField : undefined,
+    statuses: statusFilter.length === CONTENT_STATUSES.length ? undefined : statusFilter,
+    sortBy,
+    sortOrder,
+    authorId: authorFilter || undefined,
+    dateField,
+    dateFrom: localDateBoundary(dateFrom),
+    dateBefore: localDateBoundary(dateTo, 1),
+  }), [debouncedSearch, searchTargetField, statusFilter, sortBy, sortOrder, authorFilter, dateField, dateFrom, dateTo])
 
   useEffect(() => {
-    // Skip the very first run — `initialEntries` from the server already
-    // reflects the default (no search, createdAt desc) state, so refetching
-    // it immediately on mount would just be a redundant round-trip.
-    if (skipNextServerLoad.current) {
-      skipNextServerLoad.current = false
-      return
+    const request = { cancelled: false }
+    activeQuery.current = request
+    const useInitial = !query.search && !query.statuses && !query.authorId && !query.dateFrom &&
+      !query.dateBefore && query.sortBy === "createdAt" && query.sortOrder === "desc"
+
+    setSearchError(null)
+    setIsLoadingMore(false)
+    setSelectedIds([])
+
+    if (useInitial) {
+      setEntries(initialEntries)
+      setRelationLabelsMap(initialRelationLabels)
+      setEntriesPage(entryPageForCount(initialEntries.length))
+      setHasMoreEntries(initialEntries.length >= 200)
+      setIsServerSearching(false)
+    } else {
+      setIsServerSearching(true)
+      void getEntriesAction(tenantSlug, contentTypeSlug, { ...query, page: 1, pageSize: ENTRIES_PAGE_SIZE })
+        .then((result) => {
+          if (request.cancelled) return
+          if (result.error) {
+            setSearchError("Filter entri gagal dimuat.")
+            return
+          }
+          const newEntries = (result.entries || []).map(parseEntryData)
+          setEntries(newEntries)
+          setRelationLabelsMap(result.relationLabels || {})
+          setEntriesPage(1)
+          setHasMoreEntries(newEntries.length < (result.meta?.pagination?.total ?? newEntries.length))
+        })
+        .catch(() => {
+          if (!request.cancelled) setSearchError("Filter entri gagal dimuat.")
+        })
+        .finally(() => {
+          if (!request.cancelled) setIsServerSearching(false)
+        })
     }
-    loadServerEntries()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch, sortBy, sortOrder, authorFilter, dateField, dateFrom, dateTo])
+
+    return () => { request.cancelled = true }
+  }, [query, tenantSlug, contentTypeSlug, initialEntries, initialRelationLabels, searchAttempt])
 
   const toggleSort = (column: "createdAt" | "updatedAt" | "status") => {
     if (sortBy === column) {
@@ -255,39 +239,31 @@ export function ContentEntriesManager({
   }
 
   const handleLoadMoreEntries = async () => {
+    if (isLoadingMore || isServerSearching || searchError || searchQuery.trim() !== debouncedSearch) return
+    const request = activeQuery.current
+    if (!request || request.cancelled) return
     setIsLoadingMore(true)
     try {
       const nextPage = entriesPage + 1
-      const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
-        page: nextPage,
-        pageSize: ENTRIES_PAGE_SIZE,
-        search: debouncedSearch || undefined,
-        sortBy,
-        sortOrder,
-        authorId: authorFilter || undefined,
-        dateField,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-      })
-      if ("error" in result && result.error) {
+      const result = await getEntriesAction(tenantSlug, contentTypeSlug, { ...query, page: nextPage, pageSize: ENTRIES_PAGE_SIZE })
+      if (request.cancelled) return
+      if (result.error) {
         toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
         return
       }
+
       const newEntries = (result.entries || []).map(parseEntryData)
       setEntries(prev => {
-        const existingIds = new Set(prev.map((e: any) => e.id))
-        return [...prev, ...newEntries.filter((e: any) => !existingIds.has(e.id))]
+        const existingIds = new Set(prev.map((entry) => entry.id))
+        return [...prev, ...newEntries.filter((entry) => !existingIds.has(entry.id))]
       })
-      if (result.relationLabels) {
-        setRelationLabelsMap(prev => ({ ...prev, ...result.relationLabels }))
-      }
+      setRelationLabelsMap(prev => ({ ...prev, ...result.relationLabels }))
       setEntriesPage(nextPage)
-      const total = result.meta?.pagination?.total ?? 0
-      setHasMoreEntries(nextPage * ENTRIES_PAGE_SIZE < total)
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal Memuat Data", description: err.message || "Terjadi kesalahan" })
+      setHasMoreEntries(nextPage * ENTRIES_PAGE_SIZE < (result.meta?.pagination?.total ?? 0))
+    } catch {
+      if (!request.cancelled) toast({ variant: "destructive", title: "Gagal Memuat Data" })
     } finally {
-      setIsLoadingMore(false)
+      if (!request.cancelled) setIsLoadingMore(false)
     }
   }
 
@@ -548,78 +524,7 @@ export function ContentEntriesManager({
     return opts
   }, [contentType, relatedSchemas])
 
-  // Filtered entries by query, target field, and workflow status
-  const filteredEntries = useMemo(() => {
-    return entries.filter(entry => {
-      const data = entry.data || {}
-      const matchesStatus = statusFilter.includes(entry.status)
-      if (!matchesStatus) return false
-
-      if (!searchQuery.trim()) return true
-      const q = searchQuery.toLowerCase()
-
-      if (searchTargetField === "all") {
-        // Search in main label/title
-        const mainLabel = extractEntryLabel(data, entry.id).toLowerCase()
-        if (mainLabel.includes(q)) return true
-        if (entry.id.toLowerCase().includes(q)) return true
-
-        // Search in all entry.data string values
-        for (const [key, val] of Object.entries(data)) {
-          if (val && typeof val === "string" && val.toLowerCase().includes(q)) return true
-          if (Array.isArray(val) && val.some(item => typeof item === "string" && item.toLowerCase().includes(q))) return true
-          // If val matches a relation label
-          if (typeof val === "string" && relationLabelsMap[val]) {
-            const relItem = relationLabelsMap[val]
-            if (relItem.label.toLowerCase().includes(q)) return true
-            if (relItem.subtitle && relItem.subtitle.toLowerCase().includes(q)) return true
-            if (relItem.data) {
-              for (const rVal of Object.values(relItem.data)) {
-                if (typeof rVal === "string" && rVal.toLowerCase().includes(q)) return true
-              }
-            }
-          }
-        }
-        return false
-      } else {
-        // Targeted Field Search
-        if (searchTargetField.includes(".")) {
-          const [relSlug, subSlug] = searchTargetField.split(".")
-          const relId = data[relSlug]
-          if (relId) {
-            const ids = Array.isArray(relId) ? relId : [relId]
-            return ids.some(id => {
-              const relData = relationLabelsMap[id]?.data
-              if (relData && relData[subSlug]) {
-                return String(relData[subSlug]).toLowerCase().includes(q)
-              }
-              return false
-            })
-          }
-          return false
-        } else {
-          const val = data[searchTargetField]
-          if (val === undefined || val === null) return false
-          if (typeof val === "string") {
-            if (val.toLowerCase().includes(q)) return true
-            if (relationLabelsMap[val]?.label.toLowerCase().includes(q)) return true
-            if (relationLabelsMap[val]?.subtitle?.toLowerCase().includes(q)) return true
-          } else if (Array.isArray(val)) {
-            return val.some(item => {
-              if (typeof item === "string") {
-                if (item.toLowerCase().includes(q)) return true
-                if (relationLabelsMap[item]?.label.toLowerCase().includes(q)) return true
-              }
-              return false
-            })
-          } else {
-            return String(val).toLowerCase().includes(q)
-          }
-          return false
-        }
-      }
-    })
-  }, [entries, searchQuery, searchTargetField, statusFilter, relationLabelsMap])
+  const filteredEntries = entries
 
   const handleToggleSelectAll = () => {
     if (selectedIds.length === filteredEntries.length) {
@@ -1142,7 +1047,7 @@ export function ContentEntriesManager({
                     <TooltipContent>Status ({statusFilter.length})</TooltipContent>
                   </Tooltip>
                   <DropdownMenuContent align="end" className="w-48 rounded-xl border-border bg-card shadow-xs">
-                    {Object.keys(STATUS_CONFIG).map(s => (
+                    {CONTENT_STATUSES.map(s => (
                       <DropdownMenuCheckboxItem
                         key={s}
                         checked={statusFilter.includes(s)}
@@ -1456,6 +1361,15 @@ export function ContentEntriesManager({
               onPermanentlyDelete={handlePermanentlyDeleteEntry}
               restoreWindowDays={TRASH_RESTORE_WINDOW_DAYS}
             />
+          ) : isServerSearching || searchQuery.trim() !== debouncedSearch ? (
+            <p role="status" className="py-6 text-center text-sm text-muted-foreground">Memuat entri…</p>
+          ) : searchError ? (
+            <div role="alert" className="flex items-center justify-between gap-3 rounded-lg border border-destructive/40 p-4">
+              <p className="text-sm text-destructive">{searchError}</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => setSearchAttempt(value => value + 1)}>
+                Coba lagi
+              </Button>
+            </div>
           ) : (
           <>
           {/* Conditional View: Kanban Board vs Table vs Calendar */}
@@ -1551,7 +1465,7 @@ export function ContentEntriesManager({
                             variant="link" 
                             size="sm" 
                             className="text-primary text-xs font-bold mt-1" 
-                            onClick={() => { setSearchQuery(""); setSearchTargetField("all"); setStatusFilter(Object.keys(STATUS_CONFIG)) }}
+                            onClick={() => { setSearchQuery(""); setSearchTargetField("all"); setStatusFilter([...CONTENT_STATUSES]) }}
                           >
                             Reset Filter Pencarian
                           </Button>
@@ -1857,7 +1771,7 @@ export function ContentEntriesManager({
               <Button
                 variant="outline"
                 onClick={handleLoadMoreEntries}
-                disabled={isLoadingMore}
+                disabled={isLoadingMore || isServerSearching || searchQuery.trim() !== debouncedSearch}
                 className="h-9 text-xs font-bold rounded-xl gap-1.5"
               >
                 {isLoadingMore ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}

@@ -1,6 +1,7 @@
 import Midtrans from 'midtrans-client'
 import crypto from 'crypto'
 import { isMockAllowed, requireCredentialOutsideMock } from './dev-mode'
+import { resolveRecurringCharge, resolveYearlyPrice, type BillingInterval } from './billing/plan-price'
 
 interface CustomerDetails {
   email: string
@@ -220,13 +221,13 @@ export type PlanType = string
  * table is genuinely empty (shouldn't happen post-migration, but matches
  * the old "never return nothing" behavior rather than a new failure mode).
  */
-export async function getDynamicAccountPrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
+export async function getDynamicAccountPrices(options?: { includeInactive: boolean }): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
     const { getAccountPlans } = await import("@/lib/pricing")
-    const plans = await getAccountPlans()
+    const plans = await getAccountPlans(options)
     if (plans.length > 0) {
       const prices: Record<string, { monthly: number, yearly: number }> = {}
-      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: p.yearlyPrice ?? 0 }
+      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: resolveYearlyPrice(p.price, p.yearlyPrice) }
       return prices
     }
   } catch (e) {
@@ -242,13 +243,13 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
   return fallbackPrices
 }
 
-export async function getDynamicWorkspacePrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
+export async function getDynamicWorkspacePrices(options?: { includeInactive: boolean }): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
     const { getWorkspacePlans } = await import("@/lib/pricing")
-    const plans = await getWorkspacePlans()
+    const plans = await getWorkspacePlans(options)
     if (plans.length > 0) {
       const prices: Record<string, { monthly: number, yearly: number }> = {}
-      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: p.yearlyPrice ?? 0 }
+      for (const p of plans) prices[p.slug] = { monthly: p.price, yearly: resolveYearlyPrice(p.price, p.yearlyPrice) }
       return prices
     }
   } catch (e) {
@@ -263,25 +264,16 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
   return fallbackPrices
 }
 
-/**
- * Resolve a subscription's real monthly price: the live, CMS-configured
- * price for its plan slug (looked up in the account-plan or workspace-plan
- * table, matching which one the subscription actually belongs to), falling
- * back to the static PLAN_PRICES map only when nothing dynamic is
- * configured for that slug. This is the one true price source actual
- * billing already used (generate-invoices) — now also reused by the admin
- * financial reports (financial-engine.ts) so the Executive P&L can no
- * longer drift from what tenants are actually charged.
- */
-export function resolveSubscriptionMonthlyPrice(
+/** Resolve catalog terms for a subscription that predates price snapshots. */
+export function getSubscriptionCatalogPrice(
   plan: string,
   isAccountPlan: boolean,
   dynamicWorkspacePrices: Record<string, { monthly: number; yearly: number }>,
   dynamicAccountPrices: Record<string, { monthly: number; yearly: number }>,
-): number {
+) {
   const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-  const rawPrice = dynamicPrices[plan] ?? PLAN_PRICES[plan] ?? 0
-  return typeof rawPrice === "number" ? rawPrice : rawPrice.monthly
+  const monthly = PLAN_PRICES[plan] ?? 0
+  return dynamicPrices[plan] ?? { monthly, yearly: resolveYearlyPrice(monthly) }
 }
 
 /**
@@ -302,7 +294,12 @@ export async function calculateProratedAmount(
   newPlan: PlanType,
   currentPeriodStart: Date | string | null,
   currentPeriodEnd: Date | string | null,
-  isAccountPlan: boolean = false
+  isAccountPlan: boolean = false,
+  options: {
+    currentBillingInterval?: string | null
+    currentRecurringAmount?: number | null
+    newInterval?: BillingInterval
+  } = {},
 ): Promise<{
   fullPrice: number
   proratedPrice: number
@@ -318,13 +315,24 @@ export async function calculateProratedAmount(
   // at different prices — pricing both off the workspace table regardless
   // of which product is being bought mismatches the credit against what
   // was actually paid, and can make isDowngrade wrong in either direction.
-  const dynamicPrices = isAccountPlan ? await getDynamicAccountPrices() : await getDynamicWorkspacePrices()
-  const currentPlanPrice = dynamicPrices[currentPlan]?.monthly || 0
-  const newPlanPrice = dynamicPrices[newPlan]?.monthly || 0
-  const isDowngrade = currentPlanPrice > newPlanPrice
+  const dynamicPrices = isAccountPlan
+    ? await getDynamicAccountPrices({ includeInactive: true })
+    : await getDynamicWorkspacePrices({ includeInactive: true })
+  const currentCatalog = getSubscriptionCatalogPrice(currentPlan, isAccountPlan, dynamicPrices, dynamicPrices)
+  const newCatalog = getSubscriptionCatalogPrice(newPlan, isAccountPlan, dynamicPrices, dynamicPrices)
+  const currentPlanPrice = resolveRecurringCharge({
+    currentPeriodStart,
+    currentPeriodEnd,
+    billingInterval: options.currentBillingInterval,
+    recurringAmount: options.currentRecurringAmount,
+  }, currentCatalog).amount
+  const newPlanPrice = options.newInterval === "year" ? newCatalog.yearly : newCatalog.monthly
+  const isDowngrade = currentPlan !== newPlan && currentCatalog.monthly > newCatalog.monthly
 
   // If no active period, pay full price
-  if (!currentPeriodStart || !currentPeriodEnd) {
+  const start = currentPeriodStart ? new Date(currentPeriodStart).getTime() : NaN
+  const end = currentPeriodEnd ? new Date(currentPeriodEnd).getTime() : NaN
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
     return {
       fullPrice: newPlanPrice,
       proratedPrice: newPlanPrice,
@@ -337,39 +345,34 @@ export async function calculateProratedAmount(
     }
   }
 
-  const startDate = new Date(currentPeriodStart)
-  const endDate = new Date(currentPeriodEnd)
-  const now = new Date()
+  const now = Date.now()
 
   // Calculate total days in current period
   const totalDays = Math.ceil(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+    (end - start) / (1000 * 60 * 60 * 24)
   )
 
   // Calculate days remaining
   const daysRemaining = Math.max(
     0,
-    Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+    Math.ceil((end - now) / (1000 * 60 * 60 * 24))
   )
 
   // Calculate percentage used
   const percentageUsed = Math.min(
     1,
-    Math.max(0, (now.getTime() - startDate.getTime()) / (endDate.getTime() - startDate.getTime()))
+    Math.max(0, (now - start) / (end - start))
   )
 
   // Calculate credit from unused portion of current plan
   const credit = Math.round(currentPlanPrice * (1 - percentageUsed))
 
-  // Calculate prorated new plan price for remaining days
-  const proratedPrice = Math.round(newPlanPrice * (daysRemaining / totalDays))
-
-  // Amount due: prorated new plan price minus credit
-  const amountDue = Math.max(0, proratedPrice - credit)
+  // Checkout starts a fresh term and credits the unused portion of the old term.
+  const amountDue = Math.max(0, newPlanPrice - credit)
 
   return {
     fullPrice: newPlanPrice,
-    proratedPrice,
+    proratedPrice: newPlanPrice,
     daysRemaining,
     totalDays,
     percentageUsed,

@@ -1,47 +1,50 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db, getTenantDb } from "@/lib/database"
-import { revalidatePath } from "next/cache"
-import { createWebhookSchema, updateWebhookSchema } from "@/lib/validations"
-import { z } from "zod/v4"
-import { isPlatformStaff } from "@/lib/platform-roles"
+import { db, Prisma } from "@/lib/database"
+import { getTenantAccess } from "@/lib/tenant-access"
+import { isWorkspaceAdmin } from "@/lib/rbac/staff"
+import { assertPublicUrl } from "@/lib/safe-url"
+import { logAudit, AuditAction } from "@/lib/audit-log"
+import { createWebhookSchema, updateWebhookSchema } from "@/lib/validations/webhook"
+import type { CreateWebhookInput, UpdateWebhookInput } from "@/lib/validations/webhook"
+
+const webhookSummary = {
+  id: true,
+  name: true,
+  url: true,
+  events: true,
+  enabled: true,
+  lastTriggeredAt: true,
+  failureCount: true,
+  createdAt: true,
+} satisfies Prisma.WebhookSelect
+
+async function getAccess(tenantSlug: string, requireAdmin = false) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return { error: "Unauthorized" } as const
+
+  const access = await getTenantAccess(session, tenantSlug)
+  if (!access || (requireAdmin && !isWorkspaceAdmin(access.role))) {
+    return { error: "Forbidden" } as const
+  }
+
+  return { access }
+}
 
 export async function getWebhooksAction(tenantSlug: string) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
+    const result = await getAccess(tenantSlug)
+    if ("error" in result) return { error: result.error }
 
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-    })
-    if (!tenant) return { error: "Tenant not found" }
-
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
-    })
-
-    if (!membership && !isPlatformStaff(session.user.role)) {
-      return { error: "Forbidden" }
-    }
-
-    const tenantDb = await getTenantDb(tenant.slug)
-    const webhooks = await tenantDb.webhook.findMany({
-      where: { tenantId: tenant.id },
+    // Definitions, delivery logs, and retries share the platform database.
+    const webhooks = await db.webhook.findMany({
+      where: { tenantId: result.access.tenantId },
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        name: true,
-        url: true,
-        events: true,
-        enabled: true,
-        lastTriggeredAt: true,
-        failureCount: true,
-        createdAt: true,
-      },
+      select: webhookSummary,
     })
-
     return { webhooks }
   } catch (error) {
     console.error("Error fetching webhooks:", error)
@@ -49,44 +52,24 @@ export async function getWebhooksAction(tenantSlug: string) {
   }
 }
 
-export async function createWebhookAction(tenantSlug: string, data: z.infer<typeof createWebhookSchema>) {
+export async function createWebhookAction(tenantSlug: string, data: CreateWebhookInput) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-    })
-    if (!tenant) return { error: "Tenant not found" }
-
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-        role: { in: ["owner", "admin"] },
-      },
-    })
-
-    if (!membership && !isPlatformStaff(session.user.role)) {
-      return { error: "Forbidden - Admin access required" }
-    }
+    const result = await getAccess(tenantSlug, true)
+    if ("error" in result) return { error: result.error }
 
     const parsed = createWebhookSchema.safeParse(data)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
-    const { name, url, secret, events, enabled } = parsed.data
+    const { name, url, secret, enabled, events, headers, hookType } = parsed.data
+    if (!await assertPublicUrl(url).catch(() => null)) {
+      return { error: "URL webhook harus mengarah ke endpoint HTTP(S) publik." }
+    }
 
-    const tenantDb = await getTenantDb(tenant.slug)
-    const webhook = await tenantDb.webhook.create({
-      data: {
-        tenantId: tenant.id,
-        name,
-        url,
-        secret: secret || null,
-        events: events as any,
-        enabled: enabled !== false,
-      },
+    const { tenantId, userId } = result.access
+    const webhook = await db.webhook.create({
+      data: { tenantId, name, url, secret: secret || null, enabled, events, headers, hookType },
+      select: webhookSummary,
     })
-
+    logAudit({ tenantId, userId, action: AuditAction.WEBHOOK_CREATED, entity: "Webhook", entityId: webhook.id })
     revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
     return { webhook }
   } catch (error) {
@@ -95,61 +78,27 @@ export async function createWebhookAction(tenantSlug: string, data: z.infer<type
   }
 }
 
-export async function updateWebhookAction(tenantSlug: string, webhookId: string, data: z.infer<typeof updateWebhookSchema>) {
+export async function updateWebhookAction(tenantSlug: string, webhookId: string, data: UpdateWebhookInput) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-    })
-    if (!tenant) return { error: "Tenant not found" }
-
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-        role: { in: ["owner", "admin"] },
-      },
-    })
-
-    if (!membership && !isPlatformStaff(session.user.role)) {
-      return { error: "Forbidden - Admin access required" }
-    }
-
-    const tenantDb = await getTenantDb(tenant.slug)
-    const webhook = await tenantDb.webhook.findFirst({
-      where: { id: webhookId, tenantId: tenant.id },
-    })
-    if (!webhook) return { error: "Webhook not found" }
+    const result = await getAccess(tenantSlug, true)
+    if ("error" in result) return { error: result.error }
 
     const parsed = updateWebhookSchema.safeParse(data)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
-    const { name, url, secret, events, enabled } = parsed.data
-    const headers = (parsed.data as Record<string, unknown>).headers
-
-    const updateData: any = {}
-    if (name !== undefined) updateData.name = name
-    if (url !== undefined) {
-      try {
-        new URL(url)
-        updateData.url = url
-      } catch {
-        return { error: "Invalid URL" }
-      }
+    const { name, url, secret, enabled, events, headers, hookType } = parsed.data
+    if (url !== undefined && !await assertPublicUrl(url).catch(() => null)) {
+      return { error: "URL webhook harus mengarah ke endpoint HTTP(S) publik." }
     }
-    if (secret !== undefined) updateData.secret = secret || null
-    if (events !== undefined) updateData.events = events
-    if (enabled !== undefined) updateData.enabled = enabled
-    if (headers !== undefined) updateData.headers = headers || null
 
-    const updated = await tenantDb.webhook.update({
-      where: { id: webhookId },
-      data: updateData,
+    const { tenantId, userId } = result.access
+    const updated = await db.webhook.updateMany({
+      where: { id: webhookId, tenantId },
+      data: { name, url, secret: secret === undefined ? undefined : secret || null, enabled, events, headers, hookType },
     })
-
+    if (updated.count === 0) return { error: "Webhook not found" }
+    logAudit({ tenantId, userId, action: AuditAction.WEBHOOK_UPDATED, entity: "Webhook", entityId: webhookId })
     revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
-    return { webhook: updated }
+    return { success: true }
   } catch (error) {
     console.error("Error updating webhook:", error)
     return { error: "Internal server error" }
@@ -158,40 +107,13 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
 
 export async function deleteWebhookAction(tenantSlug: string, webhookId: string) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
+    const result = await getAccess(tenantSlug, true)
+    if ("error" in result) return { error: result.error }
 
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-    })
-    if (!tenant) return { error: "Tenant not found" }
-
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-        role: { in: ["owner", "admin"] },
-      },
-    })
-
-    if (!membership && !isPlatformStaff(session.user.role)) {
-      return { error: "Forbidden - Admin access required" }
-    }
-
-    const tenantDb = await getTenantDb(tenant.slug)
-    const webhook = await tenantDb.webhook.findFirst({
-      where: { id: webhookId, tenantId: tenant.id },
-    })
-    if (!webhook) return { error: "Webhook not found" }
-
-    await tenantDb.webhookLog.deleteMany({
-      where: { webhookId },
-    })
-
-    await tenantDb.webhook.delete({
-      where: { id: webhookId },
-    })
-
+    const { tenantId, userId } = result.access
+    const deleted = await db.webhook.deleteMany({ where: { id: webhookId, tenantId } })
+    if (deleted.count === 0) return { error: "Webhook not found" }
+    logAudit({ tenantId, userId, action: AuditAction.WEBHOOK_DELETED, entity: "Webhook", entityId: webhookId })
     revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
     return { success: true }
   } catch (error) {

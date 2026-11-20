@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { redirect } from "next/navigation"
+import { getWorkspaceApiPolicy } from "@/lib/workspace-api-policy"
 
 export default async function TenantApiKeysPage({ params }: { params: Promise<{ tenant: string }> }) {
   const session = await getServerSession(authOptions)
@@ -16,13 +17,9 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
 
   const tenant = access.tenant
 
-  const [tokensData, settings, legacyApiKeys] = await Promise.all([
+  const [tokensData, policy, legacyApiKeys] = await Promise.all([
     getApiTokensAction(tenantSlug),
-    db.setting.findMany({
-      where: {
-        OR: [{ tenantId: tenant.id }, { tenantId: null }]
-      }
-    }),
+    getWorkspaceApiPolicy(tenant.id),
     // Legacy singleton credential (pre-dates the multi-token ApiToken model).
     // Always full-access, with no expiry/permission granularity — surfaced
     // here (masked, revoke-only) so it's no longer an invisible, unmanageable
@@ -37,18 +34,12 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
     // fetch here anymore (see mcp-client.tsx's self-contained token card).
   ])
 
-  const settingsMap: Record<string, string> = {}
-  settings.forEach((s) => {
-    settingsMap[s.key] = s.value
-  })
-
   const initialSettings = {
     tenantId: tenant.id,
-    apiVersion: settingsMap.apiVersion || "v1",
-    rateLimiting: settingsMap.rateLimiting !== "false",
-    requestsPerMinute: settingsMap.requestsPerMinute || "60",
-    burstLimit: settingsMap.burstLimit || "100",
-    corsOrigins: settingsMap.corsOrigins || "",
+    rateLimiting: policy.rateLimiting,
+    requestsPerMinute: String(policy.requestsPerMinute),
+    burstLimit: String(policy.burstLimit),
+    corsOrigins: policy.corsOrigins,
   }
 
   return (

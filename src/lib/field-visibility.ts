@@ -28,6 +28,11 @@ export function isFieldVisible(field: { options?: any }, formData: Record<string
   return showIf.operator === "notEquals" ? !matches : matches
 }
 
+export function isStudioFieldEnabled(field: { showInCms?: boolean; options?: unknown }): boolean {
+  const options = typeof field.options === "string" ? safeParse(field.options) : field.options
+  return field.showInCms !== false && (options as { showInCms?: boolean } | null)?.showInCms !== false
+}
+
 function safeParse(raw: string): any {
   try {
     return JSON.parse(raw)

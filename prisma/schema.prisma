@@ -503,10 +503,15 @@ model ApiKey {
 
 model Subscription {
   id                     String               @id @default(cuid())
-  userId                 String
+  userId                 String?
   tenantId               String?
   plan                   String
   status                 String               @default("active")
+  billingInterval        String?
+  recurringAmount        Float?
+  tenantNameSnapshot     String?
+  tenantSlugSnapshot     String?
+  userNameSnapshot       String?
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   cancelAtPeriodEnd      Boolean              @default(false)
@@ -516,8 +521,8 @@ model Subscription {
   midtransSubscriptionId String?
   invoices               Invoice[]
   paymentTransactions    PaymentTransaction[]
-  tenant                 Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant                 Tenant?              @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  user                   User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("subscriptions")
 }

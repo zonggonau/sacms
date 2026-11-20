@@ -13,8 +13,6 @@ import {
   Sun,
   Moon,
   LogOut,
-  Menu,
-  X,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
@@ -23,6 +21,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
+import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
 
 const billingNavItems = [
   { 
@@ -57,7 +56,6 @@ export function BillingSubSidebar() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
-  const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
@@ -99,7 +97,6 @@ export function BillingSubSidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  onClick={() => setMobileOpen(false)}
                 >
                   <div
                     className={cn(
@@ -189,33 +186,9 @@ export function BillingSubSidebar() {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <Button
-        variant="outline"
-        size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/90 backdrop-blur border border-border shadow-xs rounded-xl text-foreground"
-        onClick={() => setMobileOpen(!mobileOpen)}
-      >
-        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </Button>
-
-      {/* Mobile Backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      {/* Mobile Drawer */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 transition-transform duration-200 md:hidden bg-card",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
+      <MobilePortalMenu portal="Billing Admin" className="fixed left-3 top-3 z-40 bg-card/90 shadow-xs backdrop-blur">
         {renderSidebarContent()}
-      </aside>
+      </MobilePortalMenu>
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col h-full bg-card border-r border-border">

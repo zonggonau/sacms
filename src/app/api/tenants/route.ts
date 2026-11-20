@@ -8,6 +8,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { randomBytes } from "crypto"
 import { provisionTenant } from "@/lib/tenant-provisioning"
 import { slugify } from "@/lib/slug"
+import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -119,32 +120,14 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    // Check workspace limit using centralized enforcement
-    const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
-
-    const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
-    if (!workspaceEnforcement.allowed) {
-      return NextResponse.json({ 
-        error: workspaceEnforcement.message,
-        current: workspaceEnforcement.current,
-        max: workspaceEnforcement.max,
-        plan: workspaceEnforcement.planSlug,
-      }, { status: 403 })
-    }
-
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
-    const { name, description, plan = "free", aiPrompt, websiteType } = result.data
-
-    // Validate workspace plan doesn't exceed user plan
-    const planBinding = await validateWorkspacePlanBinding(session.user.id, plan)
-    if (!planBinding.allowed) {
-      return NextResponse.json({ error: planBinding.message }, { status: 403 })
-    }
+    const { name, description, plan: requestedPlan = "free", aiPrompt, websiteType } = result.data
+    const plan = requestedPlan.toLowerCase()
 
     const slug = await generateUniqueSlug()
 
-    const tenant = await db.$transaction(async (tx) => {
+    const creation = await withWorkspaceCreation(session.user.id, plan, async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
           name,
@@ -178,10 +161,6 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      if (plan === "free") {
-        await tx.user.update({ where: { id: session.user.id }, data: { freeWorkspaceUsed: true } })
-      }
-
       // Create default API key using ApiToken (new model)
       const plainToken = `cf_${randomBytes(32).toString("hex")}`
       const { createHash } = await import("crypto")
@@ -200,6 +179,14 @@ export async function POST(request: NextRequest) {
 
       return newTenant
     })
+    if (!creation.ok) {
+      const { limit } = creation
+      return NextResponse.json({
+        error: creation.error,
+        ...(limit && { current: limit.current, max: limit.max, plan: limit.planSlug }),
+      }, { status: 403 })
+    }
+    const tenant = creation.value
 
     // Provision default content types and demo data asynchronously
     // We don't await here to return 201 faster, OR we await but rely on the provisioning status for UI

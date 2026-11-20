@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import React, { useCallback, useEffect, useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -54,12 +54,10 @@ interface Permission {
 
 interface Role {
   id: string
-  name: string
   displayName: string
-  description: string | null
+  access: string
   isLocked?: boolean
   permissions: Array<{ id: string; name: string }>
-  permissionCount: number
 }
 
 const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
@@ -78,6 +76,8 @@ export function RbacMatrixView() {
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [savingAssignments, setSavingAssignments] = useState(false)
   
   // New Permission Dialog State
   const [isPermOpen, setIsPermOpen] = useState(false)
@@ -91,97 +91,45 @@ export function RbacMatrixView() {
   })
   const [editingPerm, setEditingPerm] = useState<Permission | null>(null)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const [permRes, roleRes] = await Promise.all([
-        fetch("/api/admin/rbac/permissions"),
-        fetch("/api/admin/rbac/roles"),
-      ])
-      if (permRes.ok && roleRes.ok) {
-        const permData = await permRes.json()
-        const roleData = await roleRes.json()
-        setPermissions(permData.permissions || [])
-        setRoles(roleData.roles || [])
-      }
-    } catch (error) {
-      console.error("Failed to fetch RBAC data:", error)
+      const response = await fetch("/api/admin/rbac/roles")
+      if (!response.ok) throw new Error("Gagal memuat peran platform")
+      const data = await response.json()
+      setPermissions(data.permissions ?? [])
+      setRoles(data.roles ?? [])
+      setLoadError(false)
+    } catch {
+      setLoadError(true)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }
-
-  useEffect(() => {
-    fetchData()
   }, [])
 
-  const handleTogglePermission = async (roleId: string, permissionId: string, currentlyGranted: boolean) => {
-    if (roleId === "super_admin") {
-      toast({
-        title: "Peran Terkunci",
-        description: "Super Admin selalu memiliki akses penuh ke seluruh kapabilitas platform.",
-      })
-      return
-    }
+  useEffect(() => {
+    void fetchData()
+  }, [fetchData])
 
+  const saveAssignments = async (roleId: string, permissionIds: string[], granted: boolean) => {
+    if (roleId === "super_admin" || permissionIds.length === 0) return
+    setSavingAssignments(true)
     try {
-      const method = currentlyGranted ? "DELETE" : "POST"
-      const res = await fetch(`/api/admin/rbac/roles/${roleId}/permissions`, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permissionId }),
-      })
-
-      if (res.ok) {
-        setRoles(prev => prev.map(role => {
-          if (role.id === roleId) {
-            const newPerms = currentlyGranted
-              ? role.permissions.filter(p => p.id !== permissionId)
-              : [...role.permissions, { id: permissionId, name: permissions.find(p => p.id === permissionId)?.name || "" }]
-            return {
-              ...role,
-              permissions: newPerms,
-              permissionCount: newPerms.length
-            }
-          }
-          return role
-        }))
-        toast({
-          title: currentlyGranted ? "Izin Dicabut" : "Izin Diberikan",
-          description: "Hak akses peran berhasil diperbarui secara instan."
-        })
-      } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui izin" })
-      }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
-    }
-  }
-
-  const handleToggleCategory = async (roleId: string, category: string, allCurrentlyGranted: boolean) => {
-    if (roleId === "super_admin") return
-
-    const catPerms = permissions.filter(p => p.category === category)
-    try {
-      const res = await fetch(`/api/admin/rbac/roles/${roleId}/permissions/bulk`, {
+      const response = await fetch("/api/admin/rbac/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          permissionIds: catPerms.map(p => p.id),
-          action: allCurrentlyGranted ? "revoke" : "grant"
-        }),
+        body: JSON.stringify({ roleId, permissionIds, granted }),
       })
-
-      if (res.ok) {
-        fetchData()
-        toast({
-          title: "Izin Diperbarui",
-          description: `Semua izin untuk kategori '${category}' berhasil diperbarui.`
-        })
+      if (!response.ok) {
+        const result = await response.json().catch(() => null)
+        throw new Error(result?.message || result?.error || "Gagal memperbarui pemetaan")
       }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memperbarui izin massal" })
+      await fetchData()
+      toast({ title: "Pemetaan disimpan" })
+    } catch (error) {
+      toast({ variant: "destructive", title: "Gagal menyimpan", description: error instanceof Error ? error.message : "Coba lagi." })
+    } finally {
+      setSavingAssignments(false)
     }
   }
 
@@ -273,92 +221,43 @@ export function RbacMatrixView() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div role="alert" className="space-y-3 rounded-xl border border-border p-4 text-sm">
+        <p>Gagal memuat peran platform.</p>
+        <Button size="sm" variant="outline" onClick={() => { setRefreshing(true); void fetchData() }} disabled={refreshing}>
+          Coba lagi
+        </Button>
+      </div>
+    )
+  }
+
   // Group permissions by category
   const categories = Array.from(new Set(permissions.map(p => p.category)))
-  const superAdminRole = roles.find(r => r.id === "super_admin")
-  const ownerRole = roles.find(r => r.id === "owner")
 
   return (
     <div className="space-y-6">
       {confirmDialog}
-      {/* Roles Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="rounded-2xl border border-purple-500/20 bg-card shadow-xs">
-          <CardHeader className="p-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                  <Crown className="w-5 h-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    Super Admin
-                    <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] uppercase font-bold rounded-full">
-                      Akses Penuh
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Tata kelola master platform, lisensi enterprise, dan seluruh workspace.
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-black text-purple-600 dark:text-purple-400 font-mono">
-                  {superAdminRole?.permissionCount ?? permissions.length}/{permissions.length}
-                </span>
-                <p className="text-[9px] text-muted-foreground uppercase font-bold">Kapabilitas</p>
-              </div>
+      <section aria-label="Akses platform yang berlaku" className="space-y-3">
+        <h2 className="text-sm font-bold">Akses platform yang berlaku</h2>
+        <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {roles.map((role) => (
+            <div key={role.id} className="rounded-xl border border-border bg-card p-4">
+              <dt className="text-xs font-bold">{role.displayName}</dt>
+              <dd className="mt-1 text-xs text-muted-foreground">{role.access}</dd>
             </div>
-          </CardHeader>
-        </Card>
-
-        <Card className="rounded-2xl border border-emerald-500/20 bg-card shadow-xs">
-          <CardHeader className="p-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
-                  <UserCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    Account Owner
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] uppercase font-bold rounded-full">
-                      Dikonfigurasi
-                    </Badge>
-                  </CardTitle>
-                  <CardDescription className="text-xs mt-0.5">
-                    Pemilik akun SaaS yang membuat workspace, mengelola paket, dan mengundang tim.
-                  </CardDescription>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                  {ownerRole?.permissionCount ?? 0}/{permissions.length}
-                </span>
-                <p className="text-[9px] text-muted-foreground uppercase font-bold">Kapabilitas</p>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Informative Isolation Banner */}
-      <div className="flex items-start gap-3 p-4 rounded-2xl bg-primary/5 border border-primary/20 text-xs text-foreground">
-        <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p className="font-bold text-foreground">Pemisahan Hirarki RBAC Platform vs Workspace:</p>
-          <p className="text-muted-foreground leading-relaxed">
-            Tab ini mengelola hak akses di tingkat <strong>Platform Global</strong> (Super Admin vs Account Owner). 
-            Peran di dalam workspace (seperti <em>Admin, Editor, Author, Contributor, Viewer</em>) 
-            terisolasi mandiri di dalam setiap workspace pada menu <strong>Pengguna & Tim</strong> masing-masing.
-          </p>
+          ))}
+        </dl>
+        <div className="flex items-start gap-2 rounded-xl border border-border px-4 py-3 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>Matriks menyimpan pemetaan katalog. Server menegakkan akses platform pada ringkasan di atas. Peran tim dan pengguna aplikasi diatur di workspace masing-masing.</p>
         </div>
-      </div>
+      </section>
 
       <Tabs defaultValue="matrix" className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl">
-            <TabsTrigger value="matrix" className="rounded-xl font-bold text-xs px-4 py-1.5">Matriks Izin Platform</TabsTrigger>
+            <TabsTrigger value="matrix" className="rounded-xl font-bold text-xs px-4 py-1.5">Pemetaan Katalog</TabsTrigger>
             <TabsTrigger value="permissions" className="rounded-xl font-bold text-xs px-4 py-1.5">Definisi Kapabilitas</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
@@ -471,7 +370,8 @@ export function RbacMatrixView() {
                                     variant="ghost" 
                                     size="sm" 
                                     className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground rounded-lg" 
-                                    onClick={() => handleToggleCategory(role.id, cat, allGranted)}
+                                    disabled={savingAssignments}
+                                    onClick={() => saveAssignments(role.id, catPerms.map((p) => p.id), !allGranted)}
                                   >
                                     {allGranted ? 'Lepas Semua' : 'Pilih Semua'}
                                   </Button>
@@ -519,7 +419,9 @@ export function RbacMatrixView() {
                                     ) : (
                                       <Checkbox 
                                         checked={hasIt} 
-                                        onCheckedChange={() => handleTogglePermission(role.id, perm.id, hasIt)}
+                                        disabled={savingAssignments}
+                                        aria-label={role.displayName + " — " + perm.displayName}
+                                        onCheckedChange={() => saveAssignments(role.id, [perm.id], !hasIt)}
                                         className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 rounded-md h-4 w-4"
                                       />
                                     )}

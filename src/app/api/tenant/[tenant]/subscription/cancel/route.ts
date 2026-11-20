@@ -64,13 +64,30 @@ export const POST = withStaffAuth(
       })
     }
 
-    await db.subscription.update({
-      where: { id: subscription.id },
-      data: { status: "canceled", cancelAtPeriodEnd: false, currentPeriodEnd: null, plan: "free" },
+    const cancelled = await db.$transaction(async (tx) => {
+      if (!ownerId) return false
+      const claim = await tx.user.updateMany({
+        where: { id: ownerId, freeWorkspaceUsed: false },
+        data: { freeWorkspaceUsed: true },
+      })
+      if (claim.count === 0) return false
+
+      // Roll back the claim if checkout or another cancellation changed the
+      // subscription while this request was waiting on the account row.
+      await tx.subscription.update({
+        where: {
+          id: subscription.id,
+          status: subscription.status,
+          plan: subscription.plan,
+          cancelAtPeriodEnd: false,
+        },
+        data: { status: "canceled", cancelAtPeriodEnd: false, currentPeriodEnd: null, plan: "free" },
+      })
+      await tx.tenant.update({ where: { id: access.tenantId }, data: { plan: "free" } })
+      return true
     })
-    await db.tenant.update({ where: { id: access.tenantId }, data: { plan: "free" } })
-    if (ownerId) {
-      await db.user.update({ where: { id: ownerId }, data: { freeWorkspaceUsed: true } })
+    if (!cancelled) {
+      return apiError("validation", { message: "Jatah Workspace Gratis pemilik workspace tidak tersedia." })
     }
 
     return NextResponse.json({

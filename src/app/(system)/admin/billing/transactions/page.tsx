@@ -39,6 +39,8 @@ interface Transaction {
   createdAt: string
   transactionId: string | null
   subscription?: {
+    tenantNameSnapshot?: string | null
+    userNameSnapshot?: string | null
     tenant: {
       name: string
       slug: string
@@ -62,6 +64,8 @@ export default function AdminTransactionsPage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const searchInput = useRef<HTMLInputElement>(null)
   const activeRequest = useRef<AbortController | null>(null)
+  const appliedFilters = useRef(new URLSearchParams())
+  const [exporting, setExporting] = useState(false)
   const canViewTransactions = session?.user?.role === "super_admin" || session?.user?.role === "finance"
   
   // Details Modal
@@ -85,6 +89,9 @@ export default function AdminTransactionsPage() {
       const data = await response.json()
       if (request.signal.aborted) return
 
+      params.delete("page")
+      params.delete("limit")
+      appliedFilters.current = params
       setTransactions(data.transactions)
       setTotalPages(Math.max(1, data.pagination.totalPages))
       setPage(data.pagination.page)
@@ -111,38 +118,33 @@ export default function AdminTransactionsPage() {
     return () => activeRequest.current?.abort()
   }, [canViewTransactions, fetchTransactions])
 
-  const exportCSV = () => {
-    if (transactions.length === 0) return toast({ title: "Tidak ada data untuk diekspor", variant: "destructive" })
-    
-    const headers = ["Order ID", "Tenant", "Payment Method", "Amount", "Status", "Fulfillment", "Date"]
-    const rows = transactions.map(tx => [
-      tx.orderId,
-      tx.subscription?.tenant?.slug || "System",
-      tx.paymentType || "Unknown",
-      tx.amount,
-      tx.status,
-      tx.fulfillmentStatus ?? "",
-      new Date(tx.createdAt).toISOString()
-    ])
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n")
-      
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `transaksi_sacms_${new Date().getTime()}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    toast({ title: "Ekspor Berhasil", description: "File CSV transaksi berhasil diunduh" })
+  const exportCSV = async () => {
+    setExporting(true)
+    try {
+      const params = new URLSearchParams(appliedFilters.current)
+      params.set("format", "csv")
+      const response = await fetch("/api/admin/billing/transactions?" + params)
+      if (!response.ok) throw new Error("CSV export failed")
+      const url = URL.createObjectURL(await response.blob())
+      const link = document.createElement("a")
+      link.href = url
+      link.download = "transaksi_sacms.csv"
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast({ title: "Ekspor Berhasil", description: "Seluruh transaksi yang cocok dengan filter telah diunduh." })
+    } catch {
+      toast({ title: "Gagal Mengekspor Transaksi", variant: "destructive" })
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleSync = async (orderId: string) => {
     toast({ title: "Menyinkronkan status..." })
     try {
-      const res = await fetch(`/api/billing/payment/${encodeURIComponent(orderId)}/status`)
+      const res = await fetch("/api/admin/billing/transactions/" + encodeURIComponent(orderId) + "/sync", { method: "POST" })
       const data = await res.json()
       if (!res.ok) {
         toast({ variant: "destructive", title: "Gagal Sinkronisasi", description: data.error || "Gagal memeriksa status transaksi ke Midtrans" })
@@ -206,7 +208,7 @@ export default function AdminTransactionsPage() {
               <Button variant="outline" className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80" disabled={refreshing} onClick={() => fetchTransactions(page)}>
                 <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} /> Refresh
               </Button>
-              <Button onClick={exportCSV} disabled={refreshing || loadError} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
+              <Button onClick={exportCSV} disabled={exporting || refreshing || loadError} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
                 <Download className="h-3.5 w-3.5 mr-1.5" /> Ekspor CSV
               </Button>
             </div>
@@ -308,7 +310,7 @@ export default function AdminTransactionsPage() {
                               <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground border border-border/60">
                                 <Building2 className="h-3.5 w-3.5" />
                               </div>
-                              <span className="text-xs font-bold text-muted-foreground">Sistem / Dihapus</span>
+                              <span className="text-xs font-bold text-muted-foreground">{tx.subscription?.tenantNameSnapshot || tx.subscription?.userNameSnapshot || "Sistem"}</span>
                             </div>
                           )}
                         </TableCell>

@@ -7,7 +7,7 @@ import { Loader2, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export default function GlobalPaymentResultPage() {
-  const { data: session, status, update } = useSession()
+  const { status, update } = useSession()
   const router = useRouter()
   const params = useParams()
   const orderId = params?.orderId as string
@@ -24,7 +24,7 @@ export default function GlobalPaymentResultPage() {
     if (status === "authenticated" && orderId) {
       const resolveAndRedirect = async () => {
         try {
-          const res = await fetch(`/api/billing/payment/${orderId}/status`)
+          const res = await fetch(`/api/billing/payment/${encodeURIComponent(orderId)}/status`)
           if (!res.ok) throw new Error("Payment not found")
           
           const data = await res.json()
@@ -32,25 +32,11 @@ export default function GlobalPaymentResultPage() {
           // Force NextAuth to refetch session from DB so user.plan updates
           await update()
 
-          if (data.subscription?.tenant?.slug) {
-            router.push(`/dashboard/${data.subscription.tenant.slug}/subscriptions/payment/${orderId}`)
-          } else if (orderId.startsWith("ACC-")) {
-            // Account-level payment success
-            router.push(`/dashboard/billing`)
+          if (data.workspace?.slug) {
+            const workspace = encodeURIComponent(data.workspace.slug)
+            router.replace("/dashboard/" + workspace + "/subscriptions/payment/" + encodeURIComponent(orderId))
           } else {
-            // Fallback: look for tenant ID in orderId if API fails to provide slug
-            const parts = orderId.split("-")
-            if (parts.length >= 2 && parts[0] !== "ACC") {
-              const tenantId = parts[1]
-              // Try to find tenant slug by ID
-              const tRes = await fetch(`/api/admin/tenants/${tenantId}`)
-              if (tRes.ok) {
-                const tData = await tRes.json()
-                router.push(`/dashboard/${tData.slug}/subscriptions/payment/${orderId}`)
-                return
-              }
-            }
-            router.push("/dashboard/billing")
+            router.replace("/dashboard/billing")
           }
         } catch (err) {
           console.error("Redirect error:", err)
@@ -61,7 +47,7 @@ export default function GlobalPaymentResultPage() {
 
       resolveAndRedirect()
     }
-  }, [status, orderId, router])
+  }, [status, orderId, router, update])
 
   if (loading) {
     return (

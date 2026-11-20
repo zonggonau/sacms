@@ -6,7 +6,6 @@ import { useEffect } from "react"
 import { Loader2, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { RbacMatrixView } from "@/components/admin/rbac-matrix-view"
 
 export default function AdminRbacRedirectPage() {
@@ -50,12 +49,9 @@ export default function AdminRbacRedirectPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">RBAC & Peran Platform</h1>
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
-                    IAM Unified
-                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Batas kapabilitas Super Admin dan Account Owner.
+                  Lihat akses setiap peran dan kelola pemetaan katalog kapabilitas.
                 </p>
               </div>
             </div>

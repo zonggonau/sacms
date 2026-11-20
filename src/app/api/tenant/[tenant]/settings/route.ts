@@ -4,6 +4,7 @@ import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
 import { isEnterpriseTenant } from "@/lib/license"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { parseCorsOrigins, readWorkspaceApiPolicy } from "@/lib/workspace-api-policy"
 
 // GET /api/tenant/[tenant]/settings - Get tenant settings
 export const GET = withStaffAuth(async (_request, _context, { access, session }) => {
@@ -54,6 +55,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         settingsMap[rawKey] = s.value
       }
     })
+    const publicApi = readWorkspaceApiPolicy(tenant.id, settings.filter((row) => row.tenantId === tenant.id))
 
     const sub = tenant.subscriptions[0]
     let daysRemaining: number | null = null
@@ -95,11 +97,11 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         isEnterprise,
         // API settings with defaults
         apiKey: canSeeSecrets ? defaultApiKey : mask(defaultApiKey),
-        apiVersion: settingsMap.apiVersion || "v1",
-        rateLimiting: settingsMap.rateLimiting !== "false",
-        requestsPerMinute: parseInt(settingsMap.requestsPerMinute || "60"),
-        burstLimit: parseInt(settingsMap.burstLimit || "100"),
-        corsOrigins: settingsMap.corsOrigins || "",
+        apiVersion: "v1",
+        rateLimiting: publicApi.rateLimiting,
+        requestsPerMinute: publicApi.requestsPerMinute,
+        burstLimit: publicApi.burstLimit,
+        corsOrigins: publicApi.corsOrigins,
         previewUrl: settingsMap.previewUrl || "",
         // Email settings
         smtpHost: settingsMap.smtpHost || "",
@@ -109,17 +111,17 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         fromEmail: settingsMap.fromEmail || "",
         fromName: settingsMap.fromName || "",
         // Security settings
-        twoFactorRequired: settingsMap.twoFactorRequired === "true",
-        ipWhitelist: settingsMap.ipWhitelist === "true",
-        allowedIps: settingsMap.allowedIps || "",
-        auditLogging: settingsMap.auditLogging !== "false",
+        twoFactorRequired: false,
+        ipWhitelist: false,
+        allowedIps: "",
+        auditLogging: true,
       },
     })
 }, { minRole: "admin" })
 
 // PUT /api/tenant/[tenant]/settings - Update tenant settings
 export const PUT = withStaffAuth(
-  async (request, _context, { access, session }) => {
+  async (request, _context, { access }) => {
     const tenant = await db.tenant.findUnique({ where: { id: access.tenantId } })
     if (!tenant) {
       return apiError("not_found", { message: "Tenant not found" })
@@ -149,31 +151,37 @@ export const PUT = withStaffAuth(
       previewUrl,
     } = body
 
+    if (twoFactorRequired || ipWhitelist || allowedIps?.trim()) {
+      return apiError("validation", { message: "2FA dan pembatasan IP per workspace belum tersedia." })
+    }
+    if (auditLogging === false) {
+      return apiError("validation", { message: "Pencatatan audit workspace selalu aktif." })
+    }
+    if (apiVersion && apiVersion !== "v1") {
+      return apiError("validation", { message: "Versi API aktif adalah v1." })
+    }
+    let normalizedCorsOrigins: string | undefined
+    if (corsOrigins !== undefined) {
+      try {
+        normalizedCorsOrigins = parseCorsOrigins(corsOrigins || "").join("\n")
+      } catch {
+        return apiError("validation", { message: "Masukkan origin HTTP(S) yang lengkap, tanpa path atau wildcard." })
+      }
+    }
+
     // Update tenant basic info
     const tenantUpdateData: Record<string, any> = {}
     if (name !== undefined && name.trim() !== "") tenantUpdateData.name = name.trim()
     if (description !== undefined) tenantUpdateData.description = description || null
 
-    if (Object.keys(tenantUpdateData).length > 0) {
-      await db.tenant.update({
-        where: { id: tenant.id },
-        data: tenantUpdateData,
-      })
-    }
-
     // Update settings in Setting model
     const settingsToUpdate: Record<string, string> = {}
     
-    if (apiVersion !== undefined) settingsToUpdate.apiVersion = String(apiVersion || "v1")
     if (rateLimiting !== undefined) settingsToUpdate.rateLimiting = String(rateLimiting)
     if (requestsPerMinute !== undefined) settingsToUpdate.requestsPerMinute = String(requestsPerMinute)
     if (burstLimit !== undefined) settingsToUpdate.burstLimit = String(burstLimit)
-    if (corsOrigins !== undefined) settingsToUpdate.corsOrigins = String(corsOrigins || "")
+    if (normalizedCorsOrigins !== undefined) settingsToUpdate.corsOrigins = normalizedCorsOrigins
     if (previewUrl !== undefined) settingsToUpdate.previewUrl = String(previewUrl || "")
-    if (twoFactorRequired !== undefined) settingsToUpdate.twoFactorRequired = String(twoFactorRequired)
-    if (ipWhitelist !== undefined) settingsToUpdate.ipWhitelist = String(ipWhitelist)
-    if (allowedIps !== undefined) settingsToUpdate.allowedIps = String(allowedIps || "")
-    if (auditLogging !== undefined) settingsToUpdate.auditLogging = String(auditLogging)
     if (smtpHost !== undefined) settingsToUpdate.smtpHost = String(smtpHost || "")
     if (smtpPort !== undefined) settingsToUpdate.smtpPort = String(smtpPort || "")
     if (smtpUser !== undefined) settingsToUpdate.smtpUser = String(smtpUser || "")
@@ -181,22 +189,18 @@ export const PUT = withStaffAuth(
     if (fromEmail !== undefined) settingsToUpdate.fromEmail = String(fromEmail || "")
     if (fromName !== undefined) settingsToUpdate.fromName = String(fromName || "")
 
-    // Upsert each setting
-    for (const [key, value] of Object.entries(settingsToUpdate)) {
-      await db.setting.upsert({
-        where: {
-          key: `${tenant.id}_${key}`,
-        },
-        create: {
-          key: `${tenant.id}_${key}`,
-          value: String(value),
-          tenantId: tenant.id,
-        },
-        update: {
-          value: String(value),
-        },
-      })
-    }
+    await db.$transaction(async (tx) => {
+      if (Object.keys(tenantUpdateData).length > 0) {
+        await tx.tenant.update({ where: { id: tenant.id }, data: tenantUpdateData })
+      }
+      for (const [key, value] of Object.entries(settingsToUpdate)) {
+        await tx.setting.upsert({
+          where: { key: `${tenant.id}_${key}` },
+          create: { key: `${tenant.id}_${key}`, value, tenantId: tenant.id },
+          update: { value },
+        })
+      }
+    })
 
     return NextResponse.json({ success: true })
   },

@@ -58,7 +58,7 @@ export async function getAccountPricingAction(planId: string) {
     // instead of the plan's real name, and no description/features at all.
     const { getAccountPlan } = await import("@/lib/pricing")
     const plan = await getAccountPlan(planId)
-    if (plan) {
+    if (plan?.isActive) {
       return {
         id: plan.slug,
         name: plan.name,
