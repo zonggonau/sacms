@@ -10,9 +10,6 @@ import {
   Info,
   Phone,
   PanelBottom,
-  Zap,
-  CreditCard,
-  Users2,
   type LucideIcon,
 } from "lucide-react"
 
@@ -45,48 +42,6 @@ export interface CmsSectionConfig {
  * shape in src/lib/default-landing-page.ts.
  */
 export const CMS_SECTIONS: CmsSectionConfig[] = [
-  {
-    key: "fitur_hero",
-    label: "Header Halaman Fitur",
-    icon: Zap,
-    kind: "object",
-    description: "Badge, judul, deskripsi, dan tombol aksi di bagian atas halaman /fitur.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
-      { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-    ],
-  },
-  {
-    key: "harga_hero",
-    label: "Header Halaman Harga",
-    icon: CreditCard,
-    kind: "object",
-    description: "Badge, judul, deskripsi, dan tombol aksi di bagian atas halaman /harga.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
-      { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-    ],
-  },
-  {
-    key: "tentang_hero",
-    label: "Header Halaman Tentang",
-    icon: Users2,
-    kind: "object",
-    description: "Badge, judul, deskripsi, dan tombol aksi di bagian atas halaman /tentang.",
-    fields: [
-      { key: "badge", label: "Teks Badge", type: "text" },
-      { key: "title", label: "Judul", type: "text" },
-      { key: "description", label: "Deskripsi", type: "textarea" },
-      { key: "cta_primary", label: "Teks Tombol Utama", type: "text" },
-      { key: "cta_secondary", label: "Teks Tombol Sekunder", type: "text" },
-    ],
-  },
   {
     key: "features",
     label: "Fitur",

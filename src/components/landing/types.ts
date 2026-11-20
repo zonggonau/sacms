@@ -167,17 +167,6 @@ export interface DigitalInitiativeData {
   status?: string
 }
 
-/** Badge/title/description/CTA header block shared by /fitur, /harga, and
- *  /tentang — each page keeps its own copy of this shape so one page's
- *  edit never affects another's. */
-export interface PageHeroData {
-  badge?: string
-  title?: string
-  description?: string
-  cta_primary?: string
-  cta_secondary?: string
-}
-
 /** Homepage-only "section intro" copy — badge/title/description, no CTA. */
 export interface SectionIntroData {
   badge?: string
@@ -187,9 +176,6 @@ export interface SectionIntroData {
 }
 
 export interface LandingData {
-  fiturHero?: PageHeroData | null
-  hargaHero?: PageHeroData | null
-  tentangHero?: PageHeroData | null
   features: FeatureItem[]
   pricingAccounts: PricingPlan[]
   pricingWorkspaces: PricingPlan[]

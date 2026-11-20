@@ -32,7 +32,6 @@ function revalidateMarketingPages() {
   }
 }
 
-const EMPTY_PAGE_HERO = { badge: "", title: "", description: "", cta_primary: "", cta_secondary: "" }
 const EMPTY_LOCAL_PRIDE = { badge: "", title: "", description: "" }
 const EMPTY_CTA_BANNER = { title: "", description: "", button_primary_text: "", button_secondary_text: "" }
 const EMPTY_ABOUT = { title: "", description: "", mission: "", founded: "", image: "" }
@@ -62,9 +61,6 @@ export async function getCmsLandingDataAction() {
 
     return {
       data: {
-        fitur_hero: lp.fitur_hero ?? EMPTY_PAGE_HERO,
-        harga_hero: lp.harga_hero ?? EMPTY_PAGE_HERO,
-        tentang_hero: lp.tentang_hero ?? EMPTY_PAGE_HERO,
         features: lp.features ?? [],
         workflows: lp.workflows ?? [],
         faqs: lp.faqs ?? [],
@@ -85,17 +81,13 @@ export async function getCmsLandingDataAction() {
   }
 }
 
-/**
- * Saves one section's value back into the shared landing-page JSON blob.
- * `hero` is expanded back into the flat `hero_*` root keys it's actually
- * stored as; every other section is written at `lp[section]` directly.
- */
+/** Saves one section's value back into the shared landing-page JSON blob,
+ *  written at `lp[section]` directly. */
 export async function updateCmsLandingSectionAction(section: string, value: unknown) {
   const { session, error } = await requireSuperAdmin()
   if (error) return { error }
 
   const VALID_SECTIONS = [
-    "fitur_hero", "harga_hero", "tentang_hero",
     "features", "workflows", "faqs", "owners", "testimonials",
     "sectors", "local_pride", "cta_banner", "about", "whatsapp", "footer",
   ]

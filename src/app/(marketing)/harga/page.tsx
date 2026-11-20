@@ -54,7 +54,6 @@ export default async function HargaPage() {
     addons = [],
     faq = [],
     cta = null,
-    hargaHero = null,
   } = data
 
   return (
@@ -67,27 +66,27 @@ export default async function HargaPage() {
           <div className="container px-4 sm:px-6 max-w-4xl mx-auto relative z-10 space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold tracking-wide backdrop-blur-md shadow-xs">
               <CreditCard className="h-3.5 w-3.5" />
-              <span>{hargaHero?.badge || "Transparan & Fleksibel"}</span>
+              <span>Transparan & Fleksibel</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
-              {hargaHero?.title || "Paket & Investasi Terukur"}
+              Pilih paket SaCMS sesuai kebutuhan proyek Anda
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-              {hargaHero?.description || "Mulai gratis untuk eksperimen dan eksplorasi, lalu upgrade ke dedicated database dan kuota AI tak terbatas saat traffic Anda berkembang."}
+              Mulai gratis untuk eksperimen dan eksplorasi, lalu upgrade ke dedicated database dan kuota AI tak terbatas saat traffic Anda berkembang.
             </p>
 
             <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
               <Button asChild className="h-10 px-6 rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm gap-1.5">
                 <Link href="/register">
-                  <span>{hargaHero?.cta_primary || "Daftar Akun Gratis"}</span>
+                  <span>Daftar Akun Gratis</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-10 px-6 rounded-full font-bold text-xs border-border/80 hover:bg-muted">
                 <Link href="/fitur">
-                  <span>{hargaHero?.cta_secondary || "Pelajari Fitur Lengkap"}</span>
+                  <span>Pelajari Fitur Lengkap</span>
                 </Link>
               </Button>
             </div>

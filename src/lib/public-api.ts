@@ -154,9 +154,6 @@ export const getLandingData = cache(async function getLandingData() {
     const def = DEFAULT_LANDING_PAGE_DATA
 
     return {
-      fiturHero: lp.fitur_hero || null,
-      hargaHero: lp.harga_hero || null,
-      tentangHero: lp.tentang_hero || null,
       features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
       ...await pricing,
       workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
@@ -225,9 +222,6 @@ export const getPublishedWebsiteTemplates = cache(async function getPublishedWeb
 function getDefaultData() {
   const landing = DEFAULT_LANDING_PAGE_DATA;
   return {
-    fiturHero: null,
-    hargaHero: null,
-    tentangHero: null,
     features: landing["sacms-features"],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],
