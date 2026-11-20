@@ -54,6 +54,10 @@ export function ModernLanding({ data }: { data: LandingData }) {
     blogs = [],
     localPride = null,
     websiteTemplates = [],
+    homepageTechIntro = null,
+    homepageAiAgentIntro = null,
+    homepagePricingSpotlight = null,
+    homepageAboutDocsBanner = null,
   } = data
 
   // "Fitur Utama" (is_main) picks which admin-edited features surface as the
@@ -71,7 +75,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
       <TemplatesSection templates={websiteTemplates} />
 
       {/* 3. Kembangkan Frontend dengan AI Agent — pulled out of Hero into its own section */}
-      <AiAgentFrontendSection />
+      <AiAgentFrontendSection data={homepageAiAgentIntro} />
 
       {/* 4. Local Pride — Papua identity, leads before the generic feature pitch */}
       <LocalPrideSection data={localPride} />
@@ -85,19 +89,19 @@ export function ModernLanding({ data }: { data: LandingData }) {
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold tracking-wide backdrop-blur-md shadow-xs">
                 <Sparkles className="h-3.5 w-3.5" />
-                <span>Teknologi Inti SaCMS</span>
+                <span>{homepageTechIntro?.badge || "Teknologi Inti SaCMS"}</span>
               </div>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
-                Arsitektur Modern untuk Pengembang
+                {homepageTechIntro?.title || "Arsitektur Modern untuk Pengembang"}
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl leading-relaxed">
-                Dirancang dari awal untuk kecepatan, isolasi data pelanggan, dan otomatisasi deployment Next.js 16.
+                {homepageTechIntro?.description || "Dirancang dari awal untuk kecepatan, isolasi data pelanggan, dan otomatisasi deployment Next.js 16."}
               </p>
             </div>
 
             <Button asChild variant="outline" className="h-11 px-5 rounded-2xl font-bold text-xs border-border/80 hover:border-primary/50 hover:bg-muted shadow-xs gap-2 shrink-0">
               <Link href="/fitur">
-                <span>Jelajahi Semua Fitur</span>
+                <span>{homepageTechIntro?.cta_label || "Jelajahi Semua Fitur"}</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
@@ -139,31 +143,31 @@ export function ModernLanding({ data }: { data: LandingData }) {
           <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-card via-card/80 to-primary/5 border border-border/70 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
             <div className="space-y-4 max-w-2xl">
               <Badge variant="outline" className="px-3.5 py-1 text-xs font-bold border-primary/40 bg-primary/10 text-primary">
-                Paket &amp; Langganan
+                {homepagePricingSpotlight?.badge || "Paket & Langganan"}
               </Badge>
               <h2 className="text-2xl sm:text-4xl font-black text-foreground tracking-tight">
-                Mulai Gratis, Tingkatkan Saat Butuh Lebih
+                {homepagePricingSpotlight?.title || "Mulai Gratis, Tingkatkan Saat Butuh Lebih"}
               </h2>
               <p className="text-sm sm:text-base text-muted-foreground font-medium leading-relaxed">
-                Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Database Khusus berlisensi Enterprise.
+                {homepagePricingSpotlight?.description || "Tersedia paket Free Starter untuk proyek personal, Pro Workspace untuk agensi, hingga Database Khusus berlisensi Enterprise."}
               </p>
               <div className="flex flex-wrap gap-4 pt-2 text-xs font-semibold text-foreground/80">
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Tanpa Kartu Kredit</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Pembayaran QRIS &amp; VA</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> Upgrade Kapan Saja</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> {homepagePricingSpotlight?.checklist_1 || "Tanpa Kartu Kredit"}</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> {homepagePricingSpotlight?.checklist_2 || "Pembayaran QRIS & VA"}</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> {homepagePricingSpotlight?.checklist_3 || "Upgrade Kapan Saja"}</span>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
               <Button asChild className="h-11 px-6 rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm gap-2">
                 <Link href="/harga">
-                  <span>Lihat Daftar Harga</span>
+                  <span>{homepagePricingSpotlight?.cta_primary || "Lihat Daftar Harga"}</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 px-6 rounded-full font-bold text-xs border-border/80 hover:bg-muted">
                 <Link href="/register">
-                  <span>Daftar Gratis</span>
+                  <span>{homepagePricingSpotlight?.cta_secondary || "Daftar Gratis"}</span>
                 </Link>
               </Button>
             </div>
@@ -194,13 +198,13 @@ export function ModernLanding({ data }: { data: LandingData }) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-bold text-primary">
                   <Users2 className="h-4 w-4" />
-                  <span>Tentang SaCMS</span>
+                  <span>{homepageAboutDocsBanner?.about_label || "Tentang SaCMS"}</span>
                 </div>
                 <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                  Visi, Misi &amp; Tim Pengembang
+                  {homepageAboutDocsBanner?.about_title || "Visi, Misi & Tim Pengembang"}
                 </h3>
                 <p className="text-xs text-muted-foreground font-medium">
-                  Kenali filosofi produk dan para insinyur di balik SaCMS.
+                  {homepageAboutDocsBanner?.about_description || "Kenali filosofi produk dan para insinyur di balik SaCMS."}
                 </p>
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0 ml-4" />
@@ -215,13 +219,13 @@ export function ModernLanding({ data }: { data: LandingData }) {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-bold text-primary">
                   <BookOpen className="h-4 w-4" />
-                  <span>Dokumentasi Developer</span>
+                  <span>{homepageAboutDocsBanner?.docs_label || "Dokumentasi Developer"}</span>
                 </div>
                 <h3 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
-                  Panduan API &amp; SDK Terpadu
+                  {homepageAboutDocsBanner?.docs_title || "Panduan API & SDK Terpadu"}
                 </h3>
                 <p className="text-xs text-muted-foreground font-medium">
-                  Referensi REST API, Dynamic GraphQL, dan Model Context Protocol.
+                  {homepageAboutDocsBanner?.docs_description || "Referensi REST API, Dynamic GraphQL, dan Model Context Protocol."}
                 </p>
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0 ml-4" />

@@ -59,6 +59,13 @@ export interface AboutData {
   description: string
   mission?: string
   founded?: string
+  image?: string
+  metric2_label?: string
+  metric2_value?: string
+  metric3_label?: string
+  metric3_value?: string
+  metric4_label?: string
+  metric4_value?: string
 }
 
 export interface OwnerItem {
@@ -171,11 +178,43 @@ export interface PageHeroData {
   cta_secondary?: string
 }
 
+/** Homepage-only "section intro" copy — badge/title/description, no CTA. */
+export interface SectionIntroData {
+  badge?: string
+  title?: string
+  description?: string
+  cta_label?: string
+}
+
+export interface PricingSpotlightData {
+  badge?: string
+  title?: string
+  description?: string
+  checklist_1?: string
+  checklist_2?: string
+  checklist_3?: string
+  cta_primary?: string
+  cta_secondary?: string
+}
+
+export interface AboutDocsBannerData {
+  about_label?: string
+  about_title?: string
+  about_description?: string
+  docs_label?: string
+  docs_title?: string
+  docs_description?: string
+}
+
 export interface LandingData {
   hero: HeroData | null
   fiturHero?: PageHeroData | null
   hargaHero?: PageHeroData | null
   tentangHero?: PageHeroData | null
+  homepageTechIntro?: SectionIntroData | null
+  homepageAiAgentIntro?: SectionIntroData | null
+  homepagePricingSpotlight?: PricingSpotlightData | null
+  homepageAboutDocsBanner?: AboutDocsBannerData | null
   features: FeatureItem[]
   pricingAccounts: PricingPlan[]
   pricingWorkspaces: PricingPlan[]

@@ -43,9 +43,9 @@ export function AboutSection({ about }: { about: AboutData | null }) {
         <div className="flex-1 w-full grid grid-cols-2 gap-4 sm:gap-6">
           {[
             { label: "Didirikan", value: about?.founded || "2026", icon: "🚀" },
-            { label: "Arsitektur", value: "Multi-Tenant", icon: "🏢" },
-            { label: "Protokol API", value: "REST + GraphQL", icon: "⚡" },
-            { label: "Penyimpanan", value: "MinIO Self-Hosted", icon: "☁️" },
+            { label: about?.metric2_label || "Arsitektur", value: about?.metric2_value || "Multi-Tenant", icon: "🏢" },
+            { label: about?.metric3_label || "Protokol API", value: about?.metric3_value || "REST + GraphQL", icon: "⚡" },
+            { label: about?.metric4_label || "Penyimpanan", value: about?.metric4_value || "MinIO Self-Hosted", icon: "☁️" },
           ].map((item, i) => (
             <div 
               key={item.label} 

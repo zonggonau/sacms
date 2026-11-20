@@ -5,6 +5,7 @@ import {
   Rocket, MousePointer2, Wind, Terminal, MessageSquare, Hand,
   FlaskConical, Sprout, Braces, LayoutTemplate
 } from "lucide-react"
+import type { SectionIntroData } from "../types"
 
 // Every AI IDE/agent SaCMS's MCP server is advertised as working with
 // across the marketing site (see src/app/docs/page.tsx's metadata and
@@ -37,19 +38,19 @@ const AI_DEV_TOOLS = [
  * Runs as an infinite marquee (duplicated once for a seamless loop) since
  * there are more tools than comfortably fit a static row.
  */
-export function AiAgentFrontendSection() {
+export function AiAgentFrontendSection({ data = null }: { data?: SectionIntroData | null }) {
   return (
     <section className="py-16 sm:py-20 relative bg-background border-t border-border/50 overflow-hidden">
       <div className="container px-4 sm:px-6 max-w-5xl mx-auto text-center space-y-5 relative z-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold tracking-wide backdrop-blur-md shadow-xs">
           <Code2 className="h-3.5 w-3.5" />
-          <span>Frontend Development</span>
+          <span>{data?.badge || "Frontend Development"}</span>
         </div>
         <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-foreground tracking-tight leading-tight">
-          Kembangkan Frontend dengan AI Agent &amp; IDE Favorit Anda
+          {data?.title || "Kembangkan Frontend dengan AI Agent & IDE Favorit Anda"}
         </h2>
         <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-          Tidak perlu drag-and-drop builder. Tulis kode Next.js/React langsung di AI IDE atau agent pilihan Anda, lalu deploy ke SaCMS Cloud Hosting dalam satu perintah lewat MCP.
+          {data?.description || "Tidak perlu drag-and-drop builder. Tulis kode Next.js/React langsung di AI IDE atau agent pilihan Anda, lalu deploy ke SaCMS Cloud Hosting dalam satu perintah lewat MCP."}
         </p>
       </div>
 
