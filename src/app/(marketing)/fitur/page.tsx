@@ -55,6 +55,7 @@ export default async function FiturPage() {
     sectors = [],
     workflow = [],
     cta = null,
+    fiturHero = null,
   } = data
 
   return (
@@ -67,27 +68,27 @@ export default async function FiturPage() {
           <div className="container px-4 sm:px-6 max-w-4xl mx-auto relative z-10 space-y-4">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold tracking-wide backdrop-blur-md shadow-xs">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
-              <span>Ekosistem Fitur SaCMS v2</span>
+              <span>{fiturHero?.badge || "Ekosistem Fitur SaCMS v2"}</span>
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground leading-[1.15]">
-              Semua yang Tim Konten &amp; Developer Butuhkan
+              {fiturHero?.title || "Semua yang Tim Konten & Developer Butuhkan"}
             </h1>
 
             <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed">
-              Dari workflow multi-reviewer dan kontrol akses granular per tim, hingga integrasi AI assistant dan custom domain untuk brand Anda sendiri — semua dalam satu platform.
+              {fiturHero?.description || "Dari workflow multi-reviewer dan kontrol akses granular per tim, hingga integrasi AI assistant dan custom domain untuk brand Anda sendiri — semua dalam satu platform."}
             </p>
 
             <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
               <Button asChild className="h-10 px-6 rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm gap-1.5">
                 <Link href="/register">
-                  <span>Mulai Coba Gratis</span>
+                  <span>{fiturHero?.cta_primary || "Mulai Coba Gratis"}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-10 px-6 rounded-full font-bold text-xs border-border/80 hover:bg-muted">
                 <Link href="/harga">
-                  <span>Lihat Paket &amp; Harga</span>
+                  <span>{fiturHero?.cta_secondary || "Lihat Paket & Harga"}</span>
                 </Link>
               </Button>
             </div>

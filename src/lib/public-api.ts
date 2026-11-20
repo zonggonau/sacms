@@ -162,6 +162,9 @@ export const getLandingData = cache(async function getLandingData() {
         cta_primary: lp.hero_cta_primary || def["sacms-hero"]?.cta_primary || "",
         cta_secondary: lp.hero_cta_secondary || def["sacms-hero"]?.cta_secondary || "",
       },
+      fiturHero: lp.fitur_hero || null,
+      hargaHero: lp.harga_hero || null,
+      tentangHero: lp.tentang_hero || null,
       features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
       ...await pricing,
       workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
@@ -231,6 +234,9 @@ function getDefaultData() {
   const landing = DEFAULT_LANDING_PAGE_DATA;
   return {
     hero: landing["sacms-hero"],
+    fiturHero: null,
+    hargaHero: null,
+    tentangHero: null,
     features: landing["sacms-features"],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],

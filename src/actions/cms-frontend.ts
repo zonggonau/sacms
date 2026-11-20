@@ -108,7 +108,7 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
   if (error) return { error }
 
   const VALID_SECTIONS = [
-    "hero", "features", "workflows", "faqs", "owners", "testimonials",
+    "hero", "fitur_hero", "harga_hero", "tentang_hero", "features", "workflows", "faqs", "owners", "testimonials",
     "sectors", "local_pride", "cta_banner", "about", "whatsapp", "footer",
   ]
   if (!VALID_SECTIONS.includes(section)) return { error: "Invalid section" }
