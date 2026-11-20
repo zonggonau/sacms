@@ -91,57 +91,78 @@ export const AI_CREDIT_PACKS: AiCreditPack[] = [
   }
 ]
 
+// User-reported bug: max_ai_credits was never set for ANY plan here (not
+// even "enterprise") — enforceUserAiCredits() only ever granted real
+// credits through a purchased EnterpriseLicense's own aiCredits field, so
+// every account without one (i.e. every Free/Starter/Pro/Business account,
+// and even an "enterprise"-PLAN account with no actual License row) was
+// stuck at 0 base credits regardless of plan. These are a free per-plan
+// allowance on top of that License path (still unlimited/license-bound)
+// and on top of any manually-purchased AiCreditPack top-up
+// (User.aiCreditsExtra, added separately in getUserEffectiveMax).
 export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
   // === Canonical plan names ===
   free: {
     plan_slug: "free",
     max_workspaces: 1,
+    max_ai_credits: 10,
   },
   starter: {
     plan_slug: "starter",
     max_workspaces: 3,
+    max_ai_credits: 25,
   },
   pro: {
     plan_slug: "pro",
     max_workspaces: 10,
+    max_ai_credits: 100,
   },
   enterprise: {
     plan_slug: "enterprise",
     max_workspaces: 20,
+    max_ai_credits: 300,
   },
   custom: {
     plan_slug: "custom",
     max_workspaces: 9999, // Overridable via CustomPlanOverride
+    max_ai_credits: 300, // Same baseline as enterprise; fine-tune per account via CustomPlanOverride.
   },
 
   // === Backward-compat aliases ===
   standard: {   // legacy → starter
     plan_slug: "starter",
     max_workspaces: 3,
+    max_ai_credits: 25,
   },
   standar: {    // Indonesian alias → starter
     plan_slug: "starter",
     max_workspaces: 3,
+    max_ai_credits: 25,
   },
   professional: { // legacy → pro
     plan_slug: "pro",
     max_workspaces: 10,
+    max_ai_credits: 100,
   },
   profesional: {  // Indonesian alias → pro
     plan_slug: "pro",
     max_workspaces: 10,
+    max_ai_credits: 100,
   },
   business: {     // Indonesian alias → enterprise
     plan_slug: "enterprise",
     max_workspaces: 20,
+    max_ai_credits: 300,
   },
   bisnis: {     // Indonesian alias → enterprise
     plan_slug: "enterprise",
     max_workspaces: 20,
+    max_ai_credits: 300,
   },
   unlimited: {  // legacy → custom
     plan_slug: "custom",
     max_workspaces: 9999,
+    max_ai_credits: 300,
   },
 }
 

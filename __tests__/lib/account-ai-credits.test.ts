@@ -71,12 +71,13 @@ describe("Account-Level AI Credit Quota & Standalone Top-Up Packs", () => {
 
     vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
 
-    // Total: 50 initial + 300 extra = 350. Used: 50. Remaining: 300.
+    // Free plan's own free allowance (10, see USER_PLAN_LIMITS.free) + 300
+    // extra = 310. Used: 50. Remaining: 260.
     const result = await enforceUserAiCredits("user-1", 25)
     expect(result.allowed).toBe(true)
     expect(result.current).toBe(50)
-    expect(result.max).toBe(350)
-    expect(result.remaining).toBe(300)
+    expect(result.max).toBe(310)
+    expect(result.remaining).toBe(260)
   })
 
   it("should reject generation and prompt top-up when user credits are depleted", async () => {
@@ -84,18 +85,41 @@ describe("Account-Level AI Credit Quota & Standalone Top-Up Packs", () => {
       id: "user-free",
       role: "user",
       plan: "free",
-      aiCreditsUsed: 40,
+      aiCreditsUsed: 8,
       aiCreditsExtra: 0,
     } as any)
 
     vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
 
-    // Free plan has 50 credits. 50 - 40 = 10 remaining. Requesting 25 credits.
+    // Free plan has 10 credits (USER_PLAN_LIMITS.free.max_ai_credits).
+    // 10 - 8 = 2 remaining. Requesting 25 credits.
     const result = await enforceUserAiCredits("user-free", 25)
     expect(result.allowed).toBe(false)
-    expect(result.remaining).toBe(10)
+    expect(result.remaining).toBe(2)
     expect(result.message).toContain("AI credits depleted")
     expect(result.message).toContain("top up")
+  })
+
+  // User-reported bug: getUserEffectiveMax's "ai_credits" case never
+  // actually read planConfig.max_ai_credits at all — every account
+  // without a purchased Enterprise License got the exact same flat 50
+  // regardless of its actual plan, so only a License holder ever saw a
+  // different (bigger) number. USER_PLAN_LIMITS now carries a real
+  // per-plan allowance, and this is the plumbing that actually uses it.
+  it("gives each account plan its own AI credit allowance, not a flat amount regardless of plan", async () => {
+    vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
+
+    const maxForPlan = async (plan: string) => {
+      vi.mocked(db.user.findUnique).mockResolvedValue({
+        id: "user-1", role: "user", plan, aiCreditsUsed: 0, aiCreditsExtra: 0,
+      } as any)
+      return (await enforceUserAiCredits("user-1", 1)).max
+    }
+
+    expect(await maxForPlan("free")).toBe(10)
+    expect(await maxForPlan("starter")).toBe(25)
+    expect(await maxForPlan("pro")).toBe(100)
+    expect(await maxForPlan("business")).toBe(300)
   })
 
   it("should bypass credit limits for super admin", async () => {
@@ -145,19 +169,20 @@ describe("Account-Level AI Credit Quota & Standalone Top-Up Packs", () => {
     it("reserves credits in one conditional update when enough remain", async () => {
       vi.mocked(db.user.findUnique).mockResolvedValue({
         role: "user",
-        aiCreditsUsed: 40,
+        aiCreditsUsed: 3,
         aiCreditsExtra: 0,
       } as any)
       vi.mocked(db.customPlanOverride.findUnique).mockResolvedValue(null)
       vi.mocked(db.user.updateMany).mockResolvedValue({ count: 1 } as any)
 
-      // Free plan: 50 credits. 50 - 25 = 25 is the ceiling the WHERE clause
+      // No `plan` on the mocked user → falls back to free (10 credits, see
+      // USER_PLAN_LIMITS.free). 10 - 5 = 5 is the ceiling the WHERE clause
       // must enforce atomically against concurrent reservations.
-      const result = await reserveUserAiCredits("user-1", 25)
+      const result = await reserveUserAiCredits("user-1", 5)
 
       expect(db.user.updateMany).toHaveBeenCalledWith({
-        where: { id: "user-1", aiCreditsUsed: { lte: 25 } },
-        data: { aiCreditsUsed: { increment: 25 } },
+        where: { id: "user-1", aiCreditsUsed: { lte: 5 } },
+        data: { aiCreditsUsed: { increment: 5 } },
       })
       expect(result.allowed).toBe(true)
     })

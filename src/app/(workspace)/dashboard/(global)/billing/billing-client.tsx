@@ -295,9 +295,16 @@ export default function BillingClient({
               <CardContent className="p-5 pt-1">
                 <div className="flex items-baseline justify-between gap-1.5 mt-1">
                   <div className="flex items-baseline gap-1.5">
-                    <h3 className="text-2xl lg:text-3xl font-black text-foreground">{aiUsage ? aiUsage.remaining.toLocaleString() : "50"}</h3>
+                    {/* User-reported bug: this used to fall back to a
+                        hardcoded "50"/"50 Credits" whenever aiUsage was
+                        null (the server-side enforceUserAiCredits() call
+                        itself failing) — a specific-looking number that
+                        never actually reflected the account's real
+                        entitlement. 0 is the honest "something's wrong,
+                        there's no real number to show" state. */}
+                    <h3 className="text-2xl lg:text-3xl font-black text-foreground">{aiUsage ? aiUsage.remaining.toLocaleString() : "0"}</h3>
                     <span className="text-xs text-muted-foreground font-semibold">
-                      / {aiUsage?.isUnlimited ? 'Unlimited' : (aiUsage ? `${aiUsage.total.toLocaleString()} Credits` : '50 Credits')}
+                      / {aiUsage?.isUnlimited ? 'Unlimited' : (aiUsage ? `${aiUsage.total.toLocaleString()} Credits` : '0 Credits')}
                     </span>
                   </div>
                   {session?.user?.tenants?.[0] && (

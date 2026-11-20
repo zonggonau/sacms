@@ -827,8 +827,15 @@ function getUserEffectiveMax(
     case "workspaces":
       return override?.maxWorkspaces ?? planConfig.max_workspaces
     case "ai_credits": {
-      // Base initial free credits for every user account is 50, plus any top-up packs
-      const base = override?.maxAiCredits ?? 50
+      // User-reported bug: this never actually read planConfig.max_ai_credits
+      // at all — every non-Enterprise-licensed account (Free, Pro, Business,
+      // ...) got the exact same flat 50 regardless of plan, so only a
+      // purchased Enterprise License (handled earlier in
+      // enforceUserAiCredits, before this function is even called) ever
+      // looked different. Per-account override wins first, then the
+      // plan's own configured allowance (USER_PLAN_LIMITS), 50 only as a
+      // last-resort default if somehow neither is set.
+      const base = override?.maxAiCredits ?? planConfig.max_ai_credits ?? 50
       return base + extraCredits
     }
     default:
