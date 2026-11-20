@@ -132,8 +132,13 @@ export const getLandingData = cache(async function getLandingData() {
       take: 9,
     })
 
+    // status: "PUBLISHED" is required — this feeds every public marketing
+    // page (blog list, blog detail, generateStaticParams). Without it, a
+    // Draft blog post (or any other tenantId:null collection entry) was
+    // fully visible and even statically pre-rendered on the live site the
+    // moment it was created, with no way to actually keep it unpublished.
     const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: null, deletedAt: null }
+      where: { tenantId: null, deletedAt: null, status: "PUBLISHED" }
     })
 
     const collectionsData = contentTypes.reduce((acc, ct) => {
