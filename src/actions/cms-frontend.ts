@@ -168,7 +168,15 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
     return { success: true }
   } catch (err: any) {
     console.error("Error updating CMS landing section:", err)
-    return { error: err.message || "Internal server error" }
+    // Prisma's own validation/known-request errors echo the ENTIRE query
+    // argument object (including the whole `data: {...}` payload) into
+    // `.message` for debugging — fine in server logs, but shown as-is in
+    // the dashboard's toast it dumped the full imported JSON back at the
+    // user instead of a readable error. Keep only a short, safe message
+    // client-side; the real error is already logged above.
+    const message = typeof err?.message === "string" ? err.message : ""
+    const looksLikeRawDump = message.length > 200 || /^Invalid `|PrismaClient/.test(message)
+    return { error: looksLikeRawDump ? "Gagal menyimpan: data tidak sesuai format yang diharapkan." : (message || "Internal server error") }
   }
 }
 
