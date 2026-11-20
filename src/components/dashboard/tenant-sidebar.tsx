@@ -9,6 +9,8 @@ import { isPlatformStaff } from "@/lib/platform-roles"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import {
   LayoutDashboard,
   FileText,
@@ -29,7 +31,6 @@ import {
   BookOpen,
   ClipboardList,
   Sparkles,
-  ChevronRight,
   Database,
   DatabaseIcon,
   Puzzle,
@@ -115,6 +116,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false)
+  const [switchingTenantId, setSwitchingTenantId] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const [liveTenants, setLiveTenants] = useState<any[]>([])
@@ -124,17 +127,24 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const handleSwitchWorkspace = async (targetTenantId?: string) => {
     if (targetTenantId && targetTenantId === tenantId) {
       setWorkspaceSwitcherOpen(false)
+      setWorkspaceModalOpen(false)
       setMobileOpen(false)
       return
     }
 
-    const res = await checkWorkspaceAccessAction(targetTenantId)
-    if (res.allowed && res.redirectUrl) {
-      setWorkspaceSwitcherOpen(false)
-      setMobileOpen(false)
-      router.push(res.redirectUrl)
-    } else if (res.error) {
-      toast({ variant: "destructive", title: "Akses Ditolak", description: res.error })
+    try {
+      setSwitchingTenantId(targetTenantId || "__select__")
+      const res = await checkWorkspaceAccessAction(targetTenantId)
+      if (res.allowed && res.redirectUrl) {
+        setWorkspaceSwitcherOpen(false)
+        setWorkspaceModalOpen(false)
+        setMobileOpen(false)
+        router.push(res.redirectUrl)
+      } else if (res.error) {
+        toast({ variant: "destructive", title: "Akses Ditolak", description: res.error })
+      }
+    } finally {
+      setSwitchingTenantId(null)
     }
   }
 
@@ -329,38 +339,84 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
 
         {/* Workspace Switcher */}
         {workspaceSwitcherOpen && (
-          <div className="border-t px-2 py-2 space-y-0.5 max-h-64 overflow-y-auto bg-muted/20">
-            {liveTenants.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => handleSwitchWorkspace(t.id)}
-                className={cn(
-                  "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs transition-colors text-left cursor-pointer",
-                  t.id === tenantId
-                    ? "bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
-                  {t.name[0].toUpperCase()}
-                </div>
-                <span className="truncate">{t.name}</span>
-                {t.id === tenantId && <ChevronRight className="ml-auto h-3 w-3 text-primary" />}
-              </button>
-            ))}
-            
-            <div className="pt-1.5 mt-1.5 border-t">
-              <button
-                onClick={() => handleSwitchWorkspace()}
-                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-primary font-bold hover:bg-primary/10 transition-colors text-left cursor-pointer"
-              >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>{s.switchWorkspace}</span>
-              </button>
-            </div>
+          <div className="border-t px-2 py-2 bg-muted/20">
+            <button
+              onClick={() => {
+                setWorkspaceSwitcherOpen(false)
+                setWorkspaceModalOpen(true)
+              }}
+              className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs text-primary font-bold hover:bg-primary/10 transition-colors text-left cursor-pointer"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              <span>{s.switchWorkspace}</span>
+            </button>
           </div>
         )}
       </div>
+
+      {/* Switch Workspace Modal */}
+      <Dialog open={workspaceModalOpen} onOpenChange={setWorkspaceModalOpen}>
+        <DialogContent className="sm:max-w-xl h-[70vh] flex flex-col p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-3">
+            <DialogTitle>{s.switchWorkspace}</DialogTitle>
+            <DialogDescription>
+              {liveTenants.length > 50
+                ? `Menampilkan 50 dari ${liveTenants.length} workspace.`
+                : `Pilih salah satu dari ${liveTenants.length} workspace di bawah ini.`}
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 px-6 min-h-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Workspace</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {liveTenants.slice(0, 50).map((t) => (
+                  <TableRow key={t.id} className={cn(t.id === tenantId && "bg-primary/5")}>
+                    <TableCell>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                          {t.name[0].toUpperCase()}
+                        </div>
+                        <span className="truncate font-medium">{t.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-[10px] capitalize">{t.role || "member"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {t.id === tenantId ? (
+                        <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">Aktif</Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs cursor-pointer"
+                          disabled={switchingTenantId === t.id}
+                          onClick={() => handleSwitchWorkspace(t.id)}
+                        >
+                          {switchingTenantId === t.id ? "Mengalihkan..." : "Pindah"}
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {liveTenants.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                      Tidak ada workspace lain.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
