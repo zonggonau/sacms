@@ -34,6 +34,8 @@ import { db } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
+import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { slugify } from "@/lib/slug"
 import { rateLimit } from "@/lib/rate-limit"
 import { schemaTemplateBundleSchema, schemaTemplateFieldSchema } from "@/lib/validations/schema-template"
@@ -442,6 +444,8 @@ const handler = createMcpHandler(
 
 This server manages SaCMS's platform-wide template catalog, including each Schema Template's linked internal demo workspace. Customer workspaces use their own MCP server at /api/mcp and the apply_website_template tool.
 
+Call \`get_website_agent_workflow\` for analysis and task assignment, demo setup, UI/UX, defensive security review, and release verification. This guide documents the tool contracts used in that workflow.
+
 ## Before writing any schema field
 Call \`list_field_types\` first — it has the real options/relationSlug shape per type, flags options that are silently ignored, and its \`contentApiContract\` has real request/response examples for the frontend's actual Content API calls. Its entry for richText/markdown also tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never \`{value}\`/string interpolation — a template that renders it as plain text only looks fine with unwrapped test prose and shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink.
 
@@ -480,6 +484,28 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 \`create_website_template\`'s \`dryRun: true\` returns \`{ mode: "dry_run", ok, valid, issues, warnings }\` — a DIFFERENT shape from a real create's response, don't expect id/slug/files/demoDeployment on a dry run. Every demo deploy injects the three fixed NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, CONFLICT, HAS_DEPENDENTS, INVALID_ARGUMENT, UNAUTHORIZED) uses the same \`structuredContent.code\` field.`
 
         return { content: [{ type: "text" as const, text: guide }] }
+      },
+    )
+
+    server.registerTool(
+      "get_website_agent_workflow",
+      {
+        title: "SaCMS Global Website Agent Workflow",
+        description: "Read the website workflow from brief and task assignment through demo workspace, SaCMS schema, UI/UX, frontend, security review, and verified demo deployment.",
+        inputSchema: {},
+        outputSchema: { skill: z.literal("sacms-global-website"), workflow: z.string() },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async () => {
+        if (!authContext.getStore()) return UNAUTHORIZED
+        const workflow = await readFile(
+          join(process.cwd(), "src/lib/infrastructure/sacms-global-website-workflow.md"),
+          "utf8",
+        )
+        return {
+          content: [{ type: "text" as const, text: workflow }],
+          structuredContent: { skill: "sacms-global-website" as const, workflow },
+        }
       },
     )
 
@@ -1811,11 +1837,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     // parameterized entry point for the exact workflow get_builder_guide
     // documents in prose — a client that supports MCP prompts can surface
     // this as a one-click/slash-command starting point instead of the
-    // agent having to piece the same steps together from the guide text
-    // every time. Deliberately thin: it just seeds the FIRST message with
-    // the topic filled in and a pointer to call get_builder_guide/
-    // list_field_types next, rather than duplicating their content here
-    // (which would only go stale against them).
+    // agent having to piece the same steps together from the guide text.
     server.registerPrompt(
       "buat-website",
       {
@@ -1832,25 +1854,17 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           content: {
             type: "text" as const,
             text: `Bangun sebuah Website Template baru untuk: "${topic}"${name ? ` (nama template: "${name}")` : ""}.\n\n` +
-              "Ikuti urutan ini:\n" +
-              "1. Panggil get_builder_guide (sekali, di awal) untuk alur kerja lengkap.\n" +
-              "2. Panggil list_website_templates dan list_schema_templates untuk mengecek apakah sudah ada template serupa.\n" +
-              "3. Panggil list_field_types untuk tipe field yang valid dan bentuk options/relationSlug-nya.\n" +
-              "4. Panggil create_schema_template tanpa schema agar workspace demo terisi skema bawaan. Baca model yang dimuat lewat get_schema_template dengan includeDemoSchema: true.\n" +
-              "   Cocokkan model dengan kebutuhan website. Pertahankan Single Type dan Component. Keluarkan hanya Content Type yang tidak dibutuhkan setelah memeriksa relasinya. Simpan hasil lewat update_schema_template dengan expectedVersion dan data contoh yang sesuai topik.\n" +
-              "5. Tulis frontend-nya (Next.js) dengan shadcn/ui (komponen Button/Card/Badge/dkk pakai variant standarnya, tema warna+font lewat CSS variables yang disesuaikan topik via next/font — jangan gradient ungu-biru generik, emoji sebagai ikon section, palet default shadcn yang tidak disentuh, atau halaman tanpa font yang di-load), sertakan .env.example dan package.json.\n" +
-              "6. Panggil create_website_template dengan schemaTemplateId dari workspace demo dan dryRun: true. Perbaiki masalah validasi lalu panggil lagi dengan schemaTemplateId yang sama untuk menerbitkan pratinjau.\n" +
-              "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.\n" +
-              "8. Laporkan ke pengguna: URL demo-nya, dan ringkasan routes[] (berapa yang verified, mana yang gagal kalau ada).\n" +
-              "9. Tanyakan ke pengguna apakah template ini siap di-publish (published: true, supaya terlihat di katalog setiap workspace) — jangan set published: true tanpa konfirmasi.\n" +
-              "10. Kalau pengguna juga ingin template ini langsung dipakai di sebuah workspace tertentu, itu dilakukan lewat server MCP per-workspace (bukan server ini) — panggil tool apply_website_template di sana dengan id/slug template ini.",
+              "Ambil dan ikuti get_website_agent_workflow. Analisis brief dan rencanakan pekerjaan terlebih dahulu. " +
+              "Setelah workspace demo siap, baca skema aktualnya dan sesuaikan kebutuhan data sebelum menulis frontend. " +
+              "Gunakan Next.js App Router, TypeScript, dan shadcn/ui. Selesaikan pemeriksaan keamanan dan dry run sebelum deploy demo. " +
+              "Verifikasi rute pada deployment terbaru sebelum melaporkan URL pratinjau.",
           },
         }],
       }),
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.15.1" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.16.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
@@ -1860,9 +1874,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates and Website " +
       "Templates and their linked internal demo workspaces. Customer workspaces use /api/mcp. " +
-      "Call get_builder_guide FIRST. Start a new website with create_schema_template without schema, inspect " +
-      "its demo schema, and keep its Single Types and Components. Pass schemaTemplateId to attach the frontend. " +
-      "The guide covers the full " +
+      "Call get_website_agent_workflow when building a website. Analyze the brief before creating or reusing its demo workspace. " +
+      "Verify the actual demo schema before building the frontend and review security before deploying. " +
+      "get_builder_guide covers the " +
       "workflow (schema+frontend build order, dry-run validation, demo preview contract, every structured " +
       "error code, and reusable Global Components via list_global_components/get_global_component). Four " +
       "rules too important to risk missing: (1) default stack for every Website Template " +

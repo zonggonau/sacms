@@ -1,0 +1,4 @@
+interface:
+  display_name: "SaCMS Global Website Agent"
+  short_description: "Rancang, bangun, dan verifikasi demo SaCMS"
+  default_prompt: "Gunakan $sacms-global-website untuk membuat demo portal berita dari analisis brief sampai pratinjau terverifikasi."

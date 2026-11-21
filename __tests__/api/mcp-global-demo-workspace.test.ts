@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { readFile } from "node:fs/promises"
 
 type Tool = (args: Record<string, unknown>) => Promise<{ structuredContent: Record<string, unknown>; isError?: boolean }>
+type Prompt = (args: Record<string, unknown>) => Promise<{ messages: { role: string; content: { text: string } }[] }>
 
 const mocks = vi.hoisted(() => {
   const tx = {
@@ -20,13 +22,21 @@ const mocks = vi.hoisted(() => {
 })
 
 vi.mock("mcp-handler", () => ({
-  createMcpHandler: (register: (server: { registerTool: (name: string, config: unknown, tool: Tool) => void; registerPrompt: () => void }) => Promise<void>) => {
+  createMcpHandler: (register: (server: {
+    registerTool: (name: string, config: unknown, tool: Tool) => void
+    registerPrompt: (name: string, config: unknown, prompt: Prompt) => void
+  }) => Promise<void>) => {
     const tools = new Map<string, Tool>()
-    const ready = register({ registerTool: (name, _config, tool) => { tools.set(name, tool) }, registerPrompt: vi.fn() })
+    const prompts = new Map<string, Prompt>()
+    const ready = register({
+      registerTool: (name, _config, tool) => { tools.set(name, tool) },
+      registerPrompt: (name, _config, prompt) => { prompts.set(name, prompt) },
+    })
     return async (request: Request) => {
       await ready
-      const { name, args } = await request.json()
-      return Response.json(await tools.get(name)!(args))
+      const { name, args, kind } = await request.json()
+      const handler = kind === "prompt" ? prompts.get(name) : tools.get(name)
+      return Response.json(await handler!(args))
     }
   },
 }))
@@ -67,11 +77,11 @@ const stored = {
   schema: starter, demoTenantId: workspace.id, isDefault: false, published: false, createdAt: version, updatedAt: version, sourceVersion: version,
 }
 
-async function call(name: string, args: Record<string, unknown>) {
+async function call(name: string, args: Record<string, unknown>, kind: "tool" | "prompt" = "tool") {
   const response = await POST(new Request("https://example.test/api/mcp/global-schema", {
     method: "POST",
     headers: { authorization: "Bearer mcpglobal_fixture", "content-type": "application/json" },
-    body: JSON.stringify({ name, args }),
+    body: JSON.stringify({ name, args, kind }),
   }))
   return response.json()
 }
@@ -95,6 +105,18 @@ describe("Global MCP starter schema and demo workspace", () => {
     mocks.tx.websiteTemplate.count.mockResolvedValue(0)
     mocks.tx.websiteTemplate.findMany.mockResolvedValue([])
     mocks.materialize.mockResolvedValue({ imported: 7 })
+  })
+
+  it("points the website prompt to the same read-only workflow used by the local skill", async () => {
+    const prompt = await call("buat-website", { topic: "Portal berita lokal" }, "prompt")
+    expect(prompt.messages[0].content.text).toContain("Portal berita lokal")
+    expect(prompt.messages[0].content.text).toContain("get_website_agent_workflow")
+
+    const workflow = await readFile("src/lib/infrastructure/sacms-global-website-workflow.md", "utf8")
+    const result = await call("get_website_agent_workflow", {})
+    expect(result.structuredContent).toEqual({ skill: "sacms-global-website", workflow })
+    expect(result.content[0].text).toBe(workflow)
+    expect(mocks.transaction).not.toHaveBeenCalled()
   })
 
   it("loads the starter and links a workspace before returning the new template", async () => {

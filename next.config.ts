@@ -26,6 +26,11 @@ function getTunnelOrigins(): string[] {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/api/mcp/global-schema/\\[\\[\\.\\.\\.transport\\]\\]": [
+      "./src/lib/infrastructure/sacms-global-website-workflow.md",
+    ],
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,

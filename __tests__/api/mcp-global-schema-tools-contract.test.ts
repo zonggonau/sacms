@@ -32,6 +32,7 @@ function toolBlockOf(tool: string): string {
 describe("SaCMS Global Schema Template MCP route — source contract", () => {
   it("declares an outputSchema on every tool whose result feeds a later step", () => {
     for (const tool of [
+      "get_website_agent_workflow",
       "list_field_types",
       "list_schema_templates",
       "get_schema_template",
@@ -468,12 +469,14 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(getTool).toMatch(/outputSchema: WEBSITE_TEMPLATE_OUTPUT_SHAPE|\.\.\.WEBSITE_TEMPLATE_OUTPUT_SHAPE/)
   })
 
-  it("the buat-website prompt's workflow reports the demo URL/routes, asks before publishing, and points to apply_website_template on the per-workspace server (PROMPT-2)", () => {
+  it("the shared website workflow preserves demo reporting and publication scope (PROMPT-2)", () => {
     const promptStart = routeSource.indexOf('"buat-website"')
     const promptBlock = routeSource.slice(promptStart, promptStart + 3000)
-    expect(promptBlock).toMatch(/routes\[\]/)
-    expect(promptBlock).toMatch(/published: true/)
-    expect(promptBlock).toMatch(/apply_website_template/)
+    expect(promptBlock).toContain("get_website_agent_workflow")
+    const workflow = readFileSync(join(__dirname, "../../src/lib/infrastructure/sacms-global-website-workflow.md"), "utf-8")
+    expect(workflow).toContain("routes[]")
+    expect(workflow).toContain("Gunakan `published: true` hanya jika pengguna mengizinkan")
+    expect(workflow).toContain("`apply_website_template` pada MCP per-workspace")
   })
 
   it("the 429 rate-limit response echoes the request's own JSON-RPC id instead of a hardcoded null, so a client correlating by id doesn't wait on it forever", () => {
