@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { ImageLightboxDialog } from "@/components/image-lightbox-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { cn } from "@/lib/utils"
 
@@ -633,35 +634,10 @@ export default function TenantSupportPage() {
         </div>
       </div>
 
-      {/* Transparent Image Lightbox Modal */}
-      {previewImageUrl && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-          onClick={() => setPreviewImageUrl(null)}
-        >
-          <div 
-            className="relative max-w-5xl max-h-[90vh] flex flex-col items-center justify-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setPreviewImageUrl(null)}
-              className="absolute -top-12 right-0 sm:-right-12 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all shadow-xl hover:scale-110"
-              title="Tutup (ESC)"
-            >
-              <X className="h-6 w-6" />
-            </button>
-
-            {/* Full-resolution Image */}
-            <img
-              src={previewImageUrl}
-              alt="Preview"
-              className="max-h-[85vh] max-w-full rounded-2xl object-contain shadow-2xl ring-1 ring-white/10"
-            />
-          </div>
-        </div>
-      )}
+      <ImageLightboxDialog
+        imageUrl={previewImageUrl}
+        onOpenChange={(open) => !open && setPreviewImageUrl(null)}
+      />
     </div>
   )
 }

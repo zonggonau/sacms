@@ -1,6 +1,7 @@
 "use client"
 
 import { Quote } from "lucide-react"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { TestimonialItem } from "../types"
 import { sanitizeHtml } from "@/lib/sanitize-html"
 
@@ -46,9 +47,11 @@ export function TestimonialsSection({ testimonials = [] }: { testimonials?: Test
               </div>
               
               <div className="relative z-10 flex items-center gap-3.5 pt-4 border-t border-border/50">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-blue-600/80 flex items-center justify-center font-black text-white text-base shrink-0 shadow-md shadow-primary/20 border border-white/10">
-                  {t.name?.[0]?.toUpperCase() || "?"}
-                </div>
+                <Avatar className="w-10 h-10 shrink-0 shadow-md shadow-primary/20 border border-white/10">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/80 to-blue-600/80 font-black text-white text-base">
+                    {t.name?.[0]?.toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="text-sm font-bold text-foreground group-hover:text-primary transition-colors">{t.name}</p>
                   <p className="text-xs text-muted-foreground font-medium">{t.role}{t.company ? <span className="text-primary/60"> • {t.company}</span> : ""}</p>

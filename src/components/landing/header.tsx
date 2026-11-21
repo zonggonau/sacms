@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Menu, X, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -100,9 +101,11 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                   href={dashboardUrl}
                   className="flex items-center gap-2 text-xs font-bold text-foreground hover:text-primary transition-colors py-1.5 px-3 rounded-full hover:bg-muted/40 border border-border/50 bg-background/50 backdrop-blur-sm"
                 >
-                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-black text-[10px]">
-                    {userInitial}
-                  </div>
+                  <Avatar className="w-5 h-5">
+                    <AvatarFallback className="bg-primary/10 text-primary font-black text-[10px]">
+                      {userInitial}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="truncate max-w-[120px]">{userName}</span>
                 </Link>
                 <Link href={dashboardUrl}>
@@ -167,9 +170,11 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
               {status === "authenticated" && session?.user ? (
                 <div className="flex flex-col gap-2.5 pt-4 pb-2 mt-1 border-t border-border/50">
                   <div className="flex items-center gap-3 p-3 rounded-2xl bg-muted/30 border border-border/60">
-                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                      {userInitial}
-                    </div>
+                    <Avatar className="w-9 h-9">
+                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+                        {userInitial}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="overflow-hidden">
                       <p className="text-sm font-bold text-foreground truncate">{userName}</p>
                       <p className="text-xs text-muted-foreground truncate">{session.user.email}</p>

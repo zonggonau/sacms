@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -328,7 +329,12 @@ export function WorkspaceCreationDialog({
                 {standardPlans.length === 0 && (
                   <p className="text-sm text-muted-foreground" role="status">Katalog paket workspace belum tersedia.</p>
                 )}
-                <div role="radiogroup" aria-label="Paket Workspace" className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : planGridCols(standardPlans.length))}>
+                <RadioGroup
+                  value={selectedPlanSlug}
+                  onValueChange={(value) => setNewWorkspace(prev => ({ ...prev, plan: value }))}
+                  aria-label="Paket Workspace"
+                  className={cn("grid gap-4 pt-1", isEnterpriseLicensed ? "grid-cols-1 sm:max-w-sm" : planGridCols(standardPlans.length))}
+                >
                     {standardPlans.map((plan) => {
                       const planSlug = plan.plan_slug || plan.id
                       const isSelected = selectedPlanSlug === planSlug
@@ -351,16 +357,12 @@ export function WorkspaceCreationDialog({
                               : !isUnavailable && "border-border/80 hover:border-primary/50"
                           )}
                         >
-                          <input
-                            type="radio"
-                            name="workspace-plan"
+                          <RadioGroupItem
                             value={planSlug}
                             aria-label={plan.name}
                             aria-describedby={isUnavailable ? freePlanHint : undefined}
-                            checked={isSelected}
                             disabled={isUnavailable}
-                            onChange={() => setNewWorkspace(prev => ({ ...prev, plan: planSlug }))}
-                            className="absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                            className="absolute inset-0 z-10 m-0 h-full w-full size-full cursor-pointer opacity-0 disabled:cursor-not-allowed rounded-none border-0 shadow-none"
                           />
                           {accent.ribbon && (
                             <div className="bg-primary text-primary-foreground text-[10px] font-black uppercase py-1 text-center tracking-wider">
@@ -435,7 +437,7 @@ export function WorkspaceCreationDialog({
                         </Card>
                       )
                     })}
-                </div>
+                </RadioGroup>
               </CardContent>
             </Card>
 

@@ -13,6 +13,7 @@ import {
   ArrowRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -238,13 +239,14 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
             {/* Author Meta */}
             <div className="flex items-center justify-between pt-4 pb-2 border-y border-border/50">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-primary/10 overflow-hidden border border-border/80 flex items-center justify-center shrink-0">
-                  {post.author_avatar ? (
-                    <img src={post.author_avatar} alt={post.author || "Author"} className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-5 h-5 text-primary" />
+                <Avatar className="w-11 h-11 shrink-0 border border-border/80">
+                  {post.author_avatar && (
+                    <AvatarImage src={post.author_avatar} alt={post.author || "Author"} className="object-cover" />
                   )}
-                </div>
+                  <AvatarFallback className="bg-primary/10">
+                    <User className="w-5 h-5 text-primary" />
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="text-sm font-bold text-foreground">{post.author || "Tim SaCMS"}</p>
                   <p className="text-xs text-muted-foreground font-medium">Platform Engineering & Cloud Architecture</p>

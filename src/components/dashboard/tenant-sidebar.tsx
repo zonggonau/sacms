@@ -9,6 +9,7 @@ import { isPlatformStaff } from "@/lib/platform-roles"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   LayoutDashboard,
   FileText,
@@ -548,13 +549,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
 
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />
-      )}
-
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r transition-transform duration-300 md:hidden shadow-none", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
-        {renderSidebarContent()}
-      </aside>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" showCloseButton={false} className="w-64 p-0 gap-0 border-r shadow-none">
+          <SheetTitle className="sr-only">Menu Workspace</SheetTitle>
+          <SheetDescription className="sr-only">Menu navigasi workspace.</SheetDescription>
+          {renderSidebarContent()}
+        </SheetContent>
+      </Sheet>
 
       <aside className="hidden md:block w-64 border-r shrink-0 h-screen sticky top-0 bg-card">
         {renderSidebarContent()}

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Logo } from "@/components/ui/logo"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   Collapsible,
   CollapsibleContent,
@@ -258,20 +259,13 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
       </Button>
 
       {/* Mobile Sidebar */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 border-r bg-card transition-transform md:hidden",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {renderSidebarContent()}
-      </aside>
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" showCloseButton={false} className="w-64 p-0 gap-0 border-r bg-card shadow-none">
+          <SheetTitle className="sr-only">Menu Admin</SheetTitle>
+          <SheetDescription className="sr-only">Menu navigasi admin.</SheetDescription>
+          {renderSidebarContent()}
+        </SheetContent>
+      </Sheet>
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:block w-64 border-r bg-card">

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { aiPreviewText, fieldAiActions, getFieldAiMode, isAiFieldEmpty, normalizeAiFieldValue, type AiField, type AiFieldValue, type AiFormTarget, type FieldAiAction } from "@/lib/content/field-ai"
 
 interface AIAssistantDialogProps {
@@ -168,15 +169,20 @@ export function AIAssistantDialog({ tenantSlug, form, field, value, context, loc
         {suggestions.length > 0 && (
           <fieldset className="space-y-2">
             <legend className="mb-1 text-sm font-semibold">Pratinjau saran</legend>
-            {suggestions.map((suggestion, index) => (
-              <label key={index} className="flex items-start gap-2 rounded-lg border p-2 text-sm">
-                {suggestions.length > 1 && <input type="radio" name="ai-field-suggestion" className="mt-1"
-                  checked={selected === index} onChange={() => setSelected(index)} />}
-                {typeof suggestion === "string"
-                  ? <span className="whitespace-pre-wrap break-words">{aiPreviewText(suggestion, field)}</span>
-                  : <span><strong>{suggestion.meta_title}</strong><br />{suggestion.meta_description}</span>}
-              </label>
-            ))}
+            <RadioGroup
+              className="gap-2"
+              value={String(selected)}
+              onValueChange={(v) => setSelected(Number(v))}
+            >
+              {suggestions.map((suggestion, index) => (
+                <label key={index} className="flex items-start gap-2 rounded-lg border p-2 text-sm">
+                  {suggestions.length > 1 && <RadioGroupItem value={String(index)} className="mt-1" />}
+                  {typeof suggestion === "string"
+                    ? <span className="whitespace-pre-wrap break-words">{aiPreviewText(suggestion, field)}</span>
+                    : <span><strong>{suggestion.meta_title}</strong><br />{suggestion.meta_description}</span>}
+                </label>
+              ))}
+            </RadioGroup>
           </fieldset>
         )}
 
