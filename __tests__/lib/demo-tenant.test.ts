@@ -7,13 +7,18 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // renders real-looking content instead of an empty shell.
 
 const tenantFindUnique = vi.fn()
+const tenantFindFirst = vi.fn()
 const tenantCreate = vi.fn()
 const schemaTemplateUpdate = vi.fn().mockResolvedValue({})
 
 vi.mock("@/lib/database", () => ({
   db: {
-    tenant: { findUnique: tenantFindUnique, create: tenantCreate },
+    tenant: { findUnique: tenantFindUnique, findFirst: tenantFindFirst, create: tenantCreate },
     schemaTemplate: { update: schemaTemplateUpdate },
+    get contentType() { return tenantDbMock.contentType },
+    get contentEntry() { return tenantDbMock.contentEntry },
+    get singleType() { return tenantDbMock.singleType },
+    get tenantSingleTypeAssignment() { return tenantDbMock.tenantSingleTypeAssignment },
   },
   getTenantDb: vi.fn(async () => tenantDbMock),
 }))
@@ -21,11 +26,6 @@ vi.mock("@/lib/database", () => ({
 const materializeSchemaIntoTenant = vi.fn().mockResolvedValue({ imported: 2 })
 vi.mock("@/lib/schema-template-sync", () => ({
   materializeSchemaIntoTenant: (...args: any[]) => materializeSchemaIntoTenant(...args),
-}))
-
-const wipeTenantSchema = vi.fn().mockResolvedValue({ contentTypes: 0, singleTypes: 0, components: 0 })
-vi.mock("@/lib/schema-wipe", () => ({
-  wipeTenantSchema: (...args: any[]) => wipeTenantSchema(...args),
 }))
 
 let createContentEntryCounter = 0
@@ -38,12 +38,20 @@ vi.mock("@/lib/content/entry-service", () => ({
 
 const contentTypeFindMany = vi.fn().mockResolvedValue([])
 const singleTypeFindMany = vi.fn().mockResolvedValue([])
+const contentEntryFindMany = vi.fn().mockResolvedValue([])
+const tenantSingleTypeAssignmentFindUnique = vi.fn().mockResolvedValue(null)
+const tenantSingleTypeAssignmentCreate = vi.fn().mockResolvedValue({})
 const tenantSingleTypeAssignmentUpsert = vi.fn().mockResolvedValue({})
 const tenantLocaleCreate = vi.fn().mockResolvedValue({})
 const tenantDbMock = {
   contentType: { findMany: contentTypeFindMany },
+  contentEntry: { findMany: contentEntryFindMany },
   singleType: { findMany: singleTypeFindMany },
-  tenantSingleTypeAssignment: { upsert: tenantSingleTypeAssignmentUpsert },
+  tenantSingleTypeAssignment: {
+    upsert: tenantSingleTypeAssignmentUpsert,
+    findUnique: tenantSingleTypeAssignmentFindUnique,
+    create: tenantSingleTypeAssignmentCreate,
+  },
   tenantLocale: { create: tenantLocaleCreate },
 }
 
@@ -72,18 +80,35 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
   // much the template's schema/dummyData changed since. A new Tenant row
   // is never created again (reuses the existing one), but its content IS
   // fully wiped and rebuilt every time, not just once.
-  it("reuses the existing Tenant row (no new tenant.create) but still wipes and rebuilds its content every time, not just on first creation", async () => {
-    tenantFindUnique.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
+  it("preserves the linked demo workspace, schema and entries during frontend redeploy", async () => {
+    tenantFindFirst.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
 
     const result = await ensureDemoTenantForSchemaTemplate({ ...schemaTemplate, demoTenantId: "demo-tenant-1" })
 
     expect(result).toEqual({ id: "demo-tenant-1", slug: "demo-company-profile" })
     expect(tenantCreate).not.toHaveBeenCalled()
     expect(tenantLocaleCreate).not.toHaveBeenCalled()
-    expect(wipeTenantSchema).toHaveBeenCalledWith(tenantDbMock, "demo-tenant-1")
-    expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(tenantDbMock, "demo-tenant-1", schemaTemplate.schema)
-    // seedSampleContent ran too (reads the now-empty/rematerialized schema).
-    expect(contentTypeFindMany).toHaveBeenCalled()
+    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
+    expect(contentTypeFindMany).not.toHaveBeenCalled()
+  })
+
+  it("initializes empty models on first release and keeps edited drafts and collection entries", async () => {
+    const demo = { id: "demo-tenant-1", slug: "demo-company-profile" }
+    tenantFindFirst.mockResolvedValue(demo)
+    contentTypeFindMany.mockResolvedValue([{ id: "articles", slug: "articles", schemaFields: [] }])
+    contentEntryFindMany.mockResolvedValueOnce([{ id: "editor-article", data: { title: "Editorial" }, deletedAt: null }])
+    singleTypeFindMany.mockResolvedValue([{ id: "site", slug: "site-settings", schemaFields: [] }, { id: "home", slug: "homepage", schemaFields: [] }])
+    tenantSingleTypeAssignmentFindUnique
+      .mockResolvedValueOnce({ enabled: true, publishedAt: null, draftData: { title: "Editor draft" } })
+      .mockResolvedValueOnce(null)
+
+    await ensureDemoTenantForSchemaTemplate({ ...schemaTemplate, demoTenantId: demo.id }, { seedMissingContent: true })
+
+    expect(createContentEntry).not.toHaveBeenCalled()
+    expect(tenantSingleTypeAssignmentUpsert).not.toHaveBeenCalled()
+    expect(tenantSingleTypeAssignmentCreate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      data: expect.objectContaining({ tenantId: demo.id, singleTypeId: "home", locale: "id" }),
+    }))
   })
 
   it("creates a new demo tenant, materializes the schema, and persists demoTenantId when none exists yet", async () => {

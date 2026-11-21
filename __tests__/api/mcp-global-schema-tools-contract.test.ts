@@ -449,15 +449,11 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
 
   // ── Fourth external audit round ───────────────────────────────────────────
 
-  it("the demo tenant's content is wiped and rebuilt on EVERY demo deploy, not just the first one (DEMO-6: a later redeploy/update used to leave it stale forever)", () => {
+  it("frontend redeploy preserves demo content and reset requires explicit confirmation", () => {
     const demoTenantSource = readFileSync(join(__dirname, "../../src/lib/infrastructure/demo-tenant.ts"), "utf-8")
-    expect(demoTenantSource).toMatch(/import \{ wipeTenantSchema \} from "@\/lib\/schema-wipe"/)
-    // Must run the wipe/rematerialize/reseed INSIDE the "already exists"
-    // branch, not only in the brand-new-tenant creation path below it.
-    const existsIdx = demoTenantSource.indexOf("if (existing) {")
-    const wipeIdx = demoTenantSource.indexOf("wipeTenantSchema(tenantDb, existing.id)")
-    expect(existsIdx).toBeGreaterThan(-1)
-    expect(wipeIdx).toBeGreaterThan(existsIdx)
+    expect(demoTenantSource).not.toContain("wipeTenantSchema")
+    expect(toolBlockOf("redeploy_website_template_demo")).not.toContain("resetDemoContent")
+    expect(toolBlockOf("reset_demo_content")).toMatch(/if \(!confirmReset\)/)
   })
 
   it("create_website_template/update_website_template/redeploy_website_template_demo no longer return the full `files` array (OUT-9: a ~150-200KB echo nobody needed), while get_website_template still does", () => {

@@ -2,9 +2,9 @@ import { db, getTenantDb } from "@/lib/database"
 import { materializeSchemaIntoTenant, type SchemaBlob } from "@/lib/schema-template-sync"
 import { createContentEntry, updateContentEntry, type EntryWriteContext } from "@/lib/content/entry-service"
 import { slugify } from "@/lib/slug"
-import { wipeTenantSchema } from "@/lib/schema-wipe"
 import type { Prisma } from "../../../prisma/generated-client"
 import { isDeepStrictEqual } from "node:util"
+import { parseSingleTypeData } from "@/lib/single-type-publication"
 
 /**
  * Structural/reference field types with no sensible synthetic value (a real
@@ -142,6 +142,12 @@ async function reserveUniqueTenantSlug(preferred: string, client: Pick<Prisma.Tr
 
 const SAMPLE_ENTRIES_PER_CONTENT_TYPE = 3
 
+export class DemoContentError extends Error {
+  constructor(public readonly code: string, message: string, public readonly details?: unknown) {
+    super(message)
+  }
+}
+
 /** Draft previews use the shared database and can be provisioned in the
  * same transaction that saves the catalog template. */
 export async function createDraftDemoWorkspace(
@@ -182,21 +188,48 @@ export async function findSchemaDemoWorkspace(
   })
 }
 
+export async function checkDemoContentRemoval(
+  client: Pick<Prisma.TransactionClient, "contentType">,
+  tenantId: string,
+  previous: SchemaBlob,
+  schema: SchemaBlob,
+  allowContentRemoval = false,
+) {
+  const nextSlugs = new Set(schema.contentTypes?.map((model) => model.slug))
+  const removed = (previous.contentTypes || []).filter((model) => !nextSlugs.has(model.slug)).map((model) => model.slug)
+  if (removed.length && !allowContentRemoval) {
+    const blocked = await client.contentType.findFirst({
+      where: { tenantId, draftTemplateId: null, slug: { in: removed }, entries: { some: {} } },
+      select: { slug: true },
+    })
+    if (blocked) throw new DemoContentError("DEMO_CONTENT_EXISTS", `Content Type '${blocked.slug}' contains demo entries. Confirm removal to discard them.`)
+  }
+  return removed
+}
+
 export async function syncDraftDemoWorkspace(
   tx: Prisma.TransactionClient,
   tenantId: string,
   previous: SchemaBlob,
   schema: SchemaBlob,
+  options: { allowContentRemoval?: boolean } = {},
 ) {
-  const nextSlugs = new Set(schema.contentTypes?.map((model) => model.slug))
-  const removed = (previous.contentTypes || []).filter((model) => !nextSlugs.has(model.slug)).map((model) => model.slug)
+  const removed = await checkDemoContentRemoval(tx, tenantId, previous, schema, options.allowContentRemoval)
   if (removed.length) {
-    await tx.contentType.deleteMany({ where: { tenantId, draftTemplateId: null, slug: { in: removed } } })
+    const where = { tenantId, draftTemplateId: null, slug: { in: removed } }
+    const deleted = await tx.contentType.deleteMany({
+      where: options.allowContentRemoval ? where : { ...where, entries: { none: {} } },
+    })
+    if (!options.allowContentRemoval && deleted.count < removed.length) {
+      await checkDemoContentRemoval(tx, tenantId, previous, schema)
+    }
   }
 
   const changed = (before: SchemaBlob["contentTypes"] = [], after: SchemaBlob["contentTypes"] = []) => {
-    const bySlug = new Map(before.map((model) => [model.slug, model]))
-    return after.filter((model) => !isDeepStrictEqual(bySlug.get(model.slug), model))
+    const definition = ({ slug, name, description, fields, group }: NonNullable<SchemaBlob["contentTypes"]>[number]) =>
+      ({ slug, name, description, fields, group })
+    const bySlug = new Map(before.map((model) => [model.slug, definition(model)]))
+    return after.filter((model) => !isDeepStrictEqual(bySlug.get(model.slug), definition(model)))
   }
   await materializeSchemaIntoTenant(tx, tenantId, {
     groups: schema.groups,
@@ -207,47 +240,21 @@ export async function syncDraftDemoWorkspace(
   }, {}, { updateExisting: true })
 }
 
-/**
- * Lazily get-or-create the internal, owner-less demo tenant for a
- * SchemaTemplate, then (re)materialize its schema and (re)seed sample
- * content — called on EVERY demo deploy (create, update with files/schema,
- * or an explicit redeploy), never just the first one.
- *
- * Fourth external audit, DEMO-6: this used to return the existing demo
- * tenant as-is once created — every LATER update/redeploy kept serving
- * whatever content got seeded the very first time, even after the
- * template's schema/dummyData genuinely changed (confirmed live: a
- * redeploy and an update with an identical-but-resaved schema both left
- * the demo tenant's content completely untouched). Every call that reaches
- * this function already means something schema/files-relevant changed —
- * update_website_template only triggers a redeploy when files or schema
- * actually changed (a metadata-only edit never calls deployWebsiteTemplateDemo
- * at all) — so a stale demo tenant is wiped (wipeTenantSchema — Content
- * Types/Single Types/Components, cascading their entries) and rebuilt from
- * scratch every time, not just once. This also makes
- * redeploy_website_template_demo double as a "force reseed" tool with no
- * new API surface needed.
- */
+/** Create a legacy demo on demand. A frontend redeploy on an existing
+ * demo preserves its content; initialization only fills empty models. */
 export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
   id: string
   slug: string
   name: string
   schema: unknown
   demoTenantId: string | null
-}): Promise<{ id: string; slug: string }> {
+}, options: { seedMissingContent?: boolean } = {}): Promise<{ id: string; slug: string }> {
+  const schema = (schemaTemplate.schema as SchemaBlob) || {}
   if (schemaTemplate.demoTenantId) {
-    const existing = await db.tenant.findUnique({
-      where: { id: schemaTemplate.demoTenantId },
-      select: { id: true, slug: true },
-    })
-    if (existing) {
-      const tenantDb = await getTenantDb(existing.slug)
-      const schemaBlob = (schemaTemplate.schema as SchemaBlob) || {}
-      await wipeTenantSchema(tenantDb, existing.id)
-      await materializeSchemaIntoTenant(tenantDb, existing.id, schemaBlob)
-      await seedSampleContent(tenantDb, existing.id, existing.slug, schemaBlob)
-      return existing
-    }
+    const existing = await findSchemaDemoWorkspace(db, schemaTemplate)
+    if (!existing) throw new DemoContentError("DEMO_NOT_AVAILABLE", "The configured demo workspace could not be verified.")
+    if (options.seedMissingContent) await seedSampleContent(db, existing.id, existing.slug, schema, true)
+    return existing
   }
 
   const slug = await reserveUniqueTenantSlug(`demo-${schemaTemplate.slug}`)
@@ -275,10 +282,9 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
     data: { tenantId: tenant.id, locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
   })
 
-  const schemaBlob = (schemaTemplate.schema as SchemaBlob) || {}
-  await materializeSchemaIntoTenant(tenantDb, tenant.id, schemaBlob)
+  await materializeSchemaIntoTenant(tenantDb, tenant.id, schema)
 
-  await seedSampleContent(tenantDb, tenant.id, tenant.slug, schemaBlob)
+  await seedSampleContent(tenantDb, tenant.id, tenant.slug, schema)
 
   await db.schemaTemplate.update({
     where: { id: schemaTemplate.id },
@@ -395,13 +401,14 @@ async function resolveRelationPatches(
   }
 }
 
-async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb>>, tenantId: string, tenantSlug: string, schemaBlob: SchemaBlob) {
+export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb>>, tenantId: string, tenantSlug: string, schemaBlob: SchemaBlob, preserveExisting = false) {
   const [contentTypes, singleTypes] = await Promise.all([
-    tenantDb.contentType.findMany({ where: { tenantId }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
-    tenantDb.singleType.findMany({ where: { tenantId }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
+    tenantDb.contentType.findMany({ where: { tenantId, draftTemplateId: null }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
+    tenantDb.singleType.findMany({ where: { tenantId, draftTemplateId: null }, include: { schemaFields: { orderBy: { order: "asc" } } } }),
   ])
 
   const ctx: EntryWriteContext = { client: tenantDb, tenantId, tenantSlug }
+  const warnings: Array<{ model: string; message: string }> = []
 
   // naturalKey -> real entry id, scoped per Content Type slug (a relation's
   // relationSlug always names a specific model — never "any").
@@ -415,6 +422,21 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
     const entryCount = dummyRows ? Math.max(dummyRows.length, SAMPLE_ENTRIES_PER_CONTENT_TYPE) : SAMPLE_ENTRIES_PER_CONTENT_TYPE
     const keyMap = new Map<string, string>()
     seededByModel.set(contentType.slug, keyMap)
+
+    if (preserveExisting) {
+      const existing = await tenantDb.contentEntry.findMany({
+        where: { tenantId, contentTypeId: contentType.id },
+        select: { id: true, data: true, deletedAt: true },
+      })
+      if (existing.length) {
+        for (const row of existing) {
+          if (row.deletedAt) continue
+          const key = computeNaturalKey(parseSingleTypeData(row.data))
+          if (key) keyMap.set(key, row.id)
+        }
+        continue
+      }
+    }
 
     for (let i = 0; i < entryCount; i++) {
       const dummyRow = dummyRows?.[i % dummyRows.length]
@@ -433,7 +455,10 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
         console.warn(`[demo-tenant] Failed to seed sample entry for ${contentType.slug}:`, err)
         return null
       })
-      if (!result || !result.ok) continue
+      if (!result || !result.ok) {
+        warnings.push({ model: contentType.slug, message: result?.message ?? "Sample entry could not be saved." })
+        continue
+      }
 
       const naturalKey = computeNaturalKey(data)
       if (naturalKey) keyMap.set(naturalKey, result.data.id)
@@ -461,6 +486,20 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
   for (const singleType of singleTypes) {
     const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
     const singleDummyRows = findDummyData(schemaBlob.singleTypes as any, singleType.slug)
+    const key = { tenantId, singleTypeId: singleType.id, locale: "id" }
+    const content = { enabled: true, data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any, publishedAt: new Date() }
+    if (preserveExisting) {
+      const current = await tenantDb.tenantSingleTypeAssignment.findUnique({ where: { tenantId_singleTypeId_locale: key } })
+      if (current) {
+        if (current.publishedAt || current.draftData != null || !current.enabled || Object.keys(parseSingleTypeData(current.data)).length) continue
+        await tenantDb.tenantSingleTypeAssignment.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: content })
+      } else {
+        await tenantDb.tenantSingleTypeAssignment.create({ data: { ...key, ...content } }).catch((error) => {
+          if (error?.code !== "P2002") throw error
+        })
+      }
+      continue
+    }
     // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
     // { tenantId } }` on each SingleType ALREADY inserts a
     // TenantSingleTypeAssignment row (empty data, publishedAt: null,
@@ -472,21 +511,14 @@ async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getTenantDb
     // live). upsert instead of create, onto whichever row already exists.
     await tenantDb.tenantSingleTypeAssignment
       .upsert({
-        where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId: singleType.id, locale: "id" } },
-        create: {
-          tenantId,
-          singleTypeId: singleType.id,
-          locale: "id",
-          enabled: true,
-          data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any,
-          publishedAt: new Date(),
-        },
-        update: {
-          enabled: true,
-          data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any,
-          publishedAt: new Date(),
-        },
+        where: { tenantId_singleTypeId_locale: key },
+        create: { ...key, ...content },
+        update: content,
       })
-      .catch((err) => console.warn(`[demo-tenant] Failed to seed sample single-type data for ${singleType.slug}:`, err))
+      .catch((err) => {
+        console.warn(`[demo-tenant] Failed to seed sample single-type data for ${singleType.slug}:`, err)
+        warnings.push({ model: singleType.slug, message: "Sample singleton values could not be saved." })
+      })
   }
+  return warnings
 }

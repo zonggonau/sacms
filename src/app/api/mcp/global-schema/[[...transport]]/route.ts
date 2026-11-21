@@ -47,6 +47,10 @@ import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validat
 import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
 import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
 import type { Prisma } from "@prisma/client"
+import {
+  DEMO_MEDIA_MAX_BYTES, DEMO_MEDIA_TYPES, DemoContentError,
+  getDemoSingleTypeEntry, updateDemoSingleTypeEntry, listDemoContentEntries, saveDemoContentEntry, uploadDemoMedia, resetDemoContent,
+} from "@/lib/infrastructure/demo-content"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -218,6 +222,59 @@ const SCHEMA_DEMO_WORKSPACE_SHAPE = z.object({
   id: z.string(), slug: z.string(), cmsPath: z.string(), developerPath: z.string(),
   schema: z.any().optional(),
 })
+
+const DEMO_IDENTITY = z.object({ id: z.string(), slug: z.string() })
+const DEMO_VALUES = z.record(z.string(), z.unknown())
+const DEMO_SINGLE_ENTRY = {
+  demo: DEMO_IDENTITY,
+  singleType: z.object({ id: z.string(), slug: z.string(), name: z.string() }),
+  locale: z.string(), status: z.enum(["empty", "draft", "published", "disabled"]),
+  hasPendingDraft: z.boolean(), version: z.string().nullable(), publishedAt: z.string().nullable(),
+  data: DEMO_VALUES, publishedData: DEMO_VALUES.nullable(),
+}
+const DEMO_COLLECTION_ENTRY = z.object({
+  id: z.string(), locale: z.string(), status: z.string(), data: DEMO_VALUES,
+  version: z.string(), publishedAt: z.string().nullable(),
+})
+const DEMO_TEMPLATE_INPUT = {
+  schemaTemplateId: z.string().trim().min(1).max(150).describe("Schema Template ID or slug. Uses its linked internal demo workspace."),
+}
+const DEMO_LOCALE_INPUT = z.string().trim().min(1).max(30).optional().describe("Exact locale; defaults to the demo's default locale.")
+const DEMO_SINGLE_INPUT = {
+  ...DEMO_TEMPLATE_INPUT, singleTypeSlug: z.string().trim().min(1).max(128), locale: DEMO_LOCALE_INPUT,
+}
+const DEMO_COLLECTION_INPUT = {
+  ...DEMO_TEMPLATE_INPUT, contentTypeSlug: z.string().trim().min(1).max(128), locale: DEMO_LOCALE_INPUT,
+}
+
+function demoFailure(code: string, message: string, details?: unknown) {
+  return {
+    content: [{ type: "text" as const, text: message }],
+    structuredContent: { ok: false, code, message, ...(details ? { details } : {}) },
+    isError: true,
+  }
+}
+
+async function runDemoOperation<T extends Record<string, unknown>>(operation: () => Promise<T>) {
+  if (!authContext.getStore()) return UNAUTHORIZED
+  try {
+    const data = await operation()
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+      structuredContent: data,
+    }
+  } catch (error) {
+    const prismaCode = typeof error === "object" && error !== null && "code" in error ? error.code : undefined
+    if (error instanceof DemoContentError || prismaCode === "P2025" || prismaCode === "P2034" || prismaCode === "P2002") {
+      const code = error instanceof DemoContentError ? error.code : "CONFLICT"
+      const message = error instanceof DemoContentError ? error.message : "Demo data changed during the request. Read it again before retrying."
+      const details = error instanceof DemoContentError ? error.details : undefined
+      return demoFailure(code, message, details)
+    }
+    console.error("[global MCP demo operation]", error)
+    return demoFailure("INTERNAL_ERROR", "The demo operation could not be completed.")
+  }
+}
 
 function describeSchemaDemoWorkspace(workspace: { id: string; slug: string }) {
   return {
@@ -471,7 +528,11 @@ If you're working inside a real local Next.js project with shell access (Claude 
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
 ## Demo preview and verification
-Every \`create_website_template\`, \`update_website_template(files/changedFiles/schema: ...)\`, and \`redeploy_website_template_demo\` call automatically (re)deploys a live preview at https://demo-<slug>.sites.sacms.cloud, fed by sample content (your dummyData where you provided it, generic placeholders where you didn't) — never a real customer's data. The demo tenant's content is fully wiped and reseeded from the CURRENT schema/dummyData on every one of these calls, never left stale from an earlier deploy — redeploy_website_template_demo with nothing else changed is a legitimate way to force a fresh reseed. The response's \`demoDeployment\` reports \`status\` (ok/failed/skipped), \`verified\`, \`routes\` (the homepage PLUS up to 5 more real routes read from the demo's own sitemap.xml, if it has one — \`verified\` is false the moment any ONE of them fails, not just the homepage), and \`error\`/\`verificationError\`; \`status: \"ok\"\` alone doesn't mean \`verified\` is true, check both. A metadata-only update (no files/changedFiles/schema) returns \`demoDeployment.status: \"skipped\"\` and does not redeploy/reseed. A relation field's dummyData value is a plain slugified LABEL matching the target entry's own title/judul/nama/name (e.g. \"kategori\": \"nasional\", or an array for *-to-many), resolved against whatever got seeded for that Content Type — media/mediaMultiple/file/component/repeater fields still render EMPTY (no sensible synthetic value exists for those) — that's expected, not a bug to chase.
+\`create_website_template\` initializes empty demo models from sample data. Read actual values with \`get_demo_single_type_entry\` or \`list_demo_content_entries\`. Read both editor and published values before diagnosing a frontend that appears empty. Use \`upload_demo_media\` to obtain a demo media ID, then \`update_demo_single_type_entry\` or \`save_demo_content_entry\` to store it, including inside Component and Repeater fields.
+
+Frontend redeploy preserves demo content. A schema update synchronizes model and field definitions in place. Removing a collection that still contains entries requires \`confirmRemoveDemoContent: true\` after user approval. Use \`reset_demo_content\` with \`confirmReset: true\` only after authorization to replace the demo entries with sample data. Reset runs independently of frontend deployment and preserves the demo media library.
+
+The demo response's \`demoDeployment\` reports \`status\` (ok/failed/skipped), \`verified\`, and \`routes\`. A successful submission is verified only when \`verified: true\`. Metadata-only updates skip redeployment.
 
 For a TARGETED revision of an existing template ("ubah warna header"), call \`get_website_template\` to see the current bundle, then \`update_website_template\` with changedFiles/deletedFiles instead of resending every file via \`files\`.
 
@@ -661,6 +722,104 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
 
     server.registerTool(
+      "get_demo_single_type_entry",
+      {
+        title: "Read Demo Single Type Entry",
+        description: "Read actual demo Single Type values for an exact locale. Returns editor data, public data, publication status, pending draft, and the write version.",
+        inputSchema: DEMO_SINGLE_INPUT,
+        outputSchema: DEMO_SINGLE_ENTRY,
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ schemaTemplateId, ...input }) => runDemoOperation(() => getDemoSingleTypeEntry(schemaTemplateId, input)),
+    )
+
+    server.registerTool(
+      "update_demo_single_type_entry",
+      {
+        title: "Save Demo Single Type Entry",
+        description: "Patch an entry in the linked demo only. Top-level fields not included in the patch are preserved. A supplied Component or Repeater replaces that entire field. Use demo media IDs or returned media URLs. Saves as a draft by default.",
+        inputSchema: {
+          ...DEMO_SINGLE_INPUT, data: z.record(z.string(), z.json()),
+          publish: z.boolean().default(false).describe("Publish the merged values to the demo Content API."),
+          expectedVersion: z.string().nullable().optional().describe("Version from get_demo_single_type_entry, or null for a missing assignment."),
+        },
+        outputSchema: DEMO_SINGLE_ENTRY,
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      },
+      async ({ schemaTemplateId, ...input }) => runDemoOperation(() => updateDemoSingleTypeEntry(schemaTemplateId, input)),
+    )
+
+    server.registerTool(
+      "list_demo_content_entries",
+      {
+        title: "List Demo Collection Entries",
+        description: "List actual Content Type entries and status for an exact demo locale. Use the entry IDs for related data or an update.",
+        inputSchema: { ...DEMO_COLLECTION_INPUT, limit: z.number().int().min(1).max(25).default(10), offset: z.number().int().min(0).max(10_000).default(0) },
+        outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), locale: z.string(), entries: z.array(DEMO_COLLECTION_ENTRY), hasMore: z.boolean() },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ schemaTemplateId, ...input }) => runDemoOperation(() => listDemoContentEntries(schemaTemplateId, input)),
+    )
+
+    server.registerTool(
+      "save_demo_content_entry",
+      {
+        title: "Create or Update a Demo Collection Entry",
+        description: "Create a demo collection entry, or patch an existing entry by ID. New entries default to draft. Specify the status when editing an already published entry to control whether the update stays public.",
+        inputSchema: {
+          ...DEMO_COLLECTION_INPUT, data: z.record(z.string(), z.json()),
+          entryId: z.string().trim().min(1).max(150).optional(),
+          status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+          expectedVersion: z.string().optional(),
+        },
+        outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), entry: DEMO_COLLECTION_ENTRY },
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      },
+      async ({ schemaTemplateId, ...input }) => runDemoOperation(() => saveDemoContentEntry(schemaTemplateId, input)),
+    )
+
+    server.registerTool(
+      "upload_demo_media",
+      {
+        title: "Upload a Demo Image",
+        description: "Upload a PNG, JPEG, WebP, or GIF into the linked demo's media library. Use the returned media ID or stored URL in Media, Component, or Repeater fields.",
+        inputSchema: {
+          ...DEMO_TEMPLATE_INPUT,
+          filename: z.string().trim().min(1).max(150), mimeType: z.enum(DEMO_MEDIA_TYPES),
+          base64: z.string().min(4).max(Math.ceil(DEMO_MEDIA_MAX_BYTES / 3) * 4).describe("Base64 image bytes without a data URI prefix, up to 2 MB decoded."),
+          alt: z.string().max(500).optional(),
+        },
+        outputSchema: {
+          demo: DEMO_IDENTITY, reused: z.boolean(),
+          media: z.object({ id: z.string(), url: z.string(), mimeType: z.string(), size: z.number() }),
+        },
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      },
+      async ({ schemaTemplateId, ...input }) => runDemoOperation(() => uploadDemoMedia(schemaTemplateId, input)),
+    )
+
+    server.registerTool(
+      "reset_demo_content",
+      {
+        title: "Reset Demo Content from Sample Data",
+        description: "Explicitly replace demo collection and singleton entries with the template's sample data. Preserves schema and media. Runs independently of frontend deployment.",
+        inputSchema: {
+          ...DEMO_TEMPLATE_INPUT,
+          confirmReset: z.boolean().default(false).describe("Set true only after the user authorizes deleting the current demo entries."),
+        },
+        outputSchema: {
+          demo: DEMO_IDENTITY, deletedEntries: z.number(), deletedAssignments: z.number(),
+          status: z.enum(["completed", "partial"]), warnings: z.array(z.object({ model: z.string(), message: z.string() })),
+        },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: false },
+      },
+      async ({ schemaTemplateId, confirmReset }) => runDemoOperation(() => {
+        if (!confirmReset) throw new DemoContentError("CONFIRMATION_REQUIRED", "Confirm the reset before deleting current demo entries.")
+        return resetDemoContent(schemaTemplateId)
+      }),
+    )
+
+    server.registerTool(
       "create_schema_template",
       {
         title: "Create Schema Template",
@@ -774,11 +933,12 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           ),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
+          confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
         },
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
       },
-      async ({ id, name, category, icon, description, schema, published, isDefault, expectedVersion, confirmSharedUpdate }) => {
+      async ({ id, name, category, icon, description, schema, published, isDefault, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -844,11 +1004,18 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           if (isDefault) await setAsDefaultSchemaTemplate(existing.id, tx)
           const template = await tx.schemaTemplate.findUniqueOrThrow({ where: { id: existing.id } })
           const demo = await findSchemaDemoWorkspace(tx, template)
-          if (schemaData && demo && (await tx.websiteTemplate.count({ where: { schemaTemplateId: existing.id } })) === 0) {
-            await syncDraftDemoWorkspace(tx, demo.id, existing.schema as SchemaBlob, schemaData)
+          if (schemaData && template.demoTenantId && !demo) {
+            throw new DemoContentError("DEMO_NOT_AVAILABLE", "The configured demo workspace could not be verified.")
+          }
+          if (schemaData && demo) {
+            await syncDraftDemoWorkspace(tx, demo.id, existing.schema as SchemaBlob, schemaData, { allowContentRemoval: confirmRemoveDemoContent })
           }
           return { template, demo }
-        }, { timeout: 20000 })
+        }, { timeout: 20000 }).catch((error: unknown) => {
+          if (error instanceof DemoContentError) return error
+          throw error
+        })
+        if (result instanceof DemoContentError) return demoFailure(result.code, result.message)
         if (!result) {
           return {
             content: [{ type: "text" as const, text: "Schema Template berubah selama permintaan. Baca versi terbaru sebelum mencoba kembali." }],
@@ -1163,6 +1330,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
         let schemaTemplate: { id: string; slug: string; name: string; schema: unknown; demoTenantId: string | null }
         let template: Awaited<ReturnType<typeof db.websiteTemplate.create>>
+        let seedMissingContent: boolean
         try {
           const result = await db.$transaction(async (tx) => {
             let resolvedSchemaTemplate: typeof schemaTemplate
@@ -1196,6 +1364,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             // unique-constraint race below) rolls BOTH back together,
             // instead of leaving that Schema Template orphaned.
             const slug = await dedupeSlug(slugify(name), (s) => tx.websiteTemplate.findUnique({ where: { slug: s } }))
+            const firstWebsite = !schemaTemplateId || (await tx.websiteTemplate.count({ where: { schemaTemplateId: resolvedSchemaTemplate.id } })) === 0
             const createdTemplate = await tx.websiteTemplate.create({
               data: {
                 name,
@@ -1208,10 +1377,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
                 idempotencyKey: idempotencyKey || null,
               },
             })
-            return { schemaTemplate: resolvedSchemaTemplate, template: createdTemplate }
+            return { schemaTemplate: resolvedSchemaTemplate, template: createdTemplate, firstWebsite }
           }, { timeout: 20000 })
           schemaTemplate = result.schemaTemplate
           template = result.template
+          seedMissingContent = result.firstWebsite
         } catch (err: any) {
           if (err instanceof SchemaTemplateNotFoundError) {
             return {
@@ -1244,6 +1414,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           slug: template.slug,
           files: parsedFiles.data,
           schemaTemplate,
+          seedMissingContent,
         })
 
         // Re-read rather than patch the in-memory `template` by hand —
@@ -1287,6 +1458,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
+          confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
         },
         outputSchema: z.union([
@@ -1295,7 +1467,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, dryRun }) => {
+      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -1387,6 +1559,17 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         }
 
         if (dryRun) {
+          if (parsedBundleData && existing.schemaTemplate.demoTenantId) {
+            const { findSchemaDemoWorkspace, checkDemoContentRemoval } = await import("@/lib/infrastructure/demo-tenant")
+            const demo = await findSchemaDemoWorkspace(db, existing.schemaTemplate)
+            if (!demo) return demoFailure("DEMO_NOT_AVAILABLE", "The configured demo workspace could not be verified.")
+            try {
+              await checkDemoContentRemoval(db, demo.id, existing.schemaTemplate.schema as SchemaBlob, parsedBundleData, confirmRemoveDemoContent)
+            } catch (error) {
+              if (error instanceof DemoContentError) return demoFailure(error.code, error.message)
+              throw error
+            }
+          }
           return {
             content: [{ type: "text" as const, text: "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan." }],
             structuredContent: { mode: "dry_run" as const, ok: true as const, valid: true as const, issues: [] as { path: string; message: string }[], warnings: bundleWarnings },
@@ -1403,6 +1586,12 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               data: { schema: parsedBundleData, sourceVersion: new Date() },
             })
             if (!changed.count) return null
+            if (existing.schemaTemplate.demoTenantId) {
+              const { findSchemaDemoWorkspace, syncDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+              const demo = await findSchemaDemoWorkspace(tx, existing.schemaTemplate)
+              if (!demo) throw new DemoContentError("DEMO_NOT_AVAILABLE", "The configured demo workspace could not be verified.")
+              await syncDraftDemoWorkspace(tx, demo.id, existing.schemaTemplate.schema as SchemaBlob, parsedBundleData, { allowContentRemoval: confirmRemoveDemoContent })
+            }
           }
           return tx.websiteTemplate.update({
             where: { id: existing.id },
@@ -1419,7 +1608,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               ...(filesData !== undefined || schemaUpdated ? { sourceVersion: new Date() } : {}),
             },
           })
+        }, { timeout: 20000 }).catch((error: unknown) => {
+          if (error instanceof DemoContentError) return error
+          throw error
         })
+        if (template instanceof DemoContentError) return demoFailure(template.code, template.message)
         if (!template) {
           return {
             content: [{ type: "text" as const, text: "Schema Template berubah selama permintaan. Baca versi terbaru sebelum mencoba kembali." }],
@@ -1432,9 +1625,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // to reflect either) — a metadata-only edit (name/icon/description/
         // published) shouldn't rebuild it.
         if (filesData !== undefined || schemaUpdated) {
-          // Re-fetch rather than reuse `existing.schemaTemplate` — that
-          // closure is stale the moment `schemaUpdated` just wrote a new
-          // schema blob, and the demo must seed against the NEW one.
+          // Use the latest definition after an in-place schema update.
           const freshSchemaTemplate = schemaUpdated
             ? await db.schemaTemplate.findUnique({ where: { id: existing.schemaTemplate.id } })
             : existing.schemaTemplate
@@ -1603,7 +1794,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       "redeploy_website_template_demo",
       {
         title: "Redeploy Website Template Demo",
-        description: "Re-deploy a Website Template's demo using its CURRENTLY STORED files and schema — no need to resend anything. Use this to retry after a failed demo build (check get_website_template_demo_status / get_deployment_build_logs-equivalent info first to see why), or just to force a fresh deploy+verification without changing anything about the template itself.",
+        description: "Redeploy the demo frontend from the stored files and verify it while preserving the demo entries. Use get_website_template_demo_status to diagnose a failed build. Reset sample content separately with reset_demo_content.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },

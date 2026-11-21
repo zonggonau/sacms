@@ -36,7 +36,9 @@ Mulai dari bundel `schema` template, termasuk kelompok dan `dummyData`. Pertahan
 
 Pada `CONFLICT`, baca versi baru dan rekonsiliasi perubahan. Pada `HAS_DEPENDENTS`, identifikasi dampak dan dapatkan persetujuan untuk perubahan bersama atau gunakan skema lain yang sah. Laporkan jika definisi yang diminta dan baris aktual masih berbeda.
 
-Buat data contoh sintetis sesuai topik dan bentuk nilai Content API. Deploy demo mengisi `dummyData`. Gunakan fixture untuk pengujian lokal sebelum deploy dan tangani media atau blok yang kosong.
+Baca nilai aktual dengan `get_demo_single_type_entry` atau `list_demo_content_entries`. Untuk singleton, bandingkan `data` dan `publishedData` pada locale yang sama. Jika nilai terbit sudah benar dan frontend kosong, periksa pemetaan field serta rendering.
+
+Gunakan data contoh sintetis sesuai topik. Unggah gambar lewat `upload_demo_media`, lalu pakai ID media hasil unggahan pada field logo atau media. Gunakan `update_demo_single_type_entry` dan `save_demo_content_entry` untuk mengisi nilai demo. Field Component menerima objek atau array sesuai opsi `repeatable`. Setiap blok Repeater membawa slug `__component`. Publikasikan draf demo sesuai kebutuhan pratinjau dan baca ulang nilai terbitnya.
 
 ## 4. Bangun dan uji UI/frontend
 
@@ -56,6 +58,6 @@ Gunakan review kode dan data uji sintetis untuk memastikan kontrol berikut sebel
 ## 6. Deploy dan verifikasi demo
 
 1. Jalankan `create_website_template` dengan `schemaTemplateId` yang telah diverifikasi dan `dryRun: true`. Untuk template yang sudah ada, gunakan `update_website_template` dengan patch `changedFiles`, `expectedVersion` yang sesuai, dan dry run. Selesaikan masalah validasi sambil mempertahankan target yang sama.
-2. Simpan rilis pratinjau pada target itu. Deploy membangun ulang data contoh demo dari `dummyData`. Jika demo yang sudah ada menyimpan data yang diperlukan, pastikan data tersebut sudah terwakili dalam template sebelum rilis. Gunakan kembali `idempotencyKey` yang sama jika respons create hilang. Gunakan `published: true` hanya jika pengguna mengizinkan publikasi katalog. Untuk pemasangan di workspace pelanggan yang diotorisasi, verifikasi target dan persyaratan `apply_website_template` pada MCP per-workspace.
+2. Simpan rilis pratinjau pada target itu. Deploy pertama mengisi model kosong dari data contoh. Redeploy mempertahankan entri demo. Untuk mengganti isi demo dengan data contoh, gunakan `reset_demo_content` dengan konfirmasi pengguna. Penghapusan Content Type yang berisi entri juga memerlukan konfirmasi terpisah. Gunakan kembali `idempotencyKey` yang sama jika respons create hilang. Gunakan `published: true` hanya jika pengguna mengizinkan publikasi katalog. Untuk pemasangan di workspace pelanggan yang diotorisasi, verifikasi target dan persyaratan `apply_website_template` pada MCP per-workspace.
 3. Cocokkan `demoDeployment.verified` atau `get_website_template_demo_status` dengan deployment terbaru. Periksa homepage dan rute utama dari brief, termasuk detail yang benar-benar menampilkan data SaCMS. Jika rilis gagal, baca log build atau runtime yang dilaporkan, perbaiki penyebabnya, dan verifikasi ulang.
 4. Laporkan URL yang terverifikasi, workspace atau Schema Template yang dipakai, hasil `routes[]` dan rute tambahan yang diuji, serta kendala yang masih ada. Untuk kegagalan build atau runtime, sertakan tahap dan bukti ringkasnya.

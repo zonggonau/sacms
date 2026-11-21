@@ -9,6 +9,7 @@ export interface WebsiteTemplateDemoInput {
   id: string
   slug: string
   files: { path: string; content: string }[]
+  seedMissingContent?: boolean
   schemaTemplate: {
     id: string
     slug: string
@@ -187,7 +188,9 @@ export async function deployWebsiteTemplateDemo(
   websiteTemplate: WebsiteTemplateDemoInput,
 ): Promise<DeployWebsiteTemplateDemoResult> {
   try {
-    const demoTenant = await ensureDemoTenantForSchemaTemplate(websiteTemplate.schemaTemplate)
+    const demoTenant = await ensureDemoTenantForSchemaTemplate(websiteTemplate.schemaTemplate, {
+      seedMissingContent: websiteTemplate.seedMissingContent,
+    })
 
     const files = websiteTemplate.files.map((f) => ({ name: f.path, content: f.content }))
 
