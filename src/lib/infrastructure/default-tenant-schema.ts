@@ -89,28 +89,34 @@ export async function ensureDefaultSchemaTemplate() {
  * older starter-kit flow already seeded "posts"/"kategori" into) is safe.
  */
 export async function seedDefaultTenantSchema(tenantId: string): Promise<void> {
-  const [defaultTemplate, publishedComponents] = await Promise.all([
-    ensureDefaultSchemaTemplate(),
-    db.globalComponent.findMany({ where: { published: true } }),
-  ])
-
-  const bundle = (defaultTemplate.schema as SchemaBlob) || {}
-  const schema: SchemaBlob = {
-    groups: bundle.groups,
-    contentTypes: bundle.contentTypes,
-    singleTypes: bundle.singleTypes,
-    components: publishedComponents.map((c) => ({
-      name: c.name,
-      slug: c.slug,
-      description: c.description || undefined,
-      // GlobalComponent.fields is already validated against
-      // schemaTemplateFieldSchema at write time (create/update_global_
-      // component) — the same per-field shape materializeSchemaIntoTenant's
-      // own (unexported) SchemaFieldInput expects.
-      fields: c.fields as any,
-    })),
-  }
-
+  const { schema } = await loadDefaultTenantSchema(true)
   const tenantDb = await getTenantDbById(tenantId)
   await materializeSchemaIntoTenant(tenantDb, tenantId, schema)
+}
+
+/** Read the starter schema and the published reusable catalog. Template previews
+ * and dry runs can use the fallback without writing a catalog row. */
+export async function loadDefaultTenantSchema(ensureCatalogRow = false) {
+  const [defaultTemplate, publishedComponents] = await Promise.all([
+    ensureCatalogRow ? ensureDefaultSchemaTemplate() : db.schemaTemplate.findFirst({ where: { isDefault: true } }),
+    db.globalComponent.findMany({ where: { published: true } }),
+  ])
+  const bundle = (defaultTemplate?.schema as SchemaBlob) || DEFAULT_SCHEMA_BUNDLE
+  const templateComponents = bundle.components || []
+  const templateSlugs = new Set(templateComponents.map((component) => component.slug))
+  return {
+    templateSlug: defaultTemplate?.slug ?? DEFAULT_SCHEMA_TEMPLATE_SLUG,
+    schema: {
+      ...bundle,
+      components: [
+        ...templateComponents,
+        ...publishedComponents.filter((component) => !templateSlugs.has(component.slug)).map((component) => ({
+          name: component.name,
+          slug: component.slug,
+          description: component.description || undefined,
+          fields: component.fields as unknown as NonNullable<SchemaBlob["components"]>[number]["fields"],
+        })),
+      ],
+    },
+  }
 }

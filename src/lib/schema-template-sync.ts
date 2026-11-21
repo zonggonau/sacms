@@ -1,4 +1,4 @@
-import type { PrismaClient, Prisma } from "../../prisma/generated-client"
+import type { Prisma, PrismaClient } from "../../prisma/generated-client"
 import { slugify } from "@/lib/slug"
 
 const MAX_GROUP_DEPTH = 2 // 0-indexed — matches content-type-group-service.ts's "up to 3 levels"
@@ -69,6 +69,27 @@ export function fieldsToCreateInput(fields: SchemaFieldInput[] | undefined) {
   })
 }
 
+async function updateDemoFields(
+  tx: Prisma.TransactionClient,
+  owner: { contentTypeId: string } | { singleTypeId: string } | { componentId: string },
+  fields: SchemaFieldInput[] | undefined,
+) {
+  const next = fieldsToCreateInput(fields)
+  const existing = await tx.schemaField.findMany({ where: owner, select: { id: true, slug: true } })
+  const fieldIds = new Map(existing.map(({ id, slug }) => [slug, id]))
+  const retained = new Set(next.map(({ slug }) => slug))
+  const removed = existing.filter(({ slug }) => !retained.has(slug)).map(({ id }) => id)
+  if (removed.length) await tx.schemaField.deleteMany({ where: { id: { in: removed } } })
+  for (const field of next) {
+    const id = fieldIds.get(field.slug)
+    if (id) {
+      await tx.schemaField.update({ where: { id }, data: { ...field, options: field.options ?? {} } })
+    } else {
+      await tx.schemaField.create({ data: { ...owner, ...field } })
+    }
+  }
+}
+
 /**
  * Creates ContentType/SingleType/Component + SchemaField rows from a schema
  * blob for the given tenant, skipping any model whose slug already exists.
@@ -76,19 +97,21 @@ export function fieldsToCreateInput(fields: SchemaFieldInput[] | undefined) {
  * to stamp `draftTemplateId` for template materialization; omit it for a
  * normal tenant import.
  *
- * Runs as one interactive transaction so a failure partway through (e.g. a
+ * Pass updateExisting only for editable demos, where the model and retained
+ * field IDs should survive schema changes. Runs in an interactive transaction
+ * so a failure partway through (e.g. a
  * slug collision from a concurrent request) rolls back everything already
  * created in this call instead of leaving the tenant with a half-imported
  * schema and no way to tell which models landed.
  */
 export async function materializeSchemaIntoTenant(
-  tenantDb: PrismaClient,
+  tenantDb: PrismaClient | Prisma.TransactionClient,
   tenantId: string,
   schema: SchemaBlob,
   extraData: Record<string, unknown> = {},
-  options: { mergeSingleTypeSlug?: string } = {},
+  options: { mergeSingleTypeSlug?: string; updateExisting?: boolean } = {},
 ): Promise<{ imported: number }> {
-  return tenantDb.$transaction(async (tx) => {
+  const materialize = async (tx: Prisma.TransactionClient) => {
     let imported = 0
 
     // ── Groups first, so contentTypes below can resolve `group` (a
@@ -148,7 +171,21 @@ export async function materializeSchemaIntoTenant(
     for (const ct of schema.contentTypes || []) {
       if (!ct.slug || !ct.name) continue
       const exists = await tx.contentType.findFirst({ where: { slug: ct.slug, tenantId } })
-      if (exists) continue
+      if (exists && !options.updateExisting) continue
+      if (exists) {
+        const groupId = ct.group ? groupSlugToId.get(ct.group) ?? null : null
+        const placement = groupId === exists.groupId ? {} : await resolveContentTypeGroup(ct.group)
+        await tx.contentType.update({
+          where: { id: exists.id },
+          data: {
+            name: ct.name,
+            description: ct.description || "",
+            ...placement,
+          },
+        })
+        await updateDemoFields(tx, { contentTypeId: exists.id }, ct.fields)
+        continue
+      }
       const { groupId, groupOrder } = await resolveContentTypeGroup(ct.group)
       await tx.contentType.create({
         data: {
@@ -171,7 +208,16 @@ export async function materializeSchemaIntoTenant(
       if (!st.slug || !st.name) continue
       const exists = await tx.singleType.findFirst({ where: { slug: st.slug, tenantId } })
       if (exists) {
-        if (st.slug === options.mergeSingleTypeSlug) {
+        if (options.updateExisting) {
+          await tx.singleType.update({
+            where: { id: exists.id },
+            data: {
+              name: st.name,
+              description: st.description || "",
+            },
+          })
+          await updateDemoFields(tx, { singleTypeId: exists.id }, st.fields)
+        } else if (st.slug === options.mergeSingleTypeSlug) {
           const existing = await tx.schemaField.findMany({
             where: { singleTypeId: exists.id },
             select: { slug: true, type: true, order: true },
@@ -212,7 +258,19 @@ export async function materializeSchemaIntoTenant(
     for (const comp of schema.components || []) {
       if (!comp.slug || !comp.name) continue
       const exists = await tx.component.findFirst({ where: { slug: comp.slug, tenantId } })
-      if (exists) continue
+      if (exists) {
+        if (options.updateExisting) {
+          await tx.component.update({
+            where: { id: exists.id },
+            data: {
+              name: comp.name,
+              description: comp.description || "",
+            },
+          })
+          await updateDemoFields(tx, { componentId: exists.id }, comp.fields)
+        }
+        continue
+      }
       await tx.component.create({
         data: {
           tenantId,
@@ -228,7 +286,8 @@ export async function materializeSchemaIntoTenant(
     }
 
     return { imported }
-  }, { timeout: 20000 })
+  }
+  return "$transaction" in tenantDb ? tenantDb.$transaction(materialize, { timeout: 20000 }) : materialize(tenantDb)
 }
 
 export function formatFields(fields: { name: string; slug: string; type: string; required: boolean; unique: boolean; relationSlug: string | null; options: unknown }[]) {
@@ -258,7 +317,7 @@ export function formatFields(fields: { name: string; slug: string; type: string;
  * instead of the whole tenant.
  */
 export async function serializeTenantSchema(
-  tenantDb: PrismaClient,
+  tenantDb: PrismaClient | Prisma.TransactionClient,
   where: Prisma.ContentTypeWhereInput & Prisma.SingleTypeWhereInput & Prisma.ComponentWhereInput,
 ) {
   const [contentTypes, singleTypes, components] = await Promise.all([

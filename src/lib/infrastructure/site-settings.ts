@@ -37,6 +37,13 @@ const SITE_SETTINGS_FIELDS: Array<{ name: string; slug: string; type: string; op
   { name: "Warna Teks (Gelap)", slug: "text-color-dark", type: "color" },
 ]
 
+export const SITE_SETTINGS_SCHEMA = {
+  name: "Site Settings",
+  slug: SITE_SETTINGS_SLUG,
+  description: "Identitas & tema website — logo, favicon, warna brand, dan mode tampilan terang/gelap.",
+  fields: SITE_SETTINGS_FIELDS,
+}
+
 const DEFAULT_SITE_SETTINGS_DATA = {
   "brand-name": "",
   tagline: "",
@@ -74,9 +81,9 @@ export async function ensureSiteSettings(tenantId: string, tenantName: string): 
     singleType = await tenantDb.singleType.create({
       data: {
         tenantId,
-        name: "Site Settings",
-        slug: SITE_SETTINGS_SLUG,
-        description: "Identitas & tema website — logo, favicon, warna brand, dan mode tampilan terang/gelap.",
+        name: SITE_SETTINGS_SCHEMA.name,
+        slug: SITE_SETTINGS_SCHEMA.slug,
+        description: SITE_SETTINGS_SCHEMA.description,
         isPublished: true,
         schemaFields: {
           create: SITE_SETTINGS_FIELDS.map((f, idx) => ({

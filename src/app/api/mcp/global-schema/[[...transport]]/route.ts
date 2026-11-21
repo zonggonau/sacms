@@ -8,9 +8,8 @@
  * Storefront") AND WebsiteTemplate (a frontend source bundle built by
  * SaCMS's own IT team here via ChatGPT/IDE, tied to one SchemaTemplate —
  * one SchemaTemplate can have many WebsiteTemplates, different frontend
- * "skins" for the same structure). It has no access to any tenant's own
- * content, schema, deployment, or settings — that's the per-workspace
- * server at /api/mcp instead.
+ * "skins" for the same structure). It can inspect a template's linked
+ * internal demo schema. Customer workspaces use the separate /api/mcp server.
  *
  * Why a separate server/token type rather than reusing /api/mcp:
  * 1. The per-workspace server's `resolveToken` requires an active paid
@@ -43,6 +42,9 @@ import { createGlobalComponentSchema, updateGlobalComponentSchema } from "@/lib/
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
 import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields } from "@/lib/schema-template-validation"
+import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
+import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
+import type { Prisma } from "@prisma/client"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -210,6 +212,19 @@ function serializeWebsiteTemplateSummary(t: Parameters<typeof serializeWebsiteTe
  * `createdBy` column on every create/update response, the same bug class
  * already fixed for Website Templates.
  */
+const SCHEMA_DEMO_WORKSPACE_SHAPE = z.object({
+  id: z.string(), slug: z.string(), cmsPath: z.string(), developerPath: z.string(),
+  schema: z.any().optional(),
+})
+
+function describeSchemaDemoWorkspace(workspace: { id: string; slug: string }) {
+  return {
+    ...workspace,
+    cmsPath: `/dashboard/${workspace.slug}/cms`,
+    developerPath: `/dashboard/${workspace.slug}/developer`,
+  }
+}
+
 const SCHEMA_TEMPLATE_OUTPUT_SHAPE = {
   id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
   description: z.string().nullable(), schema: z.any(), published: z.boolean(),
@@ -219,6 +234,7 @@ const SCHEMA_TEMPLATE_OUTPUT_SHAPE = {
   // setAsDefaultSchemaTemplate, not a DB constraint.
   isDefault: z.boolean(),
   demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
+  demoWorkspace: SCHEMA_DEMO_WORKSPACE_SHAPE.optional(),
   // chatgpt.md P1: pass THIS back as update_schema_template's
   // expectedVersion, not `updatedAt` (which also moves on the one-time
   // demoTenantId write a first demo deploy makes).
@@ -266,8 +282,8 @@ function serializeSchemaTemplate(t: {
  * self-heals the next tenant creation rather than leaving the system with
  * no default at all.
  */
-async function setAsDefaultSchemaTemplate(excludeId?: string) {
-  await db.schemaTemplate.updateMany({
+async function setAsDefaultSchemaTemplate(excludeId: string | undefined, client: Pick<Prisma.TransactionClient, "schemaTemplate">) {
+  await client.schemaTemplate.updateMany({
     where: { isDefault: true, ...(excludeId ? { id: { not: excludeId } } : {}) },
     data: { isDefault: false },
   })
@@ -424,7 +440,7 @@ const handler = createMcpHandler(
       async () => {
         const guide = `# SaCMS Platform Template-Builder Guide
 
-This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates (reusable CMS blueprints: Content Types, Single Types, Components) and Website Templates (frontend source bundles that follow a Schema Template's structure). It has no access to any tenant's own content, deployment, or settings; for that, connect to a workspace's own MCP server at /api/mcp instead (its own apply_website_template tool is how a template ends up on a real tenant).
+This server manages SaCMS's platform-wide template catalog, including each Schema Template's linked internal demo workspace. Customer workspaces use their own MCP server at /api/mcp and the apply_website_template tool.
 
 ## Before writing any schema field
 Call \`list_field_types\` first — it has the real options/relationSlug shape per type, flags options that are silently ignored, and its \`contentApiContract\` has real request/response examples for the frontend's actual Content API calls. Its entry for richText/markdown also tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never \`{value}\`/string interpolation — a template that renders it as plain text only looks fine with unwrapped test prose and shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink.
@@ -432,7 +448,11 @@ Call \`list_field_types\` first — it has the real options/relationSlug shape p
 Call \`list_website_templates\` before creating a new one, to avoid a near-duplicate.
 
 ## Build schema and frontend together
-Pass \`schema\` directly to \`create_website_template\` — it auto-creates the backing Schema Template for you, no separate \`create_schema_template\` step needed for the common case. Only use \`schemaTemplateId\` (and the standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template tools) when deliberately reusing an existing structure for a second frontend skin.
+Start a new website with \`create_schema_template\` and omit \`schema\`. SaCMS creates a linked demo workspace immediately with the starter Content Types, Single Types (including site-settings), and Components. Open the returned demoWorkspace.cmsPath or call \`get_schema_template\` with includeDemoSchema: true to inspect the workspace itself before writing the frontend.
+
+Map the required pages, header, footer, editorial data, and reusable blocks to this schema. Reuse fields and models that fit. Add missing models or fields with \`update_schema_template\` and pass the sourceVersion you inspected as expectedVersion. You may remove Content Types such as kategori, posts or pages if the brief does not need them. Resolve references in retained models before removing their targets. Keep Single Types and Components available by slug.
+
+Pass the resulting \`schemaTemplateId\` to \`create_website_template\` so the frontend uses the same workspace. When the schema is already decided, an inline \`schema\` still works. SaCMS merges the starter by slug and provisions the demo automatically. Use \`excludeDefaultContentTypes\` to omit optional starter collections in that flow.
 
 Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, call \`get_global_component\` and splice its \`fields\` straight in instead of inventing a near-duplicate shape. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
 
@@ -585,17 +605,28 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           "get_full_schema returns for a real workspace.",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
+          includeDemoSchema: z.boolean().optional().describe("Read the actual schema rows from this template's own demo workspace."),
         },
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
-      async ({ id }) => {
+      async ({ id, includeDemoSchema }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
         const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!template) return notFound("Schema Template", id)
-        const structured = serializeSchemaTemplate(template)
+        const { findSchemaDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+        const demo = await findSchemaDemoWorkspace(db, template)
+        const structured = {
+          ...serializeSchemaTemplate(template),
+          ...(demo ? {
+            demoWorkspace: {
+              ...describeSchemaDemoWorkspace(demo),
+              ...(includeDemoSchema ? { schema: await serializeTenantSchema(db, { tenantId: demo.id, draftTemplateId: null }) } : {}),
+            },
+          } : {}),
+        }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -610,15 +641,15 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         description:
           "Create a new Schema Template — a reusable CMS schema blueprint (Content Types, Single Types, and " +
           "Components with their fields) for one type of website/system (e.g. 'Company Profile', 'E-Commerce " +
-          "Storefront', 'Blog & News Portal'). This is the ONLY kind of data this server lets you write — it " +
-          "never touches any tenant's own live content, schema, or settings. Call list_schema_templates first " +
-          "to avoid creating a near-duplicate.",
+          "Storefront', 'Blog & News Portal'). Creates a matching internal demo workspace immediately, " +
+          "with schema models ready in CMS Studio before any frontend deployment. For a new website, " +
+          "omit schema to inspect the platform starter and use update_schema_template to tailor it.",
         inputSchema: {
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile'"),
           category: z.string().min(1).max(100).describe("Catalog category, e.g. 'Business', 'E-Commerce', 'Portfolio'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🏢'"),
           description: z.string().max(500).optional().describe("Short catalog-card blurb shown alongside the name/category — not shown to end content editors."),
-          schema: schemaTemplateBundleSchema.describe(
+          schema: schemaTemplateBundleSchema.optional().describe(
             "{ groups?: [...], contentTypes: [...], singleTypes: [...], components: [...] } — each model: " +
             "{ name, slug, description?, fields: [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }], dummyData?: [...] }. " +
             "Call list_field_types FIRST — it has the real options/relationSlug shape and entry-value shape " +
@@ -626,7 +657,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "Optionally organize Content Types into sidebar folders via `groups`: [{ slug, name, parentSlug? }] " +
             "— `slug` here is a template-local key, NOT a real database id (list parents before children, max " +
             "3 levels) — then set `group: '<that slug>'` on each contentTypes[] entry that belongs in it. " +
-            "Single Types and Components have no grouping concept in SaCMS — `group` on those is ignored.",
+            "Single Types and Components have no grouping concept in SaCMS — `group` on those is ignored. " +
+            "Omit to load the full starter. Supplied models are merged by slug unless authoring the platform default with isDefault: true.",
+          ),
+          excludeDefaultContentTypes: z.array(z.string().min(1).max(100)).max(100).optional().describe(
+            "Optional starter Content Type slugs to omit once you know the website's needs, such as kategori, posts or pages. Single Types and Components are retained.",
           ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
@@ -638,33 +673,45 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
       },
-      async ({ name, category, icon, description, schema, published, isDefault }) => {
+      async ({ name, category, icon, description, schema, published, isDefault, excludeDefaultContentTypes = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
+        const parsedSchema = schemaTemplateBundleSchema.safeParse(schema ?? {})
         if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
+        let bundle = parsedSchema.data
+        if (isDefault && schema !== undefined && excludeDefaultContentTypes.length) {
+          return referenceIssuesResponse([{ path: "excludeDefaultContentTypes", message: "Set the platform default's Content Types in its explicit schema." }])
+        }
+        if (!(isDefault && schema !== undefined)) {
+          const composed = await composeTemplateStarterSchema(bundle, excludeDefaultContentTypes)
+          if (!composed.success) return invalidSchema(composed.error)
+          if (composed.issues.length) return referenceIssuesResponse(composed.issues)
+          bundle = composed.data
+        }
 
-        const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedSchema.data))
+        const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(bundle))
         if (blocking.length > 0) return referenceIssuesResponse(blocking)
 
-        const slug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
-
-        if (isDefault) await setAsDefaultSchemaTemplate()
-
-        const template = await db.schemaTemplate.create({
-          data: {
-            name,
-            slug,
-            category,
-            icon: icon || "📦",
-            description: description || null,
-            schema: parsedSchema.data,
-            published: published ?? false,
-            isDefault: isDefault ?? false,
-          },
-        })
-        const structured = serializeSchemaTemplate(template)
+        const { createDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+        const { template, demo } = await db.$transaction(async (tx) => {
+          const slug = await dedupeSlug(slugify(name) || "schema-template", (s) => tx.schemaTemplate.findUnique({ where: { slug: s } }))
+          if (isDefault) await setAsDefaultSchemaTemplate(undefined, tx)
+          const demo = await createDraftDemoWorkspace(tx, { slug, name }, bundle)
+          const template = await tx.schemaTemplate.create({
+            data: {
+              name, slug, category,
+              icon: icon || "📦",
+              description: description || null,
+              schema: bundle,
+              published: published ?? false,
+              isDefault: isDefault ?? false,
+              demoTenantId: demo.id,
+            },
+          })
+          return { template, demo }
+        }, { timeout: 20000 })
+        const structured = { ...serializeSchemaTemplate(template), demoWorkspace: describeSchemaDemoWorkspace(demo) }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) }],
           structuredContent: structured,
@@ -725,6 +772,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (schema !== undefined) {
           const parsedSchema = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
+          const protectedIssues = protectedSchemaModelIssues(existing.schema, parsedSchema.data)
+          if (protectedIssues.length) return referenceIssuesResponse(protectedIssues)
           const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedSchema.data))
           if (blocking.length > 0) return referenceIssuesResponse(blocking)
           schemaWarnings = warnings
@@ -750,26 +799,41 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           schemaData = parsedSchema.data
         }
 
-        if (isDefault) await setAsDefaultSchemaTemplate(existing.id)
-
-        const template = await db.schemaTemplate.update({
-          where: { id: existing.id },
-          data: {
-            ...(name !== undefined ? { name } : {}),
-            ...(category !== undefined ? { category } : {}),
-            ...(icon !== undefined ? { icon } : {}),
-            ...(description !== undefined ? { description } : {}),
-            ...(schemaData !== undefined ? { schema: schemaData } : {}),
-            ...(published !== undefined ? { published } : {}),
-            ...(isDefault !== undefined ? { isDefault } : {}),
-            // Only a genuine `schema` change moves sourceVersion — a later
-            // metadata-only edit, or the one-time demoTenantId write a first
-            // demo deploy makes, must never invalidate an expectedVersion
-            // read against THIS change.
-            ...(schemaData !== undefined ? { sourceVersion: new Date() } : {}),
-          },
-        })
-        const structured = serializeSchemaTemplate(template)
+        const { findSchemaDemoWorkspace, syncDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+        const result = await db.$transaction(async (tx) => {
+          const changed = await tx.schemaTemplate.updateMany({
+            where: { id: existing.id, sourceVersion: existing.sourceVersion },
+            data: {
+              ...(name !== undefined ? { name } : {}),
+              ...(category !== undefined ? { category } : {}),
+              ...(icon !== undefined ? { icon } : {}),
+              ...(description !== undefined ? { description } : {}),
+              ...(schemaData !== undefined ? { schema: schemaData } : {}),
+              ...(published !== undefined ? { published } : {}),
+              ...(isDefault !== undefined ? { isDefault } : {}),
+              ...(schemaData !== undefined ? { sourceVersion: new Date() } : {}),
+            },
+          })
+          if (!changed.count) return null
+          if (isDefault) await setAsDefaultSchemaTemplate(existing.id, tx)
+          const template = await tx.schemaTemplate.findUniqueOrThrow({ where: { id: existing.id } })
+          const demo = await findSchemaDemoWorkspace(tx, template)
+          if (schemaData && demo && (await tx.websiteTemplate.count({ where: { schemaTemplateId: existing.id } })) === 0) {
+            await syncDraftDemoWorkspace(tx, demo.id, existing.schema as SchemaBlob, schemaData)
+          }
+          return { template, demo }
+        }, { timeout: 20000 })
+        if (!result) {
+          return {
+            content: [{ type: "text" as const, text: "Schema Template berubah selama permintaan. Baca versi terbaru sebelum mencoba kembali." }],
+            structuredContent: { ok: false, code: "CONFLICT", message: "Schema Template changed during the update." },
+            isError: true,
+          }
+        }
+        const structured = {
+          ...serializeSchemaTemplate(result.template),
+          ...(result.demo ? { demoWorkspace: describeSchemaDemoWorkspace(result.demo) } : {}),
+        }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(schemaWarnings) }],
           structuredContent: structured,
@@ -928,7 +992,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           "binary assets) PLUS the CMS schema it renders, built together in one call. Pass `schema` to define " +
           "a brand-new structure for this frontend (the common case — SaCMS auto-creates the backing Schema " +
           "Template for you, you never need to call create_schema_template separately). Pass `schemaTemplateId` " +
-          "instead only when deliberately reusing an EXISTING Schema Template for a second frontend skin — " +
+          "instead when attaching files to the Schema Template you prepared, or when reusing an existing structure — " +
           "call list_schema_templates/get_schema_template first to find it. Exactly one of the two is required. " +
           "Call list_website_templates first either way, to avoid creating a near-duplicate. IMPORTANT: include a " +
           "`.env.example` file in `files` listing every env var the frontend reads from process.env — " +
@@ -944,7 +1008,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           schema: schemaTemplateBundleSchema.optional().describe(
             "Define this frontend's CMS structure inline — { groups?: [...], contentTypes: [...], singleTypes: [...], components: [...] }, same shape as create_schema_template's own `schema`. " +
             "Call list_field_types FIRST — it has the real options/relationSlug shape and entry-value shape per field type, and flags options that look plausible but are silently ignored. Never guess one. " +
-            "SaCMS auto-creates the backing Schema Template for you (named/categorized from this call's `name`/`category`). Mutually exclusive with `schemaTemplateId`.",
+            "SaCMS merges the starter schema and prepares a demo workspace for the backing Schema Template. Mutually exclusive with `schemaTemplateId`.",
+          ),
+          excludeDefaultContentTypes: z.array(z.string().min(1).max(100)).max(100).optional().describe(
+            "Inline schema only. Omit optional starter Content Types by slug, such as kategori, posts or pages.",
           ),
           category: z.string().min(1).max(100).optional().describe("Catalog category for the auto-created backing Schema Template when `schema` is given (e.g. 'Business', 'Blog & News'). Ignored when `schemaTemplateId` is given. Defaults to 'Custom'."),
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
@@ -967,7 +1034,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun }) => {
+      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, excludeDefaultContentTypes = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -1007,6 +1074,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             isError: true,
           }
         }
+        if (schemaTemplateId && excludeDefaultContentTypes.length) {
+          return referenceIssuesResponse([{ path: "excludeDefaultContentTypes", message: "Update the existing Schema Template before attaching a website." }])
+        }
 
         // Validate EVERYTHING before writing anything — files used to be
         // validated only after a `schema`-given call had already created
@@ -1031,10 +1101,13 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (!schemaTemplateId) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedBundle.data))
+          const composed = await composeTemplateStarterSchema(parsedBundle.data, excludeDefaultContentTypes)
+          if (!composed.success) return invalidSchema(composed.error)
+          if (composed.issues.length) return referenceIssuesResponse(composed.issues)
+          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(composed.data))
           if (blocking.length > 0) return referenceIssuesResponse(blocking)
           bundleWarnings = warnings
-          bundleData = parsedBundle.data
+          bundleData = composed.data
         }
 
         if (dryRun) {
@@ -1075,7 +1148,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               if (!found) throw new SchemaTemplateNotFoundError(schemaTemplateId)
               resolvedSchemaTemplate = found
             } else {
-              const schemaSlug = await dedupeSlug(slugify(name), (s) => tx.schemaTemplate.findUnique({ where: { slug: s } }))
+              const schemaSlug = await dedupeSlug(slugify(name) || "schema-template", (s) => tx.schemaTemplate.findUnique({ where: { slug: s } }))
+              const { createDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+              const demo = await createDraftDemoWorkspace(tx, { name, slug: schemaSlug }, bundleData!)
               resolvedSchemaTemplate = await tx.schemaTemplate.create({
                 data: {
                   name,
@@ -1085,6 +1160,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
                   description: null,
                   schema: bundleData!,
                   published: false,
+                  demoTenantId: demo.id,
                 },
               })
             }
@@ -1107,7 +1183,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               },
             })
             return { schemaTemplate: resolvedSchemaTemplate, template: createdTemplate }
-          })
+          }, { timeout: 20000 })
           schemaTemplate = result.schemaTemplate
           template = result.template
         } catch (err: any) {
@@ -1207,7 +1283,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
         const existing = await db.websiteTemplate.findFirst({
           where: { OR: [{ id }, { slug: id }] },
-          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
+          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true, sourceVersion: true } } },
         })
         if (!existing) return notFound("Website Template", id)
 
@@ -1275,6 +1351,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (schema !== undefined) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
+          const protectedIssues = protectedSchemaModelIssues(existing.schemaTemplate.schema, parsedBundle.data)
+          if (protectedIssues.length) return referenceIssuesResponse(protectedIssues)
           const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(parsedBundle.data))
           if (blocking.length > 0) return referenceIssuesResponse(blocking)
           bundleWarnings = warnings
@@ -1294,7 +1372,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // otherwise leave the two inconsistent with each other.
         const template = await db.$transaction(async (tx) => {
           if (parsedBundleData) {
-            await tx.schemaTemplate.update({ where: { id: existing.schemaTemplate.id }, data: { schema: parsedBundleData } })
+            const changed = await tx.schemaTemplate.updateMany({
+              where: { id: existing.schemaTemplate.id, sourceVersion: existing.schemaTemplate.sourceVersion },
+              data: { schema: parsedBundleData, sourceVersion: new Date() },
+            })
+            if (!changed.count) return null
           }
           return tx.websiteTemplate.update({
             where: { id: existing.id },
@@ -1312,6 +1394,13 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             },
           })
         })
+        if (!template) {
+          return {
+            content: [{ type: "text" as const, text: "Schema Template berubah selama permintaan. Baca versi terbaru sebelum mencoba kembali." }],
+            structuredContent: { ok: false, code: "CONFLICT", message: "Schema Template changed during the update." },
+            isError: true,
+          }
+        }
 
         // A real file OR schema change warrants a redeploy (the demo needs
         // to reflect either) — a metadata-only edit (name/icon/description/
@@ -1747,9 +1836,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               "1. Panggil get_builder_guide (sekali, di awal) untuk alur kerja lengkap.\n" +
               "2. Panggil list_website_templates dan list_schema_templates untuk mengecek apakah sudah ada template serupa.\n" +
               "3. Panggil list_field_types untuk tipe field yang valid dan bentuk options/relationSlug-nya.\n" +
-              "4. Rancang schema (contentTypes/singleTypes/components) yang relevan dengan topik di atas, lengkap dengan dummyData nyata per model (bukan placeholder generik).\n" +
+              "4. Panggil create_schema_template tanpa schema agar workspace demo terisi skema bawaan. Baca model yang dimuat lewat get_schema_template dengan includeDemoSchema: true.\n" +
+              "   Cocokkan model dengan kebutuhan website. Pertahankan Single Type dan Component. Keluarkan hanya Content Type yang tidak dibutuhkan setelah memeriksa relasinya. Simpan hasil lewat update_schema_template dengan expectedVersion dan data contoh yang sesuai topik.\n" +
               "5. Tulis frontend-nya (Next.js) dengan shadcn/ui (komponen Button/Card/Badge/dkk pakai variant standarnya, tema warna+font lewat CSS variables yang disesuaikan topik via next/font — jangan gradient ungu-biru generik, emoji sebagai ikon section, palet default shadcn yang tidak disentuh, atau halaman tanpa font yang di-load), sertakan .env.example dan package.json.\n" +
-              "6. Panggil create_website_template dengan dryRun: true dulu, perbaiki semua issue, baru panggil lagi tanpa dryRun.\n" +
+              "6. Panggil create_website_template dengan schemaTemplateId dari workspace demo dan dryRun: true. Perbaiki masalah validasi lalu panggil lagi dengan schemaTemplateId yang sama untuk menerbitkan pratinjau.\n" +
               "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.\n" +
               "8. Laporkan ke pengguna: URL demo-nya, dan ringkasan routes[] (berapa yang verified, mana yang gagal kalau ada).\n" +
               "9. Tanyakan ke pengguna apakah template ini siap di-publish (published: true, supaya terlihat di katalog setiap workspace) — jangan set published: true tanpa konfirmasi.\n" +
@@ -1769,8 +1859,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     // the handful of rules too safety-critical to risk never being read.
     instructions:
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates and Website " +
-      "Templates. It has no access to any tenant's own content, deployment, or settings; for that, connect " +
-      "to a workspace's own MCP server at /api/mcp instead. Call get_builder_guide FIRST for the full " +
+      "Templates and their linked internal demo workspaces. Customer workspaces use /api/mcp. " +
+      "Call get_builder_guide FIRST. Start a new website with create_schema_template without schema, inspect " +
+      "its demo schema, and keep its Single Types and Components. Pass schemaTemplateId to attach the frontend. " +
+      "The guide covers the full " +
       "workflow (schema+frontend build order, dry-run validation, demo preview contract, every structured " +
       "error code, and reusable Global Components via list_global_components/get_global_component). Four " +
       "rules too important to risk missing: (1) default stack for every Website Template " +

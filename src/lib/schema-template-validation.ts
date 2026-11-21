@@ -20,10 +20,9 @@ import { generateContentSchema } from "@/lib/content-validations"
  *  Checked here instead, against the SAME list list_field_types documents. */
 export const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
 
-/** Field slugs are JSON property names in the Content API, not URL paths —
- *  camelCase/snake_case are both fine, unlike a MODEL slug. See VAL-9's own
- *  check below for the one exception (document_template). */
-export const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
+/** Field slugs are JSON property names. Existing CMS fields use kebab-case
+ * as well as camelCase and snake_case. Document template keys are verbatim. */
+export const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_-]*$/
 
 /** Same slug format the dashboard's own Content Type/Single Type/Component
  *  creation routes enforce (src/lib/validations/admin.ts) — schema-
@@ -241,7 +240,7 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
       // placeholder keys verbatim (see ai-schema-generator.ts's own
       // documented exception), which can't be forced into this shape.
       if (f.type !== "document_template" && f.slug && !FIELD_SLUG_FORMAT_RE.test(f.slug)) {
-        issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — use letters/digits/underscores, starting with a letter (e.g. 'coverImage' or 'cover_image').` })
+        issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — start with a letter and use letters, digits, hyphens, or underscores (e.g. 'cover-image').` })
       }
       if (f.type === "select" || f.type === "multiselect") {
         const choices = f.options?.choices
@@ -373,7 +372,7 @@ export function validateGlobalComponentFields(fields: BundleFieldRef[]): Validat
       issues.push({ path: `${fieldPath}.type`, message: `'${f.type}' is not a real field type. Call list_field_types for the official list of 36 types — a typo'd/fictional type has no renderer anywhere and silently falls back to accepting any value.` })
     }
     if (f.type !== "document_template" && f.slug && !FIELD_SLUG_FORMAT_RE.test(f.slug)) {
-      issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — use letters/digits/underscores, starting with a letter (e.g. 'coverImage' or 'cover_image').` })
+      issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — start with a letter and use letters, digits, hyphens, or underscores (e.g. 'cover-image').` })
     }
     if (f.type === "select" || f.type === "multiselect") {
       const choices = f.options?.choices

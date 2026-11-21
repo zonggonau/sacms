@@ -3,6 +3,8 @@ import { materializeSchemaIntoTenant, type SchemaBlob } from "@/lib/schema-templ
 import { createContentEntry, updateContentEntry, type EntryWriteContext } from "@/lib/content/entry-service"
 import { slugify } from "@/lib/slug"
 import { wipeTenantSchema } from "@/lib/schema-wipe"
+import type { Prisma } from "../../../prisma/generated-client"
+import { isDeepStrictEqual } from "node:util"
 
 /**
  * Structural/reference field types with no sensible synthetic value (a real
@@ -128,10 +130,10 @@ function buildSampleData(fields: SampleField[], index: number): Record<string, u
   return data
 }
 
-async function reserveUniqueTenantSlug(preferred: string): Promise<string> {
+async function reserveUniqueTenantSlug(preferred: string, client: Pick<Prisma.TransactionClient, "tenant"> = db): Promise<string> {
   let candidate = preferred
   for (let attempt = 0; attempt < 5; attempt++) {
-    const existing = await db.tenant.findUnique({ where: { slug: candidate } })
+    const existing = await client.tenant.findUnique({ where: { slug: candidate } })
     if (!existing) return candidate
     candidate = `${preferred}-${Math.random().toString(36).slice(2, 6)}`
   }
@@ -139,6 +141,71 @@ async function reserveUniqueTenantSlug(preferred: string): Promise<string> {
 }
 
 const SAMPLE_ENTRIES_PER_CONTENT_TYPE = 3
+
+/** Draft previews use the shared database and can be provisioned in the
+ * same transaction that saves the catalog template. */
+export async function createDraftDemoWorkspace(
+  tx: Prisma.TransactionClient,
+  template: { name: string; slug: string },
+  schema: SchemaBlob,
+) {
+  const slug = await reserveUniqueTenantSlug(`demo-${template.slug}`, tx)
+  const tenant = await tx.tenant.create({
+    data: {
+      name: `Demo: ${template.name}`,
+      slug,
+      plan: "enterprise",
+      status: "active",
+      locales: { create: { locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true } },
+    },
+    select: { id: true, slug: true },
+  })
+  await materializeSchemaIntoTenant(tx, tenant.id, schema)
+  return tenant
+}
+
+export async function findSchemaDemoWorkspace(
+  client: Pick<Prisma.TransactionClient, "tenant">,
+  template: { id: string; demoTenantId: string | null },
+) {
+  if (!template.demoTenantId) return null
+  return client.tenant.findFirst({
+    where: {
+      id: template.demoTenantId,
+      slug: { startsWith: "demo-" },
+      ownerId: null,
+      databaseUrl: null,
+      status: "active",
+      demoForSchemaTemplates: { some: { id: template.id }, every: { id: template.id } },
+    },
+    select: { id: true, slug: true },
+  })
+}
+
+export async function syncDraftDemoWorkspace(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  previous: SchemaBlob,
+  schema: SchemaBlob,
+) {
+  const nextSlugs = new Set(schema.contentTypes?.map((model) => model.slug))
+  const removed = (previous.contentTypes || []).filter((model) => !nextSlugs.has(model.slug)).map((model) => model.slug)
+  if (removed.length) {
+    await tx.contentType.deleteMany({ where: { tenantId, draftTemplateId: null, slug: { in: removed } } })
+  }
+
+  const changed = (before: SchemaBlob["contentTypes"] = [], after: SchemaBlob["contentTypes"] = []) => {
+    const bySlug = new Map(before.map((model) => [model.slug, model]))
+    return after.filter((model) => !isDeepStrictEqual(bySlug.get(model.slug), model))
+  }
+  await materializeSchemaIntoTenant(tx, tenantId, {
+    groups: schema.groups,
+    contentTypes: isDeepStrictEqual(previous.groups, schema.groups)
+      ? changed(previous.contentTypes, schema.contentTypes) : schema.contentTypes,
+    singleTypes: changed(previous.singleTypes, schema.singleTypes),
+    components: changed(previous.components, schema.components),
+  }, {}, { updateExisting: true })
+}
 
 /**
  * Lazily get-or-create the internal, owner-less demo tenant for a

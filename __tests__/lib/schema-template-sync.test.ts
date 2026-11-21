@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest"
-import { fieldsToCreateInput, formatFields } from "@/lib/schema-template-sync"
+import { describe, it, expect, vi } from "vitest"
+import { fieldsToCreateInput, formatFields, materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 
 // Regression coverage for a real bug: a select/multiselect field's
 // { choices: [...] } (or any other per-type `options` extra) used to be
@@ -57,4 +57,31 @@ describe("formatFields", () => {
     ])
     expect(out.options).toBeUndefined()
   })
+})
+
+it("updates an existing demo Component while preserving its model and retained field IDs", async () => {
+  const field = { name: "Judul Baru", slug: "title", type: "text" }
+  const tx = {
+    component: {
+      findFirst: vi.fn().mockResolvedValue({ id: "hero-1" }),
+      update: vi.fn(),
+      create: vi.fn(),
+    },
+    schemaField: {
+      findMany: vi.fn().mockResolvedValue([{ id: "title-1", slug: "title" }]),
+      update: vi.fn(),
+      deleteMany: vi.fn(),
+    },
+  }
+
+  await materializeSchemaIntoTenant(tx as never, "demo-1", {
+    components: [{ name: "Hero", slug: "hero", fields: [field] }],
+  }, {}, { updateExisting: true })
+
+  expect(tx.component.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "hero-1" } }))
+  expect(tx.component.create).not.toHaveBeenCalled()
+  expect(tx.schemaField.update).toHaveBeenCalledWith(expect.objectContaining({
+    where: { id: "title-1" }, data: expect.objectContaining(field),
+  }))
+  expect(tx.schemaField.deleteMany).not.toHaveBeenCalled()
 })

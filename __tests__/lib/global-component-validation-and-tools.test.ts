@@ -181,24 +181,16 @@ describe("Global Component discovery tools — source contract (per-workspace se
 // write, the same static source-text style as the rest of this file.
 
 describe("isDefault SchemaTemplate knob — source contract (global-schema server)", () => {
-  it("defines setAsDefaultSchemaTemplate and calls it from both create_schema_template and update_schema_template before the real write", () => {
+  it("claims the default in the same transaction as schema template creation and update", () => {
     expect(globalSchemaRouteSource).toMatch(/async function setAsDefaultSchemaTemplate\(/)
 
     const create = toolBlockOf(globalSchemaRouteSource, "create_schema_template")
     expect(create, "create_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
-    expect(create, "create_schema_template should call setAsDefaultSchemaTemplate before creating").toMatch(/if \(isDefault\) await setAsDefaultSchemaTemplate\(\)/)
-    const createCallIdx = create.indexOf("if (isDefault) await setAsDefaultSchemaTemplate()")
-    const createWriteIdx = create.indexOf("db.schemaTemplate.create(")
-    expect(createCallIdx).toBeGreaterThan(-1)
-    expect(createCallIdx).toBeLessThan(createWriteIdx)
+    expect(create).toMatch(/db\.\$transaction\(async \(tx\)[\s\S]+setAsDefaultSchemaTemplate\(undefined, tx\)[\s\S]+tx\.schemaTemplate\.create\(/)
 
     const update = toolBlockOf(globalSchemaRouteSource, "update_schema_template")
     expect(update, "update_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
-    expect(update, "update_schema_template should exclude itself when claiming default").toMatch(/if \(isDefault\) await setAsDefaultSchemaTemplate\(existing\.id\)/)
-    const updateCallIdx = update.indexOf("if (isDefault) await setAsDefaultSchemaTemplate(existing.id)")
-    const updateWriteIdx = update.indexOf("db.schemaTemplate.update(")
-    expect(updateCallIdx).toBeGreaterThan(-1)
-    expect(updateCallIdx).toBeLessThan(updateWriteIdx)
+    expect(update).toMatch(/db\.\$transaction\(async \(tx\)[\s\S]+tx\.schemaTemplate\.updateMany\([\s\S]+setAsDefaultSchemaTemplate\(existing\.id, tx\)/)
   })
 
   it("setAsDefaultSchemaTemplate unsets every OTHER isDefault row, never the row passed in", () => {
