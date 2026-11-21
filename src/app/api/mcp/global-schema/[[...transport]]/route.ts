@@ -359,6 +359,9 @@ Call \`list_website_templates\` before creating a new one, to avoid a near-dupli
 ## Build schema and frontend together
 Pass \`schema\` directly to \`create_website_template\` — it auto-creates the backing Schema Template for you, no separate \`create_schema_template\` step needed for the common case. Only use \`schemaTemplateId\` (and the standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template tools) when deliberately reusing an existing structure for a second frontend skin.
 
+## Design & visual quality
+A tenant previews a template's live demo before ever applying it to their own workspace — it's judged on first impression. Build the frontend on shadcn/ui conventions (Tailwind CSS + Radix primitives): compose pages from shadcn's own component patterns (Button, Card, Badge, Input, Dialog, etc. with their standard \`variant\`/\`size\` props) instead of one-off custom markup. Theme it with CSS variables (\`--background\`, \`--foreground\`, \`--primary\`, \`--border\`, \`--radius\`, etc. in \`:root\` plus a \`.dark\` override) and pick real values that actually fit the template's topic (a law firm shouldn't look like a kids' toy store) — never ship shadcn's own default zinc/slate palette untouched. Keep one consistent radius and spacing scale across every component. Avoid generic AI-template tells: a purple-to-blue gradient hero, emoji as section icons, everything centered — a well-themed shadcn look already reads as professional without any of that.
+
 ## Validate before you save
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
@@ -1459,7 +1462,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               "2. Panggil list_website_templates dan list_schema_templates untuk mengecek apakah sudah ada template serupa.\n" +
               "3. Panggil list_field_types untuk tipe field yang valid dan bentuk options/relationSlug-nya.\n" +
               "4. Rancang schema (contentTypes/singleTypes/components) yang relevan dengan topik di atas, lengkap dengan dummyData nyata per model (bukan placeholder generik).\n" +
-              "5. Tulis frontend-nya (Next.js), sertakan .env.example dan package.json.\n" +
+              "5. Tulis frontend-nya (Next.js) dengan shadcn/ui (komponen Button/Card/Badge/dkk pakai variant standarnya, tema lewat CSS variables yang disesuaikan topik — jangan gradient ungu-biru generik, emoji sebagai ikon section, atau palet default shadcn yang tidak disentuh), sertakan .env.example dan package.json.\n" +
               "6. Panggil create_website_template dengan dryRun: true dulu, perbaiki semua issue, baru panggil lagi tanpa dryRun.\n" +
               "7. Cek demoDeployment.verified pada respons — jika false, panggil get_website_template_demo_status untuk detail error-nya sebelum melapor selesai.\n" +
               "8. Laporkan ke pengguna: URL demo-nya, dan ringkasan routes[] (berapa yang verified, mana yang gagal kalau ada).\n" +
@@ -1471,7 +1474,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.12.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.13.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
