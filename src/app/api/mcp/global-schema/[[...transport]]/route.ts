@@ -441,6 +441,8 @@ Default stack (standard baseline for every Website Template, not optional unless
 
 A tenant previews a template's live demo before ever applying it to their own workspace — it's judged on first impression. Build the frontend on shadcn/ui conventions (Tailwind CSS + Radix primitives): compose pages from shadcn's own component patterns (Button, Card, Badge, Input, Dialog, etc. with their standard \`variant\`/\`size\` props) instead of one-off custom markup. Theme it with CSS variables (\`--background\`, \`--foreground\`, \`--primary\`, \`--border\`, \`--radius\`, etc. in \`:root\` plus a \`.dark\` override) and pick real values that actually fit the template's topic (a law firm shouldn't look like a kids' toy store) — never ship shadcn's own default zinc/slate palette untouched. Typography follows the same convention: load a real font via \`next/font\` bound to a \`--font-sans\` CSS variable and reference it through Tailwind's \`font-sans\` (shadcn's own generator does exactly this) — never ship a page with no font loaded, chosen to fit the topic rather than left at whatever the browser defaults to. Keep one consistent radius and spacing scale across every component. Avoid generic AI-template tells: a purple-to-blue gradient hero, emoji as section icons, everything centered — a well-themed shadcn look already reads as professional without any of that.
 
+If you're working inside a real local Next.js project with shell access (Claude Code, Cursor, etc. — not just producing file content for this tool's \`files\` bundle), consider installing shadcn's own Skill (\`npx/pnpm/bun dlx skills add shadcn/ui\` — activates once it finds your project's \`components.json\`) for live, authoritative CLI reference, theming (OKLCH colors, dark mode, radius/variants for Tailwind v3 and v4), composition rules (e.g. \`FieldGroup\` for forms, \`ToggleGroup\` for option sets, semantic colors, base-specific APIs for \`base\`/\`radix\`/\`aria\`), and its own MCP server for component search — more current than this prose summary can ever be kept.
+
 ## Validate before you save
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
@@ -1758,7 +1760,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.15.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.15.1" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
