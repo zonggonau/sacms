@@ -37,11 +37,12 @@ import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { slugify } from "@/lib/slug"
 import { rateLimit } from "@/lib/rate-limit"
-import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
+import { schemaTemplateBundleSchema, schemaTemplateFieldSchema } from "@/lib/validations/schema-template"
 import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
+import { createGlobalComponentSchema, updateGlobalComponentSchema } from "@/lib/validations/global-component"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
-import { formatZodPath, validateBundleReferences, splitIssuesBySeverity } from "@/lib/schema-template-validation"
+import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields } from "@/lib/schema-template-validation"
 
 // ─── Auth ────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,7 @@ class SchemaTemplateNotFoundError extends Error {
 // a nonexistent Website Template by slug came back saying "Schema
 // Template '...' tidak ditemukan", and with no structured `code` at all
 // (an agent checking for NOT_FOUND specifically had nothing to match on).
-function notFound(entity: "Schema Template" | "Website Template", id: string) {
+function notFound(entity: "Schema Template" | "Website Template" | "Global Component", id: string) {
   return {
     content: [{ type: "text" as const, text: `❌ ${entity} '${id}' tidak ditemukan.` }],
     structuredContent: { ok: false, code: "NOT_FOUND", message: `${entity} not found.` },
@@ -315,6 +316,56 @@ function referenceIssuesResponse(issues: { path: string; message: string }[]) {
   }
 }
 
+/**
+ * Shared output shape + serializer for get_global_component/
+ * create_global_component/update_global_component — same rationale as
+ * serializeWebsiteTemplate: pick exactly the declared shape instead of
+ * trusting every caller's query to never select more than that. `fields`
+ * is the same per-field shape as one SchemaTemplate component's own
+ * `fields` ({ name, slug, type, required?, unique?, relationSlug?,
+ * componentSlug?, options? }) — schema only, no frontend code bundle.
+ */
+const GLOBAL_COMPONENT_OUTPUT_SHAPE = {
+  id: z.string(), name: z.string(), slug: z.string(), icon: z.string(),
+  description: z.string().nullable(), category: z.string().nullable(),
+  fields: z.array(z.any()),
+  published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+}
+function serializeGlobalComponent(c: {
+  id: string
+  name: string
+  slug: string
+  icon: string
+  description: string | null
+  category: string | null
+  fields: unknown
+  published: boolean
+  createdAt: Date
+  updatedAt: Date
+}) {
+  return {
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+    icon: c.icon,
+    description: c.description,
+    category: c.category,
+    fields: c.fields,
+    published: c.published,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+  }
+}
+
+/** Same OUT-9 rationale as WEBSITE_TEMPLATE_SUMMARY_SHAPE — list_global_components
+ *  shouldn't resend every component's full field array just to list
+ *  names/metadata; get_global_component is the one that reads fields. */
+const { fields: _omitComponentFields, ...GLOBAL_COMPONENT_SUMMARY_SHAPE } = GLOBAL_COMPONENT_OUTPUT_SHAPE
+function serializeGlobalComponentSummary(c: Parameters<typeof serializeGlobalComponent>[0]) {
+  const { fields, ...summary } = serializeGlobalComponent(c)
+  return summary
+}
+
 /** Shared slug-collision-retry loop — used by create_schema_template and create_website_template's own slug, and (new) a Schema Template auto-created inline by create_website_template. */
 async function dedupeSlug(baseSlug: string, exists: (slug: string) => Promise<unknown>): Promise<string> {
   let slug = baseSlug
@@ -358,6 +409,8 @@ Call \`list_website_templates\` before creating a new one, to avoid a near-dupli
 
 ## Build schema and frontend together
 Pass \`schema\` directly to \`create_website_template\` — it auto-creates the backing Schema Template for you, no separate \`create_schema_template\` step needed for the common case. Only use \`schemaTemplateId\` (and the standalone create_schema_template/update_schema_template/list_schema_templates/get_schema_template tools) when deliberately reusing an existing structure for a second frontend skin.
+
+Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, call \`get_global_component\` and splice its \`fields\` straight in instead of inventing a near-duplicate shape. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
 
 ## Design & visual quality
 Default stack (standard baseline for every Website Template, not optional unless the user explicitly asks for something else): Next.js (App Router) + TypeScript + shadcn/ui — every component AND every color token comes from shadcn's own system, not a hand-rolled design system or a different component library.
@@ -1433,6 +1486,198 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       },
     )
 
+    // ── Global Components ───────────────────────────────────────────────
+    // Reusable CMS schema field definitions (a "Testimonial" with name/
+    // role/photo/quote, a "Pricing Tier", ...) — built here, and once
+    // `published`, readable by every workspace's own per-workspace MCP
+    // server (list_global_components/get_global_component there,
+    // read-only) so an agent can reuse/adapt a ready-made field shape
+    // instead of designing a Component from scratch every time. Schema
+    // only, deliberately no frontend code bundle — a workspace that wants
+    // to use one reads `fields` here, then calls its own create_component
+    // with that same array to materialize a real Component in its own
+    // schema. Much simpler than Website Template: no SchemaTemplate link,
+    // no demo deployment, no expectedVersion/CONFLICT machinery.
+    server.registerTool(
+      "list_global_components",
+      {
+        title: "List Global Components",
+        description: "List every reusable Component field-definition in the catalog (both published and draft), with id, name, slug, icon, description, category, published status, and timestamps — without the field array itself (call get_global_component for that). Call this FIRST before creating a new one, to check whether something close enough already exists to reuse or extend.",
+        inputSchema: {
+          category: z.string().optional().describe("Filter to one category, e.g. 'navigation', 'testimonial', 'pricing', 'form'. Omit to list every category."),
+        },
+        outputSchema: { components: z.array(z.object(GLOBAL_COMPONENT_SUMMARY_SHAPE)) },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ category }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const rows = await db.globalComponent.findMany({
+          where: category ? { category } : undefined,
+          orderBy: { createdAt: "desc" },
+        })
+        const components = rows.map(serializeGlobalComponentSummary)
+        const structured = { components }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(components, null, 2) }],
+          structuredContent: structured,
+        }
+      },
+    )
+
+    server.registerTool(
+      "get_global_component",
+      {
+        title: "Get Global Component",
+        description: "Get one reusable Component's full detail, including its complete `fields` array — the exact shape a per-workspace MCP server's get_global_component also hands back, ready to pass straight into that workspace's own create_component to materialize it.",
+        inputSchema: {
+          id: z.string().describe("Global Component id or slug"),
+        },
+        outputSchema: GLOBAL_COMPONENT_OUTPUT_SHAPE,
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const component = await db.globalComponent.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!component) return notFound("Global Component", id)
+        const structured = serializeGlobalComponent(component)
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
+      },
+    )
+
+    server.registerTool(
+      "create_global_component",
+      {
+        title: "Create Global Component",
+        description: "Create a new reusable Component field-definition (e.g. 'Testimonial', 'Pricing Tier', 'Team Member') other templates and workspaces can reuse once published. This is catalog data, same as Schema/Website Templates — it never touches any tenant's own live schema or content. Call list_global_components first to avoid creating a near-duplicate, and list_field_types before writing any field.",
+        inputSchema: {
+          name: z.string().min(1).max(150).describe("Display name, e.g. 'Testimonial'"),
+          slug: z.string().max(150).optional().describe("URL-safe identifier, e.g. 'testimonial'. Auto-derived from name if omitted; a collision gets a numeric suffix."),
+          icon: z.string().max(10).optional().describe("A single emoji shown on the component's catalog card, e.g. '💬'"),
+          description: z.string().max(500).optional().describe("Short catalog-card blurb — what this component is for and when to reach for it."),
+          category: z.string().max(50).optional().describe("Catalog category, e.g. 'navigation', 'testimonial', 'pricing', 'form' — used to filter list_global_components."),
+          fields: z.array(schemaTemplateFieldSchema).describe(
+            "[{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }, ...] — same per-field shape as one SchemaTemplate component's own `fields`. Call list_field_types FIRST — it has the real options/relationSlug shape per type, never guess one. A relationSlug/componentSlug here legitimately points at something that may not exist yet — it only needs to resolve once a workspace actually applies these fields via its own create_component.",
+          ),
+          published: z.boolean().optional().describe("Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately usable by every workspace's own MCP server."),
+        },
+        outputSchema: GLOBAL_COMPONENT_OUTPUT_SHAPE,
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
+      },
+      async ({ name, slug: slugInput, icon, description, category, fields, published }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const parsed = createGlobalComponentSchema.safeParse({ name, slug: slugInput, icon, description, category, fields, published })
+        if (!parsed.success) return invalidSchema(parsed.error)
+
+        const { blocking, warnings } = splitIssuesBySeverity(validateGlobalComponentFields(parsed.data.fields))
+        if (blocking.length > 0) return referenceIssuesResponse(blocking)
+
+        const slug = await dedupeSlug(parsed.data.slug || slugify(name), (s) => db.globalComponent.findUnique({ where: { slug: s } }))
+
+        const component = await db.globalComponent.create({
+          data: {
+            name,
+            slug,
+            icon: icon || "🧩",
+            description: description || null,
+            category: category || null,
+            fields: parsed.data.fields,
+            published: published ?? false,
+          },
+        })
+        const structured = serializeGlobalComponent(component)
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) }],
+          structuredContent: structured,
+        }
+      },
+    )
+
+    server.registerTool(
+      "update_global_component",
+      {
+        title: "Update Global Component",
+        description: "Update an existing Global Component's metadata, field array, and/or published status. Passing `fields` REPLACES the whole array — include every field you want to keep, not just the ones that changed.",
+        inputSchema: {
+          id: z.string().describe("Global Component id or slug"),
+          name: z.string().min(1).max(150).optional().describe("New display name, if renaming."),
+          icon: z.string().max(10).optional().describe("New single-emoji card icon, if changing."),
+          description: z.string().max(500).optional().describe("New catalog-card blurb, if changing."),
+          category: z.string().max(50).optional().describe("New category, if recategorizing."),
+          fields: z.array(schemaTemplateFieldSchema).optional().describe("Full replacement for the `fields` array — same shape as create_global_component."),
+          published: z.boolean().optional().describe("Set true to make this component immediately usable by every workspace, or false to hide it again."),
+        },
+        outputSchema: GLOBAL_COMPONENT_OUTPUT_SHAPE,
+        annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ id, name, icon, description, category, fields, published }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.globalComponent.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!existing) return notFound("Global Component", id)
+
+        const parsed = updateGlobalComponentSchema.safeParse({ name, icon, description, category, fields, published })
+        if (!parsed.success) return invalidSchema(parsed.error)
+
+        let fieldWarnings: { path: string; message: string }[] = []
+        if (parsed.data.fields !== undefined) {
+          const { blocking, warnings } = splitIssuesBySeverity(validateGlobalComponentFields(parsed.data.fields))
+          if (blocking.length > 0) return referenceIssuesResponse(blocking)
+          fieldWarnings = warnings
+        }
+
+        const component = await db.globalComponent.update({
+          where: { id: existing.id },
+          data: {
+            ...(name !== undefined ? { name } : {}),
+            ...(icon !== undefined ? { icon } : {}),
+            ...(description !== undefined ? { description } : {}),
+            ...(category !== undefined ? { category } : {}),
+            ...(parsed.data.fields !== undefined ? { fields: parsed.data.fields } : {}),
+            ...(published !== undefined ? { published } : {}),
+          },
+        })
+        const structured = serializeGlobalComponent(component)
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(fieldWarnings) }],
+          structuredContent: structured,
+        }
+      },
+    )
+
+    server.registerTool(
+      "delete_global_component",
+      {
+        title: "Delete Global Component",
+        description: "Permanently delete a Global Component from the catalog. This has no effect on any real Component already materialized in a tenant's own schema previously — it only stops it from being found/reused in future.",
+        inputSchema: {
+          id: z.string().describe("Global Component id or slug"),
+        },
+        outputSchema: { ok: z.literal(true) },
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: false },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const existing = await db.globalComponent.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        if (!existing) return notFound("Global Component", id)
+
+        await db.globalComponent.delete({ where: { id: existing.id } })
+        const structured = { ok: true as const }
+        return { content: [{ type: "text" as const, text: `✅ Global Component '${existing.name}' dihapus.` }], structuredContent: structured }
+      },
+    )
+
     // ── Prompts ─────────────────────────────────────────────────────────
     // Report P1/P2 (no `prompts` capability at all): a pre-packaged,
     // parameterized entry point for the exact workflow get_builder_guide
@@ -1476,7 +1721,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.13.1" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.14.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
@@ -1488,7 +1733,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       "Templates. It has no access to any tenant's own content, deployment, or settings; for that, connect " +
       "to a workspace's own MCP server at /api/mcp instead. Call get_builder_guide FIRST for the full " +
       "workflow (schema+frontend build order, dry-run validation, demo preview contract, every structured " +
-      "error code). Four rules too important to risk missing: (1) default stack for every Website Template " +
+      "error code, and reusable Global Components via list_global_components/get_global_component). Four " +
+      "rules too important to risk missing: (1) default stack for every Website Template " +
       "is Next.js + TypeScript + shadcn/ui, every component AND color token from shadcn's own system, " +
       "unless the user asks for something else; (2) call list_field_types before writing any " +
       "schema field — it has the real options/relationSlug shape per type and flags silently-ignored " +

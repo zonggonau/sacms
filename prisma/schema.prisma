@@ -968,6 +968,43 @@ model WebsiteTemplate {
   @@map("website_templates")
 }
 
+// A reusable CMS schema field definition — e.g. "Testimonial" (name, role,
+// photo, quote) or "Pricing Tier" — built via the SaCMS Global "Schema
+// Template" MCP server and, once `published`, readable by EVERY
+// workspace's own per-workspace MCP server (see list_global_components/
+// get_global_component there) so an agent can reuse/adapt a ready-made
+// field shape instead of designing every Component from scratch each
+// time. Schema only, deliberately no frontend code bundle — a workspace
+// that wants to use one reads `fields` here, then calls its own
+// create_component with that same array to materialize a real Component
+// in its own schema. Same platform-catalog visibility rule as
+// WebsiteTemplate/SchemaTemplate (gated by access.isGlobal, always
+// queried via the plain shared `db` client) — a separate catalog-level
+// row from the tenant's own `Component` model (a real, already-applied
+// field-group in ONE workspace's schema), which this deliberately avoids
+// sharing a name with.
+model GlobalComponent {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  icon        String   @default("🧩")
+  description String?
+  category    String?
+  // [{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }, ...]
+  // — the same per-field shape as one SchemaTemplate bundle component's
+  // own `fields` (schemaTemplateFieldSchema/validateGlobalComponentFields).
+  // Schema only, deliberately no frontend code bundle — a workspace that
+  // wants to use this calls get_global_component for `fields`, then its
+  // own create_component with that same array.
+  fields      Json
+  published   Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("global_components")
+}
+
 model Webhook {
   id              String              @id @default(cuid())
   tenantId        String

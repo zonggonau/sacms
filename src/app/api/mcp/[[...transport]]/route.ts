@@ -1740,6 +1740,68 @@ const handler = createMcpHandler(
       }
     )
 
+    // ── list_global_components / get_global_component (read-only) ───────────
+    // Reusable Component field-definitions from SaCMS's platform-wide
+    // catalog (built via the separate Global "Schema Template" MCP server)
+    // — e.g. a ready-made "Testimonial" or "Pricing Tier". Read-only here,
+    // published-only: call get_global_component for its `fields`, then
+    // this server's OWN create_component with that same array to actually
+    // materialize it into this workspace's schema. This server has no way
+    // to write to that catalog — only the Global server can.
+    server.registerTool(
+      "list_global_components",
+      {
+        title: "List Global Components (Read-Only)",
+        description: "List every PUBLISHED reusable Component field-definition from SaCMS's platform-wide catalog — a ready-made field shape (e.g. 'Testimonial', 'Pricing Tier') you can adapt instead of designing a Component from scratch. Call this before create_component when the user's ask sounds like something generic/common (a testimonial block, a team member card, a pricing tier) rather than specific to this workspace's own data.",
+        inputSchema: {
+          category: z.string().optional().describe("Filter to one category, e.g. 'testimonial', 'pricing', 'navigation'. Omit to list every category."),
+        },
+      },
+      async ({ category }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const rows = await db.globalComponent.findMany({
+          where: { published: true, ...(category ? { category } : {}) },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, name: true, slug: true, icon: true, description: true, category: true },
+        })
+        return { content: [{ type: "text" as const, text: JSON.stringify({ components: rows }, null, 2) }] }
+      },
+    )
+
+    server.registerTool(
+      "get_global_component",
+      {
+        title: "Get Global Component (Read-Only)",
+        description: "Get one PUBLISHED Global Component's full `fields` array, ready to pass straight into this server's own create_component to materialize it into this workspace's schema.",
+        inputSchema: {
+          id: z.string().describe("Global Component id or slug"),
+        },
+      },
+      async ({ id }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const component = await db.globalComponent.findFirst({ where: { published: true, OR: [{ id }, { slug: id }] } })
+        if (!component) {
+          return { content: [{ type: "text" as const, text: `❌ Global Component '${id}' not found (or not published).` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Global Component not found or not published." }, isError: true }
+        }
+        const result = {
+          id: component.id,
+          name: component.name,
+          slug: component.slug,
+          icon: component.icon,
+          description: component.description,
+          category: component.category,
+          fields: component.fields,
+        }
+        return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
+      },
+    )
+
     // ── create_component ─────────────────────────────────────────────────────
     server.registerTool(
       "create_component",
@@ -2543,7 +2605,7 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 ## Phase 1 — Discover the real schema
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
 2. Call \`list_field_types\` BEFORE picking a field type or writing its \`options\` — it gives the real \`options\`/\`relationSlug\` shape and the entry-value shape per type, and flags several options that are silently ignored at render time instead of erroring (so guessing them wastes a turn, it doesn't fail loudly). Needing a small FIXED set of choices → \`select\`/\`multiselect\` with \`options.choices\`; needing an open-ended or separately-managed set of records → \`relation\` with \`relationSlug\`. Never guess an options shape instead of calling this tool.
-3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable.
+3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable. Before designing a new Component from scratch for something generic/common (a testimonial, a team member card, a pricing tier), call \`list_global_components\` first — SaCMS's platform-wide catalog may already have a ready-made field shape; \`get_global_component\` returns its \`fields\` array ready to pass straight into \`create_component\`.
 4. If the workspace has many Content Types, organize them into sidebar folders with \`list_content_type_groups\` / \`create_content_type_group\` / \`assign_content_type_to_group\` (up to 3 levels deep) — Single Types have no grouping concept in SaCMS, don't invent one for them.
 
 ## Phase 2 — Explore real content before writing any UI
@@ -4526,7 +4588,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.6.1" },
+    serverInfo: { name: "sacms-mcp", version: "4.7.0" },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the

@@ -18,12 +18,12 @@ import { generateContentSchema } from "@/lib/content-validations"
  *  shape, BEFORE the handler runs, so a zod-level z.enum here would reject
  *  with the SDK's own generic error instead of this function's nicer one).
  *  Checked here instead, against the SAME list list_field_types documents. */
-const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
+export const VALID_FIELD_TYPES: Set<string> = new Set(FIELD_TYPES.map((t) => t.type))
 
 /** Field slugs are JSON property names in the Content API, not URL paths —
  *  camelCase/snake_case are both fine, unlike a MODEL slug. See VAL-9's own
  *  check below for the one exception (document_template). */
-const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
+export const FIELD_SLUG_FORMAT_RE = /^[a-zA-Z][a-zA-Z0-9_]*$/
 
 /** Same slug format the dashboard's own Content Type/Single Type/Component
  *  creation routes enforce (src/lib/validations/admin.ts) — schema-
@@ -341,4 +341,47 @@ function checkDummyData(model: BundleModelRef, basePath: string, issues: Validat
       }
     })
   })
+}
+
+/**
+ * Field-level checks for a standalone GlobalComponent (src/app/api/mcp/
+ * global-schema's create_global_component/update_global_component) — a
+ * single reusable Component-shaped field definition with no sibling
+ * models of its own, unlike a full SchemaTemplate bundle. Deliberately a
+ * SUBSET of checkFields (inlined inside validateBundleReferences above):
+ * duplicate-slug/type-validity/slug-format/choices checks all still apply,
+ * but relation/component/repeater cross-reference checks do NOT — a
+ * relationSlug/componentSlug here legitimately points at something that
+ * only exists once a workspace actually applies this component into its
+ * own schema (create_component), not at another model in this same call.
+ */
+export function validateGlobalComponentFields(fields: BundleFieldRef[]): ValidationIssue[] {
+  const issues: ValidationIssue[] = []
+  const seenFieldSlugs = new Map<string, number>()
+
+  fields.forEach((f, idx) => {
+    const fieldPath = `fields[${idx}]`
+    if (f.slug) {
+      const firstIndex = seenFieldSlugs.get(f.slug)
+      if (firstIndex !== undefined) {
+        issues.push({ path: `${fieldPath}.slug`, message: `Duplicate field slug '${f.slug}' — already used by fields[${firstIndex}]. Field slugs must be unique within the same component.` })
+      } else {
+        seenFieldSlugs.set(f.slug, idx)
+      }
+    }
+    if (f.type && !VALID_FIELD_TYPES.has(f.type)) {
+      issues.push({ path: `${fieldPath}.type`, message: `'${f.type}' is not a real field type. Call list_field_types for the official list of 36 types — a typo'd/fictional type has no renderer anywhere and silently falls back to accepting any value.` })
+    }
+    if (f.type !== "document_template" && f.slug && !FIELD_SLUG_FORMAT_RE.test(f.slug)) {
+      issues.push({ path: `${fieldPath}.slug`, message: `'${f.slug}' is not a valid field slug — use letters/digits/underscores, starting with a letter (e.g. 'coverImage' or 'cover_image').` })
+    }
+    if (f.type === "select" || f.type === "multiselect") {
+      const choices = f.options?.choices
+      if (!Array.isArray(choices) || choices.length === 0) {
+        issues.push({ path: `${fieldPath}.options.choices`, message: `${f.type} fields need a non-empty options.choices array — without it, every value is rejected at content-entry time.` })
+      }
+    }
+  })
+
+  return issues
 }
