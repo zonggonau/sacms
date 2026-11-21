@@ -497,6 +497,9 @@ const handler = createMcpHandler(
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
         const guide = `# SaCMS Platform Template-Builder Guide
 
 This server manages SaCMS's platform-wide template catalog, including each Schema Template's linked internal demo workspace. Customer workspaces use their own MCP server at /api/mcp and the apply_website_template tool.
@@ -514,6 +517,8 @@ Start a new website with \`create_schema_template\` and omit \`schema\`. SaCMS c
 Map the required pages, header, footer, editorial data, and reusable blocks to this schema. Reuse fields and models that fit. Add missing models or fields with \`update_schema_template\` and pass the sourceVersion you inspected as expectedVersion. You may remove Content Types such as kategori, posts or pages if the brief does not need them. Resolve references in retained models before removing their targets. Keep Single Types and Components available by slug.
 
 Pass the resulting \`schemaTemplateId\` to \`create_website_template\` so the frontend uses the same workspace. When the schema is already decided, an inline \`schema\` still works. SaCMS merges the starter by slug and provisions the demo automatically. Use \`excludeDefaultContentTypes\` to omit optional starter collections in that flow.
+
+Separately from any Website Template a user opts into, exactly ONE SchemaTemplate can be marked \`isDefault: true\` (via \`create_schema_template\`/\`update_schema_template\`) — its Content Types/Single Types are auto-materialized into EVERY new workspace at creation time, alongside every published Global Component, before that workspace has applied any template at all. Setting a new one \`isDefault: true\` automatically un-defaults whichever template held it before. Only change this when the user explicitly asks what every new workspace should start with — it's not part of the normal per-request template-building flow above.
 
 Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, call \`get_global_component\` and splice its \`fields\` straight in instead of inventing a near-duplicate shape. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
 
@@ -854,13 +859,32 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           isDefault: z.boolean().optional().describe(
             "Set true to make this THE template auto-materialized (schema only, no frontend) into every NEW workspace at creation time — unsets any other template currently marked default. At most one template is ever isDefault. Omit/false for an ordinary template a user opts into via a Website Template.",
           ),
+          idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template (and its already-provisioned demo workspace) instead of a duplicate."),
         },
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
       },
-      async ({ name, category, icon, description, schema, published, isDefault, excludeDefaultContentTypes = [] }) => {
+      async ({ name, category, icon, description, schema, published, isDefault, idempotencyKey, excludeDefaultContentTypes = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        // Idempotent replay — before anything else, so a lost response's
+        // retry never creates a second template + a second orphaned demo
+        // workspace (createDraftDemoWorkspace below is exactly the kind of
+        // expensive, hard-to-undo side effect this key exists to protect).
+        if (idempotencyKey) {
+          const already = await db.schemaTemplate.findFirst({
+            where: { idempotencyKey },
+            include: { demoTenant: { select: { id: true, slug: true } } },
+          })
+          if (already?.demoTenant) {
+            const structured = { ...serializeSchemaTemplate(already), demoWorkspace: describeSchemaDemoWorkspace(already.demoTenant) }
+            return {
+              content: [{ type: "text" as const, text: `🔁 Replay idempoten — Schema Template '${already.id}' sudah dibuat untuk idempotencyKey ini.\n${JSON.stringify(structured, null, 2)}` }],
+              structuredContent: structured,
+            }
+          }
+        }
 
         const parsedSchema = schemaTemplateBundleSchema.safeParse(schema ?? {})
         if (!parsedSchema.success) return invalidSchema(parsedSchema.error)
@@ -892,6 +916,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               published: published ?? false,
               isDefault: isDefault ?? false,
               demoTenantId: demo.id,
+              idempotencyKey: idempotencyKey || null,
             },
           })
           return { template, demo }

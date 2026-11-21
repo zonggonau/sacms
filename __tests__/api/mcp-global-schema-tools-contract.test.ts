@@ -479,4 +479,31 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(routeSource).toMatch(/const requestId = await req\s*\n\s*\.clone\(\)\s*\n\s*\.json\(\)/)
     expect(routeSource).toMatch(/id: requestId,/)
   })
+
+  // ── Audit follow-up round ──────────────────────────────────────────────────
+
+  it("get_builder_guide checks auth before returning, same as every other tool in this file (it used to be the sole exception)", () => {
+    const scoped = toolBlockOf("get_builder_guide")
+    expect(scoped).toMatch(/if \(!auth\) return UNAUTHORIZED/)
+  })
+
+  it("get_builder_guide's prose documents the isDefault SchemaTemplate knob, not just the per-request template-building flow", () => {
+    const scoped = toolBlockOf("get_builder_guide")
+    expect(scoped).toMatch(/isDefault/)
+  })
+
+  it("create_schema_template accepts idempotencyKey and replays the already-created template+demo instead of creating a duplicate on a lost-response retry", () => {
+    const scoped = toolBlockOf("create_schema_template")
+    expect(scoped).toMatch(/idempotencyKey: z\.string\(\)\.optional\(\)/)
+    expect(scoped).toMatch(/db\.schemaTemplate\.findFirst\(\{\s*where: \{ idempotencyKey \}/)
+    expect(scoped).toMatch(/idempotencyKey: idempotencyKey \|\| null,/)
+  })
+
+  it("SchemaTemplate.idempotencyKey is deliberately NOT a DB-level unique constraint (would trip db push's data-loss guard on this already-populated table, same reasoning as demoTenantId)", () => {
+    const schemaSource = readFileSync(join(__dirname, "../../prisma/schema.prisma"), "utf-8")
+    const modelStart = schemaSource.indexOf("model SchemaTemplate {")
+    const modelBlock = schemaSource.slice(modelStart, schemaSource.indexOf("\n}\n", modelStart))
+    expect(modelBlock).toMatch(/idempotencyKey String\?\s*$/m)
+    expect(modelBlock).not.toMatch(/idempotencyKey String\?\s*@unique/)
+  })
 })

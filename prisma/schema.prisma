@@ -912,6 +912,21 @@ model SchemaTemplate {
   demoTenantId String?
   demoTenant   Tenant? @relation("SchemaTemplateDemoTenant", fields: [demoTenantId], references: [id], onDelete: SetNull)
 
+  // Caller-supplied dedup key for create_schema_template, same rationale as
+  // WebsiteTemplate.idempotencyKey below — this tool now provisions a real
+  // demo workspace inside its transaction too, so a lost response's retry
+  // should resolve to the SAME template instead of creating a second
+  // orphaned one (template row + demo workspace). Deliberately NOT @unique
+  // (same reasoning as demoTenantId's own comment above) — a unique
+  // constraint added to this already-populated table trips `db push`'s
+  // data-loss guard, which the production deploy hook runs non-interactively
+  // with no --accept-data-loss flag (confirmed live, same as demoTenantId).
+  // Enforced at the application level instead (an explicit lookup before
+  // every create) — defense in depth, not a hard guarantee against an
+  // extremely rare concurrent-retry race, which is an acceptable trade-off
+  // for how narrow that window is.
+  idempotencyKey String?
+
   @@map("schema_templates")
 }
 
