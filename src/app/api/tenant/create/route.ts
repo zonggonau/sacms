@@ -8,6 +8,7 @@ import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
+import { seedDefaultTenantSchema } from "@/lib/infrastructure/default-tenant-schema"
 import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
@@ -71,6 +72,9 @@ export async function POST(request: NextRequest) {
 
     await ensureSiteSettings(tenant.id, tenant.name).catch((err) =>
       console.warn(`[tenant/create] Failed to ensure site-settings for ${tenant.id}:`, err)
+    )
+    await seedDefaultTenantSchema(tenant.id).catch((err) =>
+      console.warn(`[tenant/create] Failed to seed default schema for ${tenant.id}:`, err)
     )
 
     return NextResponse.json({

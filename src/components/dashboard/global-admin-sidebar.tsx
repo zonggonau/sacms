@@ -30,6 +30,7 @@ import {
   Layout,
   Server,
   LayoutTemplate,
+  Boxes,
   ChevronDown,
 } from "lucide-react"
 import { useTheme } from "next-themes"
@@ -76,6 +77,7 @@ const adminNavSections: NavSection[] = [
     items: [
       { title: "MCP Server", href: "/admin/developer/mcp", icon: Server, superAdminOnly: true },
       { title: "Website Template", href: "/admin/developer/templates", icon: LayoutTemplate, superAdminOnly: true },
+      { title: "Global Component", href: "/admin/developer/schema", icon: Boxes, superAdminOnly: true },
     ],
   },
   {

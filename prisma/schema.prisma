@@ -889,6 +889,14 @@ model SchemaTemplate {
   // when `schema` itself actually changes (see update_schema_template).
   sourceVersion DateTime @default(now())
 
+  // At most one SchemaTemplate is ever isDefault: true (enforced in app
+  // code, not a DB constraint — see setAsDefaultSchemaTemplate). The
+  // isDefault one's `schema` (Content Types/Single Types/Components) is
+  // auto-materialized into every NEW workspace at creation time, alongside
+  // every PUBLISHED GlobalComponent — see seedDefaultTenantSchema. Existing
+  // workspaces are never touched retroactively.
+  isDefault Boolean @default(false)
+
   websiteTemplates WebsiteTemplate[]
 
   // Internal, owner-less tenant (see Tenant.demoForSchemaTemplates) seeded

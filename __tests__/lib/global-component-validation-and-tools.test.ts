@@ -173,3 +173,62 @@ describe("Global Component discovery tools — source contract (per-workspace se
     expect(perWorkspaceRouteSource).toMatch(/Phase 1[\s\S]{0,2500}list_global_components[\s\S]{0,400}get_global_component/)
   })
 })
+
+// seedDefaultTenantSchema's own behavior is covered by
+// __tests__/lib/default-tenant-schema.test.ts — these assert the isDefault
+// SchemaTemplate knob exposed through create_schema_template/
+// update_schema_template exists and enforces "at most one" before the real
+// write, the same static source-text style as the rest of this file.
+
+describe("isDefault SchemaTemplate knob — source contract (global-schema server)", () => {
+  it("defines setAsDefaultSchemaTemplate and calls it from both create_schema_template and update_schema_template before the real write", () => {
+    expect(globalSchemaRouteSource).toMatch(/async function setAsDefaultSchemaTemplate\(/)
+
+    const create = toolBlockOf(globalSchemaRouteSource, "create_schema_template")
+    expect(create, "create_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
+    expect(create, "create_schema_template should call setAsDefaultSchemaTemplate before creating").toMatch(/if \(isDefault\) await setAsDefaultSchemaTemplate\(\)/)
+    const createCallIdx = create.indexOf("if (isDefault) await setAsDefaultSchemaTemplate()")
+    const createWriteIdx = create.indexOf("db.schemaTemplate.create(")
+    expect(createCallIdx).toBeGreaterThan(-1)
+    expect(createCallIdx).toBeLessThan(createWriteIdx)
+
+    const update = toolBlockOf(globalSchemaRouteSource, "update_schema_template")
+    expect(update, "update_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
+    expect(update, "update_schema_template should exclude itself when claiming default").toMatch(/if \(isDefault\) await setAsDefaultSchemaTemplate\(existing\.id\)/)
+    const updateCallIdx = update.indexOf("if (isDefault) await setAsDefaultSchemaTemplate(existing.id)")
+    const updateWriteIdx = update.indexOf("db.schemaTemplate.update(")
+    expect(updateCallIdx).toBeGreaterThan(-1)
+    expect(updateCallIdx).toBeLessThan(updateWriteIdx)
+  })
+
+  it("setAsDefaultSchemaTemplate unsets every OTHER isDefault row, never the row passed in", () => {
+    const fnStart = globalSchemaRouteSource.indexOf("async function setAsDefaultSchemaTemplate(")
+    const fnBlock = globalSchemaRouteSource.slice(fnStart, globalSchemaRouteSource.indexOf("\n}\n", fnStart))
+    expect(fnBlock).toMatch(/isDefault: true/)
+    expect(fnBlock).toMatch(/data: \{ isDefault: false \}/)
+  })
+
+  it("list_schema_templates and the shared serializer/output-shape expose isDefault", () => {
+    expect(globalSchemaRouteSource).toMatch(/SCHEMA_TEMPLATE_OUTPUT_SHAPE = \{[\s\S]{0,800}isDefault: z\.boolean\(\)/)
+    const listTool = toolBlockOf(globalSchemaRouteSource, "list_schema_templates")
+    expect(listTool).toMatch(/isDefault: z\.boolean\(\)/)
+    expect(listTool).toMatch(/isDefault: true,/)
+  })
+})
+
+describe("Admin Global Component dashboard — source contract (/admin/developer/schema)", () => {
+  const adminListSource = readFileSync(join(__dirname, "../../src/app/api/admin/global-components/route.ts"), "utf-8")
+  const adminDetailSource = readFileSync(join(__dirname, "../../src/app/api/admin/global-components/[id]/route.ts"), "utf-8")
+
+  it("GET lists every component (draft and published) gated by withAdminAuth, not just the published ones a workspace's own MCP server sees", () => {
+    expect(adminListSource).toMatch(/withAdminAuth/)
+    expect(adminListSource).not.toMatch(/published:\s*true/)
+  })
+
+  it("PATCH/DELETE are gated by withAdminAuth and reuse updateGlobalComponentSchema instead of a hand-rolled body shape", () => {
+    expect(adminDetailSource).toMatch(/export const PATCH = withAdminAuth/)
+    expect(adminDetailSource).toMatch(/export const DELETE = withAdminAuth/)
+    expect(adminDetailSource).toMatch(/import \{ updateGlobalComponentSchema \} from "@\/lib\/validations\/global-component"/)
+    expect(adminDetailSource).toMatch(/readJson\(req, updateGlobalComponentSchema\)/)
+  })
+})

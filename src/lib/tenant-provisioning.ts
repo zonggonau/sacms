@@ -1,6 +1,7 @@
 import { db, getTenantDbById } from "./database"
 import { STARTER_KITS } from "./starter-kits"
 import { ensureSiteSettings } from "./infrastructure/site-settings"
+import { seedDefaultTenantSchema } from "./infrastructure/default-tenant-schema"
 
 /**
  * Provision a new tenant with starter content types and demo data.
@@ -350,6 +351,13 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
     // exists for every workspace, regardless of which starter kit (if any)
     // was used above — idempotent, never touches an existing one.
     await ensureSiteSettings(tenantId, tenant.name)
+
+    // 5.6 Materialize the default Content Types (Post, Kategori) + every
+    // PUBLISHED GlobalComponent into this workspace — idempotent, skips any
+    // slug the starter kit above (or an earlier run) already created.
+    await seedDefaultTenantSchema(tenantId).catch((err) =>
+      console.warn(`[Provisioning] Failed to seed default schema for ${tenantId}:`, err)
+    )
 
     console.log(`[Provisioning] Completed for tenant: ${tenantId}`)
 

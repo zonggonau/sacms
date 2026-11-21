@@ -213,6 +213,11 @@ function serializeWebsiteTemplateSummary(t: Parameters<typeof serializeWebsiteTe
 const SCHEMA_TEMPLATE_OUTPUT_SHAPE = {
   id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
   description: z.string().nullable(), schema: z.any(), published: z.boolean(),
+  // Report P4: whether every NEW workspace gets this template's schema
+  // auto-materialized at creation time (see seedDefaultTenantSchema). At
+  // most one SchemaTemplate is ever true — enforced by
+  // setAsDefaultSchemaTemplate, not a DB constraint.
+  isDefault: z.boolean(),
   demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
   // chatgpt.md P1: pass THIS back as update_schema_template's
   // expectedVersion, not `updatedAt` (which also moves on the one-time
@@ -228,6 +233,7 @@ function serializeSchemaTemplate(t: {
   description: string | null
   schema: unknown
   published: boolean
+  isDefault: boolean
   demoTenantId: string | null
   createdAt: Date
   updatedAt: Date
@@ -242,11 +248,29 @@ function serializeSchemaTemplate(t: {
     description: t.description,
     schema: t.schema,
     published: t.published,
+    isDefault: t.isDefault,
     demoTenantId: t.demoTenantId,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
     sourceVersion: t.sourceVersion.toISOString(),
   }
+}
+
+/**
+ * Enforces "at most one isDefault: true SchemaTemplate" in app code (no DB
+ * constraint — same rationale as demoTenantId's own comment: a unique
+ * constraint trips Prisma db push's data-loss guard, which the production
+ * deploy hook runs non-interactively with no --accept-data-loss flag).
+ * Called right before the real create/update write — if the process dies
+ * between the two, ensureDefaultSchemaTemplate's own fallback (find-by-slug)
+ * self-heals the next tenant creation rather than leaving the system with
+ * no default at all.
+ */
+async function setAsDefaultSchemaTemplate(excludeId?: string) {
+  await db.schemaTemplate.updateMany({
+    where: { isDefault: true, ...(excludeId ? { id: { not: excludeId } } : {}) },
+    data: { isDefault: false },
+  })
 }
 
 /** The demoDeployment sub-object every create/update_website_template response carries. */
@@ -520,7 +544,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         outputSchema: {
           templates: z.array(z.object({
             id: z.string(), name: z.string(), slug: z.string(), category: z.string(), icon: z.string(),
-            description: z.string().nullable(), published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+            description: z.string().nullable(), published: z.boolean(), isDefault: z.boolean(),
+            createdAt: z.string(), updatedAt: z.string(),
           })),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -536,7 +561,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           orderBy: { createdAt: "desc" },
           select: {
             id: true, name: true, slug: true, category: true, icon: true,
-            description: true, published: true, createdAt: true, updatedAt: true,
+            description: true, published: true, isDefault: true, createdAt: true, updatedAt: true,
           },
         })
         const templates = rows.map((t) => ({ ...t, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString() }))
@@ -604,11 +629,14 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
+          isDefault: z.boolean().optional().describe(
+            "Set true to make this THE template auto-materialized (schema only, no frontend) into every NEW workspace at creation time — unsets any other template currently marked default. At most one template is ever isDefault. Omit/false for an ordinary template a user opts into via a Website Template.",
+          ),
         },
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
       },
-      async ({ name, category, icon, description, schema, published }) => {
+      async ({ name, category, icon, description, schema, published, isDefault }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -620,6 +648,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
         const slug = await dedupeSlug(slugify(name), (s) => db.schemaTemplate.findUnique({ where: { slug: s } }))
 
+        if (isDefault) await setAsDefaultSchemaTemplate()
+
         const template = await db.schemaTemplate.create({
           data: {
             name,
@@ -629,6 +659,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             description: description || null,
             schema: parsedSchema.data,
             published: published ?? false,
+            isDefault: isDefault ?? false,
           },
         })
         const structured = serializeSchemaTemplate(template)
@@ -663,13 +694,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "too (template-local slugs, Content Types only).",
           ),
           published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
+          isDefault: z.boolean().optional().describe(
+            "Set true to make THIS the template auto-materialized into every NEW workspace at creation time, unsetting any other template currently marked default. Set false to un-default it (no other template becomes default automatically).",
+          ),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
         },
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
       },
-      async ({ id, name, category, icon, description, schema, published, expectedVersion, confirmSharedUpdate }) => {
+      async ({ id, name, category, icon, description, schema, published, isDefault, expectedVersion, confirmSharedUpdate }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -714,6 +748,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           schemaData = parsedSchema.data
         }
 
+        if (isDefault) await setAsDefaultSchemaTemplate(existing.id)
+
         const template = await db.schemaTemplate.update({
           where: { id: existing.id },
           data: {
@@ -723,6 +759,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             ...(description !== undefined ? { description } : {}),
             ...(schemaData !== undefined ? { schema: schemaData } : {}),
             ...(published !== undefined ? { published } : {}),
+            ...(isDefault !== undefined ? { isDefault } : {}),
             // Only a genuine `schema` change moves sourceVersion — a later
             // metadata-only edit, or the one-time demoTenantId write a first
             // demo deploy makes, must never invalidate an expectedVersion
@@ -1721,7 +1758,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.14.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.15.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
