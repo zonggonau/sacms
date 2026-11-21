@@ -25,12 +25,6 @@ export function SEOAnalyzerPanel({ data, fields }: SEOAnalyzerPanelProps) {
     return "text-red-500"
   }
 
-  const getScoreBg = (score: number) => {
-    if (score >= 80) return "bg-orange-500"
-    if (score >= 50) return "bg-amber-500"
-    return "bg-red-500"
-  }
-
   return (
     <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
       <CardHeader className="bg-muted/10 border-b p-6">
@@ -47,12 +41,7 @@ export function SEOAnalyzerPanel({ data, fields }: SEOAnalyzerPanelProps) {
               {analysis.score}%
             </span>
           </div>
-          <Progress value={analysis.score} className="h-2 bg-muted rounded-none">
-            <div 
-              className={cn("h-full transition-all rounded-none", getScoreBg(analysis.score))} 
-              style={{ width: `${analysis.score}%` }} 
-            />
-          </Progress>
+          <Progress value={analysis.score} className="h-2 bg-muted rounded-none" />
         </div>
 
         {/* Breakdown */}

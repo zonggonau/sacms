@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, Zap,
   Paperclip, X, FileUp, Coins,
@@ -773,19 +774,23 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             </Select>
             <div className="ml-auto flex items-center gap-1.5">
               {creditInfo && (
-                <div
-                  className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
-                    creditInfo.isUnlimited
-                      ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
-                      : insufficientCredits
-                        ? "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20"
-                        : "text-foreground bg-muted/50 border-border/70"
-                  }`}
-                  title={creditInfo.isUnlimited ? "Kredit AI tidak terbatas" : `Sisa kredit AI: ${creditInfo.remaining} dari ${creditInfo.max}`}
-                >
-                  <Coins className="h-2.5 w-2.5" />
-                  {creditInfo.isUnlimited ? "Tidak Terbatas" : `${creditInfo.remaining} Kredit`}
-                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div
+                      className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                        creditInfo.isUnlimited
+                          ? "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20"
+                          : insufficientCredits
+                            ? "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20"
+                            : "text-foreground bg-muted/50 border-border/70"
+                      }`}
+                    >
+                      <Coins className="h-2.5 w-2.5" />
+                      {creditInfo.isUnlimited ? "Tidak Terbatas" : `${creditInfo.remaining} Kredit`}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>{creditInfo.isUnlimited ? "Kredit AI tidak terbatas" : `Sisa kredit AI: ${creditInfo.remaining} dari ${creditInfo.max}`}</TooltipContent>
+                </Tooltip>
               )}
          
             </div>

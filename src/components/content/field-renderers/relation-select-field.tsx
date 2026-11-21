@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 import { getEntriesAction } from "@/actions/content"
 import { getSingleTypeBySlugAction } from "@/actions/single-types"
@@ -301,13 +302,17 @@ export function RelationSelectField({
               </Label>
             )}
             {relationType && relationType in RELATION_CARDINALITY_LABEL && (
-              <Badge
-                variant="outline"
-                className="text-[9px] font-mono font-bold px-1.5 py-0 h-4 border-border/60 text-muted-foreground"
-                title={`Relasi ${RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]} ke ${targetSlug}`}
-              >
-                {RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]}
-              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="text-[9px] font-mono font-bold px-1.5 py-0 h-4 border-border/60 text-muted-foreground"
+                  >
+                    {RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>{`Relasi ${RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]} ke ${targetSlug}`}</TooltipContent>
+              </Tooltip>
             )}
           </div>
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}

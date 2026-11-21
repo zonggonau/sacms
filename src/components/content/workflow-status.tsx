@@ -1,6 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   FileText, Clock, CheckCircle2, CalendarClock,
   Eye, Archive, XCircle,
@@ -54,7 +55,14 @@ export function WorkflowStatusBadge({ status, size = "sm" }: { status: string; s
 export function WorkflowStatusDot({ status }: { status: string }) {
   const cfg = resolveStatus(status)
   if (!cfg) return null
-  return <span className={`h-2 w-2 rounded-full ${cfg.dot}`} title={cfg.label} />
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
+      </TooltipTrigger>
+      <TooltipContent>{cfg.label}</TooltipContent>
+    </Tooltip>
+  )
 }
 
 export function WorkflowPipeline({ entries }: { entries: Record<string, number> }) {

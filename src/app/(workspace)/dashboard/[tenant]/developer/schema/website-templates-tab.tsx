@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { Loader2, LayoutTemplate, Eye, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search, AlertTriangle } from "lucide-react"
 import { WebsiteTemplateReviewDialog } from "./website-template-review-dialog"
@@ -287,17 +288,21 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
                       <TableCell className="text-right pr-6 py-3">
                         <div className="flex items-center justify-end gap-1">
                           {t.demoUrl ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              asChild
-                              className="h-7 w-7 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
-                              title={`Buka Demo: ${t.demoUrl}`}
-                            >
-                              <a href={t.demoUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3.5 w-3.5" />
-                              </a>
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  asChild
+                                  className="h-7 w-7 rounded-lg text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                >
+                                  <a href={t.demoUrl} target="_blank" rel="noopener noreferrer">
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{`Buka Demo: ${t.demoUrl}`}</TooltipContent>
+                            </Tooltip>
                           ) : (
                             <span className="h-7 w-7 inline-flex items-center justify-center text-muted-foreground/30" title="Demo belum tersedia">
                               <ExternalLink className="h-3.5 w-3.5" />
@@ -607,16 +612,28 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
                       <ExternalLink className="h-3 w-3" /> Buka Tab
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    onClick={() => handleApply(t)}
-                    disabled={!canApplyTemplate(t.id)}
-                    title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !canApplyTemplate(t.id) ? "Lanjutkan template yang tertunda atau reset workspace" : undefined}
-                    className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
-                  >
-                    {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                    {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      {/* span, not the Button itself — Button's own
+                          disabled:pointer-events-none would block hover
+                          from ever reaching it once !canApplyTemplate,
+                          the exact state this tooltip explains. */}
+                      <span tabIndex={0} className="flex-1 inline-flex">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApply(t)}
+                          disabled={!canApplyTemplate(t.id)}
+                          className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
+                        >
+                          {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+                          {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {(!canApply || !canApplyTemplate(t.id)) && (
+                      <TooltipContent>{!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : "Lanjutkan template yang tertunda atau reset workspace"}</TooltipContent>
+                    )}
+                  </Tooltip>
                 </div>
               </CardContent>
             </Card>
@@ -661,16 +678,24 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
                             <ExternalLink className="h-3 w-3" /> Buka Tab
                           </Button>
                         )}
-                        <Button
-                          size="sm"
-                          onClick={() => handleApply(t)}
-                          disabled={!canApplyTemplate(t.id)}
-                          title={!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : !canApplyTemplate(t.id) ? "Lanjutkan template yang tertunda atau reset workspace" : undefined}
-                          className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-                        >
-                          {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                          {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0} className="inline-flex">
+                              <Button
+                                size="sm"
+                                onClick={() => handleApply(t)}
+                                disabled={!canApplyTemplate(t.id)}
+                                className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+                              >
+                                {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+                                {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          {(!canApply || !canApplyTemplate(t.id)) && (
+                            <TooltipContent>{!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : "Lanjutkan template yang tertunda atau reset workspace"}</TooltipContent>
+                          )}
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>

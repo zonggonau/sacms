@@ -24,6 +24,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Loader2,
   Users,
   UserPlus,
@@ -526,17 +533,18 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current, staffR
           <div className="py-2 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preset Peran Workspace</Label>
-              <select
-                value={newRole || "viewer"}
-                onChange={(e) => handleEditRoleChange(e.target.value)}
-                className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
-              >
-                {roleOptions.map(([rKey, rLabel]) => (
-                  <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
-                    {rLabel}
-                  </option>
-                ))}
-              </select>
+              <Select value={newRole || "viewer"} onValueChange={handleEditRoleChange}>
+                <SelectTrigger className="w-full h-9 bg-muted/20 text-xs font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map(([rKey, rLabel]) => (
+                    <SelectItem key={rKey} value={rKey} className="text-foreground">
+                      {rLabel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <PermissionsMatrix
@@ -623,17 +631,18 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current, staffR
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Workspace</Label>
-              <select
-                value={newMember.role || "viewer"}
-                onChange={(e) => handleCreateRoleChange(e.target.value)}
-                className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
-              >
-                {roleOptions.map(([rKey, rLabel]) => (
-                  <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
-                    {rLabel}
-                  </option>
-                ))}
-              </select>
+              <Select value={newMember.role || "viewer"} onValueChange={handleCreateRoleChange}>
+                <SelectTrigger className="w-full h-9 bg-muted/20 text-xs font-medium">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {roleOptions.map(([rKey, rLabel]) => (
+                    <SelectItem key={rKey} value={rKey} className="text-foreground">
+                      {rLabel}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <PermissionsMatrix
               permissions={createPermissions}

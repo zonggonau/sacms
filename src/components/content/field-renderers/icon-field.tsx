@@ -4,6 +4,7 @@ import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Dialog,
   DialogContent,
@@ -165,26 +166,29 @@ export function IconField({
                 const isSelected = value === iconName
 
                 return (
-                  <button
-                    key={iconName}
-                    type="button"
-                    onClick={() => {
-                      onChange(iconName)
-                      setOpen(false)
-                      setSearch("")
-                    }}
-                    title={iconName}
-                    className={`aspect-square flex flex-col items-center justify-center p-2 rounded-xl border transition-all cursor-pointer group ${
-                      isSelected 
-                        ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20" 
-                        : "border-border/60 hover:border-border hover:bg-muted/40 text-foreground"
-                    }`}
-                  >
-                    <IconComponent className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                    <span className="text-[9px] truncate w-full text-center mt-1 text-muted-foreground group-hover:text-foreground">
-                      {iconName}
-                    </span>
-                  </button>
+                  <Tooltip key={iconName}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onChange(iconName)
+                          setOpen(false)
+                          setSearch("")
+                        }}
+                        className={`aspect-square flex flex-col items-center justify-center p-2 rounded-xl border transition-all cursor-pointer group ${
+                          isSelected
+                            ? "border-primary bg-primary/10 text-primary ring-2 ring-primary/20"
+                            : "border-border/60 hover:border-border hover:bg-muted/40 text-foreground"
+                        }`}
+                      >
+                        <IconComponent className="h-5 w-5 group-hover:scale-110 transition-transform" />
+                        <span className="text-[9px] truncate w-full text-center mt-1 text-muted-foreground group-hover:text-foreground">
+                          {iconName}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{iconName}</TooltipContent>
+                  </Tooltip>
                 )
               })}
             </div>

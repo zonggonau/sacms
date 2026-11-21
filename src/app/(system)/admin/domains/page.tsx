@@ -22,6 +22,7 @@ import {
   ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -282,143 +283,141 @@ export default function AdminCustomDomainsPage() {
 
           {/* Domains Table */}
           <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/60">
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">
-                      Domain Kustom
-                    </th>
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
-                      Workspace Tenant
-                    </th>
-                    <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">
-                      Status DNS
-                    </th>
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">
-                      Tanggal Diverifikasi
-                    </th>
-                    <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
-                      Aksi
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {domains.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                        <Globe className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                        <p className="text-xs font-semibold">Belum ada custom domain yang terdaftar</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Tenant dapat menambahkan custom domain di pengaturan workspace mereka.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    domains.map((item) => {
-                      const isVerified = item.status === "verified"
-                      const isLoadingThis = actionLoading === item.id
+            <Table className="border-collapse">
+              <TableHeader>
+                <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">
+                    Domain Kustom
+                  </TableHead>
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
+                    Workspace Tenant
+                  </TableHead>
+                  <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">
+                    Status DNS
+                  </TableHead>
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">
+                    Tanggal Diverifikasi
+                  </TableHead>
+                  <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
+                    Aksi
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border/40">
+                {domains.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5} className="p-12 text-center text-muted-foreground whitespace-normal">
+                      <Globe className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                      <p className="text-xs font-semibold">Belum ada custom domain yang terdaftar</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">Tenant dapat menambahkan custom domain di pengaturan workspace mereka.</p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  domains.map((item) => {
+                    const isVerified = item.status === "verified"
+                    const isLoadingThis = actionLoading === item.id
 
-                      return (
-                        <tr key={item.id} className="hover:bg-muted/10 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                                <Globe className="h-4 w-4" />
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span className="font-bold text-xs text-foreground font-mono">{item.domain}</span>
-                                  <a 
-                                    href={`https://${item.domain}`} 
-                                    target="_blank" 
-                                    rel="noreferrer" 
-                                    className="text-muted-foreground hover:text-primary transition-colors"
-                                  >
-                                    <ArrowUpRight className="h-3 w-3" />
-                                  </a>
-                                </div>
-                                {item.isPrimary && (
-                                  <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 h-4 border-primary/30 text-primary mt-0.5">
-                                    Primary Domain
-                                  </Badge>
-                                )}
-                              </div>
+                    return (
+                      <TableRow key={item.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                        <TableCell className="p-4 whitespace-normal">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <Globe className="h-4 w-4" />
                             </div>
-                          </td>
-                          <td className="p-4">
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                              <div>
-                                <p className="text-xs font-bold text-foreground">{item.tenant?.name || "Unknown Tenant"}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono">/{item.tenant?.slug}</p>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-foreground font-mono">{item.domain}</span>
+                                <a
+                                  href={`https://${item.domain}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-muted-foreground hover:text-primary transition-colors"
+                                >
+                                  <ArrowUpRight className="h-3 w-3" />
+                                </a>
                               </div>
-                            </div>
-                          </td>
-                          <td className="p-4 text-center">
-                            {isVerified ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
-                                <CheckCircle2 className="h-3 w-3 mr-1" /> Verified & SSL Active
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold rounded-full">
-                                <Clock className="h-3 w-3 mr-1" /> Pending DNS
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-4 text-xs text-muted-foreground">
-                            {item.verifiedAt ? new Date(item.verifiedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}
-                          </td>
-                          <td className="p-4 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setDnsGuideDomain(item)}
-                                className="h-8 text-[11px] font-bold text-muted-foreground hover:text-foreground rounded-lg"
-                              >
-                                Instruksi DNS
-                              </Button>
-
-                              {isVerified ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isLoadingThis}
-                                  onClick={() => handleUpdateStatus(item.id, "set_pending")}
-                                  className="h-8 text-[11px] font-bold rounded-lg border-border/80"
-                                >
-                                  {isLoadingThis && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                                  Set Pending
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  disabled={isLoadingThis}
-                                  onClick={() => handleUpdateStatus(item.id, "verify")}
-                                  className="h-8 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
-                                >
-                                  {isLoadingThis && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-                                  Verifikasi Domain
-                                </Button>
+                              {item.isPrimary && (
+                                <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 h-4 border-primary/30 text-primary mt-0.5">
+                                  Primary Domain
+                                </Badge>
                               )}
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setDomainToDelete(item)}
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
                             </div>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-4 whitespace-normal">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{item.tenant?.name || "Unknown Tenant"}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">/{item.tenant?.slug}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-4 text-center">
+                          {isVerified ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
+                              <CheckCircle2 className="h-3 w-3 mr-1" /> Verified & SSL Active
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold rounded-full">
+                              <Clock className="h-3 w-3 mr-1" /> Pending DNS
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="p-4 text-xs text-muted-foreground">
+                          {item.verifiedAt ? new Date(item.verifiedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}
+                        </TableCell>
+                        <TableCell className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDnsGuideDomain(item)}
+                              className="h-8 text-[11px] font-bold text-muted-foreground hover:text-foreground rounded-lg"
+                            >
+                              Instruksi DNS
+                            </Button>
+
+                            {isVerified ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isLoadingThis}
+                                onClick={() => handleUpdateStatus(item.id, "set_pending")}
+                                className="h-8 text-[11px] font-bold rounded-lg border-border/80"
+                              >
+                                {isLoadingThis && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                Set Pending
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                disabled={isLoadingThis}
+                                onClick={() => handleUpdateStatus(item.id, "verify")}
+                                className="h-8 text-[11px] font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
+                              >
+                                {isLoadingThis && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+                                Verifikasi Domain
+                              </Button>
+                            )}
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDomainToDelete(item)}
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
             {totalPages > 1 && (
               <div className="flex items-center justify-between p-4 border-t border-border/60">
                 <span className="text-xs text-muted-foreground">

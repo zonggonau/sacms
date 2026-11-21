@@ -22,6 +22,7 @@ import {
   ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -403,95 +404,93 @@ export default function AdminWebhooksPage() {
             {/* DLQ Tab */}
             <TabsContent value="dlq">
               <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted/30 border-b border-border/60">
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                          Event & Webhook
-                        </th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">
-                          URL Endpoint
-                        </th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                          Alasan Error
-                        </th>
-                        <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
-                          Percobaan
-                        </th>
-                        <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
-                          Aksi
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {deadLetters.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                            <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
-                            <p className="text-xs font-semibold text-foreground">Dead Letter Queue Bersih</p>
-                            <p className="text-[11px] text-muted-foreground mt-0.5">Semua payload webhook berhasil terkirim atau belum ada kegagalan yang tertahan.</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        deadLetters.map((dl) => {
-                          const isRetrying = retryingId === dl.id
-                          return (
-                            <tr key={dl.id} className="hover:bg-muted/10 transition-colors">
-                              <td className="p-4">
-                                <div>
-                                  <Badge variant="outline" className="text-[9px] font-bold uppercase bg-primary/10 text-primary border-primary/20 rounded-full">
-                                    {dl.event}
-                                  </Badge>
-                                  <p className="text-xs font-bold text-foreground mt-1">{dl.webhook?.name || "Webhook"}</p>
-                                  <p className="text-[10px] text-muted-foreground font-mono">Workspace: {dl.webhook?.tenant?.name}</p>
-                                </div>
-                              </td>
-                              <td className="p-4">
-                                <span className="text-xs font-mono text-muted-foreground truncate block max-w-xs">{dl.webhook?.url}</span>
-                                <span className="text-[10px] text-muted-foreground">Dibuat: {new Date(dl.createdAt).toLocaleTimeString("id-ID")}</span>
-                              </td>
-                              <td className="p-4">
-                                <span className="text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-500/20 block truncate max-w-xs">
-                                  {dl.lastError || "Unknown connection error"}
-                                </span>
-                              </td>
-                              <td className="p-4 text-center">
-                                <span className="text-xs font-bold font-mono">{dl.attempts}/{dl.maxAttempts}</span>
-                              </td>
-                              <td className="p-4 text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setInspectItem({ title: `Payload: ${dl.event}`, data: dl.payload })}
-                                    className="h-8 text-[11px] font-bold rounded-lg"
-                                  >
-                                    <Eye className="w-3.5 h-3.5 mr-1" /> Payload
-                                  </Button>
-                                  <Button
-                                    variant="default"
-                                    size="sm"
-                                    disabled={isRetrying}
-                                    onClick={() => handleRetry(dl.id)}
-                                    className="h-8 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
-                                  >
-                                    {isRetrying ? (
-                                      <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
-                                    ) : (
-                                      <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                                    )}
-                                    Kirim Ulang
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                          )
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <Table className="border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+                        Event & Webhook
+                      </TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">
+                        URL Endpoint
+                      </TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+                        Alasan Error
+                      </TableHead>
+                      <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">
+                        Percobaan
+                      </TableHead>
+                      <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">
+                        Aksi
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-border/40">
+                    {deadLetters.length === 0 ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="p-12 text-center text-muted-foreground whitespace-normal">
+                          <CheckCircle2 className="h-8 w-8 mx-auto text-emerald-500 mb-2" />
+                          <p className="text-xs font-semibold text-foreground">Dead Letter Queue Bersih</p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">Semua payload webhook berhasil terkirim atau belum ada kegagalan yang tertahan.</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      deadLetters.map((dl) => {
+                        const isRetrying = retryingId === dl.id
+                        return (
+                          <TableRow key={dl.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                            <TableCell className="p-4 whitespace-normal">
+                              <div>
+                                <Badge variant="outline" className="text-[9px] font-bold uppercase bg-primary/10 text-primary border-primary/20 rounded-full">
+                                  {dl.event}
+                                </Badge>
+                                <p className="text-xs font-bold text-foreground mt-1">{dl.webhook?.name || "Webhook"}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono">Workspace: {dl.webhook?.tenant?.name}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell className="p-4">
+                              <span className="text-xs font-mono text-muted-foreground truncate block max-w-xs">{dl.webhook?.url}</span>
+                              <span className="text-[10px] text-muted-foreground">Dibuat: {new Date(dl.createdAt).toLocaleTimeString("id-ID")}</span>
+                            </TableCell>
+                            <TableCell className="p-4">
+                              <span className="text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-500/20 block truncate max-w-xs">
+                                {dl.lastError || "Unknown connection error"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="p-4 text-center">
+                              <span className="text-xs font-bold font-mono">{dl.attempts}/{dl.maxAttempts}</span>
+                            </TableCell>
+                            <TableCell className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setInspectItem({ title: `Payload: ${dl.event}`, data: dl.payload })}
+                                  className="h-8 text-[11px] font-bold rounded-lg"
+                                >
+                                  <Eye className="w-3.5 h-3.5 mr-1" /> Payload
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  disabled={isRetrying}
+                                  onClick={() => handleRetry(dl.id)}
+                                  className="h-8 text-[11px] font-bold rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
+                                >
+                                  {isRetrying ? (
+                                    <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />
+                                  ) : (
+                                    <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Kirim Ulang
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })
+                    )}
+                  </TableBody>
+                </Table>
                 <Pager page={dlqPage} totalPages={dlqTotalPages} onChange={setDlqPage} />
               </Card>
             </TabsContent>
@@ -499,58 +498,56 @@ export default function AdminWebhooksPage() {
             {/* Logs Tab */}
             <TabsContent value="logs">
               <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted/30 border-b border-border/60">
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Status</th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">Event</th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">Webhook & URL</th>
-                        <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Durasi</th>
-                        <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">Waktu</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {logs.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                            <Activity className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                            <p className="text-xs font-semibold">Belum ada log pengiriman webhook</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        logs.map((l) => (
-                          <tr key={l.id} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-4">
-                              {l.success ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
-                                  HTTP {l.statusCode || 200} OK
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold rounded-full">
-                                  {l.statusCode ? `HTTP ${l.statusCode}` : "Failed"}
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="p-4">
-                              <span className="text-xs font-bold font-mono">{l.event}</span>
-                            </td>
-                            <td className="p-4">
-                              <p className="text-xs font-bold text-foreground">{l.webhook?.name}</p>
-                              <p className="text-[10px] text-muted-foreground font-mono truncate max-w-sm">{l.webhook?.url}</p>
-                            </td>
-                            <td className="p-4 text-center text-xs font-mono text-muted-foreground">
-                              {l.duration ? `${l.duration}ms` : "-"}
-                            </td>
-                            <td className="p-4 text-right text-xs text-muted-foreground">
-                              {new Date(l.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <Table className="border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Status</TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">Event</TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">Webhook & URL</TableHead>
+                      <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Durasi</TableHead>
+                      <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">Waktu</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-border/40">
+                    {logs.length === 0 ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="p-12 text-center text-muted-foreground whitespace-normal">
+                          <Activity className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-xs font-semibold">Belum ada log pengiriman webhook</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      logs.map((l) => (
+                        <TableRow key={l.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                          <TableCell className="p-4">
+                            {l.success ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
+                                HTTP {l.statusCode || 200} OK
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold rounded-full">
+                                {l.statusCode ? `HTTP ${l.statusCode}` : "Failed"}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <span className="text-xs font-bold font-mono">{l.event}</span>
+                          </TableCell>
+                          <TableCell className="p-4 whitespace-normal">
+                            <p className="text-xs font-bold text-foreground">{l.webhook?.name}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono truncate max-w-sm">{l.webhook?.url}</p>
+                          </TableCell>
+                          <TableCell className="p-4 text-center text-xs font-mono text-muted-foreground">
+                            {l.duration ? `${l.duration}ms` : "-"}
+                          </TableCell>
+                          <TableCell className="p-4 text-right text-xs text-muted-foreground">
+                            {new Date(l.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
                 <Pager page={logsPage} totalPages={logsTotalPages} onChange={setLogsPage} />
               </Card>
             </TabsContent>
@@ -558,63 +555,61 @@ export default function AdminWebhooksPage() {
             {/* Webhooks List Tab */}
             <TabsContent value="webhooks">
               <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-muted/30 border-b border-border/60">
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">Nama Webhook</th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Tenant Workspace</th>
-                        <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">Endpoint URL</th>
-                        <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">Status</th>
-                        <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Total Log</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
-                      {webhooks.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                            <Webhook className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                            <p className="text-xs font-semibold">Belum ada webhook yang dibuat oleh tenant</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        webhooks.map((w) => (
-                          <tr key={w.id} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-4">
-                              <p className="text-xs font-bold text-foreground">{w.name}</p>
-                              <Badge variant="outline" className="text-[9px] font-bold mt-0.5 uppercase">
-                                {w.hookType}
+                <Table className="border-collapse">
+                  <TableHeader>
+                    <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">Nama Webhook</TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Tenant Workspace</TableHead>
+                      <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[240px]">Endpoint URL</TableHead>
+                      <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">Status</TableHead>
+                      <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Total Log</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-border/40">
+                    {webhooks.length === 0 ? (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="p-12 text-center text-muted-foreground whitespace-normal">
+                          <Webhook className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                          <p className="text-xs font-semibold">Belum ada webhook yang dibuat oleh tenant</p>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      webhooks.map((w) => (
+                        <TableRow key={w.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                          <TableCell className="p-4 whitespace-normal">
+                            <p className="text-xs font-bold text-foreground">{w.name}</p>
+                            <Badge variant="outline" className="text-[9px] font-bold mt-0.5 uppercase">
+                              {w.hookType}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <div className="flex items-center gap-1.5">
+                              <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="text-xs font-bold">{w.tenant?.name}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-4">
+                            <span className="text-xs font-mono text-muted-foreground truncate block max-w-sm">{w.url}</span>
+                          </TableCell>
+                          <TableCell className="p-4 text-center">
+                            {w.enabled ? (
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
+                                Aktif
                               </Badge>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span className="text-xs font-bold">{w.tenant?.name}</span>
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <span className="text-xs font-mono text-muted-foreground truncate block max-w-sm">{w.url}</span>
-                            </td>
-                            <td className="p-4 text-center">
-                              {w.enabled ? (
-                                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
-                                  Aktif
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
-                                  Nonaktif
-                                </Badge>
-                              )}
-                            </td>
-                            <td className="p-4 text-right text-xs font-bold font-mono">
-                              {w._count?.logs ?? 0} request
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                            ) : (
+                              <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
+                                Nonaktif
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="p-4 text-right text-xs font-bold font-mono">
+                            {w._count?.logs ?? 0} request
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
                 <Pager page={webhooksPage} totalPages={webhooksTotalPages} onChange={setWebhooksPage} />
               </Card>
             </TabsContent>

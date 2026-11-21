@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Loader2, CreditCard, ArrowLeft, Building2, CheckCircle2, ShieldCheck, Lock, Check, Sparkles, Layers
 } from "lucide-react"
@@ -182,27 +183,27 @@ function CheckoutContent() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="w-full max-w-5xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 animate-pulse">
+      <div className="w-full max-w-5xl mx-auto p-4 md:p-6 lg:p-8 space-y-6">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-muted" />
+          <Skeleton className="h-9 w-9 rounded-xl bg-muted" />
           <div className="space-y-1.5">
-            <div className="h-6 w-48 rounded-lg bg-muted" />
-            <div className="h-3.5 w-72 rounded-md bg-muted" />
+            <Skeleton className="h-6 w-48 rounded-lg bg-muted" />
+            <Skeleton className="h-3.5 w-72 rounded-md bg-muted" />
           </div>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <Card className="rounded-2xl border border-border/80 bg-card p-6 space-y-4">
-              <div className="h-6 w-40 rounded-md bg-muted" />
-              <div className="h-20 w-full rounded-xl bg-muted" />
-              <div className="h-28 w-full rounded-xl bg-muted" />
+              <Skeleton className="h-6 w-40 rounded-md bg-muted" />
+              <Skeleton className="h-20 w-full rounded-xl bg-muted" />
+              <Skeleton className="h-28 w-full rounded-xl bg-muted" />
             </Card>
           </div>
           <div className="space-y-4">
             <Card className="rounded-2xl border border-border/80 bg-card p-6 space-y-4">
-              <div className="h-5 w-32 rounded-md bg-muted" />
-              <div className="h-10 w-full rounded-xl bg-muted" />
-              <div className="h-12 w-full rounded-xl bg-muted" />
+              <Skeleton className="h-5 w-32 rounded-md bg-muted" />
+              <Skeleton className="h-10 w-full rounded-xl bg-muted" />
+              <Skeleton className="h-12 w-full rounded-xl bg-muted" />
             </Card>
           </div>
         </div>

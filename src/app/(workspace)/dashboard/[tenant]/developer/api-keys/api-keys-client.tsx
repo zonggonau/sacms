@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Select,
   SelectContent,
@@ -653,19 +654,29 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                                 {(() => {
                                   const canCopy = apiKey.id === revealedTokenId && !!createdPlainToken
                                   return (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => canCopy && handleCopy(createdPlainToken!, "API Key", apiKey.id)}
-                                      disabled={!canCopy}
-                                      className={cn(
-                                        "h-7 w-7 rounded-lg hover:bg-muted",
-                                        canCopy ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/40 cursor-not-allowed hover:bg-transparent"
-                                      )}
-                                      title={canCopy ? "Salin API Key" : "Token hanya ditampilkan sekali saat dibuat/di-generate ulang. Klik Generate Ulang untuk mendapat salinan baru."}
-                                    >
-                                      {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                                    </Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        {/* Button's own `disabled:pointer-events-none` would block hover
+                                            from ever reaching it when !canCopy — the exact state this
+                                            tooltip most needs to explain — so the trigger is this
+                                            always-hoverable span, not the (possibly disabled) Button. */}
+                                        <span tabIndex={0} className="inline-flex">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => canCopy && handleCopy(createdPlainToken!, "API Key", apiKey.id)}
+                                            disabled={!canCopy}
+                                            className={cn(
+                                              "h-7 w-7 rounded-lg hover:bg-muted",
+                                              canCopy ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/40 cursor-not-allowed hover:bg-transparent"
+                                            )}
+                                          >
+                                            {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                                          </Button>
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent>{canCopy ? "Salin API Key" : "Token hanya ditampilkan sekali saat dibuat/di-generate ulang. Klik Generate Ulang untuk mendapat salinan baru."}</TooltipContent>
+                                    </Tooltip>
                                   )
                                 })()}
                                 <Button

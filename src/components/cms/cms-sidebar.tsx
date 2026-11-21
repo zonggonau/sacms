@@ -4,6 +4,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   LayoutDashboard,
   ImageIcon,
@@ -187,14 +188,18 @@ export function CMSSidebar({ tenantId, contentTypes = [], contentTypeGroups = []
                     </div>
                   </Link>
                   {canGoBack && (
-                    <Link
-                      href={`/dashboard/${tenantId}/developer/single-types/${st.slug}/edit`}
-                      title={`Edit Skema ${st.name}`}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-muted"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Settings className="h-3 w-3" />
-                    </Link>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={`/dashboard/${tenantId}/developer/single-types/${st.slug}/edit`}
+                          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-muted"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Settings className="h-3 w-3" />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>{`Edit Skema ${st.name}`}</TooltipContent>
+                    </Tooltip>
                   )}
                 </div>
               )

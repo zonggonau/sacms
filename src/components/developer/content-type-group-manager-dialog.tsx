@@ -26,6 +26,7 @@ import {
 import { Loader2, Plus, Trash2, FolderTree, ChevronUp, ChevronDown, FolderInput, Check, X, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   buildGroupTree,
   flattenGroupTreeForSelect,
@@ -246,16 +247,25 @@ export function ContentTypeGroupManagerDialog({ open, onOpenChange, tenantSlug, 
                 </PopoverContent>
               </Popover>
 
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-6 w-6 opacity-0 group-hover:opacity-100"
-                title={level >= MAX_LEVEL ? "Maksimum 3 tingkat kedalaman grup" : "Tambah subgrup"}
-                disabled={level >= MAX_LEVEL || isPending}
-                onClick={() => { setAddingChildTo(node.id); setNewChildName("") }}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  {/* span, not the Button — Button's disabled:pointer-events-none
+                      would block hover once level >= MAX_LEVEL, the exact
+                      state this tooltip explains. */}
+                  <span tabIndex={0} className="inline-flex opacity-0 group-hover:opacity-100">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      disabled={level >= MAX_LEVEL || isPending}
+                      onClick={() => { setAddingChildTo(node.id); setNewChildName("") }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{level >= MAX_LEVEL ? "Maksimum 3 tingkat kedalaman grup" : "Tambah subgrup"}</TooltipContent>
+              </Tooltip>
               <Button
                 size="icon"
                 variant="ghost"

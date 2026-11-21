@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Database, Loader2, X,
@@ -149,15 +150,21 @@ export function SchemaGeneratorClient({
         >
           <Plug className="size-3.5" /> Sambungkan ke MCP
         </Button>
-        <Button
-          size="sm"
-          onClick={() => setShowGenerator(true)}
-          disabled={finalized}
-          title={finalized ? "Kembalikan schema ke Draft dulu untuk pakai AI Schema Generator" : undefined}
-          className="h-8 gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-50"
-        >
-          <Sparkles className="size-3.5" /> AI Schema Generator
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0} className="inline-flex">
+              <Button
+                size="sm"
+                onClick={() => setShowGenerator(true)}
+                disabled={finalized}
+                className="h-8 gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs disabled:opacity-50"
+              >
+                <Sparkles className="size-3.5" /> AI Schema Generator
+              </Button>
+            </span>
+          </TooltipTrigger>
+          {finalized && <TooltipContent>Kembalikan schema ke Draft dulu untuk pakai AI Schema Generator</TooltipContent>}
+        </Tooltip>
       </header>
 
       {/* ── Full-width tabbed workspace ── */}

@@ -13,6 +13,14 @@ import {
   ArrowRight
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { getSiteUrl, SEO_CONFIG, generateBlogPostJsonLd } from "@/lib/seo"
 
 // ISR: Individual blog articles rebuild every 1 hour.
@@ -176,13 +184,29 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
               <span>Kembali ke Blog</span>
             </Link>
 
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-              <Link href="/" className="hover:text-foreground">Beranda</Link>
-              <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
-              <Link href="/blog" className="hover:text-foreground">Blog</Link>
-              <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
-              <span className="text-primary font-semibold truncate max-w-[200px]">{post.title}</span>
-            </div>
+            <Breadcrumb>
+              <BreadcrumbList className="gap-1.5 text-xs font-medium">
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/">Beranda</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/blog">Blog</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator>
+                  <ChevronRight className="w-3 h-3 text-muted-foreground/60" />
+                </BreadcrumbSeparator>
+                <BreadcrumbItem>
+                  <BreadcrumbPage className="text-primary font-semibold truncate max-w-[200px]">{post.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
 
           {/* Article Header */}

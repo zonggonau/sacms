@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -537,64 +538,62 @@ export default function AdminMonitoringPage() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/60">
-                    <tr>
-                      <th className="px-5 py-3">Metode & Status</th>
-                      <th className="px-5 py-3">Endpoint</th>
-                      <th className="px-5 py-3">Tenant ID</th>
-                      <th className="px-5 py-3">Latensi</th>
-                      <th className="px-5 py-3 text-right">Waktu</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40 bg-card">
-                    {apiRequests.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-5 py-12 text-center text-muted-foreground text-xs">
-                          {searchQuery ? "Tidak ada permintaan yang cocok dengan filter" : "Menunggu lalu lintas API..."}
-                        </td>
-                      </tr>
-                    ) : (
-                      apiRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-muted/20 transition-colors">
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-xs w-12 text-foreground font-mono">{req.method}</span>
-                              {getStatusBadge(req.statusCode)}
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <code className="text-[11px] bg-muted/30 border border-border/60 px-2 py-0.5 rounded-lg font-mono text-foreground max-w-[320px] truncate block">
-                              {req.endpoint}
-                            </code>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <span className="text-xs font-mono text-muted-foreground">
-                              {req.tenantId ? (
-                                <span className="border border-border/60 px-1.5 py-0.5 bg-muted/20 rounded-md text-[10px]">{req.tenantId}</span>
-                              ) : (
-                                <span className="text-primary font-bold text-[10px] uppercase bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20">global</span>
-                              )}
+              <Table className="text-left">
+                <TableHeader className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/60">
+                  <TableRow>
+                    <TableHead className="px-5 py-3 h-auto">Metode & Status</TableHead>
+                    <TableHead className="px-5 py-3 h-auto">Endpoint</TableHead>
+                    <TableHead className="px-5 py-3 h-auto">Tenant ID</TableHead>
+                    <TableHead className="px-5 py-3 h-auto">Latensi</TableHead>
+                    <TableHead className="px-5 py-3 h-auto text-right">Waktu</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border/40 bg-card">
+                  {apiRequests.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="px-5 py-12 text-center text-muted-foreground text-xs whitespace-normal">
+                        {searchQuery ? "Tidak ada permintaan yang cocok dengan filter" : "Menunggu lalu lintas API..."}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    apiRequests.map((req) => (
+                      <TableRow key={req.id} className="hover:bg-muted/20 transition-colors">
+                        <TableCell className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-xs w-12 text-foreground font-mono">{req.method}</span>
+                            {getStatusBadge(req.statusCode)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-5 py-3.5">
+                          <code className="text-[11px] bg-muted/30 border border-border/60 px-2 py-0.5 rounded-lg font-mono text-foreground max-w-[320px] truncate block">
+                            {req.endpoint}
+                          </code>
+                        </TableCell>
+                        <TableCell className="px-5 py-3.5">
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {req.tenantId ? (
+                              <span className="border border-border/60 px-1.5 py-0.5 bg-muted/20 rounded-md text-[10px]">{req.tenantId}</span>
+                            ) : (
+                              <span className="text-primary font-bold text-[10px] uppercase bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20">global</span>
+                            )}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5 font-mono text-xs">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <span className={`font-bold ${req.duration > 500 ? 'text-amber-500' : 'text-foreground'}`}>
+                              {req.duration}ms
                             </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <div className="flex items-center gap-1.5 font-mono text-xs">
-                              <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span className={`font-bold ${req.duration > 500 ? 'text-amber-500' : 'text-foreground'}`}>
-                                {req.duration}ms
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-5 py-3.5 text-right font-mono text-xs text-muted-foreground">
-                            {new Date(req.createdAt).toLocaleString('id-ID')}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-5 py-3.5 text-right font-mono text-xs text-muted-foreground">
+                          {new Date(req.createdAt).toLocaleString('id-ID')}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
               
               {/* Pagination Controls */}
               {!loading && totalPages > 1 && (

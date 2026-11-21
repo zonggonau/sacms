@@ -19,6 +19,7 @@ import { useTheme } from "next-themes"
 import { useSession, signOut } from "next-auth/react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
 import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
@@ -156,19 +157,23 @@ export function BillingSubSidebar() {
               </p>
             </div>
           </button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground" 
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            title={theme === "dark" ? "Ganti ke mode terang" : "Ganti ke mode gelap"}
-          >
-            {mounted ? (
-              theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />
-            ) : (
-              <div className="h-3.5 w-3.5" />
-            )}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {mounted ? (
+                  theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />
+                ) : (
+                  <div className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{theme === "dark" ? "Ganti ke mode terang" : "Ganti ke mode gelap"}</TooltipContent>
+          </Tooltip>
         </div>
 
         <Button

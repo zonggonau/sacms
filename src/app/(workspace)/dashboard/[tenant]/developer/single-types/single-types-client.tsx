@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 
 import {
@@ -307,16 +308,20 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                           </TableCell>
                           <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1.5 items-center">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
-                                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types/${st.slug}`)}
-                                title={`Buka entri ${st.name} di CMS Studio`}
-                              >
-                                <FileText className="h-3 w-3 text-primary" />
-                                <span>Kelola Konten</span>
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
+                                    onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types/${st.slug}`)}
+                                  >
+                                    <FileText className="h-3 w-3 text-primary" />
+                                    <span>Kelola Konten</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{`Buka entri ${st.name} di CMS Studio`}</TooltipContent>
+                              </Tooltip>
 
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

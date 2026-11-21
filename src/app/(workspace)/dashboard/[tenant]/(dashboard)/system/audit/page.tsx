@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -414,9 +415,14 @@ export default function TenantAuditLogsPage() {
                     <Monitor className="h-3.5 w-3.5" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">Platform</span>
                   </div>
-                  <p className="text-[11px] font-medium text-muted-foreground truncate" title={selectedLog?.userAgent || ""}>
-                    {selectedLog?.userAgent ? (selectedLog.userAgent.includes("Windows") ? "Windows Desktop" : "Browser/Client") : "Internal SDK"}
-                  </p>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="text-[11px] font-medium text-muted-foreground truncate">
+                        {selectedLog?.userAgent ? (selectedLog.userAgent.includes("Windows") ? "Windows Desktop" : "Browser/Client") : "Internal SDK"}
+                      </p>
+                    </TooltipTrigger>
+                    {selectedLog?.userAgent && <TooltipContent>{selectedLog.userAgent}</TooltipContent>}
+                  </Tooltip>
                 </div>
               </div>
 

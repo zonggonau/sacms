@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { Database, Pencil } from "lucide-react"
 import { FIELD_TYPES } from "@/lib/field-types"
 import type { SchemaModel, SchemaField } from "./schema-diagram"
@@ -51,11 +52,16 @@ export function SchemaModelGrid({
               <div className="flex items-center gap-1 shrink-0">
                 <Badge variant="outline" className="text-[10px] font-bold">{typeLabel}</Badge>
                 {editHrefFor && (
-                  <Button asChild variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
-                    <Link href={editHrefFor(model)} title={`Edit ${model.name}`}>
-                      <Pencil className="h-3 w-3" />
-                    </Link>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button asChild variant="ghost" size="icon" className="h-6 w-6 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
+                        <Link href={editHrefFor(model)}>
+                          <Pencil className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{`Edit ${model.name}`}</TooltipContent>
+                  </Tooltip>
                 )}
               </div>
             </div>

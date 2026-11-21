@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { copyToClipboard } from "@/lib/clipboard"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -1176,127 +1177,125 @@ export function HostingDeploymentsView({
                           </div>
                         </CardHeader>
                         <CardContent className="p-0">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-xs text-left">
-                              <thead className="bg-muted/50 text-muted-foreground border-b border-border/60 font-semibold">
-                                <tr>
-                                  <th className="p-3.5 pl-5">Domain Tujuan</th>
-                                  <th className="p-3.5">Type</th>
-                                  <th className="p-3.5">Name / Host</th>
-                                  <th className="p-3.5">Value / Target</th>
-                                  <th className="p-3.5">Keterangan</th>
-                                  <th className="p-3.5">TTL</th>
-                                  <th className="p-3.5">Status</th>
-                                  <th className="p-3.5 pr-5 text-right">Aksi</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border/60">
-                                {domains.flatMap((dom) => {
-                                  const expectedRecords = dom.dnsRecords || []
-                                  const diagnostics = diagnosticsMap[dom.domain]
+                          <Table className="text-left">
+                            <TableHeader className="bg-muted/50 text-muted-foreground border-b border-border/60 font-semibold">
+                              <TableRow>
+                                <TableHead className="p-3.5 pl-5 h-auto">Domain Tujuan</TableHead>
+                                <TableHead className="p-3.5 h-auto">Type</TableHead>
+                                <TableHead className="p-3.5 h-auto">Name / Host</TableHead>
+                                <TableHead className="p-3.5 h-auto">Value / Target</TableHead>
+                                <TableHead className="p-3.5 h-auto">Keterangan</TableHead>
+                                <TableHead className="p-3.5 h-auto">TTL</TableHead>
+                                <TableHead className="p-3.5 h-auto">Status</TableHead>
+                                <TableHead className="p-3.5 h-auto pr-5 text-right">Aksi</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody className="divide-y divide-border/60">
+                              {domains.flatMap((dom) => {
+                                const expectedRecords = dom.dnsRecords || []
+                                const diagnostics = diagnosticsMap[dom.domain]
 
-                                  return expectedRecords.map((rec, recIdx) => {
-                                    const diagRec = diagnostics?.records?.find((r) => r.type === rec.type)
-                                    const status = diagRec?.status || (dom.status === "verified" ? "valid" : "pending")
-                                    const rowId = `unified-${dom.id}-${recIdx}`
+                                return expectedRecords.map((rec, recIdx) => {
+                                  const diagRec = diagnostics?.records?.find((r) => r.type === rec.type)
+                                  const status = diagRec?.status || (dom.status === "verified" ? "valid" : "pending")
+                                  const rowId = `unified-${dom.id}-${recIdx}`
 
-                                    return (
-                                      <tr key={rowId} className="hover:bg-muted/30 transition-colors">
-                                        <td className="p-3.5 pl-5 font-mono font-bold text-foreground">
-                                          <div className="flex items-center gap-1.5">
-                                            <Globe className="h-3 w-3 text-primary shrink-0" />
-                                            <span>{dom.domain}</span>
-                                            {dom.isPrimary && (
-                                              <Badge className="bg-primary/15 text-primary border-primary/20 text-[9px] font-bold px-1.5 py-0 h-4">
-                                                Primary
-                                              </Badge>
-                                            )}
-                                          </div>
-                                        </td>
-                                        <td className="p-3.5 font-bold font-mono">
-                                          <Badge
-                                            variant="outline"
-                                            className={`font-mono text-[11px] font-bold ${
-                                              rec.type === "CNAME"
-                                                ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
-                                                : rec.type === "A"
-                                                ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                                : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-                                            }`}
-                                          >
-                                            {rec.type}
-                                          </Badge>
-                                        </td>
-                                        <td className="p-3.5 font-mono font-semibold text-foreground">
-                                          <div className="flex items-center gap-1.5">
-                                            <span className="bg-muted px-1.5 py-0.5 rounded font-bold">{rec.name}</span>
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              className="h-6 w-6 rounded-md"
-                                              onClick={() => copyText(rec.name, `uname-${rowId}`)}
-                                            >
-                                              {copiedId === `uname-${rowId}` ? (
-                                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                              ) : (
-                                                <Copy className="h-3 w-3 text-muted-foreground" />
-                                              )}
-                                            </Button>
-                                          </div>
-                                        </td>
-                                        <td className="p-3.5 font-mono text-foreground">
-                                          <div className="flex items-center gap-1.5">
-                                            <code className="bg-muted/70 px-2 py-0.5 rounded font-mono break-all">{rec.value}</code>
-                                            <Button
-                                              size="icon"
-                                              variant="ghost"
-                                              className="h-6 w-6 rounded-md shrink-0"
-                                              onClick={() => copyText(rec.value, `uval-${rowId}`)}
-                                            >
-                                              {copiedId === `uval-${rowId}` ? (
-                                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                                              ) : (
-                                                <Copy className="h-3 w-3 text-muted-foreground" />
-                                              )}
-                                            </Button>
-                                          </div>
-                                        </td>
-                                        <td className="p-3.5 text-[11px] text-muted-foreground max-w-[180px]">
-                                          {rec.description}
-                                        </td>
-                                        <td className="p-3.5 text-muted-foreground font-mono">{rec.ttl}</td>
-                                        <td className="p-3.5">
-                                          {status === "valid" ? (
-                                            <span className="inline-flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-                                              <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Valid
-                                            </span>
-                                          ) : status === "invalid" ? (
-                                            <span className="inline-flex items-center text-rose-600 dark:text-rose-400 font-bold text-[11px]">
-                                              <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Salah
-                                            </span>
-                                          ) : (
-                                            <span className="inline-flex items-center text-muted-foreground text-[11px]">
-                                              Menunggu
-                                            </span>
+                                  return (
+                                    <TableRow key={rowId} className="hover:bg-muted/30 transition-colors">
+                                      <TableCell className="p-3.5 pl-5 font-mono font-bold text-foreground whitespace-normal">
+                                        <div className="flex items-center gap-1.5">
+                                          <Globe className="h-3 w-3 text-primary shrink-0" />
+                                          <span>{dom.domain}</span>
+                                          {dom.isPrimary && (
+                                            <Badge className="bg-primary/15 text-primary border-primary/20 text-[9px] font-bold px-1.5 py-0 h-4">
+                                              Primary
+                                            </Badge>
                                           )}
-                                        </td>
-                                        <td className="p-3.5 pr-5 text-right">
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="p-3.5 font-bold font-mono">
+                                        <Badge
+                                          variant="outline"
+                                          className={`font-mono text-[11px] font-bold ${
+                                            rec.type === "CNAME"
+                                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                              : rec.type === "A"
+                                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                          }`}
+                                        >
+                                          {rec.type}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="p-3.5 font-mono font-semibold text-foreground whitespace-normal">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="bg-muted px-1.5 py-0.5 rounded font-bold">{rec.name}</span>
                                           <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-7 text-[11px] font-bold rounded-lg border-border/80"
-                                            onClick={() => copyText(`${rec.type}\t${rec.name}\t${rec.value}`, `urow-${rowId}`)}
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 rounded-md"
+                                            onClick={() => copyText(rec.name, `uname-${rowId}`)}
                                           >
-                                            {copiedId === `urow-${rowId}` ? "Tersalin" : "Salin Record"}
+                                            {copiedId === `uname-${rowId}` ? (
+                                              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                            ) : (
+                                              <Copy className="h-3 w-3 text-muted-foreground" />
+                                            )}
                                           </Button>
-                                        </td>
-                                      </tr>
-                                    )
-                                  })
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="p-3.5 font-mono text-foreground whitespace-normal">
+                                        <div className="flex items-center gap-1.5">
+                                          <code className="bg-muted/70 px-2 py-0.5 rounded font-mono break-all">{rec.value}</code>
+                                          <Button
+                                            size="icon"
+                                            variant="ghost"
+                                            className="h-6 w-6 rounded-md shrink-0"
+                                            onClick={() => copyText(rec.value, `uval-${rowId}`)}
+                                          >
+                                            {copiedId === `uval-${rowId}` ? (
+                                              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                            ) : (
+                                              <Copy className="h-3 w-3 text-muted-foreground" />
+                                            )}
+                                          </Button>
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="p-3.5 text-[11px] text-muted-foreground max-w-[180px] whitespace-normal">
+                                        {rec.description}
+                                      </TableCell>
+                                      <TableCell className="p-3.5 text-muted-foreground font-mono">{rec.ttl}</TableCell>
+                                      <TableCell className="p-3.5">
+                                        {status === "valid" ? (
+                                          <span className="inline-flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                                            <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Valid
+                                          </span>
+                                        ) : status === "invalid" ? (
+                                          <span className="inline-flex items-center text-rose-600 dark:text-rose-400 font-bold text-[11px]">
+                                            <AlertTriangle className="w-3.5 h-3.5 mr-1" /> Salah
+                                          </span>
+                                        ) : (
+                                          <span className="inline-flex items-center text-muted-foreground text-[11px]">
+                                            Menunggu
+                                          </span>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="p-3.5 pr-5 text-right">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          className="h-7 text-[11px] font-bold rounded-lg border-border/80"
+                                          onClick={() => copyText(`${rec.type}\t${rec.name}\t${rec.value}`, `urow-${rowId}`)}
+                                        >
+                                          {copiedId === `urow-${rowId}` ? "Tersalin" : "Salin Record"}
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  )
+                                })
+                              })}
+                            </TableBody>
+                          </Table>
                         </CardContent>
                       </Card>
                     )}
@@ -1424,27 +1423,27 @@ export function HostingDeploymentsView({
                                     </span>
                                   </div>
 
-                                  <div className="overflow-x-auto rounded-xl border border-border/80">
-                                    <table className="w-full text-xs text-left">
-                                      <thead className="bg-muted/40 text-muted-foreground border-b border-border/60 font-semibold">
-                                        <tr>
-                                          <th className="p-3">Type</th>
-                                          <th className="p-3">Name / Host</th>
-                                          <th className="p-3">Value / Target</th>
-                                          <th className="p-3">Keterangan</th>
-                                          <th className="p-3">TTL</th>
-                                          <th className="p-3">Status</th>
-                                          <th className="p-3 text-right">Aksi</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-border/60">
+                                  <div className="rounded-xl border border-border/80 overflow-hidden">
+                                    <Table className="text-left">
+                                      <TableHeader className="bg-muted/40 text-muted-foreground border-b border-border/60 font-semibold">
+                                        <TableRow>
+                                          <TableHead className="p-3 h-auto">Type</TableHead>
+                                          <TableHead className="p-3 h-auto">Name / Host</TableHead>
+                                          <TableHead className="p-3 h-auto">Value / Target</TableHead>
+                                          <TableHead className="p-3 h-auto">Keterangan</TableHead>
+                                          <TableHead className="p-3 h-auto">TTL</TableHead>
+                                          <TableHead className="p-3 h-auto">Status</TableHead>
+                                          <TableHead className="p-3 h-auto text-right">Aksi</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody className="divide-y divide-border/60">
                                         {expectedRecords.map((rec, i) => {
                                           const diagRec = diagnostics?.records.find((r) => r.type === rec.type)
                                           const status = diagRec?.status || (dom.status === "verified" ? "valid" : "pending")
 
                                           return (
-                                            <tr key={i} className="hover:bg-muted/20 transition-colors">
-                                              <td className="p-3 font-bold font-mono">
+                                            <TableRow key={i} className="hover:bg-muted/20 transition-colors">
+                                              <TableCell className="p-3 font-bold font-mono">
                                                 <Badge
                                                   variant="outline"
                                                   className={`font-mono text-[11px] font-bold ${
@@ -1457,8 +1456,8 @@ export function HostingDeploymentsView({
                                                 >
                                                   {rec.type}
                                                 </Badge>
-                                              </td>
-                                              <td className="p-3 font-mono font-semibold text-foreground">
+                                              </TableCell>
+                                              <TableCell className="p-3 font-mono font-semibold text-foreground whitespace-normal">
                                                 <div className="flex items-center gap-1.5">
                                                   <span>{rec.name}</span>
                                                   <Button
@@ -1474,8 +1473,8 @@ export function HostingDeploymentsView({
                                                     )}
                                                   </Button>
                                                 </div>
-                                              </td>
-                                              <td className="p-3 font-mono text-foreground">
+                                              </TableCell>
+                                              <TableCell className="p-3 font-mono text-foreground whitespace-normal">
                                                 <div className="flex items-center gap-1.5">
                                                   <code className="bg-muted/50 px-1.5 py-0.5 rounded break-all">{rec.value}</code>
                                                   <Button
@@ -1491,12 +1490,12 @@ export function HostingDeploymentsView({
                                                     )}
                                                   </Button>
                                                 </div>
-                                              </td>
-                                              <td className="p-3 text-[11px] text-muted-foreground max-w-[200px]">
+                                              </TableCell>
+                                              <TableCell className="p-3 text-[11px] text-muted-foreground max-w-[200px] whitespace-normal">
                                                 {rec.description}
-                                              </td>
-                                              <td className="p-3 text-muted-foreground font-mono">{rec.ttl}</td>
-                                              <td className="p-3">
+                                              </TableCell>
+                                              <TableCell className="p-3 text-muted-foreground font-mono">{rec.ttl}</TableCell>
+                                              <TableCell className="p-3">
                                                 {status === "valid" ? (
                                                   <span className="inline-flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
                                                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Valid
@@ -1510,8 +1509,8 @@ export function HostingDeploymentsView({
                                                     Menunggu
                                                   </span>
                                                 )}
-                                              </td>
-                                              <td className="p-3 text-right">
+                                              </TableCell>
+                                              <TableCell className="p-3 text-right">
                                                 <Button
                                                   variant="outline"
                                                   size="sm"
@@ -1520,12 +1519,12 @@ export function HostingDeploymentsView({
                                                 >
                                                   {copiedId === `all-${dom.id}-${i}` ? "Tersalin" : "Salin Record"}
                                                 </Button>
-                                              </td>
-                                            </tr>
+                                              </TableCell>
+                                            </TableRow>
                                           )
                                         })}
-                                      </tbody>
-                                    </table>
+                                      </TableBody>
+                                    </Table>
                                   </div>
                                 </div>
 

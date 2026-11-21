@@ -17,6 +17,7 @@ import {
   Layers, Download, Server
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
@@ -48,6 +49,12 @@ interface Invoice {
  *  tier (3 plans instead of 4 — see /api/tenant/[tenant]/subscriptions/plans)
  *  — confirmed live — so the column count now tracks however many plans
  *  are actually being shown, filling the grid's full width either way. */
+// Underline-tab look (not shadcn Tabs' own default pill look) — overrides
+// every default TabsList/TabsTrigger class that would otherwise change the
+// resting appearance of this section's tab bar.
+const SECTION_TABS_LIST_CLASS = "flex w-full h-auto items-center justify-start gap-1 rounded-none bg-transparent p-0 border-b border-border/60"
+const SECTION_TAB_TRIGGER_CLASS = "h-auto flex-none items-center justify-center gap-1.5 whitespace-nowrap rounded-none border-0 border-b-2 border-transparent bg-transparent px-4 py-2.5 text-xs font-bold tracking-tight text-muted-foreground shadow-none -mb-px cursor-pointer hover:text-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:bg-transparent dark:data-[state=active]:border-primary"
+
 function planGridCols(count: number): string {
   switch (count) {
     case 1: return "grid-cols-1"
@@ -84,6 +91,13 @@ export default function TenantSubscriptionsPage() {
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
   const [activeSection, setActiveSection] = useState<'plans' | 'storage' | 'addons' | 'ai-plans'>(initialSection)
+  const handleSectionTabChange = (section: string) => {
+    setActiveSection(section as 'plans' | 'storage' | 'addons' | 'ai-plans')
+    const url = new URL(window.location.href)
+    if (section === 'plans') url.searchParams.delete('tab')
+    else url.searchParams.set('tab', section)
+    window.history.replaceState({}, '', url.toString())
+  }
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
   const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
 
@@ -428,83 +442,29 @@ export default function TenantSubscriptionsPage() {
           </div>
 
           {/* Plans / Storage / Add-ons / AI Credits Section Tabs */}
-          <div className="flex items-center gap-1 border-b border-border/60">
-            {/* Enterprise workspaces are covered by the owner's account-level
-                license, not a workspace plan tier — no plan to pick, so this
-                tab (and the grid below it) is hidden for them. They still
-                manage their own storage allocation/top-ups and AI credits,
-                which is exactly what the remaining tabs are for. */}
-            {!isEnterpriseMode && (
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveSection('plans')
-                  const url = new URL(window.location.href)
-                  url.searchParams.delete('tab')
-                  window.history.replaceState({}, '', url.toString())
-                }}
-                className={cn(
-                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                  activeSection === 'plans'
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Layers className="h-3.5 w-3.5" /> Paket Langganan ({mainPlans.length})
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveSection('storage')
-                const url = new URL(window.location.href)
-                url.searchParams.set('tab', 'storage')
-                window.history.replaceState({}, '', url.toString())
-              }}
-              className={cn(
-                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                activeSection === 'storage'
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+          <Tabs value={activeSection} onValueChange={handleSectionTabChange}>
+            <TabsList className={SECTION_TABS_LIST_CLASS}>
+              {/* Enterprise workspaces are covered by the owner's account-level
+                  license, not a workspace plan tier — no plan to pick, so this
+                  tab (and the grid below it) is hidden for them. They still
+                  manage their own storage allocation/top-ups and AI credits,
+                  which is exactly what the remaining tabs are for. */}
+              {!isEnterpriseMode && (
+                <TabsTrigger value="plans" className={SECTION_TAB_TRIGGER_CLASS}>
+                  <Layers className="h-3.5 w-3.5" /> Paket Langganan ({mainPlans.length})
+                </TabsTrigger>
               )}
-            >
-              <HardDrive className="h-3.5 w-3.5" /> Storage ({storagePlans.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveSection('addons')
-                const url = new URL(window.location.href)
-                url.searchParams.set('tab', 'addons')
-                window.history.replaceState({}, '', url.toString())
-              }}
-              className={cn(
-                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                activeSection === 'addons'
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Package className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveSection('ai-plans')
-                const url = new URL(window.location.href)
-                url.searchParams.set('tab', 'ai-plans')
-                window.history.replaceState({}, '', url.toString())
-              }}
-              className={cn(
-                "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
-                activeSection === 'ai-plans'
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Bot className="h-3.5 w-3.5" /> AI Credits ({aiCreditPlans.length})
-            </button>
-          </div>
+              <TabsTrigger value="storage" className={SECTION_TAB_TRIGGER_CLASS}>
+                <HardDrive className="h-3.5 w-3.5" /> Storage ({storagePlans.length})
+              </TabsTrigger>
+              <TabsTrigger value="addons" className={SECTION_TAB_TRIGGER_CLASS}>
+                <Package className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
+              </TabsTrigger>
+              <TabsTrigger value="ai-plans" className={SECTION_TAB_TRIGGER_CLASS}>
+                <Bot className="h-3.5 w-3.5" /> AI Credits ({aiCreditPlans.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Main Plans Grid */}
           {!isEnterpriseMode && activeSection === 'plans' && (

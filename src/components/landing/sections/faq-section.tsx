@@ -1,13 +1,16 @@
 "use client"
 
-import { useState } from "react"
 import { ChevronDown } from "lucide-react"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import type { FaqItem } from "../types"
 import { sanitizeHtml } from "@/lib/sanitize-html"
 
 export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
-  const [openFaq, setOpenFaq] = useState<number | null>(0)
-
   const defaultFaq: FaqItem[] = [
     {
       question: "Apa itu SaCMS (Smart Content Management System)?",
@@ -49,46 +52,30 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
           </p>
         </div>
 
-        <div className="space-y-3 sm:space-y-4">
-          {activeFaq.map((item, i) => {
-            const isOpen = openFaq === i
-            return (
-              <div 
-                key={i} 
-                className={`group border border-border/50 rounded-2xl overflow-hidden transition-all duration-300 ${
-                  isOpen 
-                    ? "bg-card/80 shadow-md shadow-primary/5 border-primary/30 backdrop-blur-xl" 
-                    : "bg-card/30 hover:bg-card/50 hover:border-primary/20 backdrop-blur-md"
-                }`}
-              >
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between p-5 sm:p-6 text-left transition-colors cursor-pointer"
-                  onClick={() => setOpenFaq(isOpen ? null : i)}
-                >
-                  <span className={`text-base sm:text-lg font-bold pr-4 transition-colors ${isOpen ? 'text-primary' : 'text-foreground group-hover:text-primary/80'}`}>
-                    {item.question}
-                  </span>
-                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isOpen ? 'bg-primary/20' : 'bg-muted group-hover:bg-primary/10'}`}>
-                    <ChevronDown className={`h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 ${isOpen ? "rotate-180 text-primary" : "text-muted-foreground group-hover:text-primary"}`} />
-                  </div>
-                </button>
-                <div 
-                  className={`grid transition-all duration-300 ease-in-out ${
-                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                      <div 
-                        className="px-5 pb-5 sm:px-6 sm:pb-6 text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.answer) }}
-                      />
-                  </div>
+        <Accordion type="single" collapsible defaultValue="faq-0" className="space-y-3 sm:space-y-4">
+          {activeFaq.map((item, i) => (
+            <AccordionItem
+              key={i}
+              value={`faq-${i}`}
+              className="group border border-border/50 rounded-2xl overflow-hidden transition-all duration-300 bg-card/30 hover:bg-card/50 hover:border-primary/20 backdrop-blur-md data-[state=open]:bg-card/80 data-[state=open]:shadow-md data-[state=open]:shadow-primary/5 data-[state=open]:border-primary/30 data-[state=open]:hover:bg-card/80 data-[state=open]:backdrop-blur-xl"
+            >
+              <AccordionTrigger className="items-center gap-0 p-5 sm:p-6 rounded-none text-left transition-colors hover:no-underline focus-visible:ring-0 focus-visible:border-transparent [&>svg]:hidden">
+                <span className="text-base sm:text-lg font-bold pr-4 transition-colors text-foreground group-hover:text-primary/80 group-data-[state=open]:text-primary">
+                  {item.question}
+                </span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-colors bg-muted group-hover:bg-primary/10 group-data-[state=open]:bg-primary/20">
+                  <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 text-muted-foreground group-hover:text-primary group-data-[state=open]:rotate-180 group-data-[state=open]:text-primary" />
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              </AccordionTrigger>
+              <AccordionContent className="px-5 pb-5 sm:px-6 sm:pb-6">
+                <div
+                  className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.answer) }}
+                />
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
     </section>
   )

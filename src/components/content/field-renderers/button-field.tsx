@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 import { MousePointer2, Link2, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -93,12 +94,11 @@ export function ButtonField({
 
         <div className="sm:col-span-2 flex items-center justify-end gap-4 mt-1">
           <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
+            <Checkbox
               id="target-blank"
-              className="h-4 w-4 rounded-md border-border text-primary focus:ring-primary cursor-pointer"
+              className="cursor-pointer"
               checked={initialValue.target === "_blank"}
-              onChange={(e) => handleChange({ target: e.target.checked ? "_blank" : "_self" })}
+              onCheckedChange={(checked) => handleChange({ target: checked ? "_blank" : "_self" })}
             />
             <Label htmlFor="target-blank" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
               Buka di tab baru <ExternalLink className="h-3 w-3" />

@@ -21,6 +21,7 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -312,87 +313,85 @@ export default function AdminVercelProjectsPage() {
           </div>
 
           <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/60">
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[220px]">Project</th>
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Workspace Tenant</th>
-                    <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">Status Deploy</th>
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Dibuat</th>
-                    <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/40">
-                  {paginated.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                        <Rocket className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                        <p className="text-xs font-semibold">
-                          {projects.length === 0 ? "Tidak ada project di akun Vercel" : "Tidak ada project yang cocok dengan pencarian"}
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    paginated.map((p) => (
-                      <tr key={p.id} className="hover:bg-muted/10 transition-colors">
-                        <td className="p-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                              <Rocket className="h-4 w-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-foreground font-mono truncate">{p.name}</span>
-                                {p.url && (
-                                  <a href={p.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors shrink-0">
-                                    <ExternalLink className="h-3 w-3" />
-                                  </a>
-                                )}
-                              </div>
-                              {p.framework && (
-                                <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 h-4 border-border/60 text-muted-foreground mt-0.5">
-                                  {p.framework}
-                                </Badge>
+            <Table className="border-collapse">
+              <TableHeader>
+                <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[220px]">Project</TableHead>
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[180px]">Workspace Tenant</TableHead>
+                  <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">Status Deploy</TableHead>
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">Dibuat</TableHead>
+                  <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[100px]">Aksi</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-border/40">
+                {paginated.length === 0 ? (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell colSpan={5} className="p-12 text-center text-muted-foreground whitespace-normal">
+                      <Rocket className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                      <p className="text-xs font-semibold">
+                        {projects.length === 0 ? "Tidak ada project di akun Vercel" : "Tidak ada project yang cocok dengan pencarian"}
+                      </p>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  paginated.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                      <TableCell className="p-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Rocket className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-foreground font-mono truncate">{p.name}</span>
+                              {p.url && (
+                                <a href={p.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary transition-colors shrink-0">
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
                               )}
                             </div>
+                            {p.framework && (
+                              <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 h-4 border-border/60 text-muted-foreground mt-0.5">
+                                {p.framework}
+                              </Badge>
+                            )}
                           </div>
-                        </td>
-                        <td className="p-4">
-                          {p.tenant ? (
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                              <div>
-                                <p className="text-xs font-bold text-foreground">{p.tenant.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono">/{p.tenant.slug}</p>
-                              </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="p-4 whitespace-normal">
+                        {p.tenant ? (
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{p.tenant.name}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">/{p.tenant.slug}</p>
                             </div>
-                          ) : (
-                            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold rounded-full">
-                              <AlertTriangle className="h-3 w-3 mr-1" /> Orphan
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="p-4 text-center">{stateBadge(p.latestDeploymentState)}</td>
-                        <td className="p-4 text-xs text-muted-foreground">
-                          {p.createdAt ? new Date(p.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
-                        </td>
-                        <td className="p-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openDeleteDialog(p)}
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        ) : (
+                          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold rounded-full">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> Orphan
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="p-4 text-center">{stateBadge(p.latestDeploymentState)}</TableCell>
+                      <TableCell className="p-4 text-xs text-muted-foreground">
+                        {p.createdAt ? new Date(p.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"}
+                      </TableCell>
+                      <TableCell className="p-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDeleteDialog(p)}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </Card>
 
           {filtered.length > 0 && (

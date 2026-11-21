@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Fingerprint, RefreshCcw, Link as LinkIcon, Link2Off } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useState, useEffect } from "react"
 
 /**
@@ -75,30 +76,34 @@ export function SlugField({
           </Label>
         ) : label}
         
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className={`h-7 text-[10px] font-bold uppercase gap-1 transition-colors ${
-            isAuto 
-              ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" 
-              : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-          }`}
-          onClick={(e) => {
-            e.preventDefault();
-            toggleAuto();
-          }}
-          title={isAuto ? "Disable auto-generation" : "Enable auto-generation from title"}
-        >
-          {isAuto ? (
-            <>
-              <LinkIcon className="h-3 w-3" /> Linked to source
-            </>
-          ) : (
-            <>
-              <Link2Off className="h-3 w-3" /> Manual entry
-            </>
-          )}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`h-7 text-[10px] font-bold uppercase gap-1 transition-colors ${
+                isAuto
+                  ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  : "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              }`}
+              onClick={(e) => {
+                e.preventDefault();
+                toggleAuto();
+              }}
+            >
+              {isAuto ? (
+                <>
+                  <LinkIcon className="h-3 w-3" /> Linked to source
+                </>
+              ) : (
+                <>
+                  <Link2Off className="h-3 w-3" /> Manual entry
+                </>
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{isAuto ? "Disable auto-generation" : "Enable auto-generation from title"}</TooltipContent>
+        </Tooltip>
       </div>
       <div className="relative">
         <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

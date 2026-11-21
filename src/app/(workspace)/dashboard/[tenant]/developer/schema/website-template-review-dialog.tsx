@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/clipboard"
 import { Loader2, FileCode, Copy, Check, Rocket, Layers, ExternalLink, Sparkles } from "lucide-react"
@@ -151,18 +152,21 @@ export function WebsiteTemplateReviewDialog({
           <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-3 min-h-0 flex-1 overflow-hidden">
             <div className="border border-border/60 rounded-xl overflow-y-auto bg-muted/20">
               {detail.files.map((f) => (
-                <button
-                  key={f.path}
-                  type="button"
-                  onClick={() => setSelectedPath(f.path)}
-                  className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px] font-mono truncate transition-colors cursor-pointer ${
-                    selectedPath === f.path ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                  }`}
-                  title={f.path}
-                >
-                  <FileCode className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{f.path}</span>
-                </button>
+                <Tooltip key={f.path}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPath(f.path)}
+                      className={`w-full flex items-center gap-1.5 px-2.5 py-1.5 text-left text-[11px] font-mono truncate transition-colors cursor-pointer ${
+                        selectedPath === f.path ? "bg-primary/10 text-primary font-bold" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                      }`}
+                    >
+                      <FileCode className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{f.path}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>{f.path}</TooltipContent>
+                </Tooltip>
               ))}
             </div>
             <div className="border border-border/60 rounded-xl overflow-hidden flex flex-col min-h-0">

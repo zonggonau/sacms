@@ -5,6 +5,7 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Database, Settings, ChevronRight, ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { ContentTypeGroupNode } from "@/lib/content-type-groups"
 
 export interface SidebarContentType {
@@ -42,19 +43,23 @@ export function ContentTypeRow({ ct, ...props }: RowProps & { ct: SidebarContent
         </div>
       </Link>
       {canGoBack && (
-        <Link
-          href={`/dashboard/${tenantId}/developer/content-types/edit/${ct.slug}`}
-          title={`Edit Skema ${ct.name}`}
-          className={cn(
-            "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
-            active
-              ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/20"
-              : "text-muted-foreground hover:text-primary hover:bg-muted"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Link>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={`/dashboard/${tenantId}/developer/content-types/edit/${ct.slug}`}
+              className={cn(
+                "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
+                active
+                  ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/20"
+                  : "text-muted-foreground hover:text-primary hover:bg-muted"
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Link>
+          </TooltipTrigger>
+          <TooltipContent>{`Edit Skema ${ct.name}`}</TooltipContent>
+        </Tooltip>
       )}
     </div>
   )

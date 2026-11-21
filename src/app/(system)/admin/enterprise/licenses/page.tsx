@@ -43,6 +43,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import {
   Gem,
@@ -782,27 +783,33 @@ export default function EnterpriseLicensesPage() {
                             >
                               <FileText className="w-3.5 h-3.5" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={togglingRevokeId === lic.id}
-                              className={cn(
-                                "h-8 w-8 rounded-lg",
-                                lic.status === "revoked"
-                                  ? "text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
-                                  : "text-amber-600 hover:text-amber-600 hover:bg-amber-500/10"
-                              )}
-                              onClick={() => lic.status === "revoked" ? handleToggleRevoke(lic) : setPendingRevoke(lic)}
-                              title={lic.status === "revoked" ? "Aktifkan kembali lisensi" : "Cabut lisensi (tetap berlaku walau sedang dipakai)"}
-                            >
-                              {togglingRevokeId === lic.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : lic.status === "revoked" ? (
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              ) : (
-                                <ShieldOff className="w-3.5 h-3.5" />
-                              )}
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0} className="inline-flex">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={togglingRevokeId === lic.id}
+                                    className={cn(
+                                      "h-8 w-8 rounded-lg",
+                                      lic.status === "revoked"
+                                        ? "text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
+                                        : "text-amber-600 hover:text-amber-600 hover:bg-amber-500/10"
+                                    )}
+                                    onClick={() => lic.status === "revoked" ? handleToggleRevoke(lic) : setPendingRevoke(lic)}
+                                  >
+                                    {togglingRevokeId === lic.id ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : lic.status === "revoked" ? (
+                                      <ShieldCheck className="w-3.5 h-3.5" />
+                                    ) : (
+                                      <ShieldOff className="w-3.5 h-3.5" />
+                                    )}
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{lic.status === "revoked" ? "Aktifkan kembali lisensi" : "Cabut lisensi (tetap berlaku walau sedang dipakai)"}</TooltipContent>
+                            </Tooltip>
                             <Button
                               variant="ghost"
                               size="icon"

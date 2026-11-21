@@ -194,9 +194,9 @@ export default function TenantEconomicsPage() {
                       {formatRupiah(t.monthlyNetProfit)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                         {t.netMarginPercent}%
-                      </span>
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}

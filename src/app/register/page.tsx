@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -61,6 +62,7 @@ export default function RegisterPage() {
   const strength = getPasswordStrength(formData.password)
   const strengthLabels = ["Sangat Lemah", "Lemah", "Sedang", "Kuat", "Sangat Kuat"]
   const strengthColors = ["bg-red-500", "bg-red-500", "bg-yellow-500", "bg-emerald-400", "bg-emerald-600"]
+  const strengthIndicatorClasses = strengthColors.map((c) => `[&>[data-slot=progress-indicator]]:${c}`)
 
   // Redirect if already logged in
   useEffect(() => {
@@ -316,12 +318,10 @@ export default function RegisterPage() {
                 </div>
                 {formData.password && (
                   <div className="mt-2 space-y-1">
-                    <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary/50">
-                      <div
-                        className={`h-full transition-all duration-500 ease-out ${strengthColors[strength]}`}
-                        style={{ width: `${(strength === 0 ? 1 : strength) * 25}%` }}
-                      />
-                    </div>
+                    <Progress
+                      value={(strength === 0 ? 1 : strength) * 25}
+                      className={`h-1.5 bg-secondary/50 ${strengthIndicatorClasses[strength]}`}
+                    />
                     <p className={`text-[10px] font-bold tracking-wide uppercase ${strength < 2 ? "text-red-500" : strength < 3 ? "text-yellow-500" : "text-emerald-500"}`}>
                       {strengthLabels[strength]}
                     </p>

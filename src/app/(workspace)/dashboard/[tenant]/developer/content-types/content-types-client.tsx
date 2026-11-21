@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import {
   Select,
   SelectContent,
@@ -327,16 +328,20 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                           </TableCell>
                           <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
-                                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}
-                                title={`Buka entri ${ct.name} di CMS Studio`}
-                              >
-                                <FileText className="h-3 w-3 text-primary" />
-                                <span>Kelola Konten</span>
-                              </Button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
+                                    onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}
+                                  >
+                                    <FileText className="h-3 w-3 text-primary" />
+                                    <span>Kelola Konten</span>
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{`Buka entri ${ct.name} di CMS Studio`}</TooltipContent>
+                              </Tooltip>
 
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>

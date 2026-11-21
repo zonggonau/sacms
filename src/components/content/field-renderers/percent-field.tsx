@@ -1,6 +1,7 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import { Percent } from "lucide-react"
 
 interface PercentFieldProps {
@@ -73,12 +74,7 @@ export function PercentField({
       </div>
 
       {/* Progress Bar Visualization */}
-      <div className="w-full bg-muted/60 h-1.5 rounded-full overflow-hidden">
-        <div 
-          className="bg-primary h-full transition-all duration-300 rounded-full"
-          style={{ width: `${Math.min(Math.max(numericValue, 0), 100)}%` }}
-        />
-      </div>
+      <Progress value={Math.min(Math.max(numericValue, 0), 100)} className="h-1.5 bg-muted/60" />
     </div>
   )
 }

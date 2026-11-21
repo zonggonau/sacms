@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -211,69 +212,67 @@ export default function AdminCmsBlogPage() {
 
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
         <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/30 border-b border-border/60">
-                  <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Judul</th>
-                  <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Kategori</th>
-                  <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-                  <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Diperbarui</th>
-                  <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/40">
-                {posts.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-12 text-center text-muted-foreground">
-                      <Newspaper className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                      <p className="text-xs font-semibold">Belum ada post blog</p>
-                    </td>
-                  </tr>
-                ) : (
-                  posts.map((p) => (
-                    <tr key={p.id} className="hover:bg-muted/10 transition-colors">
-                      <td className="p-4">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-xs font-bold text-foreground">{p.title}</p>
-                          {p.is_featured && (
-                            <Badge variant="outline" className="text-[9px] font-bold rounded-full border-primary/30 text-primary">Unggulan</Badge>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-mono">/blog/{p.slug}</p>
-                      </td>
-                      <td className="p-4 text-xs text-muted-foreground">{p.category}</td>
-                      <td className="p-4 text-center">
-                        {p.status === "PUBLISHED" ? (
-                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">Published</Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] font-bold rounded-full">Draft</Badge>
+          <Table className="border-collapse">
+            <TableHeader>
+              <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Judul</TableHead>
+                <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Kategori</TableHead>
+                <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground">Diperbarui</TableHead>
+                <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-border/40">
+              {posts.length === 0 ? (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={5} className="p-12 text-center text-muted-foreground">
+                    <Newspaper className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                    <p className="text-xs font-semibold">Belum ada post blog</p>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                posts.map((p) => (
+                  <TableRow key={p.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                    <TableCell className="p-4 whitespace-normal">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-bold text-foreground">{p.title}</p>
+                        {p.is_featured && (
+                          <Badge variant="outline" className="text-[9px] font-bold rounded-full border-primary/30 text-primary">Unggulan</Badge>
                         )}
-                      </td>
-                      <td className="p-4 text-xs text-muted-foreground">
-                        {new Date(p.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
-                      </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => { setPostToDelete(p); setDeleteConfirmOpen(true) }}
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-mono">/blog/{p.slug}</p>
+                    </TableCell>
+                    <TableCell className="p-4 text-xs text-muted-foreground whitespace-normal">{p.category}</TableCell>
+                    <TableCell className="p-4 text-center">
+                      {p.status === "PUBLISHED" ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">Published</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] font-bold rounded-full">Draft</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="p-4 text-xs text-muted-foreground">
+                      {new Date(p.updatedAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                    </TableCell>
+                    <TableCell className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(p)} className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg">
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setPostToDelete(p); setDeleteConfirmOpen(true) }}
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </Card>
       </div>
 

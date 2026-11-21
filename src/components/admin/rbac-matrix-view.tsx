@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -318,125 +319,123 @@ export function RbacMatrixView() {
 
         <TabsContent value="matrix">
           <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-muted/30 border-b border-border/60">
-                    <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[280px]">
-                      Kapabilitas Platform
-                    </th>
-                    {roles.map(role => (
-                      <th key={role.id} className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[150px]">
-                        <div className="flex items-center justify-center gap-1.5">
-                          {role.id === "super_admin" ? (
-                            <Crown className="w-3.5 h-3.5 text-purple-500" />
-                          ) : (
-                            <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
-                          )}
-                          <span>{role.displayName}</span>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-card">
-                  {categories.map(cat => {
-                    const catConfig = CATEGORY_CONFIG[cat] || { label: `${cat.toUpperCase()}`, icon: Shield, color: "bg-muted text-foreground border-border" }
-                    const CatIcon = catConfig.icon
-                    const catPerms = permissions.filter(p => p.category === cat)
+            <Table className="border-collapse">
+              <TableHeader>
+                <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                  <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[280px]">
+                    Kapabilitas Platform
+                  </TableHead>
+                  {roles.map(role => (
+                    <TableHead key={role.id} className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[150px]">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {role.id === "super_admin" ? (
+                          <Crown className="w-3.5 h-3.5 text-purple-500" />
+                        ) : (
+                          <UserCheck className="w-3.5 h-3.5 text-emerald-500" />
+                        )}
+                        <span>{role.displayName}</span>
+                      </div>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody className="bg-card">
+                {categories.map(cat => {
+                  const catConfig = CATEGORY_CONFIG[cat] || { label: `${cat.toUpperCase()}`, icon: Shield, color: "bg-muted text-foreground border-border" }
+                  const CatIcon = catConfig.icon
+                  const catPerms = permissions.filter(p => p.category === cat)
 
-                    return (
-                      <React.Fragment key={cat}>
-                        <tr className="bg-muted/20 border-t border-b border-border/60">
-                          <td className="px-4 py-2.5 text-xs font-bold text-foreground">
-                            <div className="flex items-center gap-2">
-                              <span className={`p-1 rounded-lg border text-xs ${catConfig.color}`}>
-                                <CatIcon className="w-3.5 h-3.5" />
-                              </span>
-                              <span className="font-bold uppercase tracking-wider text-[11px] text-muted-foreground">
-                                {catConfig.label}
-                              </span>
+                  return (
+                    <React.Fragment key={cat}>
+                      <TableRow className="bg-muted/20 border-t border-b border-border/60 hover:bg-muted/20">
+                        <TableCell className="px-4 py-2.5 text-xs font-bold text-foreground">
+                          <div className="flex items-center gap-2">
+                            <span className={`p-1 rounded-lg border text-xs ${catConfig.color}`}>
+                              <CatIcon className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="font-bold uppercase tracking-wider text-[11px] text-muted-foreground">
+                              {catConfig.label}
+                            </span>
+                          </div>
+                        </TableCell>
+                        {roles.map(role => {
+                          const rolePermsInCat = role.permissions.filter(rp => catPerms.some(p => p.id === rp.id))
+                          const allGranted = catPerms.length > 0 && rolePermsInCat.length === catPerms.length
+                          const isSuperAdmin = role.id === 'super_admin'
+
+                          return (
+                            <TableCell key={`toggle-${role.id}-${cat}`} className="px-4 py-2 text-center">
+                              {!isSuperAdmin ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground rounded-lg"
+                                  disabled={savingAssignments}
+                                  onClick={() => saveAssignments(role.id, catPerms.map((p) => p.id), !allGranted)}
+                                >
+                                  {allGranted ? 'Lepas Semua' : 'Pilih Semua'}
+                                </Button>
+                              ) : (
+                                <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">
+                                  Semua Diberikan
+                                </span>
+                              )}
+                            </TableCell>
+                          )
+                        })}
+                      </TableRow>
+
+                      {catPerms.map(perm => (
+                        <TableRow key={perm.id} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
+                          <TableCell className="p-3.5 pl-6 whitespace-normal">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-foreground">{perm.displayName}</span>
+                              <span className="text-[10px] font-mono text-muted-foreground">{perm.name}</span>
+                              {perm.description && (
+                                <span className="text-[11px] text-muted-foreground/80 mt-0.5">{perm.description}</span>
+                              )}
                             </div>
-                          </td>
+                          </TableCell>
                           {roles.map(role => {
-                            const rolePermsInCat = role.permissions.filter(rp => catPerms.some(p => p.id === rp.id))
-                            const allGranted = catPerms.length > 0 && rolePermsInCat.length === catPerms.length
+                            const hasIt = role.permissions.some(rp => rp.id === perm.id)
                             const isSuperAdmin = role.id === 'super_admin'
 
                             return (
-                              <td key={`toggle-${role.id}-${cat}`} className="px-4 py-2 text-center">
-                                {!isSuperAdmin ? (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground rounded-lg" 
-                                    disabled={savingAssignments}
-                                    onClick={() => saveAssignments(role.id, catPerms.map((p) => p.id), !allGranted)}
-                                  >
-                                    {allGranted ? 'Lepas Semua' : 'Pilih Semua'}
-                                  </Button>
-                                ) : (
-                                  <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-widest">
-                                    Semua Diberikan
-                                  </span>
-                                )}
-                              </td>
+                              <TableCell key={`${role.id}-${perm.id}`} className="p-3.5 text-center">
+                                <div className="flex justify-center">
+                                  {isSuperAdmin ? (
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="h-6 w-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center cursor-not-allowed">
+                                            <Lock className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent className="rounded-xl text-xs">
+                                          <p>Super Admin selalu memiliki akses penuh</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ) : (
+                                    <Checkbox
+                                      checked={hasIt}
+                                      disabled={savingAssignments}
+                                      aria-label={role.displayName + " — " + perm.displayName}
+                                      onCheckedChange={() => saveAssignments(role.id, [perm.id], !hasIt)}
+                                      className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 rounded-md h-4 w-4"
+                                    />
+                                  )}
+                                </div>
+                              </TableCell>
                             )
                           })}
-                        </tr>
-
-                        {catPerms.map(perm => (
-                          <tr key={perm.id} className="border-b border-border/40 hover:bg-muted/10 transition-colors">
-                            <td className="p-3.5 pl-6">
-                              <div className="flex flex-col">
-                                <span className="text-xs font-bold text-foreground">{perm.displayName}</span>
-                                <span className="text-[10px] font-mono text-muted-foreground">{perm.name}</span>
-                                {perm.description && (
-                                  <span className="text-[11px] text-muted-foreground/80 mt-0.5">{perm.description}</span>
-                                )}
-                              </div>
-                            </td>
-                            {roles.map(role => {
-                              const hasIt = role.permissions.some(rp => rp.id === perm.id)
-                              const isSuperAdmin = role.id === 'super_admin'
-
-                              return (
-                                <td key={`${role.id}-${perm.id}`} className="p-3.5 text-center">
-                                  <div className="flex justify-center">
-                                    {isSuperAdmin ? (
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <TooltipTrigger asChild>
-                                            <div className="h-6 w-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center cursor-not-allowed">
-                                              <Lock className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-                                            </div>
-                                          </TooltipTrigger>
-                                          <TooltipContent className="rounded-xl text-xs">
-                                            <p>Super Admin selalu memiliki akses penuh</p>
-                                          </TooltipContent>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                    ) : (
-                                      <Checkbox 
-                                        checked={hasIt} 
-                                        disabled={savingAssignments}
-                                        aria-label={role.displayName + " — " + perm.displayName}
-                                        onCheckedChange={() => saveAssignments(role.id, [perm.id], !hasIt)}
-                                        className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600 rounded-md h-4 w-4"
-                                      />
-                                    )}
-                                  </div>
-                                </td>
-                              )
-                            })}
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </TableRow>
+                      ))}
+                    </React.Fragment>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </Card>
         </TabsContent>
 

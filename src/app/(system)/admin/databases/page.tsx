@@ -22,6 +22,7 @@ import {
   ImageIcon
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
@@ -266,85 +267,83 @@ export default function AdminDatabasesPage() {
             </div>
 
             <Card className="border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-card">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted/30 border-b border-border/60">
-                      <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[220px]">
-                        Workspace Enterprise
-                      </th>
-                      <th className="p-4 text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
-                        Mode Database
-                      </th>
-                      <th className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">
-                        Isolasi Data
-                      </th>
-                      <th className="p-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {!enterpriseRouting?.tenants || enterpriseRouting.tenants.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="p-10 text-center text-muted-foreground">
-                          <Database className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
-                          <p className="text-xs font-semibold">Semua workspace saat ini berjalan pada Shared PostgreSQL Pool</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">Tenant paket Enterprise dapat dikonfigurasi dengan URL Database terpisah (*Dedicated PostgreSQL*).</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      enterpriseRouting.tenants.map((t: any) => (
-                        <tr key={t.id} className="hover:bg-muted/10 transition-colors">
-                          <td className="p-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">
-                                {t.name[0]?.toUpperCase() || "E"}
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold text-foreground">{t.name}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono">/{t.slug}</p>
-                              </div>
+              <Table className="border-collapse">
+                <TableHeader>
+                  <TableRow className="bg-muted/30 border-b border-border/60 hover:bg-muted/30">
+                    <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[220px]">
+                      Workspace Enterprise
+                    </TableHead>
+                    <TableHead className="p-4 h-auto text-left text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[200px]">
+                      Mode Database
+                    </TableHead>
+                    <TableHead className="p-4 h-auto text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[140px]">
+                      Isolasi Data
+                    </TableHead>
+                    <TableHead className="p-4 h-auto text-right text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[160px]">
+                      Status
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-border/40">
+                  {!enterpriseRouting?.tenants || enterpriseRouting.tenants.length === 0 ? (
+                    <TableRow className="hover:bg-transparent">
+                      <TableCell colSpan={4} className="p-10 text-center text-muted-foreground whitespace-normal">
+                        <Database className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+                        <p className="text-xs font-semibold">Semua workspace saat ini berjalan pada Shared PostgreSQL Pool</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Tenant paket Enterprise dapat dikonfigurasi dengan URL Database terpisah (*Dedicated PostgreSQL*).</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    enterpriseRouting.tenants.map((t: any) => (
+                      <TableRow key={t.id} className="hover:bg-muted/10 transition-colors border-b-0">
+                        <TableCell className="p-4 whitespace-normal">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">
+                              {t.name[0]?.toUpperCase() || "E"}
                             </div>
-                          </td>
-                          <td className="p-4">
-                            <span className="text-xs font-bold text-foreground">{t.dbMode}</span>
-                            <span className="block text-[10px] text-muted-foreground">
-                              {t.hasDedicatedDb ? "Isolated Connection String" : "Managed Shared Cluster"}
-                            </span>
-                          </td>
-                          <td className="p-4 text-center">
-                            {t.hasDedicatedDb ? (
-                              <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold rounded-full">
-                                Dedicated DB Instance
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
-                                Shared Pool Partition
-                              </Badge>
-                            )}
-                          </td>
-                          <td className="p-4 text-right">
-                            {t.status === "active" ? (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
-                                Active & Routing
-                              </Badge>
-                            ) : t.status === "suspended" ? (
-                              <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold rounded-full">
-                                Ditangguhkan
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
-                                {t.status}
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{t.name}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">/{t.slug}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="p-4 whitespace-normal">
+                          <span className="text-xs font-bold text-foreground">{t.dbMode}</span>
+                          <span className="block text-[10px] text-muted-foreground">
+                            {t.hasDedicatedDb ? "Isolated Connection String" : "Managed Shared Cluster"}
+                          </span>
+                        </TableCell>
+                        <TableCell className="p-4 text-center">
+                          {t.hasDedicatedDb ? (
+                            <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold rounded-full">
+                              Dedicated DB Instance
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
+                              Shared Pool Partition
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="p-4 text-right">
+                          {t.status === "active" ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
+                              Active & Routing
+                            </Badge>
+                          ) : t.status === "suspended" ? (
+                            <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold rounded-full">
+                              Ditangguhkan
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] font-bold text-muted-foreground rounded-full">
+                              {t.status}
+                            </Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </Card>
           </div>
 

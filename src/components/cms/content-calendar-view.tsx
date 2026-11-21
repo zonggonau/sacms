@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, Clock, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { extractEntryLabel } from "@/lib/relation-labels"
 
@@ -155,21 +156,24 @@ export function ContentCalendarView({
                 {dayEntries.slice(0, 3).map(entry => {
                   const isScheduled = entry.status === "SCHEDULED"
                   return (
-                    <button
-                      key={entry.id}
-                      type="button"
-                      onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/edit/${entry.id}`)}
-                      title={extractEntryLabel(entry.data, entry.id)}
-                      className={cn(
-                        "flex items-center gap-1 w-full rounded-md px-1.5 py-1 text-[10px] font-semibold truncate text-left",
-                        isScheduled
-                          ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20"
-                          : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
-                      )}
-                    >
-                      {isScheduled ? <Clock className="h-2.5 w-2.5 shrink-0" /> : <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />}
-                      <span className="truncate">{extractEntryLabel(entry.data, entry.id)}</span>
-                    </button>
+                    <Tooltip key={entry.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/edit/${entry.id}`)}
+                          className={cn(
+                            "flex items-center gap-1 w-full rounded-md px-1.5 py-1 text-[10px] font-semibold truncate text-left",
+                            isScheduled
+                              ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 hover:bg-purple-500/20"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20"
+                          )}
+                        >
+                          {isScheduled ? <Clock className="h-2.5 w-2.5 shrink-0" /> : <CheckCircle2 className="h-2.5 w-2.5 shrink-0" />}
+                          <span className="truncate">{extractEntryLabel(entry.data, entry.id)}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>{extractEntryLabel(entry.data, entry.id)}</TooltipContent>
+                    </Tooltip>
                   )
                 })}
                 {dayEntries.length > 3 && (
