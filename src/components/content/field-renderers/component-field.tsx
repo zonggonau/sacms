@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { aiFormContext, applyAiFieldValue, fieldAiActions, visibleAiFields } from "@/lib/content/field-ai"
 
 import { TextField } from "./text-field"
 import { TextareaField } from "./textarea-field"
@@ -44,6 +46,7 @@ interface FieldDefinition {
   slug: string
   type: string
   required: boolean
+  showInCms?: boolean
   options?: any
 }
 
@@ -61,6 +64,8 @@ interface ComponentFieldProps {
   onChange: (val: any) => void
   label: React.ReactNode
   repeatable?: boolean
+  allowAi?: boolean
+  locale?: string
 }
 
 export function ComponentField({
@@ -69,7 +74,9 @@ export function ComponentField({
   value,
   onChange,
   label,
-  repeatable = false
+  repeatable = false,
+  allowAi = false,
+  locale = "id",
 }: ComponentFieldProps) {
   const [definition, setDefinition] = useState<ComponentDefinition | null>(null)
   const [loading, setLoading] = useState(true)
@@ -177,9 +184,9 @@ export function ComponentField({
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} />
+        return <ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} allowAi={allowAi} locale={locale} />
       case "repeater":
-        return <DynamicZoneField label={null} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} />
+        return <DynamicZoneField label={null} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} allowAi={allowAi} locale={locale} />
       case "relation":
         const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
@@ -226,13 +233,31 @@ export function ComponentField({
   if (!definition) return <div className="text-xs text-destructive">Error: Component "{componentSlug}" not found.</div>
 
   const renderInnerFields = (data: any, index: number | null = null) => {
+    const form = { kind: "component", slug: definition.slug } as const
+    const values = data ?? {}
+    const assistFields = allowAi ? visibleAiFields(definition.fields, values) : []
+    const context = allowAi ? aiFormContext(definition.fields, values, form) : {}
     return (
       <div className="space-y-6 py-2">
         {definition.fields.map((field) => (
           <div key={field.id} className="space-y-2">
-            <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
-              {field.name} {field.required && <span className="text-destructive">*</span>}
-            </Label>
+            <div className="flex items-center gap-2">
+              <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
+                {field.name} {field.required && <span className="text-destructive">*</span>}
+              </Label>
+              {assistFields.includes(field) && fieldAiActions(field, form).length > 0 && (
+                <AIAssistantDialog
+                  key={locale}
+                  tenantSlug={tenantSlug}
+                  form={form}
+                  field={field}
+                  value={values[field.slug]}
+                  context={context}
+                  locale={locale}
+                  onApply={(suggestion) => handleFieldChange(index, field.slug, applyAiFieldValue(field, values[field.slug], suggestion))}
+                />
+              )}
+            </div>
             {renderInnerField(field, data, index)}
           </div>
         ))}

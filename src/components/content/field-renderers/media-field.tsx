@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MediaLibraryDialog } from "@/components/media-library-dialog"
 import { Label } from "@/components/ui/label"
-import { Image as ImageIcon, FileText, X, Upload, ExternalLink, RefreshCw } from "lucide-react"
+import { Image as ImageIcon, FileText, ExternalLink, RefreshCw, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
 export interface MediaFieldProps {
@@ -20,9 +20,12 @@ export interface MediaFieldProps {
 
 export function MediaField({ value, onChange, type = "image", label, required, error, tenantSlug }: MediaFieldProps) {
   const [showMediaLibrary, setShowMediaLibrary] = useState(false)
+  const [failedPreview, setFailedPreview] = useState<string | null>(null)
+  const previewUnavailable = type === "image" && failedPreview === value
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
+    setFailedPreview(null)
     onChange("")
   }
 
@@ -42,11 +45,17 @@ export function MediaField({ value, onChange, type = "image", label, required, e
           <div className="p-3 flex items-center gap-3">
             {type === "image" ? (
               <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted border border-border/60 shrink-0 relative">
-                <img
-                  src={value}
-                  alt="Selected Asset"
-                  className="w-full h-full object-cover"
-                />
+                {previewUnavailable ? (
+                  <ImageIcon className="absolute inset-0 m-auto h-6 w-6 text-muted-foreground" aria-hidden="true" />
+                ) : (
+                  <img
+                    key={value}
+                    src={value}
+                    alt="Pratinjau gambar yang dipilih"
+                    className="w-full h-full object-cover"
+                    onError={() => setFailedPreview(value)}
+                  />
+                )}
               </div>
             ) : (
               <div className="w-16 h-16 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
@@ -56,8 +65,12 @@ export function MediaField({ value, onChange, type = "image", label, required, e
 
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20 rounded-full">
-                  {type === "image" ? "Media Image" : "Attachment File"}
+                <Badge
+                  variant="outline"
+                  role={type === "image" ? "status" : undefined}
+                  className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20 rounded-full"
+                >
+                  {type === "image" ? "Gambar dipilih" : "Attachment File"}
                 </Badge>
                 <a
                   href={value}
@@ -65,35 +78,42 @@ export function MediaField({ value, onChange, type = "image", label, required, e
                   rel="noopener noreferrer"
                   className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1 font-mono truncate"
                 >
-                  <ExternalLink className="w-3 h-3 shrink-0" /> Buka URL
+                  <ExternalLink className="w-3 h-3 shrink-0" /> {type === "image" ? "Buka gambar" : "Buka URL"}
                 </a>
               </div>
-              <Input
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
-                className="h-8 text-xs font-mono bg-background border-border/80 rounded-lg"
-                placeholder="https://..."
-              />
+              {previewUnavailable && (
+                <p className="text-xs text-muted-foreground">Pratinjau gambar tidak dapat dimuat.</p>
+              )}
+              {type === "file" && (
+                <Input
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                  className="h-8 text-xs font-mono bg-background border-border/80 rounded-lg"
+                  placeholder="https://..."
+                />
+              )}
             </div>
 
-            <div className="flex flex-col gap-1 shrink-0">
+            <div className="flex shrink-0 items-center gap-1">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                className="h-8 px-2.5 text-xs font-bold rounded-lg border-border/80 hover:bg-muted"
+                size="icon"
+                aria-label="Ganti"
+                className="size-8 rounded-lg border-border/80 hover:bg-muted"
                 onClick={() => setShowMediaLibrary(true)}
               >
-                <RefreshCw className="h-3 w-3 mr-1" /> Ganti
+                <RefreshCw aria-hidden="true" />
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="h-8 px-2.5 text-xs font-bold rounded-lg text-destructive hover:bg-destructive/10"
+                size="icon"
+                aria-label="Hapus"
+                className="size-8 rounded-lg text-destructive hover:bg-destructive/10"
                 onClick={handleClear}
               >
-                <X className="h-3 w-3 mr-1" /> Hapus
+                <Trash2 aria-hidden="true" />
               </Button>
             </div>
           </div>
@@ -125,7 +145,10 @@ export function MediaField({ value, onChange, type = "image", label, required, e
       <MediaLibraryDialog
         open={showMediaLibrary}
         onOpenChange={setShowMediaLibrary}
-        onSelect={(media) => onChange(media.url)}
+        onSelect={(media) => {
+          setFailedPreview(null)
+          onChange(media.url)
+        }}
         mediaType={type}
         tenantSlug={tenantSlug}
       />

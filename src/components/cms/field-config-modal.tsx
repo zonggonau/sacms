@@ -26,6 +26,7 @@ import { DocxTemplateWizard } from "@/components/cms/docx-template-wizard"
 import { toast } from "@/hooks/use-toast"
 import { Loader2, FileText, CheckCircle2, X, Sparkles, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
+import { aiFieldOptions, getFieldAiMode, supportsFieldAi } from "@/lib/content/field-ai"
 
 export interface Field {
   id: string
@@ -54,6 +55,7 @@ interface FieldConfigModalProps {
   fields: Field[]
   tenantSlug: string
   context: "contentType" | "singleType" | "component"
+  modelSlug?: string
   onSave: () => void
   onSaveBatch?: (newFields: Field[]) => void
   templateComponents?: any[]
@@ -69,6 +71,7 @@ export function FieldConfigModal({
   fields,
   tenantSlug,
   context,
+  modelSlug,
   onSave,
   onSaveBatch,
   templateComponents,
@@ -244,6 +247,28 @@ export function FieldConfigModal({
                     </Select>
                   </div>
                 )}
+              </div>
+            )}
+
+            {editingField && supportsFieldAi(editingField) && (
+              <div className="space-y-1.5 rounded-xl border border-border/60 bg-muted/30 p-3.5">
+                <Label htmlFor="field-ai-assist" className="text-xs font-semibold">Bantuan AI</Label>
+                <Select
+                  value={getFieldAiMode(editingField, modelSlug ? { kind: context, slug: modelSlug } : undefined)}
+                  onValueChange={(aiAssist) => setEditingField((field) => field && ({
+                    ...field, options: { ...aiFieldOptions(field.options), aiAssist },
+                  }))}
+                >
+                  <SelectTrigger id="field-ai-assist" className="h-9 w-full bg-background text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="off">Nonaktif</SelectItem>
+                    <SelectItem value="polish">Rapikan saja</SelectItem>
+                    <SelectItem value="write">Bantu menulis</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Smart Fill hanya memakai field dengan mode Bantu menulis.</p>
               </div>
             )}
 

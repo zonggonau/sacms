@@ -1,173 +1,77 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
 import { withStaffAuth, readJson, apiError } from "@/lib/api/route-helpers"
+import { getFieldAiMode, SMART_FILL_CREDIT_COST, smartFillFields } from "@/lib/content/field-ai"
+import { aiFormContextSchema, aiFormTargetSchema, filterAiContext, isAiQuotaError, loadAiFormSchema, normalizeGeneratedField } from "@/lib/content/ai-form-schema"
 
 const smartFillSchema = z.object({
-  prompt: z.string().min(1),
-  contentType: z.string(),
-  schema: z.array(
-    z.object({
-      slug: z.string(),
-      name: z.string(),
-      type: z.string(),
-      required: z.boolean().optional(),
-      options: z.any().optional(),
-    })
-  ),
-  tone: z.string().optional().default("Professional"),
-  language: z.string().optional().default("Indonesian"),
+  form: aiFormTargetSchema,
+  fieldSlugs: z.array(z.string().min(1).max(128)).min(1).max(64),
+  prompt: z.string().trim().max(4000).default(""),
+  context: aiFormContextSchema.default({}),
+  locale: z.string().min(2).max(30).default("id"),
 })
 
-// Structural/reference field types — there's no sensible free-text value an
-// LLM can invent for these (a real media asset id, a real related record
-// id, a real nested component shape), so they're excluded from what's sent
-// to the model AND from the offline fallback generator below. Smart Fill
-// only ever touches plain-value fields; these stay exactly as the user left
-// them.
-const STRUCTURAL_FIELD_TYPES = new Set(["media", "mediaMultiple", "file", "relation", "component", "repeater"])
-
-// Same per-generation cost convention as the AI Schema Generator
-// (generate_schema: 5 credits for up to 24000 output tokens) — Smart Fill's
-// 2500-token budget is roughly a tenth of that, so it's priced lower.
-const SMART_FILL_CREDIT_COST = 2
+const factsRule = "Use only facts explicitly supplied in the brief or the existing content. Never invent prices, dates, places, provenance, names or certification. Omit a field if there is insufficient information."
 
 export const POST = withStaffAuth(async (request, _context, { access, session }) => {
-    const parsed = await readJson(request, smartFillSchema)
-    if (!parsed.ok) return parsed.response
+  const parsed = await readJson(request, smartFillSchema)
+  if (!parsed.ok) return parsed.response
+  const { form, fieldSlugs, prompt, locale } = parsed.data
+  const definition = await loadAiFormSchema(form, access)
+  if (!definition) return apiError("not_found", { message: "Formulir tidak tersedia untuk Smart Fill." })
 
-    const { prompt, contentType, schema: fullSchema, tone, language } = parsed.data
-    const schema = fullSchema.filter((f) => !STRUCTURAL_FIELD_TYPES.has(f.type))
+  const requested = new Set(fieldSlugs)
+  const fields = smartFillFields(definition.fields, form).filter((field) => requested.has(field.slug))
+  if (fields.length === 0) return apiError("validation", { message: "Tidak ada field penulisan yang dapat diisi." })
 
-    const aiConfig = {
-      tenantId: access.tenantId,
-      userId: session.user.id,
-      creditsCost: SMART_FILL_CREDIT_COST,
-      action: "smart_fill",
-    }
+  const context = filterAiContext(
+    definition.fields.filter((field) => getFieldAiMode(field, form) !== "off"),
+    parsed.data.context,
+  )
+  if (!prompt && Object.keys(context).length === 0) {
+    return apiError("validation", { message: "Tambahkan informasi sumber sebelum menjalankan Smart Fill." })
+  }
 
-    // 1. Try the Vercel AI Gateway if configured
-    try {
-      const schemaDescription = schema
-        .map(
-          (f) =>
-            `- "${f.slug}" (${f.name}, type: ${f.type}${f.required ? ", required" : ""})`
-        )
-        .join("\n")
-
-      const systemPrompt = `You are an expert Headless CMS Content Creator.
-You will receive a user draft prompt and a schema of fields for a content type named "${contentType}".
-Generate a strictly valid JSON object where keys match the exact field slugs provided.
-Follow the tone "${tone}" and output language "${language}".
-Do NOT wrap the output in markdown codeblocks (no \`\`\`json). Output pure raw JSON only.
-
-Field Types Guide:
-- text / string: A clean single-line title or phrase.
-- slug: URL-friendly lowercase kebab-case string (e.g. "panduan-lengkap-ai-2026").
-- rich-text / markdown / textarea: Detailed, well-formatted paragraph or markdown content.
-- tags: Array of short strings (e.g. ["ai", "teknologi", "cms"]).
-- seo: JSON object with { "metaTitle": string (max 60 chars), "metaDescription": string (max 155 chars), "keywords": string[] }.
-- number / percent / rating / currency: Numeric values appropriate to the context (e.g. rating 1-5, percent 0-100).
-- boolean: boolean (true/false).
-- date / datetime: ISO 8601 date string (e.g. "${new Date().toISOString().split("T")[0]}").
-- location: JSON object with { "lat": number, "lng": number, "address": string }.
-- icon: Lucide icon name (e.g. "Sparkles", "FileText", "Rocket", "Globe").
-- code: JSON object with { "code": string, "language": string }.
-
-Fields in Schema:
-${schemaDescription}`
-
-      const { safeGenerateContent } = await import("@/lib/ai")
-      const result = await safeGenerateContent(systemPrompt, `User Prompt: ${prompt}`, {
-        ...aiConfig,
+  try {
+    const { safeGenerateContent } = await import("@/lib/ai")
+    const fieldsGuide = fields.map((field) => ({
+      slug: field.slug,
+      label: field.name,
+      format: field.type === "seo"
+        ? "object with meta_title (max 60 chars) and meta_description (max 160 chars)"
+        : field.type === "richText" ? "simple HTML with paragraphs, headings and lists" : field.type === "text" ? "short single line" : field.type,
+    }))
+    const result = await safeGenerateContent(
+      "You assist a human CMS editor. Return a JSON object with only the requested field slugs as keys. " + factsRule +
+        " Keep existing editorial tone. Use the requested locale. Do not include external links or embedded media.",
+      JSON.stringify({ model: definition.name, locale, fields: fieldsGuide, source: context, brief: prompt }),
+      {
+        tenantId: access.tenantId,
+        userId: session.user.id,
+        creditsCost: SMART_FILL_CREDIT_COST,
+        refundOnFailure: true,
+        action: "smart_fill",
         responseFormat: "json_object",
         maxTokens: 2500,
-      })
+      },
+    )
 
-      const rawContent = JSON.parse(result.text)
-      // Defense in depth: even though structural types are never described
-      // to the model, strip any key it might still hallucinate for one
-      // (or for a slug that doesn't exist at all) before this reaches the
-      // form.
-      const allowedSlugs = new Set(schema.map((f) => f.slug))
-      const parsedContent: Record<string, unknown> = {}
-      for (const [key, value] of Object.entries(rawContent)) {
-        if (allowedSlugs.has(key)) parsedContent[key] = value
-      }
-
-      return NextResponse.json({ success: true, content: parsedContent })
-    } catch (err: any) {
-      // A real "out of AI credits/quota" rejection must surface as an
-      // error, not get silently swallowed into a free fallback result —
-      // same fix already applied to the AI Schema Generator for the same
-      // reason (src/lib/ai-schema-generator.ts).
-      if (err?.status === 429) {
-        return apiError("rate_limited", { message: err.message })
-      }
-      console.warn("AI Gateway Smart Fill error, using intelligent fallback generator:", err)
-      // The Gateway call failed for an infra/model reason, not a quota
-      // one — enforceAiQuota (inside safeGenerateContent) already reserved
-      // this generation's credits before the failure, so give them back
-      // before falling through to the free heuristic generator.
-      const { refundAiQuota } = await import("@/lib/ai")
-      await refundAiQuota(aiConfig)
+    const generated = JSON.parse(result.text) as Record<string, unknown> | null
+    const content = Object.fromEntries(fields.flatMap((field) => {
+      const value = normalizeGeneratedField(field, generated?.[field.slug])
+      return value === null ? [] : [[field.slug, value]]
+    }))
+    if (Object.keys(content).length === 0) {
+      return apiError("validation", { message: "AI tidak menghasilkan saran yang sesuai. Tambahkan konteks yang lebih spesifik." })
     }
 
-    // 2. Intelligent Mock Generator (when the Gateway is unavailable or not configured)
-    const isIndonesian = language.toLowerCase().includes("indonesia") || language.toLowerCase() === "id"
-    const slugified = prompt
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-")
-      .slice(0, 50) || "draf-konten-baru"
-
-    const fallbackContent: Record<string, any> = {}
-
-    for (const field of schema) {
-      const slugLower = field.slug.toLowerCase()
-      const typeLower = field.type.toLowerCase()
-
-      if (typeLower === "slug") {
-        fallbackContent[field.slug] = slugified
-      } else if (slugLower.includes("title") || slugLower.includes("judul") || slugLower.includes("name") || slugLower.includes("nama")) {
-        fallbackContent[field.slug] = prompt.length < 80 ? prompt : (isIndonesian ? "Panduan Lengkap: " + prompt.slice(0, 60) : "Comprehensive Guide: " + prompt.slice(0, 60))
-      } else if (typeLower === "tags" || slugLower.includes("tag") || slugLower.includes("kategori")) {
-        fallbackContent[field.slug] = isIndonesian ? ["inovasi", "teknologi", "panduan", "cms"] : ["innovation", "technology", "guide", "cms"]
-      } else if (typeLower === "seo" || slugLower.includes("seo")) {
-        fallbackContent[field.slug] = {
-          metaTitle: `${prompt.slice(0, 50)} | SaCMS`,
-          metaDescription: isIndonesian
-            ? `Temukan informasi mendalam mengenai ${prompt.slice(0, 80)}. Disajikan secara terstruktur dan praktis.`
-            : `Discover in-depth insights about ${prompt.slice(0, 80)}. Structured for developers and creators.`,
-          keywords: ["sacms", "content", "headless-cms"],
-        }
-      } else if (typeLower === "rich-text" || typeLower === "markdown" || typeLower === "textarea") {
-        if (isIndonesian) {
-          fallbackContent[field.slug] = `## Pendahuluan\n\n${prompt}\n\n### 1. Latar Belakang & Urgensi\nDalam era transformasi digital modern, pengelolaan konten yang efisien dan terstruktur menjadi pilar utama keberhasilan setiap platform digital.\n\n### 2. Manfaat & Implementasi Praktis\n- **Efisiensi Tinggi:** Mempercepat proses publikasi konten ke berbagai saluran sekaligus.\n- **Konsistensi Data:** Memastikan integritas struktur data sesuai skema yang telah didefinisikan.\n- **Fleksibilitas API:** Memudahkan integrasi dengan REST, GraphQL, maupun SDK kustom.\n\n### Kesimpulan\nDengan menerapkan pendekatan modern, organisasi dapat meningkatkan produktivitas tim dan menyajikan pengalaman terbaik bagi pengguna akhir.`
-        } else {
-          fallbackContent[field.slug] = `## Overview\n\n${prompt}\n\n### 1. Key Insights & Principles\nIn today's fast-moving digital landscape, scalable and automated content management is essential for modern applications.\n\n### 2. Main Advantages\n- **Maximum Agility:** Accelerate time-to-market across web and mobile endpoints.\n- **Schema Integrity:** Guarantee reliable type-safe data schemas.\n- **Omnichannel Delivery:** Seamless integration via REST, GraphQL, and TypeScript SDKs.\n\n### Conclusion\nAdopting modern headless CMS architectures unlocks high productivity and superior user experiences.`
-        }
-      } else if (typeLower === "number" || typeLower === "percent" || typeLower === "rating") {
-        if (typeLower === "rating") fallbackContent[field.slug] = 5
-        else if (typeLower === "percent") fallbackContent[field.slug] = 95
-        else fallbackContent[field.slug] = 100
-      } else if (typeLower === "boolean") {
-        fallbackContent[field.slug] = true
-      } else if (typeLower === "date" || typeLower === "datetime") {
-        fallbackContent[field.slug] = new Date().toISOString().split("T")[0]
-      } else if (typeLower === "location") {
-        fallbackContent[field.slug] = { lat: -6.2088, lng: 106.8456, address: "Jakarta, Indonesia" }
-      } else if (typeLower === "icon") {
-        fallbackContent[field.slug] = "Sparkles"
-      } else if (typeLower === "code") {
-        fallbackContent[field.slug] = {
-          language: "typescript",
-          code: `export async function fetchContent() {\n  const response = await fetch('/api/public/content/${contentType.toLowerCase()}');\n  return response.json();\n}`,
-        }
-      } else {
-        fallbackContent[field.slug] = isIndonesian ? `Konten terisi otomatis untuk ${field.name}` : `Smart filled content for ${field.name}`
-      }
+    return NextResponse.json({ success: true, content })
+  } catch (error) {
+    if (isAiQuotaError(error)) {
+      return apiError("rate_limited", { message: "Kredit atau kuota AI tidak mencukupi." })
     }
-
-    return NextResponse.json({ success: true, content: fallbackContent })
+    console.error("[Smart Fill] Generation failed", error instanceof Error ? error.name : "Unknown")
+    return apiError("internal", { status: 503, message: "Smart Fill sedang tidak tersedia. Isi formulir tetap seperti sebelumnya." })
+  }
 }, { minRole: "editor" })

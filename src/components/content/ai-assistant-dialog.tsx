@@ -1,384 +1,195 @@
 "use client"
 
 import { useState } from "react"
-import { Sparkles, Languages, FileText, Loader2, Wand2, Copy, Check, Bot, Search } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import { copyToClipboard } from "@/lib/clipboard"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { aiPreviewText, fieldAiActions, getFieldAiMode, isAiFieldEmpty, normalizeAiFieldValue, type AiField, type AiFieldValue, type AiFormTarget, type FieldAiAction } from "@/lib/content/field-ai"
 
 interface AIAssistantDialogProps {
   tenantSlug: string
-  contentTypeSlug?: string
-  fieldName?: string
-  currentValue?: string
-  onApply: (content: string) => void
-  trigger?: React.ReactNode
+  form: AiFormTarget
+  field: AiField
+  value: unknown
+  context: Record<string, string>
+  locale: string
+  onApply: (suggestion: AiFieldValue) => void
 }
 
-export function AIAssistantDialog({
-  tenantSlug,
-  contentTypeSlug,
-  fieldName = "Field",
-  currentValue,
-  onApply,
-  trigger,
-}: AIAssistantDialogProps) {
+const actionLabels: Record<FieldAiAction, string> = {
+  generate: "Buat draf", improve: "Rapikan teks", summarize: "Ringkas",
+  translate: "Terjemahkan", seo: "Sarankan SEO",
+}
+
+const languages = { id: "Indonesia", en: "Inggris", ms: "Melayu", ja: "Jepang", zh: "Mandarin", es: "Spanyol", fr: "Prancis" }
+
+export function AIAssistantDialog({ tenantSlug, form, field, value, context, locale, onApply }: AIAssistantDialogProps) {
+  const actions = fieldAiActions(field, form)
+  const isSeo = field.type === "seo"
+  const polishOnly = getFieldAiMode(field, form) === "polish"
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState("")
+  const [action, setAction] = useState<FieldAiAction>(actions[0] ?? "improve")
   const [prompt, setPrompt] = useState("")
-  const [tone, setTone] = useState<string>("professional")
-  const [targetLocale, setTargetLocale] = useState("id")
-  const [correctInstruction, setCorrectInstruction] = useState<string>("grammar")
-  const [copied, setCopied] = useState(false)
-  const { toast } = useToast()
+  const [language, setLanguage] = useState(locale.startsWith("en") ? "id" : "en")
+  const [suggestions, setSuggestions] = useState<AiFieldValue[]>([])
+  const [selected, setSelected] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleGenerate = async () => {
-    if (!prompt) return
-    setLoading(true)
-    try {
-      const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "generate", prompt, tone, fieldSlug: fieldName })
-      })
-      const assistData = await assistRes.json()
-      if (assistData.result) {
-        setResult(assistData.result)
-      } else {
-        throw new Error(assistData.error || "Gagal membuat konten")
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat konten" })
-    } finally {
-      setLoading(false)
+  if (actions.length === 0) return null
+  const actionLabel = isSeo && polishOnly ? "Rapikan SEO"
+    : field.type === "text" && action === "generate" ? "Buat alternatif judul"
+      : actionLabels[action]
+  const hasValue = !isAiFieldEmpty(value, field)
+  const hasContext = Object.keys(context).length > 0
+  const canGenerate = action === "generate" ? !!prompt.trim() || hasContext
+    : action === "seo" ? (polishOnly ? hasValue : hasContext || hasValue || !!prompt.trim())
+      : hasValue && (action !== "translate" || !!language.trim())
+
+  function changeOpen(next: boolean) {
+    if (loading) return
+    setOpen(next)
+    if (!next) {
+      setPrompt("")
+      setSuggestions([])
+      setSelected(0)
+      setError("")
     }
   }
 
-  const handleCorrect = async () => {
-    const textToCorrect = prompt || currentValue
-    if (!textToCorrect) return
+  async function generate() {
+    if (loading || !canGenerate) return
     setLoading(true)
+    setError("")
+    setSuggestions([])
     try {
-      const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "improve",
-          prompt: correctInstruction,
-          content: textToCorrect,
-          tone,
-        })
-      })
-      const assistData = await assistRes.json()
-      if (assistData.result) {
-        setResult(assistData.result)
-      } else {
-        throw new Error("Gagal memperbaiki teks")
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal memperbaiki teks" })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleTranslate = async () => {
-    if (!currentValue && !prompt) return
-    setLoading(true)
-    try {
-      const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
+      const seoValue = isSeo && hasValue && typeof value === "object" && value !== null
+        ? value as Record<string, unknown> : null
+      const content = typeof value === "string" ? value.slice(0, 24000)
+        : seoValue ? JSON.stringify({
+          meta_title: typeof seoValue.meta_title === "string" ? seoValue.meta_title.slice(0, 240) : undefined,
+          meta_description: typeof seoValue.meta_description === "string" ? seoValue.meta_description.slice(0, 640) : undefined,
+        }) : undefined
+      const response = await fetch("/api/tenant/" + encodeURIComponent(tenantSlug) + "/ai/content-assist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "translate",
-          content: currentValue || prompt,
-          targetLanguage: targetLocale,
-        })
+          form, fieldSlug: field.slug, action, locale, prompt,
+          content, context: polishOnly ? {} : context,
+          targetLanguage: action === "translate" ? language.trim() : undefined,
+        }),
       })
-      const assistData = await assistRes.json()
-      if (assistData.result) {
-        setResult(assistData.result)
-      } else {
-        throw new Error("Gagal menerjemahkan teks")
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal menerjemahkan teks" })
+      const data = await response.json()
+      if (!response.ok || !Array.isArray(data.suggestions)) throw new Error(data.error || "AI Assist gagal.")
+      const nextSuggestions = data.suggestions.flatMap((item: unknown) => {
+        const suggestion = normalizeAiFieldValue(field, item)
+        return suggestion === null ? [] : [suggestion]
+      })
+      if (!nextSuggestions.length) throw new Error("AI tidak menghasilkan saran yang sesuai.")
+      setSelected(0)
+      setSuggestions(nextSuggestions)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI Assist gagal.")
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleSummarize = async () => {
-    if (!currentValue) return
-    setLoading(true)
-    try {
-      const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "seo",
-          content: currentValue,
-        })
-      })
-      const assistData = await assistRes.json()
-      if (assistData.result) {
-        setResult(assistData.result)
-      } else {
-        throw new Error("Gagal membuat ringkasan SEO")
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat ringkasan SEO" })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleCopy = () => {
-    copyToClipboard(result)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={changeOpen}>
       <DialogTrigger asChild>
-        {trigger || (
-          <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px] font-bold rounded-lg text-primary hover:text-primary hover:bg-primary/10 transition-all flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>AI Assist</span>
-          </Button>
-        )}
+        <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px] font-bold text-primary"
+          aria-label={(isSeo ? (polishOnly ? "Rapikan SEO" : "Sarankan SEO") : "AI Assist") + " untuk " + field.name}>
+          <Sparkles className="size-3.5" aria-hidden="true" />
+          {isSeo ? (polishOnly ? "Rapikan SEO" : "Sarankan SEO") : "AI Assist"}
+        </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[620px] rounded-2xl border-border/80 bg-card p-0 overflow-hidden shadow-2xl">
-        <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div>
-              <DialogTitle className="text-sm font-bold flex items-center gap-2">
-                AI Content Assistant
-                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20 rounded-full">
-                  {fieldName}
-                </Badge>
-              </DialogTitle>
-              <DialogDescription className="text-xs mt-0.5">
-                Tulis, perbaiki tata bahasa, terjemahkan, atau buat ringkasan konten secara instan dengan AI.
-              </DialogDescription>
-            </div>
-          </div>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl" showCloseButton={!loading}>
+        <DialogHeader>
+          <DialogTitle>{field.name}</DialogTitle>
+          <DialogDescription>Tinjau saran AI sebelum menerapkannya ke field.</DialogDescription>
         </DialogHeader>
 
-        <div className="p-5 space-y-4">
-          <Tabs defaultValue="generate" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-muted/40 border border-border/80 p-1 rounded-xl">
-              <TabsTrigger value="generate" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
-                <Wand2 className="h-3.5 w-3.5" /> Buat Teks
-              </TabsTrigger>
-              <TabsTrigger value="correct" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5" /> Rapikan
-              </TabsTrigger>
-              <TabsTrigger value="translate" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
-                <Languages className="h-3.5 w-3.5" /> Terjemahkan
-              </TabsTrigger>
-              <TabsTrigger value="summarize" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
-                <FileText className="h-3.5 w-3.5" /> Ringkasan
-              </TabsTrigger>
-            </TabsList>
+        {actions.length > 1 && (
+          <div className="space-y-1.5">
+            <Label htmlFor="field-ai-action">Aksi AI</Label>
+            <Select value={action} disabled={loading} onValueChange={(next: FieldAiAction) => {
+              setAction(next)
+              setPrompt("")
+              setSuggestions([])
+              setError("")
+            }}>
+              <SelectTrigger id="field-ai-action" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {actions.map((item) => <SelectItem key={item} value={item}>
+                  {item === "generate" && field.type === "text" ? "Buat alternatif judul" : actionLabels[item]}
+                </SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-            <div className="pt-3 space-y-3">
-              <TabsContent value="generate" className="space-y-3 mt-0">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Instruksi / Topik Konten</Label>
-                  <Textarea
-                    placeholder="Contoh: Tulis pengantar menarik tentang update layanan terbaru..."
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    rows={3}
-                    className="rounded-xl text-xs bg-background border-border/80"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Tone:</Label>
-                    <Select value={tone} onValueChange={setTone}>
-                      <SelectTrigger className="h-8 text-xs rounded-xl w-36 border-border/80">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="professional" className="text-xs">Profesional</SelectItem>
-                        <SelectItem value="formal" className="text-xs">Formal</SelectItem>
-                        <SelectItem value="casual" className="text-xs">Santai & Ramah</SelectItem>
-                        <SelectItem value="creative" className="text-xs">Kreatif</SelectItem>
-                        <SelectItem value="technical" className="text-xs">Teknis</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-8 px-4 text-xs font-bold shadow-xs" 
-                    onClick={handleGenerate}
-                    disabled={loading || !prompt}
-                  >
-                    {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Wand2 className="mr-1.5 h-3.5 w-3.5" />}
-                    Generate
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="correct" className="space-y-3 mt-0">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Teks yang Diproses</Label>
-                  <Textarea
-                    placeholder="Masukkan teks atau biarkan kosong untuk menggunakan nilai field saat ini..."
-                    value={prompt || currentValue || ""}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    rows={3}
-                    className="rounded-xl text-xs bg-background border-border/80 font-mono"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Gaya:</Label>
-                    <Select value={correctInstruction} onValueChange={setCorrectInstruction}>
-                      <SelectTrigger className="h-8 text-xs rounded-xl w-44 border-border/80">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="grammar" className="text-xs">Tata Bahasa & Ejaan</SelectItem>
-                        <SelectItem value="professional" className="text-xs">Lebih Profesional</SelectItem>
-                        <SelectItem value="casual" className="text-xs">Lebih Santai</SelectItem>
-                        <SelectItem value="simple" className="text-xs">Sederhanakan Bahasa</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-8 px-4 text-xs font-bold shadow-xs" 
-                    onClick={handleCorrect}
-                    disabled={loading || (!prompt && !currentValue)}
-                  >
-                    {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
-                    Perbaiki
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="translate" className="space-y-3 mt-0">
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold">Teks Sumber</Label>
-                  <Textarea
-                    placeholder="Masukkan teks atau biarkan menggunakan nilai field saat ini..."
-                    value={prompt || currentValue || ""}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    rows={3}
-                    className="rounded-xl text-xs bg-background border-border/80"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground">Bahasa Tujuan:</Label>
-                    <Select value={targetLocale} onValueChange={setTargetLocale}>
-                      <SelectTrigger className="h-8 text-xs rounded-xl w-36 border-border/80">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="id" className="text-xs">Indonesia (ID)</SelectItem>
-                        <SelectItem value="en" className="text-xs">English (EN)</SelectItem>
-                        <SelectItem value="ja" className="text-xs">Japanese (JA)</SelectItem>
-                        <SelectItem value="zh" className="text-xs">Chinese (ZH)</SelectItem>
-                        <SelectItem value="fr" className="text-xs">French (FR)</SelectItem>
-                        <SelectItem value="de" className="text-xs">German (DE)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-8 px-4 text-xs font-bold shadow-xs" 
-                    onClick={handleTranslate}
-                    disabled={loading || (!prompt && !currentValue)}
-                  >
-                    {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Languages className="mr-1.5 h-3.5 w-3.5" />}
-                    Terjemahkan
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="summarize" className="space-y-3 mt-0">
-                <div className="p-3 border border-border/60 rounded-xl bg-muted/20 text-xs max-h-28 overflow-y-auto">
-                  {currentValue ? (
-                    <p className="text-muted-foreground">{currentValue}</p>
-                  ) : (
-                    <p className="text-muted-foreground italic">Belum ada teks di field saat ini.</p>
-                  )}
-                </div>
-                <div className="flex justify-end">
-                  <Button 
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-8 px-4 text-xs font-bold shadow-xs" 
-                    onClick={handleSummarize}
-                    disabled={loading || !currentValue}
-                  >
-                    {loading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileText className="mr-1.5 h-3.5 w-3.5" />}
-                    Ringkas Konten
-                  </Button>
-                </div>
-              </TabsContent>
-            </div>
-          </Tabs>
-
-          {result && (
-            <div className="space-y-2 pt-2 border-t border-border/60 animate-in fade-in">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-500" /> Hasil Asisten AI:
-                </Label>
-                <Button variant="ghost" size="sm" onClick={handleCopy} className="h-6 px-2 text-[10px] font-bold">
-                  {copied ? <Check className="mr-1 h-3 w-3 text-emerald-500" /> : <Copy className="mr-1 h-3 w-3" />}
-                  {copied ? "Tersalin" : "Salin"}
-                </Button>
-              </div>
-              <div className="p-3 bg-muted/40 border border-border/80 rounded-xl max-h-40 overflow-y-auto font-mono text-xs text-foreground">
-                <pre className="whitespace-pre-wrap font-sans text-xs">{result}</pre>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter className="p-4 border-t border-border/60 bg-muted/10 gap-2">
-          <Button variant="outline" size="sm" onClick={() => setOpen(false)} className="rounded-xl h-8 text-xs font-bold">
-            Batal
-          </Button>
-          <Button 
-            size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-8 text-xs font-bold shadow-xs"
-            disabled={!result}
-            onClick={() => {
-              onApply(result)
-              setOpen(false)
-              toast({ title: "Konten Diterapkan", description: `Teks telah dimasukkan ke ${fieldName}.` })
+        {(action === "generate" || (action === "seo" && !polishOnly)) && (
+          <div className="space-y-1.5">
+            <Label htmlFor="field-ai-source">Informasi sumber</Label>
+            <Textarea id="field-ai-source" value={prompt} onChange={(event) => {
+              setPrompt(event.target.value)
+              setSuggestions([])
+              setError("")
             }}
-          >
-            Terapkan ke Field
+              placeholder="Tambahkan fakta atau arahan penulisan" disabled={loading} maxLength={4000} rows={3} />
+          </div>
+        )}
+
+        {action === "translate" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="field-ai-language">Bahasa tujuan</Label>
+            <Select value={language} disabled={loading} onValueChange={(next) => {
+              setLanguage(next)
+              setSuggestions([])
+              setError("")
+            }}>
+              <SelectTrigger id="field-ai-language" className="w-full"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(languages).map(([code, label]) => (
+                  <SelectItem key={code} value={code}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {!canGenerate && <p className="text-sm text-muted-foreground">Isi teks atau informasi sumber terlebih dahulu.</p>}
+        {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+
+        {suggestions.length > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="mb-1 text-sm font-semibold">Pratinjau saran</legend>
+            {suggestions.map((suggestion, index) => (
+              <label key={index} className="flex items-start gap-2 rounded-lg border p-2 text-sm">
+                {suggestions.length > 1 && <input type="radio" name="ai-field-suggestion" className="mt-1"
+                  checked={selected === index} onChange={() => setSelected(index)} />}
+                {typeof suggestion === "string"
+                  ? <span className="whitespace-pre-wrap break-words">{aiPreviewText(suggestion, field)}</span>
+                  : <span><strong>{suggestion.meta_title}</strong><br />{suggestion.meta_description}</span>}
+              </label>
+            ))}
+          </fieldset>
+        )}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={loading} onClick={() => changeOpen(false)}>Batal</Button>
+          <Button type="button" variant="outline" disabled={!canGenerate || loading} onClick={generate}>
+            {loading && <Loader2 className="size-4 animate-spin" />}
+            {actionLabel}
           </Button>
+          {suggestions[selected] && <Button type="button" onClick={() => {
+            onApply(suggestions[selected])
+            changeOpen(false)
+          }}>Terapkan ke Field</Button>}
         </DialogFooter>
       </DialogContent>
     </Dialog>

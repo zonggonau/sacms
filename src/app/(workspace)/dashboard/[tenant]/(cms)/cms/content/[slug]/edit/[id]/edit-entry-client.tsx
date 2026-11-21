@@ -67,6 +67,8 @@ import { DocumentTemplateField } from "@/components/content/field-renderers/docu
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { aiFormContext, applyAiFieldValue, applyAiSuggestions, type AiFieldValue } from "@/lib/content/field-ai"
+import { roleMeets } from "@/lib/rbac/staff"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { ReviewerAssignment } from "@/components/cms/reviewer-assignment"
@@ -380,15 +382,13 @@ export default function CMSEditEntryClient({
     }))
   }
 
-  const handleSmartFill = (generatedData: Record<string, unknown>) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...generatedData,
-    }))
-    toast({
-      title: "Smart Fill Berhasil",
-      description: "Data form telah diisi otomatis oleh AI sesuai konteks.",
-    })
+  const aiForm = { kind: "contentType", slug: contentTypeSlug } as const
+  const aiFields = contentType?.fields || []
+  const aiContext = aiFormContext(aiFields, formData, aiForm)
+  const canUseAi = roleMeets(effectiveRole, "editor")
+
+  const handleSmartFill = (suggestions: Record<string, AiFieldValue>) => {
+    setFormData((current) => applyAiSuggestions(aiFields, current, suggestions, aiForm))
   }
 
   const renderField = (field: Field) => {
@@ -400,13 +400,18 @@ export default function CMSEditEntryClient({
           {field.name}
           {field.required && <span className="text-destructive">*</span>}
         </Label>
-        <AIAssistantDialog 
+        {canUseAi && !busy && <AIAssistantDialog
+          key={locale}
           tenantSlug={tenantSlug}
-          contentTypeSlug={contentTypeSlug}
-          fieldName={field.name}
-          currentValue={value as string}
-          onApply={(val) => handleFieldChange(field.slug, val)}
-        />
+          form={aiForm}
+          field={field}
+          value={value}
+          context={aiContext}
+          locale={locale}
+          onApply={(suggestion) => setFormData((current) => ({
+            ...current, [field.slug]: applyAiFieldValue(field, current[field.slug], suggestion),
+          }))}
+        />}
       </div>
     )
 
@@ -505,10 +510,10 @@ export default function CMSEditEntryClient({
       }
 
       case "component":
-        return <div className="space-y-1.5"><ComponentField label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
+        return <div className="space-y-1.5"><ComponentField allowAi={canUseAi && !busy} locale={locale} label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
 
       case "repeater":
-        return <div className="space-y-1.5"><DynamicZoneField label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5"><DynamicZoneField allowAi={canUseAi && !busy} locale={locale} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "json":
         return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} /></div>
@@ -606,8 +611,11 @@ export default function CMSEditEntryClient({
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              {!busy && (
+              {!busy && canUseAi && (
                 <AISmartFill
+                  key={locale}
+                  form={aiForm}
+                  locale={locale}
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}

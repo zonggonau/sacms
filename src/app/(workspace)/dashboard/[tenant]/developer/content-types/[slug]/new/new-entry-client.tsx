@@ -56,6 +56,7 @@ import { DocumentTemplateField } from "@/components/content/field-renderers/docu
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { isFieldVisible } from "@/lib/field-visibility"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
+import { applyAiSuggestions, type AiFieldValue } from "@/lib/content/field-ai"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
 import { createEntryAction } from "@/actions/content"
 
@@ -215,15 +216,9 @@ export default function CTBNewEntryClient({
     }))
   }
 
-  const handleSmartFill = (generatedData: Record<string, unknown>) => {
-    setFormData((prev) => ({
-      ...prev,
-      ...generatedData,
-    }))
-    toast({
-      title: "Smart Fill applied",
-      description: "Form fields have been filled with AI-generated data.",
-    })
+  const aiForm = { kind: "contentType", slug: contentTypeSlug } as const
+  const handleSmartFill = (suggestions: Record<string, AiFieldValue>) => {
+    setFormData((current) => applyAiSuggestions(contentType?.fields || [], current, suggestions, aiForm))
   }
 
   const renderField = (field: Field) => {
@@ -399,6 +394,8 @@ export default function CTBNewEntryClient({
 
               <div className="flex items-center gap-2">
                 <AISmartFill
+                  form={aiForm}
+                  locale={locale}
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}

@@ -461,6 +461,7 @@ export default function NewContentTypeClient({
         fields={fields}
         tenantSlug={tenantSlug}
         context="contentType"
+        modelSlug={slug}
         onSave={saveFieldConfig}
         onSaveBatch={saveBatchFields}
         templateContentTypes={availableContentTypes}

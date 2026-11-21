@@ -6,12 +6,11 @@ import {
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, Search, Filter,
   CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle,
-  Check, Layers, Sparkles, Code2, LayoutGrid, Table2, Kanban,
+  Check, Layers, Sparkles, LayoutGrid, Table2, Kanban,
   Columns, ChevronDown, X, Link2, FileDown, Loader2,
   ArrowUpDown, ArrowUp, ArrowDown, Copy, CalendarRange, FileSpreadsheet, RotateCcw,
   ListFilter, User
 } from "lucide-react"
-import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
 import {
   Dialog,
   DialogContent,
@@ -147,7 +146,6 @@ export function ContentEntriesManager({
   const [searchQuery, setSearchQuery] = useState("")
   const [searchTargetField, setSearchTargetField] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<WorkflowStatus[]>([...CONTENT_STATUSES])
-  const [isApiSnippetOpen, setIsApiSnippetOpen] = useState(false)
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<"table" | "kanban" | "calendar">("table")
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, RelationLabelItem>>(initialRelationLabels)
@@ -884,15 +882,6 @@ export function ContentEntriesManager({
         </DialogContent>
       </Dialog>
 
-      <ApiSnippetDialog
-        open={isApiSnippetOpen} 
-        onOpenChange={setIsApiSnippetOpen} 
-        tenantSlug={tenantSlug} 
-        contentTypeSlug={contentTypeSlug} 
-        contentTypeName={contentType?.name}
-        fields={contentType?.fields}
-      />
-
       <ColumnSettingsModal
         isOpen={isColumnModalOpen}
         onOpenChange={setIsColumnModalOpen}
@@ -937,26 +926,15 @@ export function ContentEntriesManager({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {canCreateEntry && (
               <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsApiSnippetOpen(true)}
-                className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80 text-muted-foreground hover:text-foreground"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0 self-start sm:self-auto"
+                onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
+                disabled={isLimitReached}
               >
-                <Code2 className="mr-1.5 h-3.5 w-3.5 text-primary" /> API Snippet
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Entri Baru
               </Button>
-
-              {canCreateEntry && (
-                <Button 
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0" 
-                  onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
-                  disabled={isLimitReached}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Entri Baru
-                </Button>
-              )}
-            </div>
+            )}
           </div>
 
           {/* Limit Reached Warning Banner */}

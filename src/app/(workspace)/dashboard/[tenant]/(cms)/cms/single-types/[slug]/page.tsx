@@ -52,6 +52,8 @@ import { RatingField } from "@/components/content/field-renderers/rating-field"
 import { UrlField } from "@/components/content/field-renderers/url-field"
 import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { AISmartFill } from "@/components/content/ai-smart-fill"
+import { aiFormContext, applyAiFieldValue, applyAiSuggestions } from "@/lib/content/field-ai"
 
 interface Field {
   id: string
@@ -171,6 +173,9 @@ export default function CMSSingleTypeDetailPage() {
     }
   }
 
+  const aiForm = { kind: "singleType", slug: singleTypeSlug } as const
+  const aiContext = aiFormContext(singleType?.fields || [], formData, aiForm)
+
   const renderField = (field: Field) => {
     const value = formData[field.slug]
     const renderLabelWithAI = () => (
@@ -179,13 +184,18 @@ export default function CMSSingleTypeDetailPage() {
           {field.name}
           {field.required && <span className="text-destructive font-bold">*</span>}
         </Label>
-        {canEdit && ["text", "richText", "textarea"].includes(field.type) && (
+        {canEdit && !saving && singleType && (
           <AIAssistantDialog
-            fieldName={field.name}
-            contentTypeSlug={singleType?.slug || ""} 
-            tenantSlug={tenantSlug} 
-            currentValue={value as string || ""} 
-            onApply={val => handleFieldChange(field.slug, val)} 
+            key={singleType.locale}
+            tenantSlug={tenantSlug}
+            form={aiForm}
+            field={field}
+            value={value}
+            context={aiContext}
+            locale={singleType.locale}
+            onApply={(suggestion) => setFormData((current) => ({
+              ...current, [field.slug]: applyAiFieldValue(field, current[field.slug], suggestion),
+            }))}
           />
         )}
       </div>
@@ -304,7 +314,7 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-1.5">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "repeater":
-        return <DynamicZoneField label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
+        return <DynamicZoneField allowAi={canEdit && !saving} locale={singleType?.locale} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
 
       case "document_template":
         return (
@@ -321,7 +331,7 @@ export default function CMSSingleTypeDetailPage() {
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField allowAi={canEdit && !saving} locale={singleType?.locale} label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} className="rounded-xl h-9 text-xs" /></div>
@@ -383,7 +393,18 @@ export default function CMSSingleTypeDetailPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Konten Singleton &middot; /{singleType.slug}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {canEdit && !saving && <AISmartFill
+            key={singleType.locale}
+            form={aiForm}
+            locale={singleType.locale}
+            tenantSlug={tenantSlug}
+            contentTypeName={singleType.name}
+            schema={singleType.fields}
+            currentValues={formData}
+            onApply={(suggestions) => setFormData((current) =>
+              applyAiSuggestions(singleType.fields, current, suggestions, aiForm))}
+          />}
           <Button 
             variant="outline" 
             onClick={() => handleSave(false)} 

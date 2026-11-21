@@ -1,68 +1,103 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
-import { withStaffAuth, readJson } from "@/lib/api/route-helpers"
+import { withStaffAuth, readJson, apiError } from "@/lib/api/route-helpers"
+import { fieldAiActions, getFieldAiMode, isAiFieldEmpty } from "@/lib/content/field-ai"
+import { isStudioFieldEnabled } from "@/lib/field-visibility"
+import { aiFormContextSchema, aiFormTargetSchema, filterAiContext, isAiQuotaError, loadAiFormSchema, normalizeGeneratedField } from "@/lib/content/ai-form-schema"
 
 const assistSchema = z.object({
-  action: z.enum(["generate", "improve", "translate", "seo"]),
-  prompt: z.string().optional(),
-  content: z.string().optional(),
-  targetLanguage: z.string().optional(),
-  tone: z.string().optional(),
-  fieldSlug: z.string().optional(),
+  action: z.enum(["generate", "improve", "summarize", "translate", "seo"]),
+  form: aiFormTargetSchema.optional(),
+  fieldSlug: z.string().max(128).optional(),
+  prompt: z.string().trim().max(4000).optional(),
+  content: z.string().max(24000).optional(),
+  context: aiFormContextSchema.default({}),
+  locale: z.string().min(2).max(30).default("id"),
+  tone: z.string().max(100).optional(),
+  targetLanguage: z.string().min(1).max(100).optional(),
 })
 
+const instructions = {
+  generate: "Write a draft based on the supplied source and brief.",
+  improve: "Improve clarity and grammar. Preserve names, facts and meaning.",
+  summarize: "Summarize the provided text while preserving its key facts.",
+  translate: "Translate the provided text. Preserve meaning, names and formatting.",
+  seo: "Suggest concise and accurate search metadata using the supplied source.",
+}
+
 export const POST = withStaffAuth(async (request, _context, { access }) => {
-    const parsed = await readJson(request, assistSchema)
-    if (!parsed.ok) return parsed.response
+  const parsed = await readJson(request, assistSchema)
+  if (!parsed.ok) return parsed.response
+  const { action, form, fieldSlug, locale, tone, targetLanguage, prompt, content } = parsed.data
+  const definition = form ? await loadAiFormSchema(form, access) : null
+  if (form && !definition) return apiError("not_found", { message: "Formulir tidak tersedia untuk AI Assist." })
 
-    const { action, prompt, content = "", targetLanguage = "id", tone = "formal" } = parsed.data
+  const field = definition?.fields.find((item) => item.slug === fieldSlug && isStudioFieldEnabled(item))
+  if (form && (!field || !fieldAiActions(field, form).includes(action))) {
+    return apiError("validation", { message: "Aksi AI ini tidak tersedia untuk field tersebut." })
+  }
 
-    const systemPrompt = "You are a professional CMS Content Assistant. Output only the final refined content without conversational filler."
-    let userPrompt = ""
+  const context = form && definition ? filterAiContext(
+    definition.fields.filter((item) => getFieldAiMode(item, form) !== "off"),
+    parsed.data.context,
+  ) : {}
+  const polishOnly = !!(field && form && getFieldAiMode(field, form) === "polish")
+  const hasContent = !isAiFieldEmpty(content)
+  if (
+    (action === "generate" && !prompt && Object.keys(context).length === 0) ||
+    (action !== "generate" && action !== "seo" && !hasContent) ||
+    (action === "seo" && !hasContent && (polishOnly || (!prompt && Object.keys(context).length === 0))) ||
+    (action === "translate" && !targetLanguage)
+  ) {
+    return apiError("validation", { message: "Isi teks, informasi sumber, atau bahasa tujuan yang dibutuhkan terlebih dahulu." })
+  }
 
-    if (action === "generate") {
-      userPrompt = `Write high-quality content for a CMS field based on this prompt: "${prompt}". Tone: ${tone}.`
-    } else if (action === "improve") {
-      userPrompt = `Improve and polish the following text. Tone: ${tone}. Instructions: "${prompt || "Fix grammar, improve flow, and make it engaging"}".\n\nOriginal Text:\n${content}`
-    } else if (action === "translate") {
-      userPrompt = `Translate the following text accurately into ${targetLanguage}. Preserve markdown and formatting.\n\nOriginal Text:\n${content}`
-    } else if (action === "seo") {
-      userPrompt = `Generate SEO metadata from this content. Return a JSON object with "metaTitle" (max 60 chars) and "metaDescription" (max 160 chars).\n\nContent:\n${content}`
-    }
+  const titleAlternatives = field?.type === "text" && action === "generate"
+  const seo = action === "seo"
+  const rule = polishOnly
+    ? "Only refine existing wording in its original language. Do not add information."
+    : "Use only supplied facts. Do not invent prices, dates, places, names, certification, or other claims."
+  const languageRule = action === "translate" ? "Use the specified targetLanguage." : "Use the specified locale unless polishing existing wording."
+  const format = seo
+    ? field
+      ? 'Return JSON with "meta_title" (max 60 chars) and "meta_description" (max 160 chars).'
+      : 'Return JSON with "metaTitle" (max 60 chars) and "metaDescription" (max 160 chars).'
+    : titleAlternatives
+      ? 'Return JSON with "suggestions", an array of three short, distinct single-line alternatives.'
+      : field?.type === "richText"
+        ? "Return simple HTML. Preserve paragraph, heading, and list structure. Do not add images or links."
+        : "Return only the resulting text without commentary."
 
-    try {
-      const { safeGenerateContent } = await import("@/lib/ai")
-      const result = await safeGenerateContent(systemPrompt, userPrompt, {
-        responseFormat: action === "seo" ? "json_object" : "text",
+  try {
+    const { safeGenerateContent } = await import("@/lib/ai")
+    const result = await safeGenerateContent(
+      [instructions[action], rule, languageRule, format].join(" "),
+      JSON.stringify({ field: field?.name, locale, tone, targetLanguage, prompt: polishOnly ? undefined : prompt, content, context: polishOnly ? undefined : context }),
+      {
         tenantId: access.tenantId,
-        action: `content_assist_${action}`,
-      })
+        action: "content_assist_" + action,
+        responseFormat: seo || titleAlternatives ? "json_object" : "text",
+        maxTokens: seo || titleAlternatives ? 500 : 2500,
+      },
+    )
 
-      const resultText = action === "seo" ? result.text : result.text.trim()
-      return NextResponse.json({ success: true, result: resultText })
-    } catch (err) {
-      console.error("AI Gateway call failed, falling back to local processor:", err)
+    if (!field) return NextResponse.json({ success: true, result: result.text.trim() })
+    const modelOutput = seo || titleAlternatives ? JSON.parse(result.text) : result.text
+    const choices: unknown[] = titleAlternatives && Array.isArray(modelOutput?.suggestions)
+      ? modelOutput.suggestions.slice(0, 3)
+      : [modelOutput]
+    const suggestions = choices.flatMap((choice) => {
+      const value = normalizeGeneratedField(field, choice)
+      return value === null ? [] : [value]
+    })
+    if (suggestions.length === 0) {
+      return apiError("validation", { message: "AI tidak menghasilkan saran yang sesuai. Coba tambahkan informasi sumber." })
     }
 
-    // Smart Local Fallback when the Gateway isn't configured or fails
-    let result = ""
-
-    if (action === "generate") {
-      result = `# ${prompt || "Judul Konten Baru"}\n\nBerikut adalah konten yang dihasilkan secara otomatis untuk draf Anda. Anda dapat menyunting dan menambahkan detail lebih lanjut sebelum dipublikasikan.\n\n### Poin Utama\n- Memperkenalkan informasi relevan kepada pembaca\n- Menyediakan panduan praktis dan terstruktur\n- Ajakan bertindak (Call to Action) di akhir tulisan.`
-    } else if (action === "improve") {
-      result = content
-        ? content.trim() + `\n\n*(Telah dirapikan dan diselaraskan untuk gaya penulisan ${tone})*`
-        : "Konten telah diperbaiki secara otomatis."
-    } else if (action === "translate") {
-      result = `[${targetLanguage.toUpperCase()} Translation]\n\n${content}`
-    } else if (action === "seo") {
-      const firstLine = content.split("\n")[0]?.replace(/^#+\s*/, "").slice(0, 55) || "Judul Konten Lengkap"
-      const snippet = content.replace(/\n+/g, " ").slice(0, 150) || "Deskripsi ringkas konten untuk mesin pencari Google dan OpenGraph."
-      result = JSON.stringify({
-        metaTitle: `${firstLine} | SaCMS`,
-        metaDescription: snippet,
-      })
-    }
-
-    return NextResponse.json({ success: true, result })
+    return NextResponse.json({ success: true, suggestions })
+  } catch (error) {
+    if (isAiQuotaError(error)) return apiError("rate_limited", { message: "Kuota AI workspace tidak mencukupi." })
+    console.error("[AI Assist] Generation failed", error instanceof Error ? error.name : "Unknown")
+    return apiError("internal", { status: 503, message: "AI Assist sedang tidak tersedia. Isi field tetap seperti sebelumnya." })
+  }
 }, { minRole: "editor" })

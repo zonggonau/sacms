@@ -562,6 +562,7 @@ export default function EditContentTypeClient({
         fields={fields}
         tenantSlug={tenantSlug}
         context="contentType"
+        modelSlug={slug}
         onSave={saveFieldConfig}
         onSaveBatch={saveBatchFields}
         templateContentTypes={availableContentTypes}

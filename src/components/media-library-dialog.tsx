@@ -50,6 +50,11 @@ export function MediaLibraryDialog({
   const [imageUrl, setImageUrl] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
 
+  const selectMedia: MediaLibraryDialogProps["onSelect"] = (media) => {
+    onSelect(media)
+    onOpenChange(false)
+  }
+
   // Fetch library items
   useEffect(() => {
     if (open && activeTab === "library" && tenantSlug) {
@@ -118,14 +123,13 @@ export function MediaLibraryDialog({
       // returns the upload result directly (no Media row to wrap).
       const uploadedFile = tenantSlug ? data.media[0] : data
 
-      onSelect({
+      selectMedia({
         url: uploadedFile.url,
         name: uploadedFile.originalName || uploadedFile.name,
         type: uploadFile.type.startsWith("image/") ? "image" : "file",
       })
       
       setUploadFile(null)
-      onOpenChange(false)
     } catch (error: any) {
       console.error("Error uploading:", error)
       toast.error(error.message || "Failed to upload file")
@@ -135,17 +139,18 @@ export function MediaLibraryDialog({
   }
 
   const handleUrlSubmit = () => {
-    if (!imageUrl.trim()) return
-    onSelect({
-      url: imageUrl,
-      name: imageUrl.split("/").pop() || "External URL",
+    const url = imageUrl.trim()
+    if (!url) return
+    selectMedia({
+      url,
+      name: url.split("/").pop() || "External URL",
       type: "image",
     })
     setImageUrl("")
-    onOpenChange(false)
   }
 
   const filteredItems = libraryItems.filter((item) =>
+    (mediaType !== "image" || item.type === "image") &&
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
@@ -215,10 +220,12 @@ export function MediaLibraryDialog({
                 ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                     {filteredItems.map((item) => (
-                      <div
+                      <button
                         key={item.id}
-                        className="group relative aspect-square rounded-none border border-border overflow-hidden cursor-pointer hover:border-orange-500 transition-all bg-muted/20"
-                        onClick={() => onSelect(item)}
+                        type="button"
+                        aria-label={item.name}
+                        className="group relative aspect-square rounded-none border border-border overflow-hidden cursor-pointer hover:border-orange-500 focus-visible:ring-2 focus-visible:ring-primary transition-all bg-muted/20"
+                        onClick={() => selectMedia(item)}
                       >
                         {item.type === "image" ? (
                           <img
@@ -227,17 +234,17 @@ export function MediaLibraryDialog({
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
                         ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center">
+                          <span className="w-full h-full flex flex-col items-center justify-center">
                             <FileText className="h-10 w-10 text-muted-foreground/40" />
                             <span className="text-[10px] font-bold uppercase mt-2 text-muted-foreground/60">{item.mimeType?.split('/')[1]}</span>
-                          </div>
+                          </span>
                         )}
-                        <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                          <p className="text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-none backdrop-blur-sm truncate w-full">
+                        <span className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-end p-2">
+                          <span className="text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-none backdrop-blur-sm truncate w-full">
                             {item.name}
-                          </p>
-                        </div>
-                      </div>
+                          </span>
+                        </span>
+                      </button>
                     ))}
                   </div>
                 )}

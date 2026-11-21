@@ -32,7 +32,6 @@ export function MediaMultipleField({
   const handleSelectMedia = (media: { url: string }) => {
     const currentValues = Array.isArray(value) ? value : []
     onChange([...currentValues, media.url])
-    setShowMediaLibrary(false)
   }
 
   return (

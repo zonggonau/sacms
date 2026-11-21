@@ -27,6 +27,8 @@ interface DynamicZoneFieldProps {
   onChange: (val: any[]) => void
   label: React.ReactNode
   allowedComponents?: string[] // Optional array of allowed component slugs. If empty/undefined, allow all.
+  allowAi?: boolean
+  locale?: string
 }
 
 export function DynamicZoneField({
@@ -34,7 +36,9 @@ export function DynamicZoneField({
   value,
   onChange,
   label,
-  allowedComponents
+  allowedComponents,
+  allowAi,
+  locale,
 }: DynamicZoneFieldProps) {
   const [components, setComponents] = useState<ComponentDefinition[]>([])
   const [loading, setLoading] = useState(true)
@@ -151,6 +155,8 @@ export function DynamicZoneField({
                     <ComponentField 
                       tenantSlug={tenantSlug} 
                       componentSlug={item.__component} 
+                      allowAi={allowAi}
+                      locale={locale}
                       value={item} 
                       onChange={(v) => handleItemChange(index, v)} 
                       label={

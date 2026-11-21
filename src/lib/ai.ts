@@ -6,6 +6,7 @@ import { getTenantPlanConfig } from "./tenant-plan"
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export interface AIConfig {
+  refundOnFailure?: boolean
   maxTokens?: number
   temperature?: number
   responseFormat?: "text" | "json_object"
@@ -266,40 +267,47 @@ export async function safeGenerateContent(
 
   await enforceAiQuota(finalConfig)
 
-  const { model, modelId } = await resolveGatewayModel(finalConfig.overrideModel)
+  try {
+    const { model, modelId } = await resolveGatewayModel(finalConfig.overrideModel)
 
-  const { text, usage } = await withAiRetry(async () => {
-    if (finalConfig.responseFormat === "json_object") {
-      // generateObject's "no-schema" output mode gives us provider-agnostic
-      // structured JSON (tool-calling or native JSON mode, whichever the
-      // model supports) instead of relying on OpenAI-only response_format
-      // and hand-stripping ```json fences from a text reply.
-      const result = await generateObject({
+    const { text, usage } = await withAiRetry(async () => {
+      if (finalConfig.responseFormat === "json_object") {
+        // generateObject's "no-schema" output mode gives us provider-agnostic
+        // structured JSON (tool-calling or native JSON mode, whichever the
+        // model supports) instead of relying on OpenAI-only response_format
+        // and hand-stripping ```json fences from a text reply.
+        const result = await generateObject({
+          model,
+          output: "no-schema",
+          system: systemPrompt
+            ? `${systemPrompt}\n\nRespond with ONLY raw JSON — no markdown code fences, no commentary before or after.`
+            : "Respond with ONLY raw JSON — no markdown code fences, no commentary before or after.",
+          prompt: userPrompt,
+          maxOutputTokens: finalConfig.maxTokens || 4000,
+          temperature: finalConfig.temperature ?? 0.7,
+        })
+        return { text: JSON.stringify(result.object), usage: toUsageTotals(result.usage) }
+      }
+
+      const result = await generateText({
         model,
-        output: "no-schema",
-        system: systemPrompt
-          ? `${systemPrompt}\n\nRespond with ONLY raw JSON — no markdown code fences, no commentary before or after.`
-          : "Respond with ONLY raw JSON — no markdown code fences, no commentary before or after.",
+        system: systemPrompt || undefined,
         prompt: userPrompt,
         maxOutputTokens: finalConfig.maxTokens || 4000,
         temperature: finalConfig.temperature ?? 0.7,
       })
-      return { text: JSON.stringify(result.object), usage: toUsageTotals(result.usage) }
-    }
-
-    const result = await generateText({
-      model,
-      system: systemPrompt || undefined,
-      prompt: userPrompt,
-      maxOutputTokens: finalConfig.maxTokens || 4000,
-      temperature: finalConfig.temperature ?? 0.7,
+      return { text: result.text, usage: toUsageTotals(result.usage) }
     })
-    return { text: result.text, usage: toUsageTotals(result.usage) }
-  })
 
-  await recordAiUsage(finalConfig, usage, modelId, text)
+    await recordAiUsage(finalConfig, usage, modelId, text)
 
-  return { text, model: modelId, usage }
+    return { text, model: modelId, usage }
+  } catch (error) {
+    if (finalConfig.refundOnFailure) {
+      await refundAiQuota(finalConfig).catch((refundError) => console.error("[AI Quota Refund Error]", refundError))
+    }
+    throw error
+  }
 }
 
 export interface GenerateContentParams {
