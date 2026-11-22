@@ -508,4 +508,11 @@ describe("MCP workspace server route — source contract", () => {
     const playbookBlock = toolBlockOf("get_agent_playbook")
     expect(playbookBlock).toMatch(/apply_website_template/)
   })
+
+  it("defines resolveSubdomainLabel (read-only — never generates a token for an existing tenant) and every deployToVercel call site uses it instead of the raw tenant slug", () => {
+    expect(routeSource).toMatch(/async function resolveSubdomainLabel\(/)
+    const occurrences = routeSource.match(/deployToVercel\([^)]*\bsubdomainLabel\b[^)]*\)/g) || []
+    expect(occurrences.length).toBe(3) // deploy_to_sacms, deploy_website_patch, rollback_website
+    expect(routeSource).not.toMatch(/deployToVercel\([^)]*\bauth\.tenantSlug\b[^)]*\)/)
+  })
 })

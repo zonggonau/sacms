@@ -2,6 +2,7 @@ import { db, getTenantDbById } from "./database"
 import { STARTER_KITS } from "./starter-kits"
 import { ensureSiteSettings } from "./infrastructure/site-settings"
 import { seedDefaultTenantSchema } from "./infrastructure/default-tenant-schema"
+import { ensurePublicSubdomainToken } from "./infrastructure/public-subdomain"
 
 /**
  * Provision a new tenant with starter content types and demo data.
@@ -357,6 +358,13 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
     // slug the starter kit above (or an earlier run) already created.
     await seedDefaultTenantSchema(tenantId).catch((err) =>
       console.warn(`[Provisioning] Failed to seed default schema for ${tenantId}:`, err)
+    )
+
+    // 5.7 Generate this tenant's own random public-subdomain token so its
+    // first deploy's `*.sites.sacms.cloud` label is a short, SSL-safe
+    // random id instead of a potentially-long slug-derived one.
+    await ensurePublicSubdomainToken(tenantId).catch((err) =>
+      console.warn(`[Provisioning] Failed to generate public subdomain token for ${tenantId}:`, err)
     )
 
     console.log(`[Provisioning] Completed for tenant: ${tenantId}`)

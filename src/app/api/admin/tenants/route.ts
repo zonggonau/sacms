@@ -9,6 +9,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { assertPublicHost, SsrfError } from "@/lib/safe-url"
 import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
 import { seedDefaultTenantSchema } from "@/lib/infrastructure/default-tenant-schema"
+import { ensurePublicSubdomainToken } from "@/lib/infrastructure/public-subdomain"
 
 const MASK = "••••••••"
 
@@ -228,6 +229,9 @@ export const POST = withAdminAuth(async (request, _context, { session }) => {
     )
     await seedDefaultTenantSchema(tenant.id).catch((err) =>
       console.warn(`[admin/tenants] Failed to seed default schema for ${tenant.id}:`, err)
+    )
+    await ensurePublicSubdomainToken(tenant.id).catch((err) =>
+      console.warn(`[admin/tenants] Failed to generate public subdomain token for ${tenant.id}:`, err)
     )
 
     logAudit({

@@ -52,6 +52,11 @@ vi.mock("@/lib/infrastructure/demo-tenant", () => ({
   ensureDemoTenantForSchemaTemplate: (...args: any[]) => ensureDemoTenantForSchemaTemplate(...args),
 }))
 
+const ensurePublicSubdomainToken = vi.fn()
+vi.mock("@/lib/infrastructure/public-subdomain", () => ({
+  ensurePublicSubdomainToken: (...args: any[]) => ensurePublicSubdomainToken(...args),
+}))
+
 const { deployWebsiteTemplateDemo, verifyDemoRoutes } = await import("@/lib/infrastructure/deploy-website-template-demo")
 
 const websiteTemplate = {
@@ -65,6 +70,7 @@ describe("deployWebsiteTemplateDemo", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ensureDemoTenantForSchemaTemplate.mockResolvedValue({ id: "demo-tenant-1", slug: "demo-company-profile" })
+    ensurePublicSubdomainToken.mockResolvedValue("a1b2c3d4e5f60718")
     // Re-applied every test (not just once at module scope) — clearAllMocks
     // keeps whatever implementation a PRIOR test last set via a plain
     // (non-Once) mockResolvedValue, so a test that overrides this to
@@ -99,7 +105,11 @@ describe("deployWebsiteTemplateDemo", () => {
       undefined,
       "production",
     )
-    expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
+    // Uses the demo tenant's own random publicSubdomainToken, not the raw
+    // template slug (a long slug previously pushed demo-<slug>.sites.
+    // sacms.cloud past the SSL cert issuer's 64-char Common Name limit).
+    expect(ensurePublicSubdomainToken).toHaveBeenCalledWith("demo-tenant-1")
+    expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "a1b2c3d4e5f60718")
     expect(result).toEqual({
       url: "https://demo-modern-dark.sites.sacms.cloud",
       deploymentId: "dpl_1",
@@ -116,6 +126,18 @@ describe("deployWebsiteTemplateDemo", () => {
         demoDeploymentId: "dpl_1",
       },
     })
+  })
+
+  it("falls back to the raw template slug (old behavior) if ensurePublicSubdomainToken itself fails, instead of throwing past the deploy", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_1", url: "https://sacms-demo-modern-dark.vercel.app", state: "QUEUED", projectId: "prj_1", projectName: "sacms-demo-modern-dark" })
+    ensurePublicSubdomainToken.mockRejectedValue(new Error("db hiccup"))
+    ensureDemoSubdomain.mockResolvedValue("demo-modern-dark.sites.sacms.cloud")
+    getProjectPrimaryDomain.mockResolvedValue("https://demo-modern-dark.sites.sacms.cloud")
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html>real page</html>" }) as any
+
+    await deployWebsiteTemplateDemo(websiteTemplate)
+
+    expect(ensureDemoSubdomain).toHaveBeenCalledWith("prj_1", "modern-dark")
   })
 
   it("reports verified: false (never throws) when Vercel accepted the deploy but the URL doesn't actually render — accepted is not the same as working, even after retrying through the alias-cutover window", async () => {

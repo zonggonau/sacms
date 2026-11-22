@@ -9,6 +9,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
 import { seedDefaultTenantSchema } from "@/lib/infrastructure/default-tenant-schema"
+import { ensurePublicSubdomainToken } from "@/lib/infrastructure/public-subdomain"
 import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
@@ -75,6 +76,9 @@ export async function POST(request: NextRequest) {
     )
     await seedDefaultTenantSchema(tenant.id).catch((err) =>
       console.warn(`[tenant/create] Failed to seed default schema for ${tenant.id}:`, err)
+    )
+    await ensurePublicSubdomainToken(tenant.id).catch((err) =>
+      console.warn(`[tenant/create] Failed to generate public subdomain token for ${tenant.id}:`, err)
     )
 
     return NextResponse.json({

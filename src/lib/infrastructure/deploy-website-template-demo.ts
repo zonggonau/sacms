@@ -4,6 +4,7 @@ import { db } from "@/lib/database"
 import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs, getRuntimeLogs } from "@/lib/vercel-client"
 import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
+import { ensurePublicSubdomainToken } from "./public-subdomain"
 
 export interface WebsiteTemplateDemoInput {
   id: string
@@ -224,7 +225,17 @@ export async function deployWebsiteTemplateDemo(
     const deployResult = await deployToVercel(projectName, files, envVars, undefined, "production")
 
     if (deployResult.projectId) {
-      await ensureDemoSubdomain(deployResult.projectId, websiteTemplate.slug)
+      // A long templateSlug (e.g. "profil-dinas-pemberdayaan-perempuan-...")
+      // made `demo-<templateSlug>.sites.sacms.cloud` exceed the SSL
+      // certificate issuer's 64-character Common Name limit outright
+      // ("The common name is longer than 64 characters"), failing cert
+      // issuance for the whole domain. Self-heals EVERY demo tenant (not
+      // just new ones) onto a short random token instead — unlike a real
+      // customer tenant, a demo has no external bookmarks/SEO to break, and
+      // one stuck on the old slug-based domain is already non-functional
+      // today from this exact failure, so backfilling only fixes it.
+      const subdomainToken = await ensurePublicSubdomainToken(demoTenant.id).catch(() => websiteTemplate.slug)
+      await ensureDemoSubdomain(deployResult.projectId, subdomainToken)
     }
     const url = (deployResult.projectId ? await getProjectPrimaryDomain(deployResult.projectId) : null) || deployResult.url || null
 

@@ -41,8 +41,12 @@ export async function resolveTenantHostingStatus(
    *  defaulting to the shared master `db`. */
   client: PrismaClient = db,
   /** Needed only for the branded-subdomain self-heal below — omit to skip
-   *  it (status still resolves correctly, just without the upgrade). */
-  tenantSlug?: string | null,
+   *  it (status still resolves correctly, just without the upgrade). The
+   *  caller decides what this is: a tenant's own publicSubdomainToken when
+   *  it has one, else its plain slug — same `|| ` fallback used at deploy
+   *  time (see deployTenantFrontend), so the self-heal never "upgrades" a
+   *  tenant onto a slug-based subdomain it was never meant to have. */
+  subdomainLabel?: string | null,
 ): Promise<TenantHostingStatus> {
   if (!vercelDeploymentUrl || !vercelProjectId) {
     return { deployed: false, url: null, projectId: null }
@@ -72,8 +76,8 @@ export async function resolveTenantHostingStatus(
   // ever retries it. Retry here (idempotent) whenever the stored URL isn't
   // already the branded `<slug>.sites.<root>` one, and persist the nicer
   // URL the moment it succeeds.
-  if (tenantSlug && !vercelDeploymentUrl.includes(`.${BRANDED_SUBDOMAIN_ROOT}`)) {
-    await ensureBrandedSubdomain(vercelProjectId, tenantSlug).catch(() => null)
+  if (subdomainLabel && !vercelDeploymentUrl.includes(`.${BRANDED_SUBDOMAIN_ROOT}`)) {
+    await ensureBrandedSubdomain(vercelProjectId, subdomainLabel).catch(() => null)
     const healedUrl = await getProjectPrimaryDomain(vercelProjectId).catch(() => null)
     if (healedUrl && healedUrl !== vercelDeploymentUrl) {
       await Promise.all([

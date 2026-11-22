@@ -44,11 +44,21 @@ export async function deployTenantFrontend(
   const isLocalOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i.test(origin)
   const projectName = `sacms-${tenantSlug}`
   const envVars = await resolveFrontendEnv(tenantId, tenantSlug, isLocalOrigin ? resolveApiOrigin() : origin)
+  // Prefer this tenant's own random publicSubdomainToken (generated at
+  // creation for every tenant since that feature shipped — see
+  // ensurePublicSubdomainToken) over its slug for the PUBLIC
+  // `*.sites.sacms.cloud` label, so a long/descriptive slug can never push
+  // that domain's SSL certificate Common Name past the issuer's 64-
+  // character limit. A tenant created before this field existed has no
+  // token (deliberately left null, never backfilled) and keeps using its
+  // existing slug-based subdomain exactly as before.
+  const tenantForSubdomain = await db.tenant.findUnique({ where: { id: tenantId }, select: { publicSubdomainToken: true } })
+  const subdomainLabel = tenantForSubdomain?.publicSubdomainToken || tenantSlug
   // Explicit "production" — this backs the dashboard's own Deploy button
   // and AI Site's Publish action, where a human clicking the button
   // expects it to go live immediately, unlike the MCP deploy tools (which
   // default to a staging candidate an agent must explicitly promote).
-  const deployResult = await deployToVercel(projectName, files, envVars, tenantSlug, "production")
+  const deployResult = await deployToVercel(projectName, files, envVars, subdomainLabel, "production")
 
   return persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
 }

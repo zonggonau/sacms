@@ -112,6 +112,27 @@ model Tenant {
   hostingExpiresAt                DateTime?
   vercelProjectId                 String?
   vercelDeploymentUrl             String?
+  // Random 16-hex-char identifier for this tenant's public
+  // `*.sites.sacms.cloud` subdomain label, generated once at tenant
+  // creation (ensurePublicSubdomainToken) and persisted — decouples the
+  // PUBLIC domain label from `slug` (which can be long/descriptive, e.g.
+  // "profil-dinas-pemberdayaan-perempuan-...") so `<label>.sites.sacms.cloud`
+  // never risks exceeding Vercel's SSL certificate issuer's 64-character
+  // Common Name limit (confirmed live: a long slug-based demo subdomain
+  // failed cert issuance outright). Deliberately left null for every
+  // tenant created BEFORE this field existed — they keep using their
+  // existing slug-based subdomain exactly as before (see
+  // ensureBrandedSubdomain's own call sites' `|| tenantSlug` fallback);
+  // only brand-new tenants (and, since it's purely internal with nothing
+  // external to break, every demo tenant via self-heal) get one. No
+  // uniqueness enforced at the DB level — same reasoning as
+  // SchemaTemplate.idempotencyKey: a new unique constraint on this
+  // already-populated table trips `db push`'s data-loss guard, which the
+  // production deploy hook runs non-interactively with no
+  // --accept-data-loss flag. Enforced at the application level instead
+  // (ensurePublicSubdomainToken checks-before-generate); collision odds at
+  // 64 bits of randomness are astronomically low regardless.
+  publicSubdomainToken            String?
   // Which Website Template (if any) this workspace's current hosting
   // deployment was cloned from — set on "Terapkan", cleared the moment the
   // workspace deploys its own files via deploy_to_sacms/the dashboard's own

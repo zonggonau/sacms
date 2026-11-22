@@ -137,9 +137,13 @@ export async function deployToVercel(
   projectName: string,
   files: { name: string; content: string; encoding?: "utf-8" | "base64" }[],
   envVars?: Record<string, string>,
-  /** Used to auto-attach `<tenantSlug>.sites.sacms.cloud` to the project
-   *  (see ensureBrandedSubdomain) — omit to skip that and fall back to
-   *  the project's existing alias/custom domain/*.vercel.app only. */
+  /** Used to auto-attach `<subdomainLabel>.sites.sacms.cloud` to the
+   *  project (see ensureBrandedSubdomain) — omit to skip that and fall
+   *  back to the project's existing alias/custom domain/*.vercel.app only.
+   *  The caller decides what this label actually is: a tenant's own
+   *  randomly-generated publicSubdomainToken when one exists, else its
+   *  plain slug (see deployTenantFrontend) — this function just attaches
+   *  whatever string it's given, it has no opinion on which. */
   tenantSlug?: string,
   target: "production" | "staging" = "staging",
 ): Promise<VercelDeploymentResult> {
@@ -887,18 +891,25 @@ export async function ensureBrandedSubdomain(projectId: string, tenantSlug: stri
 }
 
 /**
- * Idempotently attaches a Website Template's live-demo subdomain
- * (`demo-<templateSlug>.sites.sacms.cloud`) to its demo Vercel project —
- * the SAME proven `sites.` root real tenant deployments already use
- * (a standalone `demo.<ROOT_DOMAIN>` root was tried first but its wildcard
- * domain was never fully registered/cert-issued on Vercel's side, so every
- * demo subdomain under it failed TLS — ERR_CONNECTION_CLOSED — even though
- * DNS and the underlying deployment were fine). The `demo-` label prefix
- * keeps it visibly distinct from a real customer's own branded subdomain
- * and avoids colliding with one in Vercel's domain registry.
+ * Idempotently attaches a Website Template demo's live-preview subdomain
+ * (`demo-<label>.sites.sacms.cloud`) to its demo Vercel project — the SAME
+ * proven `sites.` root real tenant deployments already use (a standalone
+ * `demo.<ROOT_DOMAIN>` root was tried first but its wildcard domain was
+ * never fully registered/cert-issued on Vercel's side, so every demo
+ * subdomain under it failed TLS — ERR_CONNECTION_CLOSED — even though DNS
+ * and the underlying deployment were fine). The `demo-` label prefix keeps
+ * it visibly distinct from a real customer's own branded subdomain and
+ * avoids colliding with one in Vercel's domain registry.
+ *
+ * `label` should be the demo tenant's own random publicSubdomainToken
+ * (see ensurePublicSubdomainToken), not the raw template slug — a long
+ * slug (e.g. "profil-dinas-pemberdayaan-perempuan-...") pushed this
+ * domain's SSL certificate Common Name past the issuer's 64-character
+ * limit outright, failing cert issuance for the whole domain (confirmed
+ * live).
  */
-export async function ensureDemoSubdomain(projectId: string, templateSlug: string): Promise<string | null> {
-  return attachAutoSubdomain(projectId, `demo-${templateSlug}`, BRANDED_SUBDOMAIN_ROOT)
+export async function ensureDemoSubdomain(projectId: string, label: string): Promise<string | null> {
+  return attachAutoSubdomain(projectId, `demo-${label}`, BRANDED_SUBDOMAIN_ROOT)
 }
 
 /**

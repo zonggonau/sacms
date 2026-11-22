@@ -186,6 +186,21 @@ const UNAUTHORIZED = {
 }
 
 /**
+ * Resolves the label to attach as this tenant's public
+ * `*.sites.sacms.cloud` subdomain for a deploy triggered through this MCP
+ * server — a tenant's own randomly-generated publicSubdomainToken when one
+ * exists (every tenant created since that feature shipped), else its plain
+ * slug. Deliberately READ-ONLY — never generates a token for a tenant that
+ * doesn't already have one, unlike ensurePublicSubdomainToken (which only
+ * runs at tenant creation/demo self-heal) — an ordinary deploy of an
+ * existing tenant must never silently change its public URL.
+ */
+async function resolveSubdomainLabel(tenantId: string, tenantSlug: string): Promise<string> {
+  const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { publicSubdomainToken: true } })
+  return tenant?.publicSubdomainToken || tenantSlug
+}
+
+/**
  * Scope enforcement for API tokens.
  *
  * `AuthContext.permissions` was resolved from the token's own `permissions`
@@ -3136,7 +3151,8 @@ Default stack (standard baseline for every frontend built here, not optional unl
           // production — see this tool's own description and
           // promoteDeployment's doc comment for why. Nothing a visitor
           // sees changes until promote_deployment is called.
-          const result = await deployToVercel(lockedProjectName, normalizedFiles, mergedEnv, auth.tenantSlug, "staging")
+          const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
+          const result = await deployToVercel(lockedProjectName, normalizedFiles, mergedEnv, subdomainLabel, "staging")
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>
@@ -3385,7 +3401,8 @@ Default stack (standard baseline for every frontend built here, not optional unl
           const lockedProjectName = `sacms-${auth.tenantSlug}`
           // Staging candidate, same reasoning as deploy_to_sacms — nothing
           // a visitor sees changes until promote_deployment is called.
-          const result = await deployToVercel(lockedProjectName, mergedFiles, mergedEnv, auth.tenantSlug, "staging")
+          const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
+          const result = await deployToVercel(lockedProjectName, mergedFiles, mergedEnv, subdomainLabel, "staging")
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, mergedEnv).catch((e) =>
@@ -3772,7 +3789,8 @@ Default stack (standard baseline for every frontend built here, not optional unl
           // rollback is the emergency-recovery path (go back to known-good
           // NOW); gating it behind an extra staging+promote cycle would
           // defeat its whole purpose.
-          const result = await deployToVercel(lockedProjectName, normalizedTargetFiles, resolvedEnv, auth.tenantSlug, "production")
+          const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
+          const result = await deployToVercel(lockedProjectName, normalizedTargetFiles, resolvedEnv, subdomainLabel, "production")
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, resolvedEnv).catch((e) =>
