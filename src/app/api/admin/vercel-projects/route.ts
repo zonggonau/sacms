@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
-import { listVercelProjectsDetailed, deleteVercelProject, isVercelConfigured } from "@/lib/vercel-client"
+import { listVercelProjectsDetailed, deleteVercelProject, isVercelConfigured, getProjectPrimaryDomain } from "@/lib/vercel-client"
 
 /**
  * Admin-only read of every Vercel project on the configured account/team,
@@ -24,19 +24,28 @@ export const GET = withAdminAuth(async () => {
   })
   const tenantByProjectId = new Map(tenants.map((t) => [t.vercelProjectId as string, t]))
 
-  const enriched = projects.map((p) => {
+  const enriched = await Promise.all(projects.map(async (p) => {
     const tenant = tenantByProjectId.get(p.id) || null
+    // Orphaned projects (no owning tenant row — typically an internal demo
+    // workspace from Website/Schema Template previews) never get a
+    // Tenant.vercelDeploymentUrl written anywhere, since deployWebsiteTemplateDemo
+    // persists the resolved URL onto WebsiteTemplate.demoUrl instead of any
+    // Tenant row. listVercelProjectsDetailed's own `url` field is only a
+    // crude fallback (the project's first raw alias, or — when no alias
+    // exists yet — the current deployment's own unstable, random-hash
+    // preview URL, e.g. "my-project-ab12cd34.vercel.app"), so resolve the
+    // same way getProjectPrimaryDomain already does for a real tenant
+    // (preferring a verified custom/sacms.cloud domain) before falling back
+    // to that raw value. Skipped for tenant-linked projects to avoid one
+    // extra Vercel API call per row when the tenant's own stored URL is
+    // already authoritative.
+    const resolvedUrl = tenant?.vercelDeploymentUrl || (!tenant ? await getProjectPrimaryDomain(p.id) : null) || p.url
     return {
       ...p,
-      // Prefer the tenant's own stored production URL (already resolved by
-      // getProjectPrimaryDomain to the sacms.cloud-branded/custom domain,
-      // not Vercel's raw project alias) — same link the tenant's own
-      // dashboard shows for this deployment, so admin and tenant never see
-      // two different "live" URLs for the same project.
-      url: tenant?.vercelDeploymentUrl || p.url,
+      url: resolvedUrl,
       tenant: tenant ? { id: tenant.id, name: tenant.name, slug: tenant.slug } : null,
     }
-  })
+  }))
 
   return NextResponse.json({
     configured: true,
