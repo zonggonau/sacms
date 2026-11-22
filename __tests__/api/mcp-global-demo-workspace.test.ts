@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises"
 
 type Tool = (args: Record<string, unknown>) => Promise<{ structuredContent: Record<string, unknown>; isError?: boolean }>
 type Prompt = (args: Record<string, unknown>) => Promise<{ messages: { role: string; content: { text: string } }[] }>
+type Resource = (uri: URL) => Promise<{ contents: { uri: string; mimeType: string; text: string }[] }>
 
 const mocks = vi.hoisted(() => {
   const findTemplate = vi.fn()
@@ -36,16 +37,20 @@ vi.mock("mcp-handler", () => ({
   createMcpHandler: (register: (server: {
     registerTool: (name: string, config: unknown, tool: Tool) => void
     registerPrompt: (name: string, config: unknown, prompt: Prompt) => void
+    registerResource: (name: string, uri: string, config: unknown, read: Resource) => void
   }) => Promise<void>) => {
     const tools = new Map<string, Tool>()
     const prompts = new Map<string, Prompt>()
+    const resources = new Map<string, Resource>()
     const ready = register({
       registerTool: (name, _config, tool) => { tools.set(name, tool) },
       registerPrompt: (name, _config, prompt) => { prompts.set(name, prompt) },
+      registerResource: (_name, uri, _config, read) => { resources.set(uri, read) },
     })
     return async (request: Request) => {
       await ready
       const { name, args, kind } = await request.json()
+      if (kind === "resource") return Response.json(await resources.get(name)!(new URL(name)))
       const handler = kind === "prompt" ? prompts.get(name) : tools.get(name)
       return Response.json(await handler!(args))
     }
@@ -110,7 +115,7 @@ const assignment = {
   data: { title: "Kopi Demo" }, draftData: null,
 }
 
-async function call(name: string, args: Record<string, unknown>, kind: "tool" | "prompt" = "tool") {
+async function call(name: string, args: Record<string, unknown>, kind: "tool" | "prompt" | "resource" = "tool") {
   const response = await POST(new Request("https://example.test/api/mcp/global-schema", {
     method: "POST",
     headers: { authorization: "Bearer mcpglobal_fixture", "content-type": "application/json" },
@@ -353,5 +358,20 @@ describe("Global MCP starter schema and demo workspace", () => {
     })
     expect(mocks.tx.contentType.deleteMany).not.toHaveBeenCalled()
     expect(mocks.uploadTenantMedia).not.toHaveBeenCalled()
+  })
+
+  it("serves the reference material as sacms:// resources with the same content as the tools", async () => {
+    const guide = await call("sacms://guide/builder", {}, "resource")
+    expect(guide.contents[0]).toMatchObject({ uri: "sacms://guide/builder", mimeType: "text/markdown" })
+    const guideTool = await call("get_builder_guide", {})
+    expect(guide.contents[0].text).toBe(guideTool.content[0].text)
+    expect(guide.contents[0].text).toMatch(/sacms:\/\/reference\/starter-schema/)
+
+    const fieldTypes = JSON.parse((await call("sacms://reference/field-types", {}, "resource")).contents[0].text)
+    expect(fieldTypes.totalCount).toBe(36)
+
+    const starterSchema = JSON.parse((await call("sacms://reference/starter-schema", {}, "resource")).contents[0].text)
+    expect(starterSchema.contentTypes.map((c: { slug: string }) => c.slug)).toEqual(["kategori", "posts", "pages"])
+    expect(starterSchema.singleTypes.map((s: { slug: string }) => s.slug)).toContain("site-settings")
   })
 })

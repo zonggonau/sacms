@@ -608,49 +608,99 @@ async function dedupeSlug(baseSlug: string, exists: (slug: string) => Promise<un
   return slug
 }
 
-// ─── MCP Handler ─────────────────────────────────────────────────────────
+function readWebsiteWorkflow() {
+  return readFile(join(process.cwd(), "src/lib/infrastructure/sacms-global-website-workflow.md"), "utf8")
+}
 
-const handler = createMcpHandler(
-  async (server) => {
-    // Scope gate for EVERY tool, applied once here rather than in each
-    // handler (a tool missing from the scope map requires `write` — fails
-    // closed). Each handler's own `if (!auth) return UNAUTHORIZED` still
-    // runs; this only adds the per-token scope check on top.
-    const registerToolUnscoped = server.registerTool.bind(server) as (...args: any[]) => any
-    ;(server as { registerTool: unknown }).registerTool = (name: string, config: unknown, toolHandler: (...args: any[]) => any) =>
-      registerToolUnscoped(name, config, async (...args: any[]) => {
-        const auth = authContext.getStore()
-        const required = requiredScopeForTool(name)
-        if (auth && !auth.scopes.includes(required)) return scopeDenied(name, required)
-        return toolHandler(...args)
-      })
+/** list_field_types' payload — also served as sacms://reference/field-types. */
+function buildFieldTypeReference(category?: string) {
+  let types = FIELD_TYPES as unknown as any[]
+  if (category) types = types.filter((t) => t.category.toLowerCase() === category.toLowerCase())
 
-    // ── get_builder_guide ──────────────────────────────────────────────────
-    // Kabar Nusa report bug 4: the full workflow used to live entirely in
-    // this server's top-level `instructions` field (6,178 characters) —
-    // confirmed live, Claude Code truncates a long MCP `instructions`
-    // string outright, cutting it off mid-sentence ("get_w… [truncated]")
-    // before it ever reached the guidance that mattered. Same fix as the
-    // per-workspace server's own get_agent_playbook: keep `instructions`
-    // short (a pointer + the few rules too safety-critical to risk never
-    // being read), move the full detail into a tool callable on demand.
-    server.registerTool(
-      "get_builder_guide",
-      {
-        title: "Get Builder Guide (Start Here)",
-        description: "Read this FIRST when you connect to this MCP server. Returns the full workflow for building a Schema Template + Website Template together, dry-run validation, the demo preview/verification contract, and every structured error code — call with no arguments.",
-        inputSchema: {},
-        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
-      },
-      async () => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
+  const fieldDocs = types.map((ft) => {
+    const guide = FIELD_TYPE_GUIDE[ft.type]
+    const supportedOptions: Record<string, string> = {
+      required: "boolean (default false)",
+      unique: "boolean (default false)",
+    }
+    if (guide?.options) supportedOptions.options = guide.options
+    if (guide?.relationSlug) supportedOptions.relationSlug = guide.relationSlug
 
-        const guide = `# SaCMS Platform Template-Builder Guide
+    return {
+      type: ft.type,
+      label: ft.label,
+      category: ft.category,
+      description: ft.description,
+      supportedOptions,
+      exampleOptions: guide?.exampleOptions,
+      entryValueShape: guide?.entryValue,
+      note: guide?.note,
+    }
+  })
+
+  return {
+    totalCount: fieldDocs.length,
+    categories: FIELD_CATEGORIES,
+    fieldTypes: fieldDocs,
+    usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
+    contentApiContract: CONTENT_API_CONTRACT_EXAMPLES,
+  }
+}
+
+/**
+ * Read-only reference material as MCP resources, for clients that load
+ * context from resources instead of calling tools. Same content as the
+ * matching tools; reading still needs a valid token.
+ */
+const GLOBAL_RESOURCES = [
+  {
+    name: "builder-guide",
+    uri: "sacms://guide/builder",
+    title: "Template-Builder Guide",
+    description: "Full workflow, dry-run validation, approvals/scopes, version history, binary assets and every error code (same as get_builder_guide).",
+    mimeType: "text/markdown",
+    read: async () => buildBuilderGuide(),
+  },
+  {
+    name: "website-workflow",
+    uri: "sacms://guide/website-workflow",
+    title: "Website Agent Workflow",
+    description: "Brief → demo workspace → schema → UI/UX → frontend → security review → verified demo (same as get_website_agent_workflow).",
+    mimeType: "text/markdown",
+    read: readWebsiteWorkflow,
+  },
+  {
+    name: "field-types",
+    uri: "sacms://reference/field-types",
+    title: "Field Types Reference",
+    description: "All 36 field types with real options/relationSlug/entry-value shapes and the Content API contract (same as list_field_types).",
+    mimeType: "application/json",
+    read: async () => JSON.stringify(buildFieldTypeReference(), null, 2),
+  },
+  {
+    name: "starter-schema",
+    uri: "sacms://reference/starter-schema",
+    title: "Starter Schema",
+    description: "The schema every new template starts from when `schema` is omitted (starter Content Types, site-settings Single Type, Components) — the base your additions are merged onto by slug.",
+    mimeType: "application/json",
+    read: async () => {
+      const composed = await composeTemplateStarterSchema({ groups: [], contentTypes: [], singleTypes: [], components: [] }, [])
+      if (!composed.success) throw new Error("The platform starter schema is currently invalid — ask a SaCMS admin to check the default Schema Template.")
+      return JSON.stringify(composed.data, null, 2)
+    },
+  },
+] as const
+
+/** The full builder guide — served by get_builder_guide and as the
+ *  sacms://guide/builder resource, so both always carry the same text. */
+function buildBuilderGuide(): string {
+  return `# SaCMS Platform Template-Builder Guide
 
 This server manages SaCMS's platform-wide template catalog, including each Schema Template's linked internal demo workspace. Customer workspaces use their own MCP server at /api/mcp and the apply_website_template tool.
 
 Call \`get_website_agent_workflow\` for analysis and task assignment, demo setup, UI/UX, defensive security review, and release verification. This guide documents the tool contracts used in that workflow.
+
+The same reference material is available as MCP resources for clients that load context that way: ${GLOBAL_RESOURCES.map((r) => `\`${r.uri}\``).join(", ")}.
 
 ## Before writing any schema field
 Call \`list_field_types\` first — it has the real options/relationSlug shape per type, flags options that are silently ignored, and its \`contentApiContract\` has real request/response examples for the frontend's actual Content API calls. Its entry for richText/markdown also tells you how the FRONTEND you're writing must render that field: richText's value is REAL HTML (from a WYSIWYG editor) and needs a sanitized dangerouslySetInnerHTML, never \`{value}\`/string interpolation — a template that renders it as plain text only looks fine with unwrapped test prose and shows literal <p>/<strong>/<ul> tags the moment real formatted content is used; markdown's value is raw Markdown source and needs a Markdown renderer (react-markdown or equivalent), not an HTML sink.
@@ -708,8 +758,47 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
 ## Response shapes
 \`create_website_template\`'s \`dryRun: true\` returns \`{ mode: "dry_run", ok, valid, issues, warnings }\` — a DIFFERENT shape from a real create's response, don't expect id/slug/files/demoDeployment on a dry run. Every demo deploy injects the three fixed NEXT_PUBLIC_SACMS_API_URL/NEXT_PUBLIC_SACMS_TENANT/SACMS_API_KEY vars automatically — a template whose frontend reads those exact names needs no .env placeholder for them at all; only a DIFFERENT custom name needs a {{SACMS_*}} placeholder. Every structured error response (NOT_FOUND, VALIDATION_FAILED, CONFLICT, HAS_DEPENDENTS, INVALID_ARGUMENT, UNAUTHORIZED) uses the same \`structuredContent.code\` field.`
+}
 
-        return { content: [{ type: "text" as const, text: guide }] }
+// ─── MCP Handler ─────────────────────────────────────────────────────────
+
+const handler = createMcpHandler(
+  async (server) => {
+    // Scope gate for EVERY tool, applied once here rather than in each
+    // handler (a tool missing from the scope map requires `write` — fails
+    // closed). Each handler's own `if (!auth) return UNAUTHORIZED` still
+    // runs; this only adds the per-token scope check on top.
+    const registerToolUnscoped = server.registerTool.bind(server) as (...args: any[]) => any
+    ;(server as { registerTool: unknown }).registerTool = (name: string, config: unknown, toolHandler: (...args: any[]) => any) =>
+      registerToolUnscoped(name, config, async (...args: any[]) => {
+        const auth = authContext.getStore()
+        const required = requiredScopeForTool(name)
+        if (auth && !auth.scopes.includes(required)) return scopeDenied(name, required)
+        return toolHandler(...args)
+      })
+
+    // ── get_builder_guide ──────────────────────────────────────────────────
+    // Kabar Nusa report bug 4: the full workflow used to live entirely in
+    // this server's top-level `instructions` field (6,178 characters) —
+    // confirmed live, Claude Code truncates a long MCP `instructions`
+    // string outright, cutting it off mid-sentence ("get_w… [truncated]")
+    // before it ever reached the guidance that mattered. Same fix as the
+    // per-workspace server's own get_agent_playbook: keep `instructions`
+    // short (a pointer + the few rules too safety-critical to risk never
+    // being read), move the full detail into a tool callable on demand.
+    server.registerTool(
+      "get_builder_guide",
+      {
+        title: "Get Builder Guide (Start Here)",
+        description: "Read this FIRST when you connect to this MCP server. Returns the full workflow for building a Schema Template + Website Template together, dry-run validation, the demo preview/verification contract, and every structured error code — call with no arguments.",
+        inputSchema: {},
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        return { content: [{ type: "text" as const, text: buildBuilderGuide() }] }
       },
     )
 
@@ -724,10 +813,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       },
       async () => {
         if (!authContext.getStore()) return UNAUTHORIZED
-        const workflow = await readFile(
-          join(process.cwd(), "src/lib/infrastructure/sacms-global-website-workflow.md"),
-          "utf8",
-        )
+        const workflow = await readWebsiteWorkflow()
         return {
           content: [{ type: "text" as const, text: workflow }],
           structuredContent: { skill: "sacms-global-website" as const, workflow },
@@ -767,37 +853,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        let types = FIELD_TYPES as unknown as any[]
-        if (category) types = types.filter((t) => t.category.toLowerCase() === category.toLowerCase())
-
-        const fieldDocs = types.map((ft) => {
-          const guide = FIELD_TYPE_GUIDE[ft.type]
-          const supportedOptions: Record<string, string> = {
-            required: "boolean (default false)",
-            unique: "boolean (default false)",
-          }
-          if (guide?.options) supportedOptions.options = guide.options
-          if (guide?.relationSlug) supportedOptions.relationSlug = guide.relationSlug
-
-          return {
-            type: ft.type,
-            label: ft.label,
-            category: ft.category,
-            description: ft.description,
-            supportedOptions,
-            exampleOptions: guide?.exampleOptions,
-            entryValueShape: guide?.entryValue,
-            note: guide?.note,
-          }
-        })
-
-        const structured = {
-          totalCount: fieldDocs.length,
-          categories: FIELD_CATEGORIES,
-          fieldTypes: fieldDocs,
-          usageNote: "Put these in each model's `fields` array inside create_schema_template/update_schema_template's `schema`. `note` (when present) flags a dead option or an easy-to-miss real capability — read it before guessing.",
-          contentApiContract: CONTENT_API_CONTRACT_EXAMPLES,
-        }
+        const structured = buildFieldTypeReference(category)
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -2617,6 +2673,21 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       },
     )
 
+    // ── Resources ───────────────────────────────────────────────────────
+    // Audit recommendation: expose the reference material as resources too.
+    // Every token has `read`, so a valid token is all a read needs.
+    for (const resource of GLOBAL_RESOURCES) {
+      server.registerResource(
+        resource.name,
+        resource.uri,
+        { title: resource.title, description: resource.description, mimeType: resource.mimeType },
+        async (uri: URL) => {
+          if (!authContext.getStore()) throw new Error("Unauthorized: a valid SaCMS Developer MCP token is required.")
+          return { contents: [{ uri: uri.href, mimeType: resource.mimeType, text: await resource.read() }] }
+        },
+      )
+    }
+
     // ── Prompts ─────────────────────────────────────────────────────────
     // Report P1/P2 (no `prompts` capability at all): a pre-packaged,
     // parameterized entry point for the exact workflow get_builder_guide
@@ -2649,7 +2720,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.19.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.20.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word

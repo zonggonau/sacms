@@ -1,4 +1,5 @@
 import { z } from "zod/v4"
+import { VALID_FIELD_TYPES } from "@/lib/field-types"
 
 /**
  * Shared shape for a Schema Template's `schema` JSON blob (prisma/schema.prisma
@@ -26,7 +27,9 @@ import { z } from "zod/v4"
 export const schemaTemplateFieldSchema = z.object({
   name: z.string().describe("Field label shown in the CMS editor, e.g. 'Cover Image'"),
   slug: z.string().describe("Field key used in the Content API's JSON, e.g. 'cover-image'. Kebab-case is the convention (not hard-enforced — document_template fields that mirror a .docx's own placeholder keys verbatim are a known, deliberate exception)."),
-  type: z.string().describe("One of the 36 real field types — call list_field_types for the full list with each type's options/relationSlug/entryValue shape. A typo'd/fictional type is rejected by validateBundleReferences with a list_field_types pointer, not at this schema layer (see this file's own header comment for why)."),
+  // The valid values are listed in the description as a hint for clients,
+  // not enforced as a z.enum — see this file's header comment for why.
+  type: z.string().describe(`One of: ${VALID_FIELD_TYPES.join(", ")}. Call list_field_types for each type's options/relationSlug/entryValue shape. A typo'd/fictional type is rejected by validateBundleReferences with a list_field_types pointer, not at this schema layer (see this file's own header comment for why).`),
   required: z.boolean().optional().describe("Default false."),
   unique: z.boolean().optional().describe("Default false."),
   relationSlug: z.string().optional().describe("Required when type is 'relation' — the target Content Type/Single Type's slug (must match one elsewhere in this same bundle, or be 'member' for the tenant's own end-user table)."),

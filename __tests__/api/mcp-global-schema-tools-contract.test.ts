@@ -230,9 +230,10 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
   })
 
   it("list_field_types returns contentApiContract with real Content API request/response examples, not just field-shape docs", () => {
-    const scoped = toolBlockOf("list_field_types")
-    expect(scoped).toMatch(/CONTENT_API_CONTRACT_EXAMPLES/)
-    expect(scoped).toMatch(/contentApiContract:/)
+    expect(toolBlockOf("list_field_types")).toMatch(/contentApiContract:/)
+    // The payload itself is built by buildFieldTypeReference (shared with the field-types resource).
+    const builder = routeSource.slice(routeSource.indexOf("function buildFieldTypeReference("), routeSource.indexOf("const GLOBAL_RESOURCES"))
+    expect(builder).toMatch(/contentApiContract: CONTENT_API_CONTRACT_EXAMPLES/)
     expect(routeSource).toMatch(/import \{ FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES \} from "@\/lib\/field-type-guide"/)
   })
 
@@ -530,8 +531,8 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
   })
 
   it("get_builder_guide's prose documents the isDefault SchemaTemplate knob, not just the per-request template-building flow", () => {
-    const scoped = toolBlockOf("get_builder_guide")
-    expect(scoped).toMatch(/isDefault/)
+    const guide = routeSource.slice(routeSource.indexOf("function buildBuilderGuide("), routeSource.indexOf("// ─── MCP Handler"))
+    expect(guide).toMatch(/isDefault/)
   })
 
   it("create_schema_template accepts idempotencyKey and replays the already-created template+demo instead of creating a duplicate on a lost-response retry", () => {
@@ -547,6 +548,28 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     const modelBlock = schemaSource.slice(modelStart, schemaSource.indexOf("\n}\n", modelStart))
     expect(modelBlock).toMatch(/idempotencyKey String\?\s*$/m)
     expect(modelBlock).not.toMatch(/idempotencyKey String\?\s*@unique/)
+  })
+})
+
+describe("SaCMS Global MCP — resources and field-type hint (source contract)", () => {
+  it("registers every reference resource behind the same token check as the tools", () => {
+    for (const uri of ["sacms://guide/builder", "sacms://guide/website-workflow", "sacms://reference/field-types", "sacms://reference/starter-schema"]) {
+      expect(routeSource, uri).toContain(`uri: "${uri}"`)
+    }
+    const block = routeSource.slice(routeSource.indexOf("for (const resource of GLOBAL_RESOURCES)"), routeSource.indexOf("// ── Prompts"))
+    expect(block).toMatch(/server\.registerResource\(/)
+    expect(block).toMatch(/if \(!authContext\.getStore\(\)\) throw new Error\("Unauthorized/)
+  })
+
+  it("get_builder_guide and list_field_types share their content with the resources", () => {
+    expect(toolBlockOf("get_builder_guide")).toMatch(/text: buildBuilderGuide\(\)/)
+    expect(toolBlockOf("list_field_types")).toMatch(/buildFieldTypeReference\(category\)/)
+    expect(toolBlockOf("get_website_agent_workflow")).toMatch(/await readWebsiteWorkflow\(\)/)
+  })
+
+  it("lists every valid field type in the `type` description as a hint, without enforcing a z.enum", () => {
+    const schemaSource = readFileSync(join(__dirname, "../../src/lib/validations/schema-template.ts"), "utf-8")
+    expect(schemaSource).toMatch(/type: z\.string\(\)\.describe\(`One of: \$\{VALID_FIELD_TYPES\.join\(", "\)\}/)
   })
 })
 
