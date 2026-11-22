@@ -215,6 +215,49 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     const secondEntryData = createContentEntry.mock.calls[1][2].data
     expect(firstEntryData).toEqual({ title: "Pemkot Luncurkan Transportasi Gratis", kategori: "Nasional" })
     expect(secondEntryData).toEqual({ title: "Harga Beras Naik di Pasar Induk", kategori: "Ekonomi" })
+    // Exactly the author's 2 rows — no third entry recycled from row 0.
+    expect(createContentEntry).toHaveBeenCalledTimes(2)
+  })
+
+  it("seeds a single hand-written dummyData row once, instead of duplicating it into three identical entries", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
+    contentTypeFindMany.mockResolvedValue([
+      { slug: "artikel", schemaFields: [{ slug: "title", name: "Judul", type: "text", options: null }] },
+    ])
+
+    await ensureDemoTenantForSchemaTemplate({
+      ...schemaTemplate,
+      schema: { contentTypes: [{ slug: "artikel", dummyData: [{ title: "Satu-satunya Berita" }] }] },
+    })
+
+    expect(createContentEntry).toHaveBeenCalledTimes(1)
+    expect(createContentEntry.mock.calls[0][2].data).toEqual({ title: "Satu-satunya Berita" })
+  })
+
+  it("leaves an optional field the author didn't write empty, and only placeholder-fills a required one", async () => {
+    tenantFindUnique.mockResolvedValue(null)
+    tenantCreate.mockResolvedValue({ id: "demo-tenant-new", slug: "demo-company-profile" })
+    contentTypeFindMany.mockResolvedValue([
+      {
+        slug: "produk",
+        schemaFields: [
+          { slug: "title", name: "Judul", type: "text", required: false, options: null },
+          { slug: "warna", name: "Warna", type: "color", required: false, options: null },
+          { slug: "harga", name: "Harga", type: "number", required: true, options: null },
+        ],
+      },
+    ])
+
+    await ensureDemoTenantForSchemaTemplate({
+      ...schemaTemplate,
+      schema: { contentTypes: [{ slug: "produk", dummyData: [{ title: "Kopi Arabika" }] }] },
+    })
+
+    const data = createContentEntry.mock.calls[0][2].data
+    expect(data.title).toBe("Kopi Arabika")
+    expect(data).not.toHaveProperty("warna") // optional, omitted -> stays empty (was "#2563eb")
+    expect(data.harga).toBe(100) // required, omitted -> placeholder so the entry can be created
   })
 
   it("falls back to the generic synthesizer for a content type with no dummyData at all", async () => {

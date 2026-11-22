@@ -165,9 +165,41 @@ describe("Global MCP starter schema and demo workspace", () => {
     expect(result.structuredContent.demoWorkspace).toMatchObject({ ...workspace, cmsPath: "/dashboard/demo-contoh/cms" })
     expect(result.structuredContent.schema.contentTypes.map(({ slug }: { slug: string }) => slug)).toEqual(["kategori", "posts", "pages"])
     expect(result.structuredContent.schema.singleTypes.map(({ slug }: { slug: string }) => slug)).toEqual(["site-settings", "homepage"])
-    expect(result.structuredContent.schema.components).toEqual([starter.components[0], { name: "CTA", slug: "cta", fields: [field] }])
+    // The Global Component catalog is opt-in for templates (audit: merging
+    // it wholesale bloated every template with ~100 unrelated components
+    // that could never be removed afterward).
+    expect(result.structuredContent.schema.components).toEqual([starter.components[0]])
+    expect(mocks.listComponents).not.toHaveBeenCalled()
     expect(mocks.materialize).toHaveBeenCalledWith(mocks.tx, workspace.id, result.structuredContent.schema)
     expect(mocks.tx.schemaTemplate.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ demoTenantId: workspace.id }) }))
+  })
+
+  it("adds only the Global Components named in includeGlobalComponents", async () => {
+    mocks.listComponents.mockResolvedValue([{ name: "CTA", slug: "cta", fields: [field] }])
+    const result = await call("create_schema_template", { name: "Contoh", category: "Website", includeGlobalComponents: ["cta"] })
+    expect(mocks.listComponents).toHaveBeenCalledWith({ where: { published: true, slug: { in: ["cta"] } } })
+    expect(result.structuredContent.schema.components).toEqual([starter.components[0], { name: "CTA", slug: "cta", fields: [field] }])
+  })
+
+  it("rejects an includeGlobalComponents slug that isn't a published Global Component", async () => {
+    mocks.listComponents.mockResolvedValue([])
+    const result = await call("create_schema_template", { name: "Contoh", category: "Website", includeGlobalComponents: ["tidak-ada"] })
+    expect(result.isError).toBe(true)
+    expect(result.structuredContent.code).toBe("VALIDATION_FAILED")
+    expect(result.structuredContent.issues[0].path).toBe("includeGlobalComponents[0]")
+    expect(mocks.tx.schemaTemplate.create).not.toHaveBeenCalled()
+  })
+
+  it("reports a validation path against the caller's own input index, not the starter-merged one", async () => {
+    const result = await call("create_schema_template", {
+      name: "Contoh",
+      category: "Website",
+      schema: { contentTypes: [{ name: "Produk", slug: "produk", fields: [{ name: "Harga", slug: "harga", type: "uang" }] }] },
+    })
+    expect(result.isError).toBe(true)
+    // Starter puts kategori/posts/pages first, so "produk" sits at merged
+    // index 3 — the caller only ever sent index 0.
+    expect(result.structuredContent.issues.map((i: { path: string }) => i.path)).toContain("contentTypes[0].fields[0].type")
   })
 
   it("reads only the linked internal demo workspace's model rows", async () => {

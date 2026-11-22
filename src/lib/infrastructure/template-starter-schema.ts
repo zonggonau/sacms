@@ -32,8 +32,11 @@ function mergeBySlug<T extends { slug: string }>(defaults: T[], additions: T[]) 
   return result
 }
 
-export async function composeTemplateStarterSchema(additions: Bundle, excluded: string[]) {
-  const { schema, templateSlug } = await loadDefaultTenantSchema()
+/** `includeGlobalComponents` lists published Global Component slugs to add
+ * to the starter. The catalog is opt-in for templates — see
+ * loadDefaultTenantSchema's own note on why it isn't merged wholesale. */
+export async function composeTemplateStarterSchema(additions: Bundle, excluded: string[], includeGlobalComponents: string[] = []) {
+  const { schema, templateSlug } = await loadDefaultTenantSchema(false, includeGlobalComponents)
   const parsed = schemaTemplateBundleSchema.safeParse(schema)
   if (!parsed.success) return parsed
 
@@ -51,6 +54,12 @@ export async function composeTemplateStarterSchema(additions: Bundle, excluded: 
   for (const { slug } of conflicting) {
     issues.push({ path: "excludeDefaultContentTypes", message: `'${slug}' is also defined in schema.contentTypes. Either keep it or exclude it.` })
   }
+  const starterComponentSlugs = new Set(starter.components.map(({ slug }) => slug))
+  includeGlobalComponents.forEach((slug, index) => {
+    if (!starterComponentSlugs.has(slug)) {
+      issues.push({ path: `includeGlobalComponents[${index}]`, message: `'${slug}' is not a published Global Component. Call list_global_components for valid slugs.` })
+    }
+  })
 
   return {
     success: true as const,

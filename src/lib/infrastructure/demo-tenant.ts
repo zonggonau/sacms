@@ -30,6 +30,7 @@ interface SampleField {
   slug: string
   name: string
   type: string
+  required?: boolean
   options?: Record<string, unknown> | null
 }
 
@@ -88,8 +89,9 @@ function generateSampleFieldValue(field: SampleField, index: number): unknown | 
       // at all, breaking anything that renders it as a swatch/CSS value.
       return "#2563eb"
     case "date":
-    case "datetime":
       return new Date().toISOString().split("T")[0]
+    case "datetime":
+      return new Date().toISOString()
     case "dateRange": {
       const from = new Date()
       const to = new Date(from.getTime() + 7 * 86400000)
@@ -313,17 +315,35 @@ function findDummyData(blobModels: { slug: string; [key: string]: unknown }[] | 
 }
 
 /**
- * Builds one entry's data by starting from the generic synthesizer, then
- * overlaying whatever the author's own dummyData row actually provides —
- * so a field the author didn't bother filling (or couldn't, e.g. a
- * relation/media field dummyData's own validator doesn't support a
- * forward-reference for yet) still gets a non-empty placeholder instead of
- * silently reverting the whole entry to 100% generic data.
+ * Builds one entry's data. With no author dummyData row, the whole entry
+ * comes from the generic synthesizer. With one, ONLY the author's own
+ * values are used — an optional field the author left out stays empty
+ * instead of getting a generic placeholder ("Contoh SEO…", #2563eb, 100,
+ * `true`) that then leaked into a template's live demo looking like real
+ * content (confirmed on the Portal Desa demo). A REQUIRED field the author
+ * left out is still filled from the synthesizer, since otherwise the entry
+ * can't be created at all; those slugs are returned as `autoFilled` so the
+ * caller can surface them (checkDummyData already warns about them at
+ * dryRun/create time too).
  */
-function buildEntryData(fields: SampleField[], index: number, dummyRow: Record<string, unknown> | undefined): Record<string, unknown> {
-  const generic = buildSampleData(fields, index)
-  if (!dummyRow) return generic
-  return { ...generic, ...dummyRow }
+function buildEntryData(
+  fields: SampleField[],
+  index: number,
+  dummyRow: Record<string, unknown> | undefined,
+): { data: Record<string, unknown>; autoFilled: string[] } {
+  if (!dummyRow) return { data: buildSampleData(fields, index), autoFilled: [] }
+  const data: Record<string, unknown> = { ...dummyRow }
+  const autoFilled: string[] = []
+  for (const field of fields) {
+    if (!field.required) continue
+    const current = data[field.slug]
+    if (current !== undefined && current !== null && current !== "") continue
+    const value = generateSampleFieldValue(field, index)
+    if (value === undefined) continue
+    data[field.slug] = value
+    autoFilled.push(field.slug)
+  }
+  return { data, autoFilled }
 }
 
 /** A stable, human-writable "natural key" for a seeded entry — derived from
@@ -416,10 +436,14 @@ export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getT
   const pendingRelationPatches: PendingRelationPatch[] = []
 
   for (const contentType of contentTypes) {
-    const fields = contentType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any, relationSlug: f.relationSlug }))
+    const fields = contentType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, required: f.required, options: f.options as any, relationSlug: f.relationSlug }))
     const relationFields = fields.filter((f) => f.type === "relation" && f.relationSlug && (f.options as any)?.targetModel !== "member")
     const dummyRows = findDummyData(schemaBlob.contentTypes as any, contentType.slug)
-    const entryCount = dummyRows ? Math.max(dummyRows.length, SAMPLE_ENTRIES_PER_CONTENT_TYPE) : SAMPLE_ENTRIES_PER_CONTENT_TYPE
+    // Exactly the author's own rows when they wrote any — padding up to
+    // SAMPLE_ENTRIES_PER_CONTENT_TYPE by cycling `dummyRows[i % length]`
+    // used to duplicate a single hand-written row into three identical
+    // entries. Generic synthesized rows only when the author wrote none.
+    const entryCount = dummyRows ? dummyRows.length : SAMPLE_ENTRIES_PER_CONTENT_TYPE
     const keyMap = new Map<string, string>()
     seededByModel.set(contentType.slug, keyMap)
 
@@ -439,8 +463,11 @@ export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getT
     }
 
     for (let i = 0; i < entryCount; i++) {
-      const dummyRow = dummyRows?.[i % dummyRows.length]
-      const data = buildEntryData(fields, i, dummyRow)
+      const dummyRow = dummyRows?.[i]
+      const { data, autoFilled } = buildEntryData(fields, i, dummyRow)
+      if (autoFilled.length) {
+        warnings.push({ model: contentType.slug, message: `dummyData[${i}] omits required field(s) ${autoFilled.join(", ")} — filled with a generic placeholder.` })
+      }
       // A dummyData-provided relation value is a slugified LABEL reference
       // (resolved in the second pass below), never a real id — it must not
       // reach createContentEntry as-is, which would store the raw label
@@ -484,10 +511,14 @@ export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getT
   await resolveRelationPatches(ctx, pendingRelationPatches, seededByModel)
 
   for (const singleType of singleTypes) {
-    const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, options: f.options as any }))
+    const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, required: f.required, options: f.options as any }))
     const singleDummyRows = findDummyData(schemaBlob.singleTypes as any, singleType.slug)
     const key = { tenantId, singleTypeId: singleType.id, locale: "id" }
-    const content = { enabled: true, data: buildEntryData(fields, 0, singleDummyRows?.[0]) as any, publishedAt: new Date() }
+    const built = buildEntryData(fields, 0, singleDummyRows?.[0])
+    if (built.autoFilled.length) {
+      warnings.push({ model: singleType.slug, message: `dummyData[0] omits required field(s) ${built.autoFilled.join(", ")} — filled with a generic placeholder.` })
+    }
+    const content = { enabled: true, data: built.data as any, publishedAt: new Date() }
     if (preserveExisting) {
       const current = await tenantDb.tenantSingleTypeAssignment.findUnique({ where: { tenantId_singleTypeId_locale: key } })
       if (current) {

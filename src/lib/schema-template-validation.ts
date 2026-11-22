@@ -293,6 +293,44 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
  * scalar via String(val), by design, so flagging it here would disagree
  * with what actually happens on import.)
  */
+type ModelKind = "contentTypes" | "singleTypes" | "components" | "groups"
+type SlugLists = Partial<Record<ModelKind, Array<{ slug?: string }>>>
+
+/**
+ * create_schema_template/create_website_template validate the bundle AFTER
+ * composeTemplateStarterSchema has merged the platform starter's models in
+ * front of the caller's own — so a path like `contentTypes[3]` pointed at
+ * the merged array, not at the `contentTypes[0]` the caller actually wrote
+ * (audit VAL-8/VAL-15). Rewrites each top-level model index back to the
+ * caller's own input by slug (matching the Nth occurrence, so a duplicate
+ * slug still maps to the right duplicate), and labels a model that came
+ * purely from the starter as `starter.<kind>(<slug>)` instead of a
+ * misleading index into input the caller never sent.
+ */
+export function remapIssuePathsToInput(issues: ValidationIssue[], merged: SlugLists, input: SlugLists): ValidationIssue[] {
+  return issues.map((issue) => {
+    const match = /^(contentTypes|singleTypes|components|groups)\[(\d+)\](.*)$/.exec(issue.path)
+    if (!match) return issue
+    const kind = match[1] as ModelKind
+    const mergedIndex = Number(match[2])
+    const rest = match[3]
+    const mergedList = merged[kind] || []
+    const slug = mergedList[mergedIndex]?.slug
+    if (!slug) return issue
+
+    const occurrence = mergedList.slice(0, mergedIndex + 1).filter((m) => m.slug === slug).length
+    let seen = 0
+    const inputIndex = (input[kind] || []).findIndex((m) => m.slug === slug && ++seen === occurrence)
+    if (inputIndex >= 0) return { ...issue, path: `${kind}[${inputIndex}]${rest}` }
+    return { ...issue, path: `starter.${kind}(${slug})${rest}`, message: `${issue.message} (This model comes from the platform starter, not your input.)` }
+  })
+}
+
+/** Mirrors demo-tenant.ts's SKIP_FIELD_TYPES — types the demo seeder never
+ *  fills with a placeholder, so a missing required value there just stays
+ *  empty rather than looking fake. */
+const SEEDER_NEVER_SYNTHESIZES = new Set(["media", "mediaMultiple", "file", "relation", "component", "repeater", "document_template", "slug"])
+
 function checkDummyData(model: BundleModelRef, basePath: string, issues: ValidationIssue[]): void {
   if (!model.dummyData || model.dummyData.length === 0) return
   const fields = (model.fields || [])
@@ -339,6 +377,21 @@ function checkDummyData(model: BundleModelRef, basePath: string, issues: Validat
         issues.push({ path: `${basePath}.dummyData[${i}].${key}`, message: `'${key}' does not match any field slug in this model.`, severity: "warning" })
       }
     })
+
+    // The demo seeder leaves an OPTIONAL field the author didn't write
+    // empty, but must fill a REQUIRED one or the entry can't be created —
+    // with a generic placeholder ("Contoh …", 100, a fixed color). Warn
+    // here so a dryRun shows exactly which values will look fake in the
+    // demo before anything is saved. Types the seeder never synthesizes
+    // (slug is auto-generated; media/relation/component/repeater have no
+    // placeholder) are excluded — they'd simply stay empty.
+    for (const f of model.fields || []) {
+      if (!f.required || !f.slug || !f.type || SEEDER_NEVER_SYNTHESIZES.has(f.type)) continue
+      const val = entry[f.slug]
+      if (val === undefined || val === null || val === "") {
+        issues.push({ path: `${basePath}.dummyData[${i}].${f.slug}`, message: `Required field '${f.slug}' is missing — the demo will fill it with a generic placeholder value. Provide a real value to keep the demo realistic.`, severity: "warning" })
+      }
+    }
   })
 }
 

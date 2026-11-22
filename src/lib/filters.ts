@@ -85,7 +85,13 @@ export function parseFilters(
 
   for (const [key, value] of searchParams.entries()) {
     if (!key.startsWith("filters[")) continue
-    if (conditionCount >= MAX_CONDITIONS) break
+    // Over the cap: reject instead of `break` — silently dropping the
+    // remaining conditions would serve MORE rows than the caller asked
+    // for, the exact failure `rejected` exists to prevent.
+    if (conditionCount >= MAX_CONDITIONS) {
+      rejected.push(key)
+      continue
+    }
 
     // Parse: filters[field][$op], filters[field][$op][idx], or filters[$or/$and][idx][field][$op]
     const parts = key.match(/filters\[([^\]]+)\](?:\[([^\]]+)\])?(?:\[([^\]]+)\])?(?:\[([^\]]+)\])?/)

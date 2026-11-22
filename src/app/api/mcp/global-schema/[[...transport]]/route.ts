@@ -43,7 +43,7 @@ import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
 import { createGlobalComponentSchema, updateGlobalComponentSchema } from "@/lib/validations/global-component"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
-import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields } from "@/lib/schema-template-validation"
+import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields, remapIssuePathsToInput } from "@/lib/schema-template-validation"
 import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
 import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
 import type { Prisma } from "@prisma/client"
@@ -241,11 +241,18 @@ const DEMO_TEMPLATE_INPUT = {
 }
 const DEMO_LOCALE_INPUT = z.string().trim().min(1).max(30).optional().describe("Exact locale; defaults to the demo's default locale.")
 const DEMO_SINGLE_INPUT = {
-  ...DEMO_TEMPLATE_INPUT, singleTypeSlug: z.string().trim().min(1).max(128), locale: DEMO_LOCALE_INPUT,
+  ...DEMO_TEMPLATE_INPUT,
+  singleTypeSlug: z.string().trim().min(1).max(128).describe("Single Type slug in the demo schema, e.g. 'site-settings' or 'homepage'."),
+  locale: DEMO_LOCALE_INPUT,
 }
 const DEMO_COLLECTION_INPUT = {
-  ...DEMO_TEMPLATE_INPUT, contentTypeSlug: z.string().trim().min(1).max(128), locale: DEMO_LOCALE_INPUT,
+  ...DEMO_TEMPLATE_INPUT,
+  contentTypeSlug: z.string().trim().min(1).max(128).describe("Content Type slug in the demo schema, e.g. 'posts'."),
+  locale: DEMO_LOCALE_INPUT,
 }
+const DEMO_ENTRY_DATA = z.record(z.string(), z.json()).describe(
+  "Field values keyed by field slug, in the entry-value shape list_field_types documents per type. Media fields take a demo media ID (from upload_demo_media) or its returned URL.",
+)
 
 function demoFailure(code: string, message: string, details?: unknown) {
   return {
@@ -520,7 +527,7 @@ Pass the resulting \`schemaTemplateId\` to \`create_website_template\` so the fr
 
 Separately from any Website Template a user opts into, exactly ONE SchemaTemplate can be marked \`isDefault: true\` (via \`create_schema_template\`/\`update_schema_template\`) — its Content Types/Single Types are auto-materialized into EVERY new workspace at creation time, alongside every published Global Component, before that workspace has applied any template at all. Setting a new one \`isDefault: true\` automatically un-defaults whichever template held it before. Only change this when the user explicitly asks what every new workspace should start with — it's not part of the normal per-request template-building flow above.
 
-Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, call \`get_global_component\` and splice its \`fields\` straight in instead of inventing a near-duplicate shape. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
+Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, pass its slug in \`includeGlobalComponents\` on \`create_schema_template\`/\`create_website_template\` (or call \`get_global_component\` and splice its \`fields\` in) instead of inventing a near-duplicate shape. The catalog is NOT merged into a template automatically: include only the components the website actually uses, because a template's Components can't be removed later. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
 
 ## Design & visual quality
 Default stack (standard baseline for every Website Template, not optional unless the user explicitly asks for something else): Next.js (App Router) + TypeScript + shadcn/ui — every component AND every color token comes from shadcn's own system, not a hand-rolled design system or a different component library.
@@ -744,7 +751,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         title: "Save Demo Single Type Entry",
         description: "Patch an entry in the linked demo only. Top-level fields not included in the patch are preserved. A supplied Component or Repeater replaces that entire field. Use demo media IDs or returned media URLs. Saves as a draft by default.",
         inputSchema: {
-          ...DEMO_SINGLE_INPUT, data: z.record(z.string(), z.json()),
+          ...DEMO_SINGLE_INPUT, data: DEMO_ENTRY_DATA,
           publish: z.boolean().default(false).describe("Publish the merged values to the demo Content API."),
           expectedVersion: z.string().nullable().optional().describe("Version from get_demo_single_type_entry, or null for a missing assignment."),
         },
@@ -759,7 +766,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       {
         title: "List Demo Collection Entries",
         description: "List actual Content Type entries and status for an exact demo locale. Use the entry IDs for related data or an update.",
-        inputSchema: { ...DEMO_COLLECTION_INPUT, limit: z.number().int().min(1).max(25).default(10), offset: z.number().int().min(0).max(10_000).default(0) },
+        inputSchema: {
+          ...DEMO_COLLECTION_INPUT,
+          limit: z.number().int().min(1).max(25).default(10).describe("Entries per page (1-25)."),
+          offset: z.number().int().min(0).max(10_000).default(0).describe("Entries to skip; use with hasMore to page."),
+        },
         outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), locale: z.string(), entries: z.array(DEMO_COLLECTION_ENTRY), hasMore: z.boolean() },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
@@ -772,10 +783,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         title: "Create or Update a Demo Collection Entry",
         description: "Create a demo collection entry, or patch an existing entry by ID. New entries default to draft. Specify the status when editing an already published entry to control whether the update stays public.",
         inputSchema: {
-          ...DEMO_COLLECTION_INPUT, data: z.record(z.string(), z.json()),
-          entryId: z.string().trim().min(1).max(150).optional(),
-          status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
-          expectedVersion: z.string().optional(),
+          ...DEMO_COLLECTION_INPUT, data: DEMO_ENTRY_DATA,
+          entryId: z.string().trim().min(1).max(150).optional().describe("Existing entry ID to patch (from list_demo_content_entries). Omit to create a new entry."),
+          status: z.enum(["DRAFT", "PUBLISHED"]).optional().describe("Publication status. New entries default to DRAFT; set it explicitly when editing a published entry."),
+          expectedVersion: z.string().optional().describe("The entry's version from list_demo_content_entries. A stale value is rejected instead of overwriting a newer edit."),
         },
         outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), entry: DEMO_COLLECTION_ENTRY },
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -790,9 +801,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         description: "Upload a PNG, JPEG, WebP, or GIF into the linked demo's media library. Use the returned media ID or stored URL in Media, Component, or Repeater fields.",
         inputSchema: {
           ...DEMO_TEMPLATE_INPUT,
-          filename: z.string().trim().min(1).max(150), mimeType: z.enum(DEMO_MEDIA_TYPES),
+          filename: z.string().trim().min(1).max(150).describe("File name stored in the demo media library, e.g. 'hero.jpg'."),
+          mimeType: z.enum(DEMO_MEDIA_TYPES).describe("Image MIME type matching the bytes."),
           base64: z.string().min(4).max(Math.ceil(DEMO_MEDIA_MAX_BYTES / 3) * 4).describe("Base64 image bytes without a data URI prefix, up to 2 MB decoded."),
-          alt: z.string().max(500).optional(),
+          alt: z.string().max(500).optional().describe("Alt text for accessibility."),
         },
         outputSchema: {
           demo: DEMO_IDENTITY, reused: z.boolean(),
@@ -853,6 +865,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           excludeDefaultContentTypes: z.array(z.string().min(1).max(100)).max(100).optional().describe(
             "Optional starter Content Type slugs to omit once you know the website's needs, such as kategori, posts or pages. Single Types and Components are retained.",
           ),
+          includeGlobalComponents: z.array(z.string().min(1).max(150)).max(100).optional().describe(
+            "Published Global Component slugs (from list_global_components) to add to the starter. The catalog is NOT merged in automatically — include only the components this website actually uses, since Components can't be removed from a template later.",
+          ),
           published: z.boolean().optional().describe(
             "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
           ),
@@ -864,7 +879,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         outputSchema: SCHEMA_TEMPLATE_OUTPUT_SHAPE,
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
       },
-      async ({ name, category, icon, description, schema, published, isDefault, idempotencyKey, excludeDefaultContentTypes = [] }) => {
+      async ({ name, category, icon, description, schema, published, isDefault, idempotencyKey, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -893,13 +908,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           return referenceIssuesResponse([{ path: "excludeDefaultContentTypes", message: "Set the platform default's Content Types in its explicit schema." }])
         }
         if (!(isDefault && schema !== undefined)) {
-          const composed = await composeTemplateStarterSchema(bundle, excludeDefaultContentTypes)
+          const composed = await composeTemplateStarterSchema(bundle, excludeDefaultContentTypes, includeGlobalComponents)
           if (!composed.success) return invalidSchema(composed.error)
           if (composed.issues.length) return referenceIssuesResponse(composed.issues)
           bundle = composed.data
         }
 
-        const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(bundle))
+        const bundleIssues = validateBundleReferences(bundle)
+        const { blocking, warnings } = splitIssuesBySeverity(
+          bundle === parsedSchema.data ? bundleIssues : remapIssuePathsToInput(bundleIssues, bundle, parsedSchema.data),
+        )
         if (blocking.length > 0) return referenceIssuesResponse(blocking)
 
         const { createDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
@@ -1231,6 +1249,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           excludeDefaultContentTypes: z.array(z.string().min(1).max(100)).max(100).optional().describe(
             "Inline schema only. Omit optional starter Content Types by slug, such as kategori, posts or pages.",
           ),
+          includeGlobalComponents: z.array(z.string().min(1).max(150)).max(100).optional().describe(
+            "Inline schema only. Published Global Component slugs (from list_global_components) to add to the starter. Not merged automatically — include only what this website uses, since Components can't be removed from a template later.",
+          ),
           category: z.string().min(1).max(100).optional().describe("Catalog category for the auto-created backing Schema Template when `schema` is given (e.g. 'Business', 'Blog & News'). Ignored when `schemaTemplateId` is given. Defaults to 'Custom'."),
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
@@ -1252,7 +1273,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, excludeDefaultContentTypes = [] }) => {
+      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -1319,10 +1340,12 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (!schemaTemplateId) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
-          const composed = await composeTemplateStarterSchema(parsedBundle.data, excludeDefaultContentTypes)
+          const composed = await composeTemplateStarterSchema(parsedBundle.data, excludeDefaultContentTypes, includeGlobalComponents)
           if (!composed.success) return invalidSchema(composed.error)
           if (composed.issues.length) return referenceIssuesResponse(composed.issues)
-          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(composed.data))
+          const { blocking, warnings } = splitIssuesBySeverity(
+            remapIssuePathsToInput(validateBundleReferences(composed.data), composed.data, parsedBundle.data),
+          )
           if (blocking.length > 0) return referenceIssuesResponse(blocking)
           bundleWarnings = warnings
           bundleData = composed.data
@@ -1490,7 +1513,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           DRY_RUN_OUTPUT_SHAPE,
           z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional() }),
         ]),
-        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
+        // destructive: `files` replaces the whole bundle and `schema` can
+        // remove models (with their demo entries) — a client that gates
+        // destructive tools behind confirmation must treat this as one.
+        annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
       async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun }) => {
         const auth = authContext.getStore()
@@ -2080,7 +2106,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.16.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.17.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word

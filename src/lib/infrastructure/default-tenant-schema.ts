@@ -98,11 +98,23 @@ export async function seedDefaultTenantSchema(tenantId: string): Promise<void> {
 }
 
 /** Read the starter schema and the published reusable catalog. Template previews
- * and dry runs can use the fallback without writing a catalog row. */
-export async function loadDefaultTenantSchema(ensureCatalogRow = false) {
+ * and dry runs can use the fallback without writing a catalog row.
+ *
+ * `globalComponents` controls how much of the Global Component catalog is
+ * merged in: "all" (a new WORKSPACE — every published component is meant
+ * to be available there) or an explicit slug list (a new Schema/Website
+ * TEMPLATE — merging the whole catalog bloated every template with ~100
+ * unrelated components that protectedSchemaModelIssues then forbade
+ * removing; audit finding). An unknown or unpublished slug is simply not
+ * found here — composeTemplateStarterSchema reports it. */
+export async function loadDefaultTenantSchema(ensureCatalogRow = false, globalComponents: "all" | string[] = "all") {
   const [defaultTemplate, publishedComponents] = await Promise.all([
     ensureCatalogRow ? ensureDefaultSchemaTemplate() : db.schemaTemplate.findFirst({ where: { isDefault: true } }),
-    db.globalComponent.findMany({ where: { published: true } }),
+    globalComponents === "all"
+      ? db.globalComponent.findMany({ where: { published: true } })
+      : globalComponents.length
+        ? db.globalComponent.findMany({ where: { published: true, slug: { in: globalComponents } } })
+        : Promise.resolve([]),
   ])
   const bundle = (defaultTemplate?.schema as SchemaBlob) || DEFAULT_SCHEMA_BUNDLE
   const templateComponents = bundle.components || []

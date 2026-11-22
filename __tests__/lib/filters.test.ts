@@ -295,3 +295,14 @@ describe("Filter Engine", () => {
     })
   })
 })
+
+describe("parseFilters — condition cap", () => {
+  it("rejects filter keys beyond the 20-condition cap instead of silently dropping them (which would serve more rows than asked)", () => {
+    const params = new URLSearchParams()
+    for (let i = 0; i < 22; i++) params.append(`filters[title][$ne]`, `x${i}`)
+    const allowed = new Set(["title"])
+    const { conditions, rejected } = parseFilters(params, allowed)
+    expect(conditions).toHaveLength(20)
+    expect(rejected).toHaveLength(2)
+  })
+})

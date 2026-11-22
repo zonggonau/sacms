@@ -155,6 +155,10 @@ export const CONTENT_API_CONTRACT_EXAMPLES = {
     response: { data: { id: "cmt8xabc123", documentId: "doc_abc123", title: "Kopi Terbaik di Nabire", slug: "kopi-terbaik-di-nabire", locale: "id", availableLocales: ["id"], status: "PUBLISHED", publishedAt: "2026-10-01T03:00:00.000Z", createdAt: "2026-10-01T03:00:00.000Z", updatedAt: "2026-10-01T03:00:00.000Z" }, meta: { contentType: { name: "Articles", slug: "articles" } } },
     note: "Addressable by either the row id OR documentId (the locale-stable id that stays the same across that same document's translations).",
   },
+  filtering: {
+    request: "GET /api/public/acme-coffee/content/articles?filters[category][$eq]=kopi&filters[$or][0][title][$contains]=nabire&filters[$or][1][title][$contains]=papua&filters[tags][$in][0]=kopi&filters[tags][$in][1]=teh",
+    note: "Supported operators: $eq, $ne, $gt, $gte, $lt, $lte (numbers or ISO dates), $contains / $containsi (both case-insensitive), $startsWith, $endsWith, $in, $notIn (indexed [0],[1],… or one comma-joined value), $null, $notNull. Group with $or (alternatives) or $and, one level deep, max 20 conditions. Filter on the entry's own field slugs. An unknown field, unknown operator, or a shape the parser can't read is rejected with HTTP 400 — never silently ignored — so check the response instead of assuming a filter applied.",
+  },
   singleType: {
     request: "GET /api/public/acme-coffee/single/homepage",
     note: "Single Types (Homepage, Site Settings, …) use their OWN endpoint shape, /api/public/[tenant]/single/[singleType] — not /content/. Read src/app/api/public/[tenant]/single/[singleType]/route.ts if the exact response envelope matters; either way, relation/component/repeater fields on a Single Type follow the exact same value shapes documented per-type above.",

@@ -397,7 +397,11 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(validationSource).toMatch(/severity\?:\s*"error"\s*\|\s*"warning"/)
     expect(validationSource).toMatch(/export function splitIssuesBySeverity/)
     for (const tool of ["create_schema_template", "update_schema_template", "create_website_template", "update_website_template"]) {
-      expect(toolBlockOf(tool), `${tool} should use splitIssuesBySeverity, not block on every issue uniformly`).toMatch(/splitIssuesBySeverity\(validateBundleReferences/)
+      // validateBundleReferences' issues may pass through remapIssuePathsToInput
+      // first (create_* tools merge the starter before validating).
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should validate cross-references`).toMatch(/validateBundleReferences\(/)
+      expect(scoped, `${tool} should use splitIssuesBySeverity, not block on every issue uniformly`).toMatch(/splitIssuesBySeverity\(\s*(?:remapIssuePathsToInput\(\s*)?(?:validateBundleReferences|bundle ===)/)
     }
   })
 

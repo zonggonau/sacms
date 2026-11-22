@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { formatZodPath, validateBundleReferences, splitIssuesBySeverity } from "@/lib/schema-template-validation"
+import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, remapIssuePathsToInput } from "@/lib/schema-template-validation"
 
 describe("formatZodPath", () => {
   it("renders a numeric segment as a bracket index, not a dotted segment", () => {
@@ -416,5 +416,57 @@ describe("splitIssuesBySeverity", () => {
     ])
     expect(blocking.map((i) => i.path)).toEqual(["a", "b"])
     expect(warnings.map((i) => i.path)).toEqual(["c"])
+  })
+})
+
+describe("remapIssuePathsToInput", () => {
+  const merged = {
+    contentTypes: [{ slug: "kategori" }, { slug: "posts" }, { slug: "pages" }, { slug: "produk" }],
+  }
+  const input = { contentTypes: [{ slug: "produk" }] }
+
+  it("rewrites a merged index back to the caller's own index by slug", () => {
+    const [issue] = remapIssuePathsToInput([{ path: "contentTypes[3].fields[0].type", message: "bad type" }], merged, input)
+    expect(issue.path).toBe("contentTypes[0].fields[0].type")
+  })
+
+  it("labels a model that came only from the starter instead of pointing at input the caller never sent", () => {
+    const [issue] = remapIssuePathsToInput([{ path: "contentTypes[1].fields[2].relationSlug", message: "missing target" }], merged, input)
+    expect(issue.path).toBe("starter.contentTypes(posts).fields[2].relationSlug")
+    expect(issue.message).toMatch(/platform starter/)
+  })
+
+  it("maps a duplicated slug to the matching duplicate, not the first occurrence", () => {
+    const dupMerged = { contentTypes: [{ slug: "pages" }, { slug: "x" }, { slug: "x" }] }
+    const dupInput = { contentTypes: [{ slug: "x" }, { slug: "x" }] }
+    const [issue] = remapIssuePathsToInput([{ path: "contentTypes[2].slug", message: "duplicate" }], dupMerged, dupInput)
+    expect(issue.path).toBe("contentTypes[1].slug")
+  })
+
+  it("leaves non-model paths untouched", () => {
+    const [issue] = remapIssuePathsToInput([{ path: "excludeDefaultContentTypes[0]", message: "x" }], merged, input)
+    expect(issue.path).toBe("excludeDefaultContentTypes[0]")
+  })
+})
+
+describe("dummyData required-field warning", () => {
+  it("warns (never blocks) when a dummyData row omits a required field the demo seeder would placeholder-fill", () => {
+    const issues = validateBundleReferences({
+      contentTypes: [{
+        slug: "produk",
+        fields: [
+          { name: "Judul", slug: "title", type: "text" },
+          { name: "Harga", slug: "harga", type: "number", required: true },
+          { name: "Gambar", slug: "gambar", type: "media", required: true },
+        ],
+        dummyData: [{ title: "Kopi" }],
+      }],
+      singleTypes: [],
+      components: [],
+    } as any)
+    const warning = issues.find((i) => i.path === "contentTypes[0].dummyData[0].harga")
+    expect(warning?.severity).toBe("warning")
+    // media has no placeholder — it would just stay empty, so no warning
+    expect(issues.find((i) => i.path === "contentTypes[0].dummyData[0].gambar")).toBeUndefined()
   })
 })
