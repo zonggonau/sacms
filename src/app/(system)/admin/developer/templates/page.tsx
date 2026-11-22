@@ -252,7 +252,7 @@ export default function AdminDeveloperTemplatesPage() {
         open={!!templateToDelete}
         onOpenChange={(open) => !open && setTemplateToDelete(null)}
         title="Hapus Website Template?"
-        description={`"${templateToDelete?.name}" akan dihapus permanen beserta demo deployment-nya. Tenant yang sudah menerapkannya tidak terpengaruh.`}
+        description={`"${templateToDelete?.name}" akan dihapus permanen beserta demo website-nya di Vercel, dan schema yang menjadi dasarnya (jika tidak dipakai Website Template lain). Workspace yang sudah menerapkan template/schema ini sebelumnya tidak terpengaruh.`}
         confirmLabel="Hapus"
         variant="destructive"
         onConfirm={handleDelete}
