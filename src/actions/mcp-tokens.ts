@@ -75,6 +75,8 @@ export async function getMcpTokensAction(tenantSlug: string) {
         type: t.type,
         createdAt: t.createdAt.toISOString(),
         lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
+        expiresAt: t.expiresAt ? t.expiresAt.toISOString() : null,
+        isExpired: t.expiresAt ? t.expiresAt < new Date() : false,
       }))
     }
   } catch (error) {
@@ -114,6 +116,9 @@ export async function createMcpTokenAction(
     const { name, description } = parsed.data
     const token = generateMcpToken()
     const hashedToken = createHash("sha256").update(token).digest("hex")
+    // Default expiry: 90 days from now
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 90)
 
     const mcpToken = await db.apiToken.create({
       data: {
@@ -124,6 +129,7 @@ export async function createMcpTokenAction(
         type: "mcp",
         permissions: ["read", "write", "delete", "schema", "webhooks", "mcp"],
         createdBy: session.user.id,
+        expiresAt,
       },
     })
 
@@ -139,6 +145,7 @@ export async function createMcpTokenAction(
         type: mcpToken.type,
         createdAt: mcpToken.createdAt.toISOString(),
         lastUsedAt: null,
+        expiresAt: mcpToken.expiresAt ? mcpToken.expiresAt.toISOString() : null,
       }
     }
   } catch (error) {

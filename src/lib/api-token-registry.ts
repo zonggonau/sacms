@@ -46,6 +46,10 @@ export async function getOrCreatePrimaryApiToken(tenantId: string, createdBy?: s
   const plainToken = generateApiKeyToken()
   const hashedToken = createHash("sha256").update(plainToken).digest("hex")
 
+  // Default expiry: 90 days from now
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + 90)
+
   const apiToken = await db.apiToken.create({
     data: {
       tenantId,
@@ -55,6 +59,7 @@ export async function getOrCreatePrimaryApiToken(tenantId: string, createdBy?: s
       type: "full-access",
       permissions: ["read", "write"],
       createdBy: createdBy || null,
+      expiresAt,
     },
   })
 

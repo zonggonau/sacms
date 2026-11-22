@@ -5,6 +5,8 @@ export const createApiTokenSchema = z.object({
   description: z.string().max(500).optional(),
   type: z.enum(["read-only", "full-access"]).default("read-only"),
   permissions: z.array(z.string().min(1)).max(100).default([]),
+  // expiresAt is optional in input schema but will be auto-set server-side
+  // to 90 days from creation if not provided (default expiry).
   expiresAt: z.coerce.date().optional(),
 })
 

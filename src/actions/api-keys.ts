@@ -62,6 +62,7 @@ export async function getApiTokensAction(tenantSlug: string) {
       return {
         ...t,
         permissions: Array.isArray(perms) ? perms : [],
+        isExpired: t.expiresAt ? t.expiresAt < new Date() : false,
       }
     })
 
@@ -104,7 +105,14 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
 
     const token = generateToken()
     const hashedToken = createHash("sha256").update(token).digest("hex")
-    
+
+    // Set expiry: use provided value or default to 90 days from now
+    let tokenExpiresAt = expiresAt ? new Date(expiresAt) : null
+    if (!tokenExpiresAt) {
+      tokenExpiresAt = new Date()
+      tokenExpiresAt.setDate(tokenExpiresAt.getDate() + 90)
+    }
+
     const apiToken = await db.apiToken.create({
       data: {
         tenantId: access.tenantId,
@@ -113,7 +121,7 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
         token: hashedToken,
         type,
         permissions: permissions as any,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        expiresAt: tokenExpiresAt,
         createdBy: session.user.id,
       },
     })
