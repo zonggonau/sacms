@@ -125,12 +125,15 @@ describe("Global Component MCP tools — source contract (global-schema server)"
     expect(scoped).toMatch(/dedupeSlug\(parsed\.data\.slug \|\| slugify\(name\), /)
   })
 
-  it("update_global_component treats a full-replacement `fields` and defaults published to false on create, not true", () => {
+  it("create/update_global_component never publish directly — published: true is saved as a draft and queued for human approval", () => {
     const create = toolBlockOf(globalSchemaRouteSource, "create_global_component")
-    expect(create).toMatch(/published:\s*published\s*\?\?\s*false/)
+    expect(create).toMatch(/published: false,/)
+    expect(create).toMatch(/queueApprovals\(auth, \[\{ action: "publish_global_component"/)
 
     const update = toolBlockOf(globalSchemaRouteSource, "update_global_component")
     expect(update).toMatch(/fields:\s*z\.array\(schemaTemplateFieldSchema\)\.optional\(\)/)
+    expect(update).toMatch(/published === false \? \{ published: false \} : \{\}/)
+    expect(update).toMatch(/queueApprovals\(auth, \[\{ action: "publish_global_component"/)
   })
 
   it("get_global_component/delete_global_component report NOT_FOUND via the shared notFound() helper, extended to include 'Global Component'", () => {
@@ -181,23 +184,28 @@ describe("Global Component discovery tools — source contract (per-workspace se
 // write, the same static source-text style as the rest of this file.
 
 describe("isDefault SchemaTemplate knob — source contract (global-schema server)", () => {
-  it("claims the default in the same transaction as schema template creation and update", () => {
-    expect(globalSchemaRouteSource).toMatch(/async function setAsDefaultSchemaTemplate\(/)
-
+  it("isDefault: true is only REQUESTED — create saves a non-default draft and update applies isDefault: false only; true goes to human approval", () => {
     const create = toolBlockOf(globalSchemaRouteSource, "create_schema_template")
     expect(create, "create_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
-    expect(create).toMatch(/db\.\$transaction\(async \(tx\)[\s\S]+setAsDefaultSchemaTemplate\(undefined, tx\)[\s\S]+tx\.schemaTemplate\.create\(/)
+    expect(create).toMatch(/isDefault: false,/)
+    expect(create).toMatch(/action: "set_default_schema_template"/)
+    expect(create).toMatch(/requiresPublishScope\(auth, "create_schema_template"\)/)
 
     const update = toolBlockOf(globalSchemaRouteSource, "update_schema_template")
     expect(update, "update_schema_template should accept isDefault").toMatch(/isDefault: z\.boolean\(\)\.optional\(\)/)
-    expect(update).toMatch(/db\.\$transaction\(async \(tx\)[\s\S]+tx\.schemaTemplate\.updateMany\([\s\S]+setAsDefaultSchemaTemplate\(existing\.id, tx\)/)
+    expect(update).toMatch(/isDefault === false \? \{ isDefault: false \} : \{\}/)
+    expect(update).toMatch(/action: "set_default_schema_template"/)
+    // No path in the route sets the default directly any more.
+    expect(globalSchemaRouteSource).not.toMatch(/async function setAsDefaultSchemaTemplate\(/)
   })
 
-  it("setAsDefaultSchemaTemplate unsets every OTHER isDefault row, never the row passed in", () => {
-    const fnStart = globalSchemaRouteSource.indexOf("async function setAsDefaultSchemaTemplate(")
-    const fnBlock = globalSchemaRouteSource.slice(fnStart, globalSchemaRouteSource.indexOf("\n}\n", fnStart))
-    expect(fnBlock).toMatch(/isDefault: true/)
-    expect(fnBlock).toMatch(/data: \{ isDefault: false \}/)
+  it("the approved set_default_schema_template action unsets every OTHER default in the same transaction", () => {
+    const approvalsSource = readFileSync(join(__dirname, "../../src/lib/infrastructure/mcp-approvals.ts"), "utf-8")
+    const caseStart = approvalsSource.indexOf('case "set_default_schema_template"')
+    const caseBlock = approvalsSource.slice(caseStart, approvalsSource.indexOf("case ", caseStart + 10))
+    expect(caseBlock).toMatch(/db\.\$transaction\(\[/)
+    expect(caseBlock).toMatch(/isDefault: true, id: \{ not: target\.id \}/)
+    expect(caseBlock).toMatch(/data: \{ isDefault: false \}/)
   })
 
   it("list_schema_templates and the shared serializer/output-shape expose isDefault", () => {

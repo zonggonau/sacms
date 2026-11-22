@@ -52,16 +52,31 @@ describe("Global Schema Template MCP route — resolveGlobalSchemaToken", () => 
     )
   })
 
-  it("authorizes whenever a matching token row exists, with no tenant involved", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "ChatGPT" } as any)
+  it("authorizes a matching token row, with no tenant involved, carrying its identity and scopes", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "ChatGPT", permissions: ["read", "demo"], expiresAt: null } as any)
     const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    // Carries the token's identity so background operations (and version
-    // history) can record which token made a change.
-    expect(auth).toMatchObject({ authenticated: true, tokenId: "tok-1", tokenName: "ChatGPT" })
+    // Identity is recorded on background operations and version history.
+    expect(auth).toEqual({ authenticated: true, tokenId: "tok-1", tokenName: "ChatGPT", scopes: ["read", "demo"] })
+  })
+
+  it("gives a legacy token (permissions: ['schema-template'], minted before scopes) full access so existing integrations keep working", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "Old", permissions: ["schema-template"], expiresAt: null } as any)
+    const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
+    expect(auth?.scopes).toEqual(["read", "demo", "write", "publish"])
+  })
+
+  it("rejects an expired token (expiresAt used to be stored but never checked)", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "Old", permissions: ["read"], expiresAt: new Date(Date.now() - 1000) } as any)
+    expect(await resolveGlobalSchemaToken("mcpglobal_valid")).toBeNull()
+  })
+
+  it("rejects a token with no recognized scope at all", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "Odd", permissions: ["something-else"], expiresAt: null } as any)
+    expect(await resolveGlobalSchemaToken("mcpglobal_valid")).toBeNull()
   })
 
   it("bumps lastUsedAt on a successful match", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1" } as any)
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "ChatGPT", permissions: ["read"], expiresAt: null } as any)
     await resolveGlobalSchemaToken("mcpglobal_valid")
     expect(db.apiToken.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ type: "mcp-global-schema" }), data: { lastUsedAt: expect.any(Date) } }),

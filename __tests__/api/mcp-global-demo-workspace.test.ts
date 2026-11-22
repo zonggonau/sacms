@@ -55,7 +55,9 @@ vi.mock("@/lib/database", () => ({
   Prisma: { DbNull: null },
   db: {
     ...mocks.tx,
-    apiToken: { findFirst: vi.fn().mockResolvedValue({ id: "token-1" }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    // Legacy full-access permissions — scopes are covered in mcp-global-schema-auth.test.ts.
+    apiToken: { findFirst: vi.fn().mockResolvedValue({ id: "token-1", name: "Fixture", permissions: ["schema-template"] }), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    mcpApprovalRequest: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(async ({ data }) => ({ id: "approval-1", status: "pending", ...data })) },
     schemaTemplate: { ...mocks.tx.schemaTemplate, findFirst: mocks.findTemplate },
     globalComponent: { findMany: mocks.listComponents },
     $transaction: mocks.transaction,

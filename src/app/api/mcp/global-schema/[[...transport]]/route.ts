@@ -47,6 +47,8 @@ import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validat
 import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
 import { startBackgroundOperation, getOperation, type OperationKind } from "@/lib/infrastructure/global-mcp-operations"
 import { recordTemplateVersion, fileSha256, type VersionFile } from "@/lib/infrastructure/template-versions"
+import { resolveGlobalMcpScopes, requiredScopeForTool, type GlobalMcpScope } from "@/lib/mcp-global-scopes"
+import { requestApproval, summarizeApproval, type ApprovalAction, type ApprovalSummary } from "@/lib/infrastructure/mcp-approvals"
 import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
 import type { Prisma } from "@prisma/client"
 import {
@@ -66,6 +68,7 @@ interface GlobalAuthContext {
   authenticated: true
   tokenId: string
   tokenName: string
+  scopes: GlobalMcpScope[]
 }
 
 const authContext = new AsyncLocalStorage<GlobalAuthContext>()
@@ -77,9 +80,14 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
 
   const token = await db.apiToken.findFirst({
     where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, permissions: true, expiresAt: true },
   })
   if (!token) return null
+  // expiresAt used to be stored but never checked — an expired token kept
+  // working indefinitely.
+  if (token.expiresAt && token.expiresAt.getTime() <= Date.now()) return null
+  const scopes = resolveGlobalMcpScopes(token.permissions)
+  if (scopes.length === 0) return null
 
   db.apiToken
     .updateMany({
@@ -88,7 +96,15 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
     })
     .catch(() => {})
 
-  return { authenticated: true, tokenId: token.id, tokenName: token.name }
+  return { authenticated: true, tokenId: token.id, tokenName: token.name, scopes }
+}
+
+function scopeDenied(toolName: string, required: GlobalMcpScope) {
+  return {
+    content: [{ type: "text" as const, text: `❌ Token ini tidak punya cakupan '${required}' yang dibutuhkan untuk ${toolName}. Panggil whoami untuk melihat cakupan token, atau minta admin membuat token dengan cakupan yang sesuai.` }],
+    structuredContent: { ok: false, code: "FORBIDDEN_SCOPE", requiredScope: required, message: `This token lacks the '${required}' scope required by ${toolName}.` },
+    isError: true,
+  }
 }
 
 // chatgpt8.md P1 ("use one consistent error code"): this used to carry
@@ -137,6 +153,11 @@ function notFound(entity: "Schema Template" | "Website Template" | "Global Compo
  * since structuredContent is validated against this zod shape directly,
  * not after a JSON.stringify round-trip that would've done it for free).
  */
+/** A change the agent asked for that waits on a human (see
+ *  mcp-approvals.ts) — returned as `pendingApprovals` alongside the normal
+ *  result, which itself is saved without that change (e.g. as a draft). */
+const APPROVAL_OUTPUT = z.object({ id: z.string(), action: z.string(), status: z.string(), message: z.string() })
+
 const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
   id: z.string(), name: z.string(), slug: z.string(), schemaTemplateId: z.string(), icon: z.string(),
   description: z.string().nullable(), files: z.array(z.object({ path: z.string(), content: z.string() })),
@@ -148,6 +169,7 @@ const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
   sourceVersion: z.string(),
   demoVercelProjectId: z.string().nullable(), demoUrl: z.string().nullable(),
   demoDeployedAt: z.string().nullable(), demoDeploymentId: z.string().nullable(),
+  pendingApprovals: z.array(APPROVAL_OUTPUT).optional(),
 }
 
 /**
@@ -300,11 +322,13 @@ const SCHEMA_TEMPLATE_OUTPUT_SHAPE = {
   description: z.string().nullable(), schema: z.any(), published: z.boolean(),
   // Report P4: whether every NEW workspace gets this template's schema
   // auto-materialized at creation time (see seedDefaultTenantSchema). At
-  // most one SchemaTemplate is ever true — enforced by
-  // setAsDefaultSchemaTemplate, not a DB constraint.
+  // most one SchemaTemplate is ever true — set only through an approved
+  // set_default_schema_template request (mcp-approvals.ts), which unsets
+  // the previous default in the same transaction; no DB constraint.
   isDefault: z.boolean(),
   demoTenantId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(),
   demoWorkspace: SCHEMA_DEMO_WORKSPACE_SHAPE.optional(),
+  pendingApprovals: z.array(APPROVAL_OUTPUT).optional(),
   // chatgpt.md P1: pass THIS back as update_schema_template's
   // expectedVersion, not `updatedAt` (which also moves on the one-time
   // demoTenantId write a first demo deploy makes).
@@ -340,23 +364,6 @@ function serializeSchemaTemplate(t: {
     updatedAt: t.updatedAt.toISOString(),
     sourceVersion: t.sourceVersion.toISOString(),
   }
-}
-
-/**
- * Enforces "at most one isDefault: true SchemaTemplate" in app code (no DB
- * constraint — same rationale as demoTenantId's own comment: a unique
- * constraint trips Prisma db push's data-loss guard, which the production
- * deploy hook runs non-interactively with no --accept-data-loss flag).
- * Called right before the real create/update write — if the process dies
- * between the two, ensureDefaultSchemaTemplate's own fallback (find-by-slug)
- * self-heals the next tenant creation rather than leaving the system with
- * no default at all.
- */
-async function setAsDefaultSchemaTemplate(excludeId: string | undefined, client: Pick<Prisma.TransactionClient, "schemaTemplate">) {
-  await client.schemaTemplate.updateMany({
-    where: { isDefault: true, ...(excludeId ? { id: { not: excludeId } } : {}) },
-    data: { isDefault: false },
-  })
 }
 
 /** The demoDeployment sub-object every create/update_website_template response carries. */
@@ -438,6 +445,33 @@ async function runToolInBackground(kind: OperationKind, run: () => Promise<ToolR
   return asyncOperationResponse(operation, kind)
 }
 
+/** A change the agent asked for that waits on a human (see
+ *  mcp-approvals.ts) — returned as `pendingApprovals` alongside the normal
+ *  result, which itself is saved without that change (e.g. as a draft). */
+
+/** Sensitive flags (published: true, isDefault: true, confirmCascade) need
+ *  the `publish` scope just to be REQUESTED. */
+function requiresPublishScope(auth: GlobalAuthContext, toolName: string) {
+  return auth.scopes.includes("publish") ? null : scopeDenied(`${toolName} (publish/default/cascade)`, "publish")
+}
+
+async function queueApprovals(
+  auth: GlobalAuthContext,
+  requests: Array<{ action: ApprovalAction; targetId: string; targetName: string; details?: Record<string, unknown> }>,
+) {
+  const queued: ApprovalSummary[] = []
+  for (const request of requests) {
+    const row = await requestApproval({ ...request, tokenId: auth.tokenId, tokenName: auth.tokenName })
+    queued.push(summarizeApproval(row))
+  }
+  return queued
+}
+
+function approvalNote(approvals: ApprovalSummary[]) {
+  if (!approvals.length) return ""
+  return `\n\n⏳ Menunggu persetujuan admin di dashboard (/admin/developer/approvals):\n${approvals.map((a) => `- ${a.action} (id: ${a.id})`).join("\n")}`
+}
+
 /** A schema template's own internal demo workspace (real data + API key) to
  *  build a dryRun bundle against, or null when there isn't one yet. */
 async function findDemoTenantForSchemaTemplate(idOrSlug: string) {
@@ -511,6 +545,7 @@ const GLOBAL_COMPONENT_OUTPUT_SHAPE = {
   description: z.string().nullable(), category: z.string().nullable(),
   fields: z.array(z.any()),
   published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
+  pendingApprovals: z.array(APPROVAL_OUTPUT).optional(),
 }
 function serializeGlobalComponent(c: {
   id: string
@@ -561,6 +596,19 @@ async function dedupeSlug(baseSlug: string, exists: (slug: string) => Promise<un
 
 const handler = createMcpHandler(
   async (server) => {
+    // Scope gate for EVERY tool, applied once here rather than in each
+    // handler (a tool missing from the scope map requires `write` — fails
+    // closed). Each handler's own `if (!auth) return UNAUTHORIZED` still
+    // runs; this only adds the per-token scope check on top.
+    const registerToolUnscoped = server.registerTool.bind(server) as (...args: any[]) => any
+    ;(server as { registerTool: unknown }).registerTool = (name: string, config: unknown, toolHandler: (...args: any[]) => any) =>
+      registerToolUnscoped(name, config, async (...args: any[]) => {
+        const auth = authContext.getStore()
+        const required = requiredScopeForTool(name)
+        if (auth && !auth.scopes.includes(required)) return scopeDenied(name, required)
+        return toolHandler(...args)
+      })
+
     // ── get_builder_guide ──────────────────────────────────────────────────
     // Kabar Nusa report bug 4: the full workflow used to live entirely in
     // this server's top-level `instructions` field (6,178 characters) —
@@ -600,7 +648,7 @@ Map the required pages, header, footer, editorial data, and reusable blocks to t
 
 Pass the resulting \`schemaTemplateId\` to \`create_website_template\` so the frontend uses the same workspace. When the schema is already decided, an inline \`schema\` still works. SaCMS merges the starter by slug and provisions the demo automatically. Use \`excludeDefaultContentTypes\` to omit optional starter collections in that flow.
 
-Separately from any Website Template a user opts into, exactly ONE SchemaTemplate can be marked \`isDefault: true\` (via \`create_schema_template\`/\`update_schema_template\`) — its Content Types/Single Types are auto-materialized into EVERY new workspace at creation time, alongside every published Global Component, before that workspace has applied any template at all. Setting a new one \`isDefault: true\` automatically un-defaults whichever template held it before. Only change this when the user explicitly asks what every new workspace should start with — it's not part of the normal per-request template-building flow above.
+Separately from any Website Template a user opts into, exactly ONE SchemaTemplate can be marked \`isDefault: true\` (via \`create_schema_template\`/\`update_schema_template\`) — its Content Types/Single Types are auto-materialized into EVERY new workspace at creation time, alongside every published Global Component, before that workspace has applied any template at all. Setting \`isDefault: true\` only REQUESTS it (see Approvals below); once approved it un-defaults whichever template held it before. Only change this when the user explicitly asks what every new workspace should start with — it's not part of the normal per-request template-building flow above.
 
 Before writing a new Component (testimonial, pricing tier, team member, etc.) into a Schema Template's \`components\`, call \`list_global_components\` — if a close match already exists in the platform-wide catalog, pass its slug in \`includeGlobalComponents\` on \`create_schema_template\`/\`create_website_template\` (or call \`get_global_component\` and splice its \`fields\` in) instead of inventing a near-duplicate shape. The catalog is NOT merged into a template automatically: include only the components the website actually uses, because a template's Components can't be removed later. A Global Component is schema ONLY (no frontend code) — once published it's also readable by every workspace's own per-workspace MCP server (\`list_global_components\`/\`get_global_component\` there), which an agent can call to materialize it into a tenant's own schema via \`create_component\`.
 
@@ -615,6 +663,9 @@ If you're working inside a real local Next.js project with shell access (Claude 
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
 A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\` (with \`dryRun: true\`, on create or update) to run a real \`next build\` in a throwaway sandbox and render-check the routes; this catches a bundle that fails to build or builds but 500s at runtime (e.g. a package the bundler leaves external). It returns an \`operationId\`: poll \`get_operation_status\` until \`succeeded\`/\`failed\`.
+
+## Approvals and token scopes
+Publishing (\`published: true\` on a Schema Template, Website Template or Global Component), \`isDefault: true\`, and a cascading \`delete_schema_template\` are never applied by you: the item is saved without that change and the request is returned in \`pendingApprovals\` (or \`pendingApproval\`). A super admin approves or rejects it in the SaCMS dashboard (/admin/developer/approvals). Tell the user it's waiting, and check it with \`get_approval_status\` — don't retry the flag in a loop. Each token has scopes (read, demo, write, publish); a tool outside them returns FORBIDDEN_SCOPE, and \`whoami\` shows what this token may do.
 
 ## Version history
 Every files/schema change is recorded as a version (diff summary, which token made it, when; the last 30 are kept). \`list_template_versions\` shows the history, \`get_template_version\` reads a snapshot (paths + sha256, or specific files with \`paths\`), and \`update_website_template({ id, restoreFromVersion: N })\` rolls back — files only by default, add \`restoreSchema: true\` for the schema too. A restore goes through every normal update guard and is itself recorded, so it can be undone. \`get_website_template\` with \`listPathsOnly\` returns each file's sha256 too, so you can sync a local copy by fetching only files that differ.
@@ -952,10 +1003,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "Published Global Component slugs (from list_global_components) to add to the starter. The catalog is NOT merged in automatically — include only the components this website actually uses, since Components can't be removed from a template later.",
           ),
           published: z.boolean().optional().describe(
-            "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
+            "true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately.",
           ),
           isDefault: z.boolean().optional().describe(
-            "Set true to make this THE template auto-materialized (schema only, no frontend) into every NEW workspace at creation time — unsets any other template currently marked default. At most one template is ever isDefault. Omit/false for an ordinary template a user opts into via a Website Template.",
+            "true REQUESTS that this template seed every new workspace: a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). Only one template is ever the default. false un-defaults it immediately.",
           ),
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template (and its already-provisioned demo workspace) instead of a duplicate."),
         },
@@ -965,6 +1016,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async ({ name, category, icon, description, schema, published, isDefault, idempotencyKey, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published || isDefault) {
+          const denied = requiresPublishScope(auth, "create_schema_template")
+          if (denied) return denied
+        }
 
         // Idempotent replay — before anything else, so a lost response's
         // retry never creates a second template + a second orphaned demo
@@ -1004,9 +1059,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         if (blocking.length > 0) return referenceIssuesResponse(blocking)
 
         const { createDraftDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+        // Saved as a non-default draft; publishing and becoming the default
+        // for every new workspace each wait for a human approval below.
         const { template, demo } = await db.$transaction(async (tx) => {
           const slug = await dedupeSlug(slugify(name) || "schema-template", (s) => tx.schemaTemplate.findUnique({ where: { slug: s } }))
-          if (isDefault) await setAsDefaultSchemaTemplate(undefined, tx)
           const demo = await createDraftDemoWorkspace(tx, { slug, name }, bundle)
           const template = await tx.schemaTemplate.create({
             data: {
@@ -1014,17 +1070,25 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               icon: icon || "📦",
               description: description || null,
               schema: bundle,
-              published: published ?? false,
-              isDefault: isDefault ?? false,
+              published: false,
+              isDefault: false,
               demoTenantId: demo.id,
               idempotencyKey: idempotencyKey || null,
             },
           })
           return { template, demo }
         }, { timeout: 20000 })
-        const structured = { ...serializeSchemaTemplate(template), demoWorkspace: describeSchemaDemoWorkspace(demo) }
+        const pendingApprovals = await queueApprovals(auth, [
+          ...(published ? [{ action: "publish_schema_template" as const, targetId: template.id, targetName: template.name }] : []),
+          ...(isDefault ? [{ action: "set_default_schema_template" as const, targetId: template.id, targetName: template.name }] : []),
+        ])
+        const structured = {
+          ...serializeSchemaTemplate(template),
+          demoWorkspace: describeSchemaDemoWorkspace(demo),
+          ...(pendingApprovals.length ? { pendingApprovals } : {}),
+        }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -1053,9 +1117,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "same as create_schema_template — don't guess an options shape. Same `groups`/`group` convention " +
             "too (template-local slugs, Content Types only).",
           ),
-          published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
+          published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
           isDefault: z.boolean().optional().describe(
-            "Set true to make THIS the template auto-materialized into every NEW workspace at creation time, unsetting any other template currently marked default. Set false to un-default it (no other template becomes default automatically).",
+            "true REQUESTS that this template seed every new workspace: a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). Only one template is ever the default. false un-defaults it immediately.",
           ),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_schema_template) — NOT `updatedAt`, which also moves on a first demo deploy's one-time bookkeeping write even with no `schema` change. If someone else changed `schema` since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND one or more Website Templates already follow this Schema Template — see this tool's own description."),
@@ -1067,6 +1131,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async ({ id, name, category, icon, description, schema, published, isDefault, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published === true || isDefault === true) {
+          const denied = requiresPublishScope(auth, "update_schema_template")
+          if (denied) return denied
+        }
 
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Schema Template", id)
@@ -1121,13 +1189,14 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               ...(icon !== undefined ? { icon } : {}),
               ...(description !== undefined ? { description } : {}),
               ...(schemaData !== undefined ? { schema: schemaData } : {}),
-              ...(published !== undefined ? { published } : {}),
-              ...(isDefault !== undefined ? { isDefault } : {}),
+              // Turning these OFF applies directly; turning them ON waits
+              // for a human approval (queued after the transaction).
+              ...(published === false ? { published: false } : {}),
+              ...(isDefault === false ? { isDefault: false } : {}),
               ...(schemaData !== undefined ? { sourceVersion: new Date() } : {}),
             },
           })
           if (!changed.count) return null
-          if (isDefault) await setAsDefaultSchemaTemplate(existing.id, tx)
           const template = await tx.schemaTemplate.findUniqueOrThrow({ where: { id: existing.id } })
           const demo = await findSchemaDemoWorkspace(tx, template)
           if (schemaData && template.demoTenantId && !demo) {
@@ -1149,12 +1218,17 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             isError: true,
           }
         }
+        const pendingApprovals = await queueApprovals(auth, [
+          ...(published === true && !result.template.published ? [{ action: "publish_schema_template" as const, targetId: result.template.id, targetName: result.template.name }] : []),
+          ...(isDefault === true && !result.template.isDefault ? [{ action: "set_default_schema_template" as const, targetId: result.template.id, targetName: result.template.name }] : []),
+        ])
         const structured = {
           ...serializeSchemaTemplate(result.template),
           ...(result.demo ? { demoWorkspace: describeSchemaDemoWorkspace(result.demo) } : {}),
+          ...(pendingApprovals.length ? { pendingApprovals } : {}),
         }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(schemaWarnings) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(schemaWarnings) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -1167,14 +1241,18 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         description: "Permanently delete a Schema Template from the catalog. WARNING: WebsiteTemplate.schemaTemplateId cascades on delete at the database level — any Website Template built on this Schema Template would be permanently deleted too, not just left dangling. This refuses by default when dependents exist, listing them, instead of silently cascading; pass confirmCascade: true only after telling the user exactly what else will be deleted.",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
-          confirmCascade: z.boolean().optional().describe("Required (after confirming with the user) when this Schema Template still has one or more Website Templates built on it — deleting it WILL cascade-delete those too."),
+          confirmCascade: z.boolean().optional().describe("When this Schema Template still has Website Templates built on it, true REQUESTS the cascade delete — a super admin must approve it in the dashboard before anything is deleted (returned as pendingApproval; needs the publish scope). Tell the user exactly what will be deleted."),
         },
-        outputSchema: { ok: z.literal(true), deletedDependents: z.number() },
+        outputSchema: { ok: z.literal(true), deletedDependents: z.number().optional(), pendingApproval: APPROVAL_OUTPUT.optional() },
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: false },
       },
       async ({ id, confirmCascade }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (confirmCascade) {
+          const denied = requiresPublishScope(auth, "delete_schema_template")
+          if (denied) return denied
+        }
 
         const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Schema Template", id)
@@ -1199,15 +1277,25 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           }
         }
 
+        if (dependents.length > 0) {
+          // A cascade wipes other Website Templates too — never applied by
+          // the agent itself, only by a human approval.
+          const [pendingApproval] = await queueApprovals(auth, [{
+            action: "cascade_delete_schema_template",
+            targetId: existing.id,
+            targetName: existing.name,
+            details: { dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })) },
+          }])
+          return {
+            content: [{ type: "text" as const, text: `⏳ Penghapusan '${existing.name}' beserta ${dependents.length} Website Template menunggu persetujuan admin di /admin/developer/approvals (id: ${pendingApproval.id}).` }],
+            structuredContent: { ok: true as const, pendingApproval },
+          }
+        }
+
         await db.schemaTemplate.delete({ where: { id: existing.id } })
         return {
-          content: [{
-            type: "text" as const,
-            text: dependents.length > 0
-              ? `✅ Template '${existing.name}' dan ${dependents.length} Website Template yang memakainya ikut terhapus.`
-              : `✅ Template '${existing.name}' dihapus.`,
-          }],
-          structuredContent: { ok: true, deletedDependents: dependents.length },
+          content: [{ type: "text" as const, text: `✅ Template '${existing.name}' dihapus.` }],
+          structuredContent: { ok: true as const, deletedDependents: 0 },
         }
       },
     )
@@ -1345,7 +1433,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             "vars (see the {{SACMS_*}} placeholder convention above). Max 200 files, 200KB each. No binary assets.",
           ),
           published: z.boolean().optional().describe(
-            "Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately browsable by every workspace.",
+            "true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately.",
           ),
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template instead of a duplicate (and, when `schema` was given, a second orphaned backing Schema Template). Ignored when dryRun is true."),
           dryRun: z.boolean().optional().describe("Validate everything (files, schema shape, relationSlug/componentSlug/allowedComponents references, select/multiselect choices, schemaTemplateId existence) WITHOUT creating anything or deploying a demo. Returns the same validation errors a real call would reject with, each with an exact path like \"schema.contentTypes[2].fields[4].options.choices\" — call this first for anything non-trivial instead of discovering a mistake only after it's already saved."),
@@ -1362,6 +1450,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, verifyBuild, background, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published && !dryRun) {
+          const denied = requiresPublishScope(auth, "create_website_template")
+          if (denied) return denied
+        }
 
         if (background && !dryRun) {
           // eslint-disable-next-line prefer-rest-params
@@ -1517,7 +1609,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
                 icon: icon || "🖥️",
                 description: description || null,
                 files: parsedFiles.data,
-                published: published ?? false,
+                // Publishing waits for a human approval (queued below).
+                published: false,
                 idempotencyKey: idempotencyKey || null,
               },
             })
@@ -1574,9 +1667,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // itself (or leaves them untouched on a hard failure), so this is
         // the one query that can't drift from what it actually wrote.
         const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
-        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
+        const pendingApprovals = published
+          ? await queueApprovals(auth, [{ action: "publish_website_template", targetId: template.id, targetName: template.name }])
+          : []
+        const structured = {
+          ...serializeWebsiteTemplateSummary(saved),
+          demoDeployment: describeDemoDeployment(demo),
+          ...(pendingApprovals.length ? { pendingApprovals } : {}),
+        }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -1607,7 +1707,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           changedFiles: z.array(z.object({ path: z.string().trim().min(1).max(300), content: z.string().max(200_000) })).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is."),
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
-          published: z.boolean().optional().describe("Set true to make this template immediately browsable by every workspace, or false to hide it again."),
+          published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
           confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
@@ -1630,6 +1730,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background, restoreFromVersion, restoreSchema }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published === true && !dryRun) {
+          const denied = requiresPublishScope(auth, "update_website_template")
+          if (denied) return denied
+        }
 
         if (background && !dryRun) {
           // eslint-disable-next-line prefer-rest-params
@@ -1793,7 +1897,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               ...(icon !== undefined ? { icon } : {}),
               ...(description !== undefined ? { description } : {}),
               ...(filesData !== undefined ? { files: filesData } : {}),
-              ...(published !== undefined ? { published } : {}),
+              // Unpublishing applies directly; publishing waits for a
+              // human approval (queued after the transaction).
+              ...(published === false ? { published: false } : {}),
               // Only a genuine source change moves sourceVersion — the
               // demo redeploy triggered below (files/schema) or any later
               // metadata-only edit must never invalidate an expectedVersion
@@ -1813,6 +1919,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             isError: true,
           }
         }
+
+        const pendingApprovals = published === true && !template.published
+          ? await queueApprovals(auth, [{ action: "publish_website_template", targetId: template.id, targetName: template.name }])
+          : []
 
         if (filesData !== undefined || schemaUpdated) {
           await recordTemplateVersion({
@@ -1843,16 +1953,24 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             schemaTemplate: freshSchemaTemplate || existing.schemaTemplate,
           })
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
-          const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
+          const structured = {
+            ...serializeWebsiteTemplateSummary(saved),
+            demoDeployment: describeDemoDeployment(demo),
+            ...(pendingApprovals.length ? { pendingApprovals } : {}),
+          }
           return {
-            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) }],
+            content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(bundleWarnings) + approvalNote(pendingApprovals) }],
             structuredContent: structured,
           }
         }
 
-        const structured = { ...serializeWebsiteTemplateSummary(template), demoDeployment: { status: "skipped" as const } }
+        const structured = {
+          ...serializeWebsiteTemplateSummary(template),
+          demoDeployment: { status: "skipped" as const },
+          ...(pendingApprovals.length ? { pendingApprovals } : {}),
+        }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -1886,6 +2004,96 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         await db.websiteTemplate.delete({ where: { id: existing.id } })
         const structured = { ok: true as const }
         return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }], structuredContent: structured }
+      },
+    )
+
+    server.registerTool(
+      "whoami",
+      {
+        title: "Who Am I (Token Info)",
+        description: "Show which token this session is using: its name, scopes (read / demo / write / publish), the display name of the admin who created it, when it expires, and when it was last used. Call this when a tool returns FORBIDDEN_SCOPE.",
+        inputSchema: {},
+        outputSchema: {
+          tokenId: z.string(),
+          name: z.string(),
+          scopes: z.array(z.string()),
+          createdBy: z.string().nullable(),
+          createdAt: z.string(),
+          expiresAt: z.string().nullable(),
+          lastUsedAt: z.string().nullable(),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const token = await db.apiToken.findUnique({
+          where: { id: auth.tokenId },
+          select: { id: true, name: true, createdBy: true, createdAt: true, expiresAt: true, lastUsedAt: true },
+        })
+        if (!token) return UNAUTHORIZED
+        // Display name only — never the admin's email, which an external AI
+        // client (or whoever holds a leaked token) has no need for.
+        const creator = token.createdBy
+          ? await db.user.findUnique({ where: { id: token.createdBy }, select: { name: true } })
+          : null
+        const structured = {
+          tokenId: token.id,
+          name: token.name,
+          scopes: auth.scopes,
+          createdBy: creator?.name ?? null,
+          createdAt: token.createdAt.toISOString(),
+          expiresAt: token.expiresAt?.toISOString() ?? null,
+          lastUsedAt: token.lastUsedAt?.toISOString() ?? null,
+        }
+        return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
+      },
+    )
+
+    server.registerTool(
+      "get_approval_status",
+      {
+        title: "Get Approval Request Status",
+        description: "Check a publish / default-schema / cascade-delete request that's waiting on a human. These are never applied by the agent: a super admin approves or rejects them in the SaCMS dashboard (/admin/developer/approvals). Status: pending, approved, rejected, or failed (approved but couldn't be applied — see resultMessage).",
+        inputSchema: {
+          approvalId: z.string().describe("The id from a pendingApprovals / pendingApproval entry."),
+        },
+        outputSchema: {
+          id: z.string(),
+          action: z.string(),
+          targetId: z.string(),
+          targetName: z.string(),
+          status: z.string(),
+          resultMessage: z.string().nullable(),
+          createdAt: z.string(),
+          decidedAt: z.string().nullable(),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ approvalId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const request = await db.mcpApprovalRequest.findUnique({ where: { id: approvalId } })
+        if (!request) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Permintaan persetujuan '${approvalId}' tidak ditemukan.` }],
+            structuredContent: { ok: false, code: "NOT_FOUND", message: "Approval request not found." },
+            isError: true,
+          }
+        }
+        const structured = {
+          id: request.id,
+          action: request.action,
+          targetId: request.targetId,
+          targetName: request.targetName,
+          status: request.status,
+          resultMessage: request.resultMessage,
+          createdAt: request.createdAt.toISOString(),
+          decidedAt: request.decidedAt?.toISOString() ?? null,
+        }
+        return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
       },
     )
 
@@ -2256,7 +2464,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           fields: z.array(schemaTemplateFieldSchema).describe(
             "[{ name, slug, type, required?, unique?, relationSlug?, componentSlug?, options? }, ...] — same per-field shape as one SchemaTemplate component's own `fields`. Call list_field_types FIRST — it has the real options/relationSlug shape per type, never guess one. A relationSlug/componentSlug here legitimately points at something that may not exist yet — it only needs to resolve once a workspace actually applies these fields via its own create_component.",
           ),
-          published: z.boolean().optional().describe("Default false (visible only to SaCMS Global staff until reviewed). Set true to make it immediately usable by every workspace's own MCP server."),
+          published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
         },
         outputSchema: GLOBAL_COMPONENT_OUTPUT_SHAPE,
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
@@ -2264,6 +2472,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async ({ name, slug: slugInput, icon, description, category, fields, published }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published) {
+          const denied = requiresPublishScope(auth, "create_global_component")
+          if (denied) return denied
+        }
 
         const parsed = createGlobalComponentSchema.safeParse({ name, slug: slugInput, icon, description, category, fields, published })
         if (!parsed.success) return invalidSchema(parsed.error)
@@ -2281,12 +2493,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             description: description || null,
             category: category || null,
             fields: parsed.data.fields,
-            published: published ?? false,
+            // Publishing waits for a human approval (queued below).
+            published: false,
           },
         })
-        const structured = serializeGlobalComponent(component)
+        const pendingApprovals = published
+          ? await queueApprovals(auth, [{ action: "publish_global_component", targetId: component.id, targetName: component.name }])
+          : []
+        const structured = { ...serializeGlobalComponent(component), ...(pendingApprovals.length ? { pendingApprovals } : {}) }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(warnings) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -2304,7 +2520,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           description: z.string().max(500).optional().describe("New catalog-card blurb, if changing."),
           category: z.string().max(50).optional().describe("New category, if recategorizing."),
           fields: z.array(schemaTemplateFieldSchema).optional().describe("Full replacement for the `fields` array — same shape as create_global_component."),
-          published: z.boolean().optional().describe("Set true to make this component immediately usable by every workspace, or false to hide it again."),
+          published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
         },
         outputSchema: GLOBAL_COMPONENT_OUTPUT_SHAPE,
         annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: false },
@@ -2312,6 +2528,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
       async ({ id, name, icon, description, category, fields, published }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+        if (published === true) {
+          const denied = requiresPublishScope(auth, "update_global_component")
+          if (denied) return denied
+        }
 
         const existing = await db.globalComponent.findFirst({ where: { OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Global Component", id)
@@ -2334,12 +2554,16 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
             ...(description !== undefined ? { description } : {}),
             ...(category !== undefined ? { category } : {}),
             ...(parsed.data.fields !== undefined ? { fields: parsed.data.fields } : {}),
-            ...(published !== undefined ? { published } : {}),
+            // Unpublishing applies directly; publishing waits for approval.
+            ...(published === false ? { published: false } : {}),
           },
         })
-        const structured = serializeGlobalComponent(component)
+        const pendingApprovals = published === true && !component.published
+          ? await queueApprovals(auth, [{ action: "publish_global_component", targetId: component.id, targetName: component.name }])
+          : []
+        const structured = { ...serializeGlobalComponent(component), ...(pendingApprovals.length ? { pendingApprovals } : {}) }
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(fieldWarnings) }],
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) + warningsNote(fieldWarnings) + approvalNote(pendingApprovals) }],
           structuredContent: structured,
         }
       },
@@ -2401,7 +2625,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.17.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.18.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word

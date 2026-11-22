@@ -7,6 +7,7 @@ import { randomBytes, createHash } from "crypto"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
+import { GLOBAL_MCP_SCOPES, resolveGlobalMcpScopes } from "@/lib/mcp-global-scopes"
 
 function generateMcpToken(): string {
   return `mcp_${randomBytes(24).toString("hex")}`
@@ -225,21 +226,33 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
   }
 }
 
-// ─── Platform "Schema Template" MCP token ──────────────────────────────────
+// ─── Platform "Schema Template" MCP tokens ─────────────────────────────────
 // A completely separate token type/server (src/app/api/mcp/global-schema)
 // from the regular per-workspace "mcp" token above — authenticates against
 // the Website/Schema Template catalog, which has no tenant owner at all
-// (see prisma/schema.prisma), so these tokens are stored with tenantId: null
-// rather than tied to the now-retired "SaCMS Global" workspace. Gated
-// directly on the platform super_admin role instead of tenant membership,
-// and only one active at a time, same single-token-per-scope pattern as
-// findMcpToken.
+// (see prisma/schema.prisma), so these tokens are stored with tenantId: null.
+// Gated directly on the platform super_admin role instead of tenant
+// membership. Several may exist, each with its own scopes (see
+// src/lib/mcp-global-scopes.ts) and optional expiry — e.g. a read-only
+// token for one agent and a full one for another.
 
-async function findGlobalSchemaMcpToken() {
-  return db.apiToken.findFirst({
-    where: { tenantId: null, type: "mcp-global-schema" },
-    orderBy: { createdAt: "asc" },
-  })
+const createGlobalMcpTokenSchema = z.object({
+  name: z.string().trim().min(1, "Nama token wajib diisi").max(100),
+  description: z.string().trim().max(500).optional(),
+  scopes: z.array(z.enum(GLOBAL_MCP_SCOPES)).min(1, "Pilih minimal satu cakupan"),
+  expiresInDays: z.number().int().min(1).max(3650).nullable().optional(),
+})
+
+function serializeGlobalMcpToken(token: { id: string; name: string; description: string | null; createdAt: Date; lastUsedAt: Date | null; expiresAt: Date | null; permissions: unknown }) {
+  return {
+    id: token.id,
+    name: token.name,
+    description: token.description,
+    scopes: resolveGlobalMcpScopes(token.permissions),
+    createdAt: token.createdAt.toISOString(),
+    lastUsedAt: token.lastUsedAt ? token.lastUsedAt.toISOString() : null,
+    expiresAt: token.expiresAt ? token.expiresAt.toISOString() : null,
+  }
 }
 
 async function requirePlatformSuperAdmin() {
@@ -249,47 +262,35 @@ async function requirePlatformSuperAdmin() {
   return { session, error: null }
 }
 
-export async function getGlobalSchemaMcpTokenAction() {
+export async function getGlobalSchemaMcpTokensAction() {
   const { error } = await requirePlatformSuperAdmin()
   if (error) return { error }
 
   try {
-    const token = await findGlobalSchemaMcpToken()
-    if (!token) return { token: null }
-
-    return {
-      token: {
-        id: token.id,
-        name: token.name,
-        description: token.description,
-        createdAt: token.createdAt.toISOString(),
-        lastUsedAt: token.lastUsedAt ? token.lastUsedAt.toISOString() : null,
-      },
-    }
+    const tokens = await db.apiToken.findMany({
+      where: { tenantId: null, type: "mcp-global-schema" },
+      orderBy: { createdAt: "asc" },
+    })
+    return { tokens: tokens.map(serializeGlobalMcpToken) }
   } catch (error) {
-    console.error("Error fetching Schema Template MCP token:", error)
+    console.error("Error fetching Schema Template MCP tokens:", error)
     return { error: "Internal server error" }
   }
 }
 
 export async function createGlobalSchemaMcpTokenAction(
-  data: z.infer<typeof createMcpTokenSchema>,
+  data: z.infer<typeof createGlobalMcpTokenSchema>,
 ) {
   const { session, error } = await requirePlatformSuperAdmin()
   if (error) return { error }
 
   try {
-    const existing = await findGlobalSchemaMcpToken()
-    if (existing) {
-      return { error: "Sudah ada token Schema Template MCP aktif. Generate ulang token yang ada, atau hapus dulu sebelum membuat yang baru." }
-    }
-
-    const parsed = createMcpTokenSchema.safeParse(data)
+    const parsed = createGlobalMcpTokenSchema.safeParse(data)
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Validasi gagal" }
     }
 
-    const { name, description } = parsed.data
+    const { name, description, scopes, expiresInDays } = parsed.data
     const token = generateGlobalSchemaMcpToken()
     const hashedToken = createHash("sha256").update(token).digest("hex")
 
@@ -300,7 +301,8 @@ export async function createGlobalSchemaMcpTokenAction(
         description: description?.trim() || "SaCMS Schema Template MCP Token",
         token: hashedToken,
         type: "mcp-global-schema",
-        permissions: ["schema-template"],
+        permissions: resolveGlobalMcpScopes(scopes),
+        expiresAt: expiresInDays ? new Date(Date.now() + expiresInDays * 86400000) : null,
         createdBy: session!.user.id,
       },
     })
@@ -310,13 +312,7 @@ export async function createGlobalSchemaMcpTokenAction(
     return {
       success: true,
       plainToken: token,
-      token: {
-        id: mcpToken.id,
-        name: mcpToken.name,
-        description: mcpToken.description,
-        createdAt: mcpToken.createdAt.toISOString(),
-        lastUsedAt: null,
-      },
+      token: serializeGlobalMcpToken(mcpToken),
     }
   } catch (error) {
     console.error("Error creating Schema Template MCP token:", error)
@@ -347,13 +343,7 @@ export async function regenerateGlobalSchemaMcpTokenAction(tokenId: string) {
     return {
       success: true,
       plainToken,
-      token: {
-        id: updated.id,
-        name: updated.name,
-        description: updated.description,
-        createdAt: updated.createdAt.toISOString(),
-        lastUsedAt: updated.lastUsedAt ? updated.lastUsedAt.toISOString() : null,
-      },
+      token: serializeGlobalMcpToken(updated),
     }
   } catch (error) {
     console.error("Error regenerating Schema Template MCP token:", error)

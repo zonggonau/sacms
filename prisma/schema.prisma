@@ -1073,6 +1073,31 @@ model WebsiteTemplateVersion {
   @@map("website_template_versions")
 }
 
+// A sensitive change an MCP agent ASKED for but can't apply itself:
+// publishing a Schema/Website Template or Global Component, making a Schema
+// Template the default for every new workspace, or a cascade delete. A
+// super admin approves or rejects it in /admin/developer/approvals; only an
+// approval applies it (audit: confirm*/published/isDefault flags could be
+// set by the agent itself with no human ever involved).
+model McpApprovalRequest {
+  id                 String    @id @default(cuid())
+  action             String
+  targetId           String
+  targetName         String
+  details            Json?
+  status             String    @default("pending") // pending | processing | approved | rejected | failed
+  requestedByTokenId String?
+  requestedByName    String?
+  decidedBy          String?
+  decidedAt          DateTime?
+  resultMessage      String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([status, createdAt])
+  @@map("mcp_approval_requests")
+}
+
 // A long-running SaCMS Global MCP call (create/update/redeploy a Website
 // Template, or a dryRun's sandbox build) run in the background so the MCP
 // request returns an operationId immediately instead of holding the

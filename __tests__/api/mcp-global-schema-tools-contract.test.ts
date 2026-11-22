@@ -549,3 +549,54 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(modelBlock).not.toMatch(/idempotencyKey String\?\s*@unique/)
   })
 })
+
+describe("SaCMS Global MCP — token scopes and human approvals (source contract)", () => {
+  it("installs the scope gate once, before any tool is registered, by wrapping server.registerTool", () => {
+    const gate = routeSource.indexOf("const registerToolUnscoped = server.registerTool.bind(server)")
+    const firstTool = routeSource.indexOf("server.registerTool(\n      \"")
+    expect(gate).toBeGreaterThan(-1)
+    expect(gate).toBeLessThan(firstTool)
+    const gateBlock = routeSource.slice(gate, firstTool)
+    expect(gateBlock).toMatch(/requiredScopeForTool\(name\)/)
+    expect(gateBlock).toMatch(/!auth\.scopes\.includes\(required\)\) return scopeDenied\(name, required\)/)
+  })
+
+  it("rejects expired tokens and tokens with no recognised scope", () => {
+    expect(routeSource).toMatch(/token\.expiresAt && token\.expiresAt\.getTime\(\) <= Date\.now\(\)\) return null/)
+    expect(routeSource).toMatch(/if \(scopes\.length === 0\) return null/)
+  })
+
+  it("no tool flips published/isDefault to true directly — every true value is queued for a human", () => {
+    for (const tool of ["create_schema_template", "update_schema_template", "create_website_template", "update_website_template", "create_global_component", "update_global_component"]) {
+      const block = toolBlockOf(tool)
+      expect(block, `${tool} should queue approvals`).toMatch(/queueApprovals\(/)
+      expect(block, `${tool} should require the publish scope to ask`).toMatch(/requiresPublishScope\(auth, "/)
+      // Property writes only (`published: true,` / `isDefault: true }`), not prose in descriptions.
+      expect(block, `${tool} must not write published: true`).not.toMatch(/published: true\s*[,}\n]/)
+      expect(block, `${tool} must not write isDefault: true`).not.toMatch(/isDefault: true\s*[,}\n]/)
+    }
+  })
+
+  it("delete_schema_template never cascades by itself — confirmCascade only queues a request", () => {
+    const block = toolBlockOf("delete_schema_template")
+    expect(block).toMatch(/if \(confirmCascade\) \{\s*const denied = requiresPublishScope/)
+    expect(block).toMatch(/action: "cascade_delete_schema_template"/)
+    const cascadeBranch = block.slice(block.indexOf("if (dependents.length > 0) {"), block.indexOf("await db.schemaTemplate.delete("))
+    expect(cascadeBranch).toMatch(/return \{/)
+    expect(cascadeBranch).not.toMatch(/\.delete\(/)
+  })
+
+  it("whoami exposes scopes but never the creating admin's email", () => {
+    const block = toolBlockOf("whoami")
+    expect(block).toMatch(/scopes: auth\.scopes/)
+    expect(block).toMatch(/select: \{ name: true \}/)
+    expect(block).not.toMatch(/email: true|\.email\b/)
+  })
+
+  it("get_approval_status is read-only and returns the decision outcome", () => {
+    const block = toolBlockOf("get_approval_status")
+    expect(block).toMatch(/readOnlyHint: true/)
+    expect(block).toMatch(/db\.mcpApprovalRequest\.findUnique\(/)
+    expect(block).toMatch(/resultMessage: request\.resultMessage/)
+  })
+})
