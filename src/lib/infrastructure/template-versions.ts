@@ -11,13 +11,15 @@ export interface VersionFile {
  *  edit without letting every ~200KB bundle accumulate forever. */
 export const MAX_VERSIONS_PER_TEMPLATE = 30
 
-export function fileSha256(content: string): string {
-  return createHash("sha256").update(content).digest("hex")
+/** sha256 of the file's real bytes — a base64 asset is decoded first, so the
+ *  hash matches `sha256sum` of the file on disk. Text hashes are unchanged. */
+export function fileSha256(content: string, encoding?: "utf-8" | "base64"): string {
+  return createHash("sha256").update(encoding === "base64" ? Buffer.from(content, "base64") : content).digest("hex")
 }
 
 export function summarizeFileChanges(previous: VersionFile[], next: VersionFile[]) {
-  const before = new Map(previous.map((f) => [f.path, fileSha256(f.content)]))
-  const after = new Map(next.map((f) => [f.path, fileSha256(f.content)]))
+  const before = new Map(previous.map((f) => [f.path, fileSha256(f.content, f.encoding)]))
+  const after = new Map(next.map((f) => [f.path, fileSha256(f.content, f.encoding)]))
   let added = 0
   let changed = 0
   let removed = 0

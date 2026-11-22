@@ -8,11 +8,41 @@ import { z } from "zod/v4"
  * the SaCMS Global "Schema Template" MCP server (src/app/api/mcp/global-schema),
  * so the validation rules only live in one place.
  *
- * Text/code source files only — no binary assets in v1 (JSON can't hold
- * them sensibly, and the frontend-env deploy pipeline this feeds into
- * already expects plain-text file content, see deployToVercel's
- * VercelDeploymentFile encoding).
+ * Source files are plain text. Binary assets (logo, favicon, fonts, ...)
+ * travel base64-encoded with `encoding: "base64"` — allowed ONLY for the
+ * binary asset extensions below, so source code can never be smuggled past
+ * review as base64, and capped per file and per bundle because the whole
+ * bundle lives in one JSON column and rides inside a single MCP call.
+ * deployToVercel's VercelDeploymentFile passes the encoding straight on.
  */
+
+export const BINARY_ASSET_EXTENSIONS = [
+  "png", "jpg", "jpeg", "gif", "webp", "avif", "ico", "bmp",
+  "woff", "woff2", "ttf", "otf", "eot",
+  "pdf", "mp3", "mp4", "webm", "wav",
+] as const
+
+export const MAX_TEXT_FILE_CHARS = 200_000
+export const MAX_BINARY_FILE_BYTES = 1_000_000
+export const MAX_BINARY_BUNDLE_BYTES = 5_000_000
+
+const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/
+
+export type WebsiteTemplateFileEncoding = "utf-8" | "base64"
+
+/** Decoded size of a bundle file, without needing Buffer (this module is
+ *  shared with code that may run outside Node). */
+export function bundleFileBytes(file: { content: string; encoding?: WebsiteTemplateFileEncoding }): number {
+  if (file.encoding !== "base64") return new TextEncoder().encode(file.content).length
+  const padding = file.content.endsWith("==") ? 2 : file.content.endsWith("=") ? 1 : 0
+  return Math.floor((file.content.length * 3) / 4) - padding
+}
+
+function extensionOf(path: string) {
+  const name = path.slice(path.lastIndexOf("/") + 1)
+  const dot = name.lastIndexOf(".")
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ""
+}
 
 // chatgpt8.md P1: a path traversal segment or a leading "/" was never
 // rejected — these files are keyed by `path` and written out verbatim by
@@ -27,10 +57,46 @@ export const websiteTemplateFileSchema = z.object({
     (p) => SAFE_RELATIVE_PATH_RE.test(p),
     { message: "path must be a relative path with no '..' segment and no leading '/'." },
   ),
-  content: z.string().max(200_000), // ~200KB per file
+  // Outer cap is the base64 size of the largest binary asset; plain text is
+  // held to MAX_TEXT_FILE_CHARS below.
+  content: z.string().max(Math.ceil(MAX_BINARY_FILE_BYTES / 3) * 4),
+  encoding: z.enum(["utf-8", "base64"]).optional(),
+}).superRefine((file, ctx) => {
+  if (file.encoding !== "base64") {
+    if (file.content.length > MAX_TEXT_FILE_CHARS) {
+      ctx.addIssue({ code: "custom", path: ["content"], message: `Text file is over ${MAX_TEXT_FILE_CHARS / 1000}KB.` })
+    }
+    return
+  }
+  const ext = extensionOf(file.path)
+  if (!(BINARY_ASSET_EXTENSIONS as readonly string[]).includes(ext)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["encoding"],
+      message: `encoding "base64" is only for binary assets (${BINARY_ASSET_EXTENSIONS.join(", ")}). Send '${file.path}' as plain text.`,
+    })
+    return
+  }
+  if (file.content.length % 4 !== 0 || !BASE64_RE.test(file.content)) {
+    ctx.addIssue({ code: "custom", path: ["content"], message: "Not valid base64 (standard alphabet, padded, no whitespace or data: prefix)." })
+    return
+  }
+  if (bundleFileBytes(file) > MAX_BINARY_FILE_BYTES) {
+    ctx.addIssue({ code: "custom", path: ["content"], message: `Binary asset is over ${MAX_BINARY_FILE_BYTES / 1_000_000}MB — compress or resize it.` })
+  }
 })
 
+export type WebsiteTemplateFile = z.infer<typeof websiteTemplateFileSchema>
+
 export const websiteTemplateFilesSchema = z.array(websiteTemplateFileSchema).min(1).max(200).superRefine((files, ctx) => {
+  const binaryBytes = files.reduce((sum, f) => sum + (f.encoding === "base64" ? bundleFileBytes(f) : 0), 0)
+  if (binaryBytes > MAX_BINARY_BUNDLE_BYTES) {
+    ctx.addIssue({
+      code: "custom",
+      path: [],
+      message: `Binary assets total ${(binaryBytes / 1_000_000).toFixed(1)}MB — the bundle allows ${MAX_BINARY_BUNDLE_BYTES / 1_000_000}MB. Host large media in the workspace's Media Library instead.`,
+    })
+  }
   const seen = new Map<string, number>()
   files.forEach((f, i) => {
     const firstIndex = seen.get(f.path)

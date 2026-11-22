@@ -7,6 +7,8 @@ import { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } from "./
 export interface DeployFile {
   name: string
   content: string
+  /** "base64" for a binary asset; omitted/"utf-8" for source text. */
+  encoding?: "utf-8" | "base64"
 }
 
 export interface DeployFrontendResult {

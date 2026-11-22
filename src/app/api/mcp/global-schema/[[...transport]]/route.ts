@@ -39,7 +39,13 @@ import { join } from "node:path"
 import { slugify } from "@/lib/slug"
 import { rateLimit } from "@/lib/rate-limit"
 import { schemaTemplateBundleSchema, schemaTemplateFieldSchema } from "@/lib/validations/schema-template"
-import { websiteTemplateFilesSchema } from "@/lib/validations/website-template"
+import {
+  websiteTemplateFilesSchema,
+  websiteTemplateFileSchema,
+  bundleFileBytes,
+  BINARY_ASSET_EXTENSIONS,
+  type WebsiteTemplateFile,
+} from "@/lib/validations/website-template"
 import { createGlobalComponentSchema, updateGlobalComponentSchema } from "@/lib/validations/global-component"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
@@ -158,9 +164,23 @@ function notFound(entity: "Schema Template" | "Website Template" | "Global Compo
  *  result, which itself is saved without that change (e.g. as a draft). */
 const APPROVAL_OUTPUT = z.object({ id: z.string(), action: z.string(), status: z.string(), message: z.string() })
 
+/** A bundle file as returned to the agent. `encoding` is only present
+ *  ("base64") on binary assets; plain-text files leave it out. */
+const BUNDLE_FILE_OUTPUT = z.object({ path: z.string(), content: z.string(), encoding: z.enum(["utf-8", "base64"]).optional() })
+const FILE_SIZE_OUTPUT = z.object({ path: z.string(), bytes: z.number(), sha256: z.string(), encoding: z.enum(["utf-8", "base64"]).optional() })
+
+function describeFileSize(f: WebsiteTemplateFile) {
+  return {
+    path: f.path,
+    bytes: bundleFileBytes(f),
+    sha256: fileSha256(f.content, f.encoding),
+    ...(f.encoding === "base64" ? { encoding: "base64" as const } : {}),
+  }
+}
+
 const WEBSITE_TEMPLATE_OUTPUT_SHAPE = {
   id: z.string(), name: z.string(), slug: z.string(), schemaTemplateId: z.string(), icon: z.string(),
-  description: z.string().nullable(), files: z.array(z.object({ path: z.string(), content: z.string() })),
+  description: z.string().nullable(), files: z.array(BUNDLE_FILE_OUTPUT),
   published: z.boolean(), createdAt: z.string(), updatedAt: z.string(),
   // chatgpt.md P1: pass THIS back as expectedVersion, not `updatedAt` —
   // `updatedAt` is bumped by every redeploy (even a metadata-only one with
@@ -445,10 +465,6 @@ async function runToolInBackground(kind: OperationKind, run: () => Promise<ToolR
   return asyncOperationResponse(operation, kind)
 }
 
-/** A change the agent asked for that waits on a human (see
- *  mcp-approvals.ts) — returned as `pendingApprovals` alongside the normal
- *  result, which itself is saved without that change (e.g. as a draft). */
-
 /** Sensitive flags (published: true, isDefault: true, confirmCascade) need
  *  the `publish` scope just to be REQUESTED. */
 function requiresPublishScope(auth: GlobalAuthContext, toolName: string) {
@@ -666,6 +682,9 @@ A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\
 
 ## Approvals and token scopes
 Publishing (\`published: true\` on a Schema Template, Website Template or Global Component), \`isDefault: true\`, and a cascading \`delete_schema_template\` are never applied by you: the item is saved without that change and the request is returned in \`pendingApprovals\` (or \`pendingApproval\`). A super admin approves or rejects it in the SaCMS dashboard (/admin/developer/approvals). Tell the user it's waiting, and check it with \`get_approval_status\` — don't retry the flag in a loop. Each token has scopes (read, demo, write, publish); a tool outside them returns FORBIDDEN_SCOPE, and \`whoami\` shows what this token may do.
+
+## Binary assets (logo, favicon, fonts)
+Put them in \`files\` like any other file, with \`encoding: "base64"\` and the base64 bytes as \`content\` (standard alphabet, padded, no \`data:\` prefix), e.g. \`{ path: "public/logo.png", content: "iVBORw0KGgo...", encoding: "base64" }\`. Allowed only for ${BINARY_ASSET_EXTENSIONS.join(", ")} — source code and SVG stay plain text. Limits: 1MB per asset, 5MB of assets per bundle. Content photos belong in the demo's media library (\`upload_demo_media\`), not the bundle. \`get_website_template\` returns assets the same way, and \`listPathsOnly\` reports their real (decoded) byte size and sha256.
 
 ## Version history
 Every files/schema change is recorded as a version (diff summary, which token made it, when; the last 30 are kept). \`list_template_versions\` shows the history, \`get_template_version\` reads a snapshot (paths + sha256, or specific files with \`paths\`), and \`update_website_template({ id, restoreFromVersion: N })\` rolls back — files only by default, add \`restoreSchema: true\` for the schema too. A restore goes through every normal update guard and is itself recorded, so it can be undone. \`get_website_template\` with \`listPathsOnly\` returns each file's sha256 too, so you can sync a local copy by fetching only files that differ.
@@ -1357,7 +1376,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         },
         outputSchema: {
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
-          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number(), sha256: z.string() })).optional().describe("Only populated when listPathsOnly was true."),
+          fileSizes: z.array(FILE_SIZE_OUTPUT).optional().describe("Only populated when listPathsOnly was true. bytes/sha256 are of the real (decoded) bytes, so a binary asset's sha256 matches `sha256sum` of the file on disk."),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
@@ -1371,11 +1390,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         })
         if (!template) return notFound("Website Template", id)
 
-        const allFiles = template.files as unknown as { path: string; content: string }[]
-        let files: { path: string; content: string }[] = allFiles
-        let fileSizes: { path: string; bytes: number; sha256: string }[] | undefined
+        const allFiles = template.files as unknown as WebsiteTemplateFile[]
+        let files: WebsiteTemplateFile[] = allFiles
+        let fileSizes: ReturnType<typeof describeFileSize>[] | undefined
         if (listPathsOnly) {
-          fileSizes = allFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8"), sha256: fileSha256(f.content) }))
+          fileSizes = allFiles.map(describeFileSize)
           files = []
         } else if (paths && paths.length > 0) {
           const wanted = new Set(paths)
@@ -1428,9 +1447,12 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
           description: z.string().max(500).optional().describe("Short catalog-card blurb shown alongside the name/category."),
           files: websiteTemplateFilesSchema.describe(
-            "[{ path, content }, ...] — every source file for the frontend (package.json, app/**, " +
-            "components/**, tailwind config, etc.), as plain text, PLUS a `.env.example` documenting its env " +
-            "vars (see the {{SACMS_*}} placeholder convention above). Max 200 files, 200KB each. No binary assets.",
+            "[{ path, content, encoding? }, ...] — every source file for the frontend (package.json, app/**, " +
+            "components/**, tailwind config, etc.) as plain text, PLUS a `.env.example` documenting its env " +
+            "vars (see the {{SACMS_*}} placeholder convention above). Max 200 files, 200KB per text file. " +
+            "Binary assets (logo, favicon, fonts — usually under public/) go in the same array with " +
+            `encoding: "base64" and base64 content (no data: prefix); only for ${BINARY_ASSET_EXTENSIONS.join("/")}, ` +
+            "max 1MB each and 5MB in total. Put big photos in the demo's media library (upload_demo_media) instead.",
           ),
           published: z.boolean().optional().describe(
             "true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately.",
@@ -1704,7 +1726,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           icon: z.string().max(10).optional().describe("New single-emoji card icon, if changing."),
           description: z.string().max(500).optional().describe("New catalog-card blurb, if changing."),
           files: websiteTemplateFilesSchema.optional().describe("Full replacement for the file bundle. Do not combine with changedFiles/deletedFiles — pick one."),
-          changedFiles: z.array(z.object({ path: z.string().trim().min(1).max(300), content: z.string().max(200_000) })).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is."),
+          changedFiles: z.array(websiteTemplateFileSchema).optional().describe("Only the files being added or changed — every other file in the stored bundle is kept as-is. Each one fully replaces the stored file; a binary asset needs encoding: \"base64\" again."),
           deletedFiles: z.array(z.string()).optional().describe("File paths to remove from the stored bundle entirely."),
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
           published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
@@ -1817,8 +1839,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           // row IS the full source of truth here (unlike the per-workspace
           // deploy_to_sacms flow, there's no separate "ask Vercel what it
           // has" step needed), so a patch update is a cheap, safe merge.
-          const base = existing.files as unknown as { path: string; content: string }[]
-          const fileMap = new Map(base.map((f) => [f.path, f] as const))
+          const base = existing.files as unknown as WebsiteTemplateFile[]
+          const fileMap = new Map<string, WebsiteTemplateFile>(base.map((f) => [f.path, f] as const))
           for (const f of changedFiles || []) fileMap.set(f.path, f)
           for (const path of deletedFiles || []) fileMap.delete(path)
           const merged = Array.from(fileMap.values())
@@ -1864,7 +1886,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           }
           if (verifyBuild) {
             const demoTenant = await findDemoTenantForSchemaTemplate(existing.schemaTemplate.id)
-            const bundle = filesData ?? (existing.files as unknown as { path: string; content: string }[])
+            const bundle = filesData ?? (existing.files as unknown as WebsiteTemplateFile[])
             return runVerifyBuild(bundle, demoTenant, bundleWarnings)
           }
           return {
@@ -1949,7 +1971,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           const demo = await deployWebsiteTemplateDemo({
             id: template.id,
             slug: template.slug,
-            files: filesData ?? (template.files as unknown as { path: string; content: string }[]),
+            files: filesData ?? (template.files as unknown as WebsiteTemplateFile[]),
             schemaTemplate: freshSchemaTemplate || existing.schemaTemplate,
           })
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
@@ -2197,8 +2219,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           summary: z.string(),
           changedBy: z.string().nullable(),
           createdAt: z.string(),
-          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number(), sha256: z.string() })),
-          files: z.array(z.object({ path: z.string(), content: z.string() })),
+          fileSizes: z.array(FILE_SIZE_OUTPUT),
+          files: z.array(BUNDLE_FILE_OUTPUT),
           schema: z.any().optional(),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -2224,8 +2246,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           summary: snapshot.summary,
           changedBy: snapshot.changedBy,
           createdAt: snapshot.createdAt.toISOString(),
-          fileSizes: snapshotFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8"), sha256: fileSha256(f.content) })),
-          files: snapshotFiles.filter((f) => wanted.has(f.path)).map((f) => ({ path: f.path, content: f.content })),
+          fileSizes: snapshotFiles.map(describeFileSize),
+          files: snapshotFiles
+            .filter((f) => wanted.has(f.path))
+            .map((f) => ({ path: f.path, content: f.content, ...(f.encoding === "base64" ? { encoding: "base64" as const } : {}) })),
           ...(includeSchema ? { schema: snapshot.schema } : {}),
         }
         return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
@@ -2372,7 +2396,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         const demo = await deployWebsiteTemplateDemo({
           id: existing.id,
           slug: existing.slug,
-          files: existing.files as unknown as { path: string; content: string }[],
+          files: existing.files as unknown as WebsiteTemplateFile[],
           schemaTemplate: existing.schemaTemplate,
         })
 
@@ -2625,7 +2649,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.18.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: "1.19.0" },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word

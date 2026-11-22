@@ -10,7 +10,7 @@ import { ensurePublicSubdomainToken } from "./public-subdomain"
 export interface WebsiteTemplateDemoInput {
   id: string
   slug: string
-  files: { path: string; content: string }[]
+  files: { path: string; content: string; encoding?: "utf-8" | "base64" }[]
   seedMissingContent?: boolean
   schemaTemplate: {
     id: string
@@ -194,7 +194,8 @@ export async function deployWebsiteTemplateDemo(
       seedMissingContent: websiteTemplate.seedMissingContent,
     })
 
-    const files = websiteTemplate.files.map((f) => ({ name: f.path, content: f.content }))
+    // encoding carries binary assets (logo/fonts) through as real bytes.
+    const files = websiteTemplate.files.map((f) => ({ name: f.path, content: f.content, encoding: f.encoding }))
 
     // chatgpt8.md P0: this used to call ONLY resolveWebsiteTemplateEnvVars,
     // which deliberately EXCLUDES the three fixed SYSTEM_ENV_VARS names

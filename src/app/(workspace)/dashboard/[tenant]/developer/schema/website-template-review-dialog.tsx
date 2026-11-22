@@ -12,6 +12,19 @@ import { Loader2, FileCode, Copy, Check, Rocket, Layers, ExternalLink, Sparkles 
 interface WebsiteTemplateFile {
   path: string
   content: string
+  encoding?: "utf-8" | "base64"
+}
+
+const IMAGE_MIME: Record<string, string> = {
+  png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
+  webp: "image/webp", avif: "image/avif", ico: "image/x-icon", bmp: "image/bmp",
+}
+
+function binaryPreview(file: WebsiteTemplateFile) {
+  const ext = file.path.split(".").pop()?.toLowerCase() || ""
+  const padding = file.content.endsWith("==") ? 2 : file.content.endsWith("=") ? 1 : 0
+  const kb = Math.max(1, Math.round((Math.floor((file.content.length * 3) / 4) - padding) / 1024))
+  return { mime: IMAGE_MIME[ext], kb }
 }
 
 interface WebsiteTemplateDetail {
@@ -172,7 +185,7 @@ export function WebsiteTemplateReviewDialog({
             <div className="border border-border/60 rounded-xl overflow-hidden flex flex-col min-h-0">
               <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-border/60 bg-muted/20 shrink-0">
                 <span className="text-[11px] font-mono font-bold text-foreground truncate">{selectedFile?.path}</span>
-                {selectedFile && (
+                {selectedFile && selectedFile.encoding !== "base64" && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -184,9 +197,23 @@ export function WebsiteTemplateReviewDialog({
                   </Button>
                 )}
               </div>
-              <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed bg-background/60">
-                {selectedFile?.content || "Pilih file di sebelah kiri."}
-              </pre>
+              {selectedFile?.encoding === "base64" ? (
+                (() => {
+                  const { mime, kb } = binaryPreview(selectedFile)
+                  return (
+                    <div className="flex-1 overflow-auto p-3 flex flex-col items-center justify-center gap-2 bg-background/60 text-[11px] text-muted-foreground">
+                      {mime && (
+                        <img src={`data:${mime};base64,${selectedFile.content}`} alt={selectedFile.path} className="max-h-64 max-w-full object-contain rounded-lg border border-border/60 bg-muted/30" />
+                      )}
+                      <span>File biner · {kb} KB</span>
+                    </div>
+                  )
+                })()
+              ) : (
+                <pre className="flex-1 overflow-auto p-3 text-[11px] font-mono leading-relaxed bg-background/60">
+                  {selectedFile?.content || "Pilih file di sebelah kiri."}
+                </pre>
+              )}
             </div>
           </div>
         ) : (

@@ -513,7 +513,7 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     for (const tool of ['list_template_versions', 'get_template_version']) {
       expect(toolBlockOf(tool), `${tool} should be read-only`).toMatch(/readOnlyHint: true/)
     }
-    expect(toolBlockOf('get_website_template')).toMatch(/sha256: fileSha256\(f\.content\)/)
+    expect(toolBlockOf('get_website_template')).toMatch(/allFiles\.map\(describeFileSize\)/)
   })
 
   it('registers a read-only get_operation_status tool', () => {
@@ -547,6 +547,27 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     const modelBlock = schemaSource.slice(modelStart, schemaSource.indexOf("\n}\n", modelStart))
     expect(modelBlock).toMatch(/idempotencyKey String\?\s*$/m)
     expect(modelBlock).not.toMatch(/idempotencyKey String\?\s*@unique/)
+  })
+})
+
+describe("SaCMS Global MCP — binary assets in Website Template bundles (source contract)", () => {
+  it("returns each file's encoding and decoded size/sha256", () => {
+    expect(routeSource).toMatch(/const BUNDLE_FILE_OUTPUT = z\.object\(\{ path: z\.string\(\), content: z\.string\(\), encoding: z\.enum\(\["utf-8", "base64"\]\)\.optional\(\) \}\)/)
+    expect(routeSource).toMatch(/bytes: bundleFileBytes\(f\)/)
+    expect(routeSource).toMatch(/sha256: fileSha256\(f\.content, f\.encoding\)/)
+    expect(toolBlockOf("get_website_template")).toMatch(/fileSizes = allFiles\.map\(describeFileSize\)/)
+    expect(toolBlockOf("get_template_version")).toMatch(/fileSizes: snapshotFiles\.map\(describeFileSize\)/)
+  })
+
+  it("changedFiles items use the shared file schema, so a patch can carry a base64 asset too", () => {
+    expect(toolBlockOf("update_website_template")).toMatch(/changedFiles: z\.array\(websiteTemplateFileSchema\)/)
+  })
+
+  it("demo deploy and workspace apply pass encoding through to the Vercel deploy", () => {
+    const demo = readFileSync(join(__dirname, "../../src/lib/infrastructure/deploy-website-template-demo.ts"), "utf-8")
+    expect(demo).toMatch(/websiteTemplate\.files\.map\(\(f\) => \(\{ name: f\.path, content: f\.content, encoding: f\.encoding \}\)\)/)
+    const apply = readFileSync(join(__dirname, "../../src/lib/infrastructure/apply-website-template.ts"), "utf-8")
+    expect(apply).toMatch(/templateFiles\.map\(\(\{ path, content, encoding \}\) => \(\{ name: path, content, encoding \}\)\)/)
   })
 })
 

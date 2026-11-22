@@ -4,6 +4,8 @@ import {
   websiteTemplateFilesSchema,
   createWebsiteTemplateSchema,
   updateWebsiteTemplateSchema,
+  bundleFileBytes,
+  MAX_BINARY_FILE_BYTES,
 } from "@/lib/validations/website-template"
 
 describe("websiteTemplateFileSchema", () => {
@@ -35,6 +37,52 @@ describe("websiteTemplateFileSchema", () => {
   it("accepts an ordinary filename that merely contains two dots", () => {
     expect(websiteTemplateFileSchema.safeParse({ path: "app/..weird-file.ts", content: "x" }).success).toBe(true)
     expect(websiteTemplateFileSchema.safeParse({ path: ".env.example", content: "x" }).success).toBe(true)
+  })
+})
+
+describe("binary assets (encoding: base64)", () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).toString("base64")
+
+  it("accepts a base64 image or font", () => {
+    expect(websiteTemplateFileSchema.safeParse({ path: "public/logo.png", content: png, encoding: "base64" }).success).toBe(true)
+    expect(websiteTemplateFileSchema.safeParse({ path: "public/fonts/Inter.WOFF2", content: png, encoding: "base64" }).success).toBe(true)
+  })
+
+  it("refuses base64 for source files, so code can't hide from review", () => {
+    for (const path of ["app/page.tsx", "package.json", ".env.example", "public/icon.svg", "Makefile"]) {
+      const result = websiteTemplateFileSchema.safeParse({ path, content: png, encoding: "base64" })
+      expect(result.success, path).toBe(false)
+      if (!result.success) expect(result.error.issues[0].message).toMatch(/only for binary assets/)
+    }
+  })
+
+  it("refuses malformed base64 (data: prefix, whitespace, bad padding)", () => {
+    for (const content of [`data:image/png;base64,${png}`, `${png.slice(0, 8)}\n${png.slice(8)}`, png.slice(0, -1)]) {
+      expect(websiteTemplateFileSchema.safeParse({ path: "public/logo.png", content, encoding: "base64" }).success).toBe(false)
+    }
+  })
+
+  it("caps one asset at 1MB decoded and the bundle's assets at 5MB", () => {
+    const oneMbPlus = Buffer.alloc(MAX_BINARY_FILE_BYTES + 1).toString("base64")
+    expect(websiteTemplateFileSchema.safeParse({ path: "public/big.png", content: oneMbPlus, encoding: "base64" }).success).toBe(false)
+
+    const nearlyOneMb = Buffer.alloc(MAX_BINARY_FILE_BYTES - 10).toString("base64")
+    const files = [
+      { path: "package.json", content: "{}" },
+      ...Array.from({ length: 6 }, (_, i) => ({ path: `public/img-${i}.png`, content: nearlyOneMb, encoding: "base64" as const })),
+    ]
+    const result = websiteTemplateFilesSchema.safeParse(files)
+    expect(result.success).toBe(false)
+    if (!result.success) expect(result.error.issues[0].message).toMatch(/Binary assets total/)
+  })
+
+  it("still holds plain-text files to the 200KB cap even though the field allows longer base64", () => {
+    expect(websiteTemplateFileSchema.safeParse({ path: "app/page.tsx", content: "x".repeat(200_001), encoding: "utf-8" }).success).toBe(false)
+  })
+
+  it("bundleFileBytes reports decoded bytes for base64 and UTF-8 bytes for text", () => {
+    expect(bundleFileBytes({ content: png, encoding: "base64" })).toBe(12)
+    expect(bundleFileBytes({ content: "é" })).toBe(2)
   })
 })
 

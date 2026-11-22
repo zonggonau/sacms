@@ -89,7 +89,7 @@ export async function applyWebsiteTemplateToTenant(
   try {
     let imported = 0
     let envVarsApplied: string[] = []
-    const templateFiles = websiteTemplate.files as { path: string; content: string }[]
+    const templateFiles = websiteTemplate.files as { path: string; content: string; encoding?: "utf-8" | "base64" }[]
     if (state.phase === "schema") {
       const result = await materializeSchemaIntoTenant(tenantDb, tenantId, websiteTemplate.schemaTemplate.schema as any, {}, {
         mergeSingleTypeSlug: SITE_SETTINGS_SLUG,
@@ -117,7 +117,8 @@ export async function applyWebsiteTemplateToTenant(
       claimedValue = nextValue
     }
 
-    const files = templateFiles.map(({ path, content }) => ({ name: path, content }))
+    // Keep each file's encoding so binary assets (logo, fonts) deploy as real bytes.
+    const files = templateFiles.map(({ path, content, encoding }) => ({ name: path, content, encoding }))
     const deployment = await deployTenantFrontend(tenantId, tenantSlug, resolveApiOrigin(), files)
     if (["ERROR", "CANCELED", "CANCELLED"].includes(deployment.state.toUpperCase())) {
       throw new Error("Website deployment did not start successfully")
