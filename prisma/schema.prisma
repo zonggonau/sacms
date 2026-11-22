@@ -999,6 +999,11 @@ model WebsiteTemplate {
   // "latest" one (same distinction the per-workspace MCP server's
   // get_deployment_status/get_deployment_build_logs rely on).
   demoDeploymentId    String?
+  // SHA256 hash of the last verified routes (homepage + sitemap paths),
+  // for drift detection — if the demo domain changes (old → new), routes
+  // at the new domain will hash differently. Used by audit tooling to
+  // detect when demoUrl metadata no longer matches actual routing.
+  demoRoutesHash      String?
   // Caller-supplied dedup key for create_website_template (chatgpt7.md
   // P0): if a create response never arrives, retrying with the SAME key
   // must resolve to the SAME template instead of creating a duplicate

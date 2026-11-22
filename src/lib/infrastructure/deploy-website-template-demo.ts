@@ -1,7 +1,7 @@
 import "server-only"
 
 import { db } from "@/lib/database"
-import { randomBytes } from "crypto"
+import { randomBytes, createHash } from "crypto"
 import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs, getRuntimeLogs, deleteVercelProject, disableVercelDeploymentProtection } from "@/lib/vercel-client"
 import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
@@ -122,6 +122,16 @@ function extractSitemapPaths(xml: string, limit: number): string[] {
     if (paths.length >= limit) break
   }
   return paths
+}
+
+/** SHA256 hash of verified routes — for drift detection when demo domain
+ *  changes. Hashes the JSON-serialized array of route results (path, verified,
+ *  error), so a domain change producing different routing results will hash
+ *  differently. Used by audit tooling to detect when demoUrl metadata no
+ *  longer matches actual routing. */
+function hashRouteCheckResults(routes: RouteCheckResult[]): string {
+  const data = JSON.stringify(routes, null, 0)
+  return createHash("sha256").update(data).digest("hex")
 }
 
 /**
@@ -286,6 +296,16 @@ export async function deployWebsiteTemplateDemo(
     // create/update used to come back ECONNRESET even though the SAME url,
     // checked moments later by hand, was already a plain HTTP 200).
     const { verified: routesVerified, routes } = await verifyDemoRoutes(url, { retryHomepage: true })
+
+    // Store a hash of the verified routes for drift detection — if the demo
+    // domain changes (old → new), routes at the new domain will hash
+    // differently, so audit tooling can detect when demoUrl metadata no
+    // longer matches actual routing.
+    const routesHash = hashRouteCheckResults(routes)
+    await db.websiteTemplate.update({
+      where: { id: websiteTemplate.id },
+      data: { demoRoutesHash: routesHash },
+    }).catch((err) => console.warn(`[deploy-website-template-demo] Failed to save routes hash:`, err))
 
     // The build poll above has its own bounded budget — if it ran out
     // while the build was still BUILDING/QUEUED/INITIALIZING (never
