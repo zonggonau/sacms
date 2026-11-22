@@ -53,9 +53,11 @@ describe("Global Schema Template MCP route — resolveGlobalSchemaToken", () => 
   })
 
   it("authorizes whenever a matching token row exists, with no tenant involved", async () => {
-    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1" } as any)
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "ChatGPT" } as any)
     const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    expect(auth).toEqual({ authenticated: true })
+    // Carries the token's identity so background operations (and version
+    // history) can record which token made a change.
+    expect(auth).toMatchObject({ authenticated: true, tokenId: "tok-1", tokenName: "ChatGPT" })
   })
 
   it("bumps lastUsedAt on a successful match", async () => {

@@ -32,7 +32,13 @@ vi.mock("@/lib/vercel-client", () => ({
   getProjectPrimaryDomain: (...args: any[]) => getProjectPrimaryDomain(...args),
   getDeploymentStatus: (...args: any[]) => getDeploymentStatus(...args),
   getDeploymentBuildLogs: (...args: any[]) => getDeploymentBuildLogs(...args),
+  getRuntimeLogs: (...args: any[]) => getRuntimeLogs(...args),
+  deleteVercelProject: (...args: any[]) => deleteVercelProject(...args),
+  disableVercelDeploymentProtection: (...args: any[]) => disableVercelDeploymentProtection(...args),
 }))
+const getRuntimeLogs = vi.fn()
+const deleteVercelProject = vi.fn()
+const disableVercelDeploymentProtection = vi.fn()
 
 const resolveWebsiteTemplateEnvVars = vi.fn().mockResolvedValue([])
 const resolveFrontendEnv = vi.fn().mockResolvedValue({
@@ -57,7 +63,7 @@ vi.mock("@/lib/infrastructure/public-subdomain", () => ({
   ensurePublicSubdomainToken: (...args: any[]) => ensurePublicSubdomainToken(...args),
 }))
 
-const { deployWebsiteTemplateDemo, verifyDemoRoutes } = await import("@/lib/infrastructure/deploy-website-template-demo")
+const { deployWebsiteTemplateDemo, verifyDemoRoutes, verifyBundleBuild } = await import("@/lib/infrastructure/deploy-website-template-demo")
 
 const websiteTemplate = {
   id: "wt_1",
@@ -322,5 +328,65 @@ describe("verifyDemoRoutes", () => {
 
     expect(result.verified).toBe(true)
     expect(result.routes).toEqual([{ path: "/", verified: true, error: undefined }])
+  })
+})
+
+describe("verifyBundleBuild (dryRun sandbox build)", () => {
+  const files = [{ path: "package.json", content: "{}" }]
+  const originalFetch = global.fetch
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    deleteVercelProject.mockResolvedValue({ ok: true })
+    disableVercelDeploymentProtection.mockResolvedValue({ ok: true })
+    getProjectPrimaryDomain.mockResolvedValue("https://sacms-dryrun-x.vercel.app")
+    getRuntimeLogs.mockResolvedValue({ lines: [], errorLines: [], truncated: false })
+  })
+  afterEach(() => { global.fetch = originalFetch })
+
+  it("reports build_failed with the build's error lines, and always deletes the throwaway project", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_x", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_sandbox" })
+    getDeploymentStatus.mockResolvedValue({ state: "ERROR" })
+    getDeploymentBuildLogs.mockResolvedValue({ lines: [], errorLines: ["Type error: cannot find module 'x'"] })
+
+    const result = await verifyBundleBuild(files, null)
+
+    expect(result.status).toBe("build_failed")
+    expect(result.buildErrorLines).toEqual(["Type error: cannot find module 'x'"])
+    expect(deployToVercel.mock.calls[0][0]).toMatch(/^sacms-dryrun-[0-9a-f]{10}$/)
+    expect(deleteVercelProject).toHaveBeenCalledWith("prj_sandbox")
+  })
+
+  it("reports runtime_failed when the build succeeded but a route 500s, and still cleans up", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_x", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_sandbox" })
+    getDeploymentStatus.mockResolvedValue({ state: "READY" })
+    getRuntimeLogs.mockResolvedValue({ lines: [], errorLines: [{ responseStatusCode: 500, requestPath: "/", message: "Cannot find module 'jsdom'" }], truncated: false })
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, text: async () => "" }) as any
+
+    const result = await verifyBundleBuild(files, { id: "demo-1", slug: "demo-x" })
+
+    expect(result.status).toBe("runtime_failed")
+    expect(result.envSource).toBe("demo")
+    expect(result.runtimeErrorLines?.[0]).toMatch(/jsdom/)
+    expect(disableVercelDeploymentProtection).toHaveBeenCalledWith("prj_sandbox")
+    expect(deleteVercelProject).toHaveBeenCalledWith("prj_sandbox")
+  }, 15000) // the homepage check retries twice with a 2.5s pause before giving up
+
+  it("reports passed when the build is READY and every checked route renders", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_x", url: "https://x.vercel.app", state: "QUEUED", projectId: "prj_sandbox" })
+    getDeploymentStatus.mockResolvedValue({ state: "READY" })
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, text: async () => "<html>real page</html>" }) as any
+
+    const result = await verifyBundleBuild(files, null)
+
+    expect(result.status).toBe("passed")
+    expect(result.envSource).toBe("placeholder")
+    expect(deleteVercelProject).toHaveBeenCalledWith("prj_sandbox")
+  })
+
+  it("skips (no real build) when Vercel isn't configured", async () => {
+    deployToVercel.mockResolvedValue({ id: "dpl_sim", url: "https://x.vercel.app", state: "READY", projectId: "prj_sim", simulated: true })
+    const result = await verifyBundleBuild(files, null)
+    expect(result.status).toBe("skipped")
   })
 })

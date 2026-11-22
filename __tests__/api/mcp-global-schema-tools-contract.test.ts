@@ -484,6 +484,32 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(routeSource).toMatch(/id: requestId,/)
   })
 
+  // ── Async operations + sandbox build ─────────────────────────────────────
+
+  it('create/update_website_template and redeploy accept background: true and include the async shape in their outputSchema union', () => {
+    for (const tool of ['create_website_template', 'update_website_template', 'redeploy_website_template_demo']) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped, `${tool} should accept background`).toMatch(/background: z\.boolean\(\)\.optional\(\)/)
+      expect(scoped, `${tool} should union the async shape`).toMatch(/ASYNC_OPERATION_OUTPUT_SHAPE/)
+      expect(scoped, `${tool} should hand off to runToolInBackground`).toMatch(/runToolInBackground\(/)
+    }
+  })
+
+  it('a dryRun with verifyBuild runs a real sandbox build in the background instead of a shape-only check', () => {
+    for (const tool of ['create_website_template', 'update_website_template']) {
+      const scoped = toolBlockOf(tool)
+      expect(scoped).toMatch(/verifyBuild: z\.boolean\(\)\.optional\(\)/)
+      expect(scoped).toMatch(/if \(verifyBuild\) \{/)
+      expect(scoped).toMatch(/runVerifyBuild\(/)
+    }
+  })
+
+  it('registers a read-only get_operation_status tool', () => {
+    const scoped = toolBlockOf('get_operation_status')
+    expect(scoped).toMatch(/readOnlyHint: true/)
+    expect(scoped).toMatch(/getOperation\(operationId\)/)
+  })
+
   // ── Audit follow-up round ──────────────────────────────────────────────────
 
   it("get_builder_guide checks auth before returning, same as every other tool in this file (it used to be the sole exception)", () => {

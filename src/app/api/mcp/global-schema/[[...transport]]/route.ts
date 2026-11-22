@@ -45,6 +45,7 @@ import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-type-guide"
 import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields, remapIssuePathsToInput } from "@/lib/schema-template-validation"
 import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
+import { startBackgroundOperation, getOperation, type OperationKind } from "@/lib/infrastructure/global-mcp-operations"
 import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
 import type { Prisma } from "@prisma/client"
 import {
@@ -62,6 +63,8 @@ import {
 // tenant-shaped to re-verify.
 interface GlobalAuthContext {
   authenticated: true
+  tokenId: string
+  tokenName: string
 }
 
 const authContext = new AsyncLocalStorage<GlobalAuthContext>()
@@ -73,7 +76,7 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
 
   const token = await db.apiToken.findFirst({
     where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
-    select: { id: true },
+    select: { id: true, name: true },
   })
   if (!token) return null
 
@@ -84,7 +87,7 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
     })
     .catch(() => {})
 
-  return { authenticated: true }
+  return { authenticated: true, tokenId: token.id, tokenName: token.name }
 }
 
 // chatgpt8.md P1 ("use one consistent error code"): this used to carry
@@ -392,6 +395,77 @@ const DRY_RUN_OUTPUT_SHAPE = z.object({
   warnings: z.array(z.object({ path: z.string(), message: z.string() })),
 })
 
+/** Returned instead of the normal result when a call runs in the background
+ *  (`background: true`, or a dryRun with `verifyBuild: true`). Poll
+ *  get_operation_status with `operationId`; its `result` then carries the
+ *  same structuredContent the synchronous call would have returned. */
+const ASYNC_OPERATION_OUTPUT_SHAPE = z.object({
+  mode: z.literal("async"),
+  ok: z.literal(true),
+  operationId: z.string(),
+  status: z.string(),
+  message: z.string(),
+})
+
+function asyncOperationResponse(operation: { id: string; status: string }, kind: string) {
+  const structured = {
+    mode: "async" as const,
+    ok: true as const,
+    operationId: operation.id,
+    status: operation.status,
+    message: `${kind} is running in the background. Poll get_operation_status with this operationId until status is "succeeded" or "failed".`,
+  }
+  return { content: [{ type: "text" as const, text: `⏳ ${structured.message}\noperationId: ${operation.id}` }], structuredContent: structured }
+}
+
+type ToolResult = { content: { type: "text"; text: string }[]; structuredContent?: unknown; isError?: boolean }
+
+/** Runs a tool's own (synchronous-mode) handler in the background and
+ *  stores its outcome, so a long create/update/redeploy can't be lost to a
+ *  dropped connection (audit: ECONNRESET while the template was in fact
+ *  created). A result with isError is recorded as a failed operation. */
+async function runToolInBackground(kind: OperationKind, run: () => Promise<ToolResult>) {
+  const auth = authContext.getStore()
+  const operation = await startBackgroundOperation(kind, auth?.tokenId ?? null, async () => {
+    const result = await run()
+    return {
+      result: result.structuredContent ?? null,
+      failed: !!result.isError,
+      error: result.isError ? result.content.map((c) => c.text).join("\n") : undefined,
+    }
+  })
+  return asyncOperationResponse(operation, kind)
+}
+
+/** A schema template's own internal demo workspace (real data + API key) to
+ *  build a dryRun bundle against, or null when there isn't one yet. */
+async function findDemoTenantForSchemaTemplate(idOrSlug: string) {
+  const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }, select: { id: true, demoTenantId: true } })
+  if (!template) return null
+  const { findSchemaDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+  return findSchemaDemoWorkspace(db, template)
+}
+
+/** dryRun + verifyBuild: the static checks already passed; the real
+ *  sandbox build runs in the background (see verifyBundleBuild). A build
+ *  or render failure is recorded as a failed operation. */
+function runVerifyBuild(
+  files: { path: string; content: string; encoding?: "utf-8" | "base64" }[],
+  demoTenant: { id: string; slug: string } | null,
+  warnings: { path: string; message: string }[],
+) {
+  return runToolInBackground("verify_build", async () => {
+    const { verifyBundleBuild } = await import("@/lib/infrastructure/deploy-website-template-demo")
+    const verification = await verifyBundleBuild(files, demoTenant)
+    const failed = verification.status !== "passed" && verification.status !== "skipped"
+    return {
+      content: [{ type: "text" as const, text: verification.message }],
+      structuredContent: { mode: "dry_run_build", ok: !failed, ...verification, warnings },
+      isError: failed,
+    }
+  })
+}
+
 function invalidSchema(error: z.ZodError) {
   const issues = error.issues.map((i) => ({ path: formatZodPath(i.path), message: i.message }))
   return {
@@ -538,6 +612,11 @@ If you're working inside a real local Next.js project with shell access (Claude 
 
 ## Validate before you save
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
+
+A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\` (with \`dryRun: true\`, on create or update) to run a real \`next build\` in a throwaway sandbox and render-check the routes; this catches a bundle that fails to build or builds but 500s at runtime (e.g. a package the bundler leaves external). It returns an \`operationId\`: poll \`get_operation_status\` until \`succeeded\`/\`failed\`.
+
+## Long-running calls
+\`create_website_template\`, \`update_website_template\` and \`redeploy_website_template_demo\` accept \`background: true\`: they return an \`operationId\` immediately instead of holding the connection open through the whole demo deploy, so a dropped connection can't lose the result. Poll \`get_operation_status\`; its \`result\` is the same structuredContent the synchronous call returns. Always pair a background create with \`idempotencyKey\`.
 
 ## Demo preview and verification
 \`create_website_template\` initializes empty demo models from sample data. Read actual values with \`get_demo_single_type_entry\` or \`list_demo_content_entries\`. Read both editor and published values before diagnosing a frontend that appears empty. Use \`upload_demo_media\` to obtain a demo media ID, then \`update_demo_single_type_entry\` or \`save_demo_content_entry\` to store it, including inside Component and Repeater fields.
@@ -1266,16 +1345,25 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           ),
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template instead of a duplicate (and, when `schema` was given, a second orphaned backing Schema Template). Ignored when dryRun is true."),
           dryRun: z.boolean().optional().describe("Validate everything (files, schema shape, relationSlug/componentSlug/allowedComponents references, select/multiselect choices, schemaTemplateId existence) WITHOUT creating anything or deploying a demo. Returns the same validation errors a real call would reject with, each with an exact path like \"schema.contentTypes[2].fields[4].options.choices\" — call this first for anything non-trivial instead of discovering a mistake only after it's already saved."),
+          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the bundle in a throwaway Vercel sandbox and render-check its routes (catches a bundle that type-checks but fails to build, or builds but 500s at runtime). Takes a few minutes, so it always returns an operationId — poll get_operation_status. Nothing is saved or deployed to the demo."),
+          background: z.boolean().optional().describe("Run the create + demo deploy in the background and return an operationId immediately instead of holding the connection open for the whole deploy. Poll get_operation_status. Pair with idempotencyKey. Ignored with dryRun."),
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
+          ASYNC_OPERATION_OUTPUT_SHAPE,
           z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) => {
+      async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, verifyBuild, background, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        if (background && !dryRun) {
+          // eslint-disable-next-line prefer-rest-params
+          const args = arguments[0]
+          return runToolInBackground("create_website_template", () => createWebsiteTemplateTool({ ...args, background: false }) as Promise<ToolResult>)
+        }
 
         // Idempotent replay — before anything else, so a lost response's
         // retry never creates a second template (or, worse, a second
@@ -1364,6 +1452,10 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           const warnings: { path: string; message: string }[] = [...bundleWarnings]
           if (!hasEnvExample) {
             warnings.push({ path: "files", message: "No .env.example found — this is advisory only (it won't block a real save), but env vars won't be auto-declared on the workspace's Environment tab when a customer applies this template." })
+          }
+          if (verifyBuild) {
+            const demoTenant = schemaTemplateId ? await findDemoTenantForSchemaTemplate(schemaTemplateId) : null
+            return runVerifyBuild(parsedFiles.data, demoTenant, warnings)
           }
           return {
             content: [{
@@ -1508,9 +1600,12 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
           confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
+          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the merged bundle in a throwaway Vercel sandbox against this template's demo data, and render-check its routes. Always returns an operationId — poll get_operation_status. Nothing is saved or redeployed."),
+          background: z.boolean().optional().describe("Run the update + demo redeploy in the background and return an operationId immediately. Poll get_operation_status. Ignored with dryRun."),
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
+          ASYNC_OPERATION_OUTPUT_SHAPE,
           z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE.optional() }),
         ]),
         // destructive: `files` replaces the whole bundle and `schema` can
@@ -1518,9 +1613,15 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // destructive tools behind confirmation must treat this as one.
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
-      async ({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun }) => {
+      async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        if (background && !dryRun) {
+          // eslint-disable-next-line prefer-rest-params
+          const args = arguments[0]
+          return runToolInBackground("update_website_template", () => updateWebsiteTemplateTool({ ...args, background: false }) as Promise<ToolResult>)
+        }
 
         if (files !== undefined && (changedFiles !== undefined || deletedFiles !== undefined)) {
           return {
@@ -1620,6 +1721,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
               if (error instanceof DemoContentError) return demoFailure(error.code, error.message)
               throw error
             }
+          }
+          if (verifyBuild) {
+            const demoTenant = await findDemoTenantForSchemaTemplate(existing.schemaTemplate.id)
+            const bundle = filesData ?? (existing.files as unknown as { path: string; content: string }[])
+            return runVerifyBuild(bundle, demoTenant, bundleWarnings)
           }
           return {
             content: [{ type: "text" as const, text: "✅ Valid — tidak ada masalah ditemukan. Panggil lagi tanpa dryRun untuk benar-benar menyimpan." }],
@@ -1731,6 +1837,50 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         await db.websiteTemplate.delete({ where: { id: existing.id } })
         const structured = { ok: true as const }
         return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }], structuredContent: structured }
+      },
+    )
+
+    server.registerTool(
+      "get_operation_status",
+      {
+        title: "Get Background Operation Status",
+        description: "Poll a background operation started by create_website_template/update_website_template/redeploy_website_template_demo with background: true, or by a dryRun with verifyBuild: true. Keep polling (every ~10-20s) while status is \"running\". When it finishes, `result` carries the same structuredContent the synchronous call would have returned; on \"failed\", `error` says why.",
+        inputSchema: {
+          operationId: z.string().describe("The operationId returned by the call that started it."),
+        },
+        outputSchema: {
+          operationId: z.string(),
+          kind: z.string(),
+          status: z.enum(["running", "succeeded", "failed"]),
+          result: z.any().optional(),
+          error: z.string().nullable(),
+          startedAt: z.string(),
+          finishedAt: z.string().nullable(),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ operationId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const operation = await getOperation(operationId)
+        if (!operation) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Operation '${operationId}' tidak ditemukan.` }],
+            structuredContent: { ok: false, code: "NOT_FOUND", message: "Operation not found." },
+            isError: true,
+          }
+        }
+        const structured = {
+          operationId: operation.id,
+          kind: operation.kind,
+          status: operation.status as "running" | "succeeded" | "failed",
+          result: operation.result ?? undefined,
+          error: operation.error,
+          startedAt: operation.startedAt.toISOString(),
+          finishedAt: operation.finishedAt?.toISOString() ?? null,
+        }
+        return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
       },
     )
 
@@ -1848,16 +1998,21 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         description: "Redeploy the demo frontend from the stored files and verify it while preserving the demo entries. Use get_website_template_demo_status to diagnose a failed build. Reset sample content separately with reset_demo_content.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
+          background: z.boolean().optional().describe("Run the redeploy in the background and return an operationId immediately. Poll get_operation_status."),
         },
-        outputSchema: {
-          ...WEBSITE_TEMPLATE_SUMMARY_SHAPE,
-          demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE,
-        },
+        outputSchema: z.union([
+          ASYNC_OPERATION_OUTPUT_SHAPE,
+          z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
+        ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async ({ id }) => {
+      async function redeployWebsiteTemplateDemoTool({ id, background }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
+
+        if (background) {
+          return runToolInBackground("redeploy_website_template_demo", () => redeployWebsiteTemplateDemoTool({ id, background: false }) as Promise<ToolResult>)
+        }
 
         const existing = await db.websiteTemplate.findFirst({
           where: { OR: [{ id }, { slug: id }] },

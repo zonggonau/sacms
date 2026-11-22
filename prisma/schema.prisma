@@ -1049,6 +1049,31 @@ model GlobalComponent {
   @@map("global_components")
 }
 
+// A long-running SaCMS Global MCP call (create/update/redeploy a Website
+// Template, or a dryRun's sandbox build) run in the background so the MCP
+// request returns an operationId immediately instead of holding the
+// connection open through a multi-minute Vercel build (audit: the
+// synchronous call dropped with ECONNRESET while the template had in fact
+// been created). Polled via get_operation_status. The app runs as one
+// long-lived Node process, so the background promise outlives the request;
+// a row still "running" long past any realistic budget means the process
+// restarted mid-run and is reported as interrupted on read.
+model GlobalMcpOperation {
+  id         String    @id @default(cuid())
+  kind       String
+  status     String    @default("running") // running | succeeded | failed
+  tokenId    String?
+  result     Json?
+  error      String?
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([status, startedAt])
+  @@map("global_mcp_operations")
+}
+
 model Webhook {
   id              String              @id @default(cuid())
   tenantId        String

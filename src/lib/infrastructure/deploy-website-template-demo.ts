@@ -1,7 +1,8 @@
 import "server-only"
 
 import { db } from "@/lib/database"
-import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs, getRuntimeLogs } from "@/lib/vercel-client"
+import { randomBytes } from "crypto"
+import { deployToVercel, ensureDemoSubdomain, getProjectPrimaryDomain, getDeploymentStatus, getDeploymentBuildLogs, getRuntimeLogs, deleteVercelProject, disableVercelDeploymentProtection } from "@/lib/vercel-client"
 import { resolveWebsiteTemplateEnvVars, resolveFrontendEnv, resolveApiOrigin } from "./frontend-env"
 import { ensureDemoTenantForSchemaTemplate } from "./demo-tenant"
 import { ensurePublicSubdomainToken } from "./public-subdomain"
@@ -69,9 +70,9 @@ const BUILD_POLL_MAX_ATTEMPTS = 15
  *  until it reaches a terminal state or the bounded budget runs out.
  *  Checks before sleeping, so a mock/simulated deploy that's already
  *  terminal resolves instantly with no delay. */
-async function waitForBuildTerminal(deploymentId: string): Promise<string> {
+async function waitForBuildTerminal(deploymentId: string, maxAttempts = BUILD_POLL_MAX_ATTEMPTS): Promise<string> {
   let state = ""
-  for (let attempt = 0; attempt < BUILD_POLL_MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const status = await getDeploymentStatus(deploymentId).catch(() => null)
     state = status?.state || state
     if (state && TERMINAL_BUILD_STATE_RE.test(state)) return state
@@ -306,5 +307,104 @@ export async function deployWebsiteTemplateDemo(
   } catch (err: any) {
     console.warn(`[deploy-website-template-demo] Failed to deploy demo for ${websiteTemplate.slug}:`, err)
     return { url: null, error: err?.message || "Gagal men-deploy demo" }
+  }
+}
+
+export interface BundleBuildVerification {
+  /** passed = built AND every checked route rendered; skipped = no Vercel
+   *  token (local dev), nothing was built. */
+  status: "passed" | "build_failed" | "runtime_failed" | "timeout" | "skipped" | "error"
+  buildState?: string
+  routes?: RouteCheckResult[]
+  buildErrorLines?: string[]
+  runtimeErrorLines?: string[]
+  /** "demo" = built against the template's real demo workspace data;
+   *  "placeholder" = no demo workspace exists yet, so a page that fetches
+   *  content at build/request time may legitimately render empty or fail. */
+  envSource: "demo" | "placeholder"
+  message: string
+}
+
+/** ~3 minutes — this always runs as a background operation, so it can
+ *  afford a real Next.js build instead of the demo deploy's ~45s budget. */
+const SANDBOX_BUILD_POLL_ATTEMPTS = 60
+
+/**
+ * A dryRun's REAL build check (audit VAL-17: dryRun only validated shape,
+ * so a bundle that failed `next build` — or built but 500'd at runtime,
+ * like the Turbopack-externalized sanitize-html/jsdom case — still passed).
+ *
+ * Builds on Vercel's own isolated build infrastructure in a throwaway
+ * project, never on SaCMS's servers: running `next build` here would mean
+ * executing arbitrary bundle code (next.config, postcss, install scripts)
+ * on the production host. The project is deleted afterwards whatever the
+ * outcome, so nothing is persisted and no template/demo is touched.
+ */
+export async function verifyBundleBuild(
+  files: { path: string; content: string; encoding?: "utf-8" | "base64" }[],
+  demoTenant: { id: string; slug: string } | null,
+): Promise<BundleBuildVerification> {
+  const envSource = demoTenant ? "demo" : "placeholder"
+  let projectId: string | undefined
+  try {
+    const envVars = demoTenant
+      ? {
+          ...(await resolveFrontendEnv(demoTenant.id, demoTenant.slug, resolveApiOrigin())),
+          ...Object.fromEntries((await resolveWebsiteTemplateEnvVars(demoTenant.id, demoTenant.slug, files)).map((v) => [v.key, v.value])),
+        }
+      : { NEXT_PUBLIC_SACMS_API_URL: resolveApiOrigin(), NEXT_PUBLIC_SACMS_TENANT: "sacms-dryrun" }
+
+    const projectName = `sacms-dryrun-${randomBytes(5).toString("hex")}`
+    const deploy = await deployToVercel(
+      projectName,
+      files.map((f) => ({ name: f.path, content: f.content, encoding: f.encoding })),
+      envVars,
+      undefined,
+      "production",
+    )
+    projectId = deploy.projectId
+    if (deploy.simulated) {
+      return { status: "skipped", envSource, message: "Vercel is not configured in this environment — no real build was run." }
+    }
+
+    const buildState = deploy.id ? await waitForBuildTerminal(deploy.id, SANDBOX_BUILD_POLL_ATTEMPTS) : deploy.state
+    if (/^(ERROR|CANCELED)$/i.test(buildState)) {
+      const logs = deploy.id ? await getDeploymentBuildLogs(deploy.id).catch(() => null) : null
+      return { status: "build_failed", buildState, buildErrorLines: logs?.errorLines?.slice(-20), envSource, message: `The bundle failed to build (${buildState}). Fix buildErrorLines before saving.` }
+    }
+    if (!/^READY$/i.test(buildState)) {
+      return { status: "timeout", buildState, envSource, message: `The build didn't finish within the sandbox budget (last state: ${buildState || "unknown"}).` }
+    }
+
+    // Throwaway project, deleted below — lifting protection only so the
+    // render check reads the real page instead of Vercel's login wall.
+    if (projectId) await disableVercelDeploymentProtection(projectId).catch(() => null)
+    const url = (projectId ? await getProjectPrimaryDomain(projectId).catch(() => null) : null) || deploy.url
+    const verification = await verifyDemoRoutes(url, { retryHomepage: true })
+
+    let runtimeErrorLines: string[] | undefined
+    if (!verification.verified && projectId && deploy.id) {
+      const runtime = await getRuntimeLogs(projectId, deploy.id).catch(() => null)
+      if (runtime?.errorLines.length) {
+        runtimeErrorLines = runtime.errorLines.slice(-20).map((l) => `[${l.responseStatusCode ?? "?"}] ${l.requestPath ?? ""} ${l.message}`.trim())
+      }
+    }
+
+    return verification.verified
+      ? { status: "passed", buildState, routes: verification.routes, envSource, message: "The bundle built and every checked route rendered." }
+      : {
+          status: "runtime_failed",
+          buildState,
+          routes: verification.routes,
+          runtimeErrorLines,
+          envSource,
+          message: envSource === "placeholder"
+            ? "The bundle built, but a route failed to render. With no demo workspace yet, a page that requires CMS data can fail here legitimately — check runtimeErrorLines."
+            : "The bundle built, but a route failed to render at request time — check runtimeErrorLines (e.g. a package the bundler left external that isn't available at runtime).",
+        }
+  } catch (err: any) {
+    return { status: "error", envSource, message: err?.message || "Sandbox build failed to start." }
+  } finally {
+    if (projectId) await deleteVercelProject(projectId).catch((e) => console.warn(`[verifyBundleBuild] Failed to delete sandbox project ${projectId}:`, e))
   }
 }
