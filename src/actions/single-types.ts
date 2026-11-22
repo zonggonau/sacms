@@ -82,6 +82,7 @@ export async function getSingleTypesAction(tenantSlug: string, scope?: "studio")
         fields: formattedFields,
         data: assignment ? readSingleTypeAssignment(assignment, true).data : {},
         publishedAt: assignment?.publishedAt || null,
+        hasPendingDraft: assignment?.draftData != null,
         ...(scope === "studio" ? { updatedAt: assignment?.updatedAt ?? null } : {}),
         isGlobal: st.tenantId === null,
       }
@@ -389,6 +390,70 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
     return { success: true }
   } catch (error) {
     console.error("Error deleting single type:", error)
+    return { error: "Internal server error" }
+  }
+}
+
+/**
+ * Takes a Single Type offline for one locale: clears publishedAt so the
+ * public API stops serving it. saveSingleTypeDataAction(..., publish:
+ * false) can't do this — it only writes a draft and leaves the published
+ * version live. The current published values move into the draft (unless
+ * a newer draft already exists), so nothing is lost and republishing puts
+ * the same content back.
+ */
+export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId: string, locale?: string) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return { error: "Unauthorized" }
+
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return { error: "Forbidden" }
+    if (!isStaticPageManager(access.role)) return { error: "Forbidden" }
+
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_PUBLISH)
+    if (!rbac.allowed) return { error: "Forbidden" }
+
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+    const locales = await getSingleTypeLocales(tenantId)
+    const targetLocale = locale || locales[0].locale
+    if (!locales.some((language) => language.locale === targetLocale)) return { error: "Bahasa tidak aktif di workspace ini" }
+
+    const singleType = await tenantDb.singleType.findFirst({
+      where: {
+        id: singleTypeId,
+        draftTemplateId: null,
+        OR: [
+          { tenantId },
+          { tenantId: null, tenants: { some: { tenantId, enabled: true } } },
+        ],
+      },
+      select: { id: true, slug: true },
+    })
+    if (!singleType) return { error: "Single type not found" }
+
+    const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
+      where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale: targetLocale } },
+    })
+    if (!assignment?.publishedAt) return { error: "Single type ini belum terbit." }
+
+    await tenantDb.tenantSingleTypeAssignment.update({
+      where: { id: assignment.id },
+      data: {
+        publishedAt: null,
+        ...(assignment.draftData == null ? { draftData: assignment.data ?? {} } : {}),
+      },
+    })
+    await invalidateSingleTypePublication(tenantId, singleType.slug, targetLocale)
+
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
+    return { success: true }
+  } catch (error) {
+    console.error("Error unpublishing tenant single type:", error)
     return { error: "Internal server error" }
   }
 }

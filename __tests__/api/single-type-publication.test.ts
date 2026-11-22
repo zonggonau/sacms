@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
-import { saveSingleTypeDataAction } from "@/actions/single-types"
+import { saveSingleTypeDataAction, unpublishSingleTypeAction } from "@/actions/single-types"
 import { GET, PUT } from "@/app/api/public/[tenant]/single/[singleType]/route"
 
 const mocks = vi.hoisted(() => ({
@@ -123,6 +123,30 @@ describe("workspace Single Type publication", () => {
     expect((await (await getPage()).json()).data.heading).toBe("Final")
     expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:en:*")
     expect(mocks.invalidate).toHaveBeenCalledWith("graphql:tenant-id:*")
+  })
+
+  it("unpublishes for real: clears publishedAt, keeps the live content as a draft, and drops it from public reads", async () => {
+    const result = await unpublishSingleTypeAction("tenant", "single-id")
+    expect(result).toEqual({ success: true })
+    expect(mocks.update).toHaveBeenLastCalledWith({
+      where: { id: "row-id" },
+      data: { publishedAt: null, draftData: JSON.stringify({ heading: "Published" }) },
+    })
+    expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:en:*")
+    expect((await getPage()).status).toBe(404)
+  })
+
+  it("never overwrites a newer pending draft when unpublishing", async () => {
+    await saveSingleTypeDataAction("tenant", "single-id", { heading: "Pending" }, false)
+    await unpublishSingleTypeAction("tenant", "single-id")
+    expect(mocks.update).toHaveBeenLastCalledWith({ where: { id: "row-id" }, data: { publishedAt: null } })
+  })
+
+  it("refuses to unpublish a Single Type that isn't published", async () => {
+    mocks.assignment.mockResolvedValue({ id: "row-id", enabled: true, data: null, draftData: null, publishedAt: null, updatedAt: savedAt })
+    const result = await unpublishSingleTypeAction("tenant", "single-id")
+    expect(result).toEqual({ error: "Single type ini belum terbit." })
+    expect(mocks.update).not.toHaveBeenCalled()
   })
 
   it("keeps an unpublished Single Type hidden in normal reads", async () => {

@@ -41,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { deleteSingleTypeAction, saveSingleTypeDataAction } from "@/actions/single-types"
+import { deleteSingleTypeAction, saveSingleTypeDataAction, unpublishSingleTypeAction } from "@/actions/single-types"
 
 interface SingleType {
   id: string
@@ -51,6 +51,7 @@ interface SingleType {
   fields: any[]
   data: any
   publishedAt: string | null
+  hasPendingDraft?: boolean
   updatedAt: string
   isGlobal: boolean
 }
@@ -68,6 +69,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
+  const [busyId, setBusyId] = useState<string | null>(null)
 
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -90,17 +92,35 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
     return current >= limit
   }, [current, limit])
 
+  // Publishes the latest saved values (the editor's draft when there is
+  // one). Unpublishing uses its own action — saving with publish: false only
+  // writes a draft and would leave the live version online.
   const handlePublishToggle = (singleType: SingleType, publish: boolean) => {
+    setBusyId(singleType.id)
     startTransition(async () => {
-      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, singleType.data, publish)
-      if (res.error) {
-        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
-      } else {
+      try {
+        const res = publish
+          ? await saveSingleTypeDataAction(tenantSlug, singleType.id, singleType.data, true)
+          : await unpublishSingleTypeAction(tenantSlug, singleType.id)
+        if ("error" in res && res.error) {
+          toast({
+            variant: "destructive",
+            title: publish ? "Gagal menerbitkan" : "Gagal membatalkan terbit",
+            description: res.error === "Validasi gagal"
+              ? "Ada field wajib yang belum diisi. Lengkapi lewat Kelola Konten, lalu terbitkan."
+              : res.error,
+          })
+          return
+        }
         toast({
-          title: publish ? "Berhasil Diterbitkan!" : "Draf Disimpan",
-          description: `${singleType.name} kini berstatus ${publish ? 'terbit' : 'draf'}.`,
-          className: publish ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
+          title: publish ? "Berhasil diterbitkan" : "Terbit dibatalkan",
+          description: publish
+            ? `${singleType.name} sekarang tampil di API publik.`
+            : `${singleType.name} tidak lagi tampil di API publik. Isinya disimpan sebagai draf.`,
         })
+        router.refresh()
+      } finally {
+        setBusyId(null)
       }
     })
   }
@@ -294,9 +314,14 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                           </TableCell>
                           <TableCell className="text-center py-3">
                             {st.publishedAt ? (
-                              <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                                Live
-                              </Badge>
+                              <div className="flex flex-col items-center gap-1">
+                                <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                  Live
+                                </Badge>
+                                {st.hasPendingDraft && (
+                                  <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">Ada draf belum terbit</span>
+                                )}
+                              </div>
                             ) : (
                               <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-full">
                                 Draft
@@ -323,6 +348,18 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                                 <TooltipContent>{`Buka entri ${st.name} di CMS Studio`}</TooltipContent>
                               </Tooltip>
 
+                              {(!st.publishedAt || st.hasPendingDraft) && (
+                                <Button
+                                  size="sm"
+                                  disabled={busyId === st.id}
+                                  onClick={() => handlePublishToggle(st, true)}
+                                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 shadow-xs"
+                                >
+                                  {busyId === st.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Globe className="h-3 w-3" />}
+                                  <span>{st.publishedAt ? "Terbitkan Perubahan" : "Terbitkan"}</span>
+                                </Button>
+                              )}
+
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
@@ -333,6 +370,11 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                                   <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types/${st.slug}`)} className="text-xs cursor-pointer rounded-lg">
                                     <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
                                   </DropdownMenuItem>
+                                  {st.publishedAt && (
+                                    <DropdownMenuItem disabled={busyId === st.id} onClick={() => handlePublishToggle(st, false)} className="text-xs cursor-pointer rounded-lg">
+                                      <EyeOff className="mr-2 h-3.5 w-3.5" /> Batalkan Terbit
+                                    </DropdownMenuItem>
+                                  )}
                                   {(!st.isGlobal || isGlobalTenant) && (
                                     <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/developer/single-types/${st.slug}/edit`)} className="text-xs cursor-pointer rounded-lg">
                                       <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit Skema
