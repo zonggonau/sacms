@@ -71,7 +71,7 @@ export async function ensureDefaultSchemaTemplate() {
       slug: DEFAULT_SCHEMA_TEMPLATE_SLUG,
       category: "Starter",
       icon: "🧱",
-      description: "Content Type bawaan (Post, Kategori) yang otomatis tersedia di setiap workspace baru.",
+      description: "Starter schema composed into a brand-new Schema/Website Template when create_schema_template's own `schema` param is omitted (see composeTemplateStarterSchema). Its Content Types (Post, Kategori) are NOT auto-materialized into a new workspace — see seedDefaultTenantSchema, which deliberately strips them.",
       schema: DEFAULT_SCHEMA_BUNDLE as object,
       published: true,
       isDefault: true,
@@ -80,18 +80,21 @@ export async function ensureDefaultSchemaTemplate() {
 }
 
 /**
- * Materializes the default SchemaTemplate's Content Types/Single Types
- * PLUS every currently-PUBLISHED GlobalComponent's fields into one workspace
- * — called once, right after a brand-new tenant is created (alongside
+ * Materializes the default SchemaTemplate's Single Types PLUS every
+ * currently-PUBLISHED GlobalComponent's fields into one workspace — called
+ * once, right after a brand-new tenant is created (alongside
  * ensureSiteSettings), never retroactively against an existing tenant.
+ * Deliberately strips `contentTypes` (Post, Kategori, etc.) — those stay
+ * opt-in, added later by an AI agent (via create_content_type) or manually
+ * through the dashboard, not auto-pushed into every new workspace. Only
+ * Components and Single Types are ever auto-materialized here.
  * materializeSchemaIntoTenant already skips any model whose slug already
- * exists for this tenant, so calling this twice (or against a tenant an
- * older starter-kit flow already seeded "posts"/"kategori" into) is safe.
+ * exists for this tenant, so calling this twice is safe.
  */
 export async function seedDefaultTenantSchema(tenantId: string): Promise<void> {
   const { schema } = await loadDefaultTenantSchema(true)
   const tenantDb = await getTenantDbById(tenantId)
-  await materializeSchemaIntoTenant(tenantDb, tenantId, schema)
+  await materializeSchemaIntoTenant(tenantDb, tenantId, { ...schema, contentTypes: [] })
 }
 
 /** Read the starter schema and the published reusable catalog. Template previews

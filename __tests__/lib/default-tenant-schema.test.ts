@@ -75,7 +75,7 @@ describe("seedDefaultTenantSchema", () => {
     globalComponentFindMany.mockResolvedValue([])
   })
 
-  it("materializes the default template's contentTypes/singleTypes into the tenant's own db", async () => {
+  it("deliberately strips contentTypes (Post, Kategori stay opt-in — added later by an AI agent or manually) while still materializing into the tenant's own db", async () => {
     await seedDefaultTenantSchema("tenant-1")
 
     expect(getTenantDbById).toHaveBeenCalledWith("tenant-1")
@@ -83,7 +83,7 @@ describe("seedDefaultTenantSchema", () => {
     const [tenantDbArg, tenantIdArg, schemaArg] = materializeSchemaIntoTenant.mock.calls[0]
     expect(tenantDbArg).toBe(tenantDbMock)
     expect(tenantIdArg).toBe("tenant-1")
-    expect(schemaArg.contentTypes.map((ct: { slug: string }) => ct.slug)).toEqual(["kategori", "posts"])
+    expect(schemaArg.contentTypes).toEqual([])
   })
 
   it("only queries PUBLISHED GlobalComponents, and maps them into the bundle's `components`", async () => {
