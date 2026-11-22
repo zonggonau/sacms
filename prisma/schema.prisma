@@ -984,6 +984,7 @@ model WebsiteTemplate {
   sourceVersion    DateTime @default(now())
 
   deployedTenants  Tenant[]
+  versions         WebsiteTemplateVersion[]
 
   // Live demo deployment on demo.<ROOT_DOMAIN> — a dedicated Vercel
   // project per WebsiteTemplate, redeployed automatically on every
@@ -1047,6 +1048,29 @@ model GlobalComponent {
   updatedAt   DateTime @updatedAt
 
   @@map("global_components")
+}
+
+// Snapshot of a Website Template's files (and its backing Schema
+// Template's schema) after every source change, so a bad edit can be
+// inspected and rolled back (audit: a template was silently rewritten by
+// someone else and only discovered on download — nothing recorded who
+// changed what). Restored through update_website_template's own
+// `restoreFromVersion`, so every existing guard still applies. Capped at
+// the most recent versions per template (see template-versions.ts).
+model WebsiteTemplateVersion {
+  id                String          @id @default(cuid())
+  websiteTemplateId String
+  websiteTemplate   WebsiteTemplate @relation(fields: [websiteTemplateId], references: [id], onDelete: Cascade)
+  version           Int
+  files             Json
+  schema            Json?
+  summary           String
+  changedBy         String?
+  tokenId           String?
+  createdAt         DateTime        @default(now())
+
+  @@unique([websiteTemplateId, version])
+  @@map("website_template_versions")
 }
 
 // A long-running SaCMS Global MCP call (create/update/redeploy a Website

@@ -46,6 +46,7 @@ import { FIELD_TYPE_GUIDE, CONTENT_API_CONTRACT_EXAMPLES } from "@/lib/field-typ
 import { formatZodPath, validateBundleReferences, splitIssuesBySeverity, validateGlobalComponentFields, remapIssuePathsToInput } from "@/lib/schema-template-validation"
 import { composeTemplateStarterSchema, protectedSchemaModelIssues } from "@/lib/infrastructure/template-starter-schema"
 import { startBackgroundOperation, getOperation, type OperationKind } from "@/lib/infrastructure/global-mcp-operations"
+import { recordTemplateVersion, fileSha256, type VersionFile } from "@/lib/infrastructure/template-versions"
 import { serializeTenantSchema, type SchemaBlob } from "@/lib/schema-template-sync"
 import type { Prisma } from "@prisma/client"
 import {
@@ -614,6 +615,9 @@ If you're working inside a real local Next.js project with shell access (Claude 
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
 A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\` (with \`dryRun: true\`, on create or update) to run a real \`next build\` in a throwaway sandbox and render-check the routes; this catches a bundle that fails to build or builds but 500s at runtime (e.g. a package the bundler leaves external). It returns an \`operationId\`: poll \`get_operation_status\` until \`succeeded\`/\`failed\`.
+
+## Version history
+Every files/schema change is recorded as a version (diff summary, which token made it, when; the last 30 are kept). \`list_template_versions\` shows the history, \`get_template_version\` reads a snapshot (paths + sha256, or specific files with \`paths\`), and \`update_website_template({ id, restoreFromVersion: N })\` rolls back — files only by default, add \`restoreSchema: true\` for the schema too. A restore goes through every normal update guard and is itself recorded, so it can be undone. \`get_website_template\` with \`listPathsOnly\` returns each file's sha256 too, so you can sync a local copy by fetching only files that differ.
 
 ## Long-running calls
 \`create_website_template\`, \`update_website_template\` and \`redeploy_website_template_demo\` accept \`background: true\`: they return an \`operationId\` immediately instead of holding the connection open through the whole demo deploy, so a dropped connection can't lose the result. Poll \`get_operation_status\`; its \`result\` is the same structuredContent the synchronous call returns. Always pair a background create with \`idempotencyKey\`.
@@ -1261,11 +1265,11 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
           paths: z.array(z.string()).optional().describe("Only return these exact file paths' content, instead of every file in the bundle. Ignored when listPathsOnly is true."),
-          listPathsOnly: z.boolean().optional().describe("Return every file's path and byte size (see `fileSizes`) with `files` empty — skips sending any file content at all. Use this to decide which `paths` to actually fetch next."),
+          listPathsOnly: z.boolean().optional().describe("Return every file's path, byte size and sha256 (see `fileSizes`) with `files` empty — skips sending any file content at all. Compare sha256 against your local copy to fetch/patch only files that actually differ."),
         },
         outputSchema: {
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
-          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number() })).optional().describe("Only populated when listPathsOnly was true."),
+          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number(), sha256: z.string() })).optional().describe("Only populated when listPathsOnly was true."),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
@@ -1281,9 +1285,9 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
 
         const allFiles = template.files as unknown as { path: string; content: string }[]
         let files: { path: string; content: string }[] = allFiles
-        let fileSizes: { path: string; bytes: number }[] | undefined
+        let fileSizes: { path: string; bytes: number; sha256: string }[] | undefined
         if (listPathsOnly) {
-          fileSizes = allFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8") }))
+          fileSizes = allFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8"), sha256: fileSha256(f.content) }))
           files = []
         } else if (paths && paths.length > 0) {
           const wanted = new Set(paths)
@@ -1548,6 +1552,14 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           throw err
         }
 
+        await recordTemplateVersion({
+          websiteTemplateId: template.id,
+          files: parsedFiles.data as VersionFile[],
+          schema: schemaTemplate.schema,
+          changedBy: auth.tokenName,
+          tokenId: auth.tokenId,
+        })
+
         const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
         const demo = await deployWebsiteTemplateDemo({
           id: template.id,
@@ -1602,6 +1614,8 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
           verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the merged bundle in a throwaway Vercel sandbox against this template's demo data, and render-check its routes. Always returns an operationId — poll get_operation_status. Nothing is saved or redeployed."),
           background: z.boolean().optional().describe("Run the update + demo redeploy in the background and return an operationId immediately. Poll get_operation_status. Ignored with dryRun."),
+          restoreFromVersion: z.number().int().min(1).optional().describe("Roll back to a version from list_template_versions: uses that snapshot's files (and its schema too with restoreSchema: true) instead of `files`/`changedFiles`/`schema`, through every guard a normal update has (expectedVersion, HAS_DEPENDENTS, demo content). Combine with dryRun to preview. Recorded as a new version, so a restore can itself be undone."),
+          restoreSchema: z.boolean().optional().describe("With restoreFromVersion: also restore the backing Schema Template's schema from that snapshot. Default false (files only)."),
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
@@ -1613,7 +1627,7 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
         // destructive tools behind confirmation must treat this as one.
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
-      async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background }) {
+      async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background, restoreFromVersion, restoreSchema }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -1636,6 +1650,28 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true, sourceVersion: true } } },
         })
         if (!existing) return notFound("Website Template", id)
+
+        if (restoreFromVersion !== undefined) {
+          if (files !== undefined || changedFiles !== undefined || deletedFiles !== undefined || schema !== undefined) {
+            return {
+              content: [{ type: "text" as const, text: "❌ restoreFromVersion mengambil files/schema dari snapshot — jangan kirim files, changedFiles, deletedFiles, atau schema bersamaan." }],
+              structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "restoreFromVersion is mutually exclusive with files/changedFiles/deletedFiles/schema." },
+              isError: true,
+            }
+          }
+          const snapshot = await db.websiteTemplateVersion.findUnique({
+            where: { websiteTemplateId_version: { websiteTemplateId: existing.id, version: restoreFromVersion } },
+          })
+          if (!snapshot) {
+            return {
+              content: [{ type: "text" as const, text: `❌ Versi ${restoreFromVersion} tidak ditemukan untuk template ini. Panggil list_template_versions untuk melihat versi yang tersedia.` }],
+              structuredContent: { ok: false, code: "NOT_FOUND", message: "Template version not found." },
+              isError: true,
+            }
+          }
+          files = snapshot.files as unknown as typeof files
+          if (restoreSchema && snapshot.schema) schema = snapshot.schema as unknown as typeof schema
+        }
 
         if (expectedVersion && existing.sourceVersion.toISOString() !== expectedVersion) {
           return {
@@ -1778,6 +1814,19 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           }
         }
 
+        if (filesData !== undefined || schemaUpdated) {
+          await recordTemplateVersion({
+            websiteTemplateId: existing.id,
+            files: (filesData ?? existing.files) as unknown as VersionFile[],
+            schema: parsedBundleData ?? existing.schemaTemplate.schema,
+            schemaChanged: schemaUpdated,
+            changedBy: auth.tokenName,
+            tokenId: auth.tokenId,
+            note: restoreFromVersion !== undefined ? `Restored from v${restoreFromVersion}` : undefined,
+            baseline: { files: existing.files as unknown as VersionFile[], schema: existing.schemaTemplate.schema },
+          })
+        }
+
         // A real file OR schema change warrants a redeploy (the demo needs
         // to reflect either) — a metadata-only edit (name/icon/description/
         // published) shouldn't rebuild it.
@@ -1879,6 +1928,97 @@ For a TARGETED revision of an existing template ("ubah warna header"), call \`ge
           error: operation.error,
           startedAt: operation.startedAt.toISOString(),
           finishedAt: operation.finishedAt?.toISOString() ?? null,
+        }
+        return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
+      },
+    )
+
+    server.registerTool(
+      "list_template_versions",
+      {
+        title: "List Website Template Versions",
+        description: "List a Website Template's change history, newest first: version number, a diff summary (+added ~changed -removed files, schema changed), which token made the change, and when. Roll back with update_website_template({ id, restoreFromVersion }); inspect a snapshot first with get_template_version.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+          limit: z.number().int().min(1).max(30).default(10).describe("How many recent versions to return (max 30, the retention limit)."),
+        },
+        outputSchema: {
+          versions: z.array(z.object({
+            version: z.number(), summary: z.string(), changedBy: z.string().nullable(),
+            fileCount: z.number(), hasSchema: z.boolean(), createdAt: z.string(),
+          })),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ id, limit }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const template = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] }, select: { id: true } })
+        if (!template) return notFound("Website Template", id)
+        const rows = await db.websiteTemplateVersion.findMany({
+          where: { websiteTemplateId: template.id },
+          orderBy: { version: "desc" },
+          take: limit,
+        })
+        const versions = rows.map((v) => ({
+          version: v.version,
+          summary: v.summary,
+          changedBy: v.changedBy,
+          fileCount: Array.isArray(v.files) ? v.files.length : 0,
+          hasSchema: v.schema !== null,
+          createdAt: v.createdAt.toISOString(),
+        }))
+        return { content: [{ type: "text" as const, text: JSON.stringify(versions, null, 2) }], structuredContent: { versions } }
+      },
+    )
+
+    server.registerTool(
+      "get_template_version",
+      {
+        title: "Get Website Template Version",
+        description: "Read one history snapshot. By default returns each file's path, size and sha256 only — pass `paths` to get specific files' content, so you can diff a version against the current bundle before restoring it.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+          version: z.number().int().min(1).describe("Version number from list_template_versions."),
+          paths: z.array(z.string()).optional().describe("Return these files' full content."),
+          includeSchema: z.boolean().optional().describe("Also return the schema snapshot."),
+        },
+        outputSchema: {
+          version: z.number(),
+          summary: z.string(),
+          changedBy: z.string().nullable(),
+          createdAt: z.string(),
+          fileSizes: z.array(z.object({ path: z.string(), bytes: z.number(), sha256: z.string() })),
+          files: z.array(z.object({ path: z.string(), content: z.string() })),
+          schema: z.any().optional(),
+        },
+        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ id, version, paths, includeSchema }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const template = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] }, select: { id: true } })
+        if (!template) return notFound("Website Template", id)
+        const snapshot = await db.websiteTemplateVersion.findUnique({ where: { websiteTemplateId_version: { websiteTemplateId: template.id, version } } })
+        if (!snapshot) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Versi ${version} tidak ditemukan.` }],
+            structuredContent: { ok: false, code: "NOT_FOUND", message: "Template version not found." },
+            isError: true,
+          }
+        }
+        const snapshotFiles = (snapshot.files as unknown as VersionFile[]) || []
+        const wanted = new Set(paths || [])
+        const structured = {
+          version: snapshot.version,
+          summary: snapshot.summary,
+          changedBy: snapshot.changedBy,
+          createdAt: snapshot.createdAt.toISOString(),
+          fileSizes: snapshotFiles.map((f) => ({ path: f.path, bytes: Buffer.byteLength(f.content, "utf-8"), sha256: fileSha256(f.content) })),
+          files: snapshotFiles.filter((f) => wanted.has(f.path)).map((f) => ({ path: f.path, content: f.content })),
+          ...(includeSchema ? { schema: snapshot.schema } : {}),
         }
         return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
       },

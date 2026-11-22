@@ -504,6 +504,18 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     }
   })
 
+  it('records a version on create and on every files/schema update, and restores through update_website_template itself', () => {
+    expect(toolBlockOf('create_website_template')).toMatch(/recordTemplateVersion\(/)
+    const update = toolBlockOf('update_website_template')
+    expect(update).toMatch(/recordTemplateVersion\(/)
+    expect(update).toMatch(/restoreFromVersion: z\.number\(\)/)
+    expect(update).toMatch(/baseline: \{/)
+    for (const tool of ['list_template_versions', 'get_template_version']) {
+      expect(toolBlockOf(tool), `${tool} should be read-only`).toMatch(/readOnlyHint: true/)
+    }
+    expect(toolBlockOf('get_website_template')).toMatch(/sha256: fileSha256\(f\.content\)/)
+  })
+
   it('registers a read-only get_operation_status tool', () => {
     const scoped = toolBlockOf('get_operation_status')
     expect(scoped).toMatch(/readOnlyHint: true/)
