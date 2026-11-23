@@ -951,6 +951,10 @@ model SchemaTemplate {
   // extremely rare concurrent-retry race, which is an acceptable trade-off
   // for how narrow that window is.
   idempotencyKey String?
+  // Soft delete: template marked for deletion. Published templates require
+  // approval before soft deletion; unpublished templates are soft-deleted
+  // immediately. Within grace period, templates can be restored.
+  deletedAt       DateTime?
 
   @@map("schema_templates")
 }
@@ -1017,6 +1021,11 @@ model WebsiteTemplate {
   // never collide with each other. No tenant scoping needed here (unlike
   // McpBuildRun.idempotencyKey) — this catalog has no tenant dimension.
   idempotencyKey      String?  @unique
+  // Soft delete: template marked for deletion. Published templates require
+  // approval before soft deletion; unpublished templates are soft-deleted
+  // immediately. When deleted, related demo/deployment records are cleaned up,
+  // but the backing SchemaTemplate may persist (for audit + restore capability).
+  deletedAt           DateTime?
 
   @@index([schemaTemplateId])
   @@map("website_templates")
