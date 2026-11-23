@@ -888,6 +888,7 @@ const handler = createMcpHandler(
         // (no schema blob either); get_schema_template is the canonical
         // place to read the version to use for a later expectedVersion.
         const rows = await db.schemaTemplate.findMany({
+          where: { deletedAt: null },
           orderBy: { createdAt: "desc" },
           select: {
             id: true, name: true, slug: true, category: true, icon: true,
@@ -922,7 +923,7 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const template = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        const template = await db.schemaTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] } })
         if (!template) return notFound("Schema Template", id)
         const { findSchemaDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
         const demo = await findSchemaDemoWorkspace(db, template)
@@ -1313,10 +1314,10 @@ const handler = createMcpHandler(
       "delete_schema_template",
       {
         title: "Delete Schema Template",
-        description: "Permanently delete a Schema Template from the catalog. WARNING: WebsiteTemplate.schemaTemplateId cascades on delete at the database level — any Website Template built on this Schema Template would be permanently deleted too, not just left dangling. This refuses by default when dependents exist, listing them, instead of silently cascading; pass confirmCascade: true only after telling the user exactly what else will be deleted.",
+        description: "Delete a Schema Template from the catalog (soft-delete with recovery window). Unpublished templates with no Website Template dependents are soft-deleted immediately. Published templates or those with dependents require a super admin approval at /admin/developer/approvals before soft-deletion. Website Templates built on this schema soft-delete with it (cascade is now soft, not permanent).",
         inputSchema: {
           id: z.string().describe("Schema Template id or slug"),
-          confirmCascade: z.boolean().optional().describe("When this Schema Template still has Website Templates built on it, true REQUESTS the cascade delete — a super admin must approve it in the dashboard before anything is deleted (returned as pendingApproval; needs the publish scope). Tell the user exactly what will be deleted."),
+          confirmCascade: z.boolean().optional().describe("When this Schema Template has Website Templates built on it, true REQUESTS the cascade soft-delete — a super admin must approve it. Tell the user exactly what will be deleted."),
         },
         outputSchema: { ok: z.literal(true), deletedDependents: z.number().optional(), pendingApproval: APPROVAL_OUTPUT.optional() },
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: false },
@@ -1329,47 +1330,58 @@ const handler = createMcpHandler(
           if (denied) return denied
         }
 
-        const existing = await db.schemaTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        const existing = await db.schemaTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Schema Template", id)
 
         const dependents = await db.websiteTemplate.findMany({
           where: { schemaTemplateId: existing.id },
           select: { id: true, name: true, slug: true },
         })
-        if (dependents.length > 0 && !confirmCascade) {
+
+        // Published templates or those with dependents require approval
+        const needsApproval = existing.published || dependents.length > 0
+
+        if (needsApproval && !confirmCascade) {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ '${existing.name}' masih dipakai oleh ${dependents.length} Website Template: ${dependents.map((d) => `'${d.name}' (${d.slug})`).join(", ")}. Menghapus Schema Template ini akan ikut MENGHAPUS PERMANEN semua Website Template tersebut (cascade di level database, bukan sekadar menjadi dangling). Konfirmasi dulu ke pengguna persis apa yang akan terhapus, lalu panggil lagi dengan confirmCascade: true.`,
+              text: dependents.length > 0
+                ? `❌ '${existing.name}' masih dipakai oleh ${dependents.length} Website Template: ${dependents.map((d) => `'${d.name}' (${d.slug})`).join(", ")}. Soft-delete Schema Template ini akan soft-delete semua Website Template tersebut juga. Konfirmasi dulu ke pengguna persis apa yang akan terhapus, lalu panggil lagi dengan confirmCascade: true.`
+                : `❌ '${existing.name}' sudah published. Soft-delete published Schema Template membutuhkan persetujuan. Konfirmasi dulu, lalu panggil lagi dengan confirmCascade: true.`,
             }],
             structuredContent: {
               ok: false,
-              code: "HAS_DEPENDENTS",
-              dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
-              message: "This Schema Template still has Website Templates built on it — deleting it would cascade-delete them too.",
+              code: needsApproval ? (dependents.length > 0 ? "HAS_DEPENDENTS" : "IS_PUBLISHED") : undefined,
+              dependents: dependents.length > 0 ? dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })) : undefined,
+              message: dependents.length > 0
+                ? "This Schema Template has Website Templates built on it — soft-deleting it would cascade soft-delete them too."
+                : "This Schema Template is published — soft-deletion requires approval.",
             },
             isError: true,
           }
         }
 
-        if (dependents.length > 0) {
-          // A cascade wipes other Website Templates too — never applied by
-          // the agent itself, only by a human approval.
+        if (needsApproval) {
+          const action = dependents.length > 0 ? "cascade_delete_schema_template" : "delete_schema_template"
           const [pendingApproval] = await queueApprovals(auth, [{
-            action: "cascade_delete_schema_template",
+            action,
             targetId: existing.id,
             targetName: existing.name,
-            details: { dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })) },
+            details: {
+              dependents: dependents.map((d) => ({ id: d.id, name: d.name, slug: d.slug })),
+              published: existing.published,
+            },
           }])
           return {
-            content: [{ type: "text" as const, text: `⏳ Penghapusan '${existing.name}' beserta ${dependents.length} Website Template menunggu persetujuan admin di /admin/developer/approvals (id: ${pendingApproval.id}).` }],
+            content: [{ type: "text" as const, text: `⏳ Soft-delete '${existing.name}'${dependents.length > 0 ? ` beserta ${dependents.length} Website Template` : ' (published)'} menunggu persetujuan admin di /admin/developer/approvals (id: ${pendingApproval.id}).` }],
             structuredContent: { ok: true as const, pendingApproval },
           }
         }
 
-        await db.schemaTemplate.delete({ where: { id: existing.id } })
+        // Unpublished with no dependents: soft-delete immediately
+        await db.schemaTemplate.update({ where: { id: existing.id }, data: { deletedAt: new Date() } })
         return {
-          content: [{ type: "text" as const, text: `✅ Template '${existing.name}' dihapus.` }],
+          content: [{ type: "text" as const, text: `✅ Schema Template '${existing.name}' (unpublished) soft-deleted.` }],
           structuredContent: { ok: true as const, deletedDependents: 0 },
         }
       },
@@ -1403,7 +1415,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
 
         const rows = await db.websiteTemplate.findMany({
-          where: schemaTemplateId ? { schemaTemplateId } : {},
+          where: { deletedAt: null, ...(schemaTemplateId ? { schemaTemplateId } : {}) },
           orderBy: { createdAt: "desc" },
           select: {
             id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
@@ -1441,7 +1453,7 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
 
         const template = await db.websiteTemplate.findFirst({
-          where: { OR: [{ id }, { slug: id }] },
+          where: { deletedAt: null, OR: [{ id }, { slug: id }] },
           include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
         })
         if (!template) return notFound("Website Template", id)
@@ -1828,7 +1840,7 @@ const handler = createMcpHandler(
         }
 
         const existing = await db.websiteTemplate.findFirst({
-          where: { OR: [{ id }, { slug: id }] },
+          where: { deletedAt: null, OR: [{ id }, { slug: id }] },
           include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true, sourceVersion: true } } },
         })
         if (!existing) return notFound("Website Template", id)
@@ -2058,11 +2070,11 @@ const handler = createMcpHandler(
       "delete_website_template",
       {
         title: "Delete Website Template",
-        description: "Permanently delete a Website Template from the catalog. The Schema Template it followed is unaffected (deleting a Website Template never cascades the other way). If it has a live demo deployment, that Vercel project is deleted too (best-effort — a failure there is logged but never blocks the Website Template's own deletion).",
+        description: "Delete a Website Template from the catalog (soft-delete with recovery window). The Schema Template it followed is unaffected. Published templates require a super admin approval at /admin/developer/approvals before soft-deletion; unpublished templates are soft-deleted immediately. If it has a live demo deployment, that Vercel project is best-effort deleted (failure is logged but doesn't block the soft-delete).",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
         },
-        outputSchema: { ok: z.literal(true) },
+        outputSchema: { ok: z.literal(true), pendingApproval: APPROVAL_OUTPUT.optional() },
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
       async ({ id }) => {
@@ -2079,9 +2091,22 @@ const handler = createMcpHandler(
           )
         }
 
-        await db.websiteTemplate.delete({ where: { id: existing.id } })
+        if (existing.published) {
+          const [pendingApproval] = await queueApprovals(auth, [{
+            action: "delete_website_template",
+            targetId: existing.id,
+            targetName: existing.name,
+            details: { published: true },
+          }])
+          return {
+            content: [{ type: "text" as const, text: `⏳ Penghapusan Website Template '${existing.name}' (published) menunggu persetujuan admin di /admin/developer/approvals (id: ${pendingApproval.id}).` }],
+            structuredContent: { ok: true as const, pendingApproval },
+          }
+        }
+
+        await db.websiteTemplate.update({ where: { id: existing.id }, data: { deletedAt: new Date() } })
         const structured = { ok: true as const }
-        return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' dihapus.` }], structuredContent: structured }
+        return { content: [{ type: "text" as const, text: `✅ Website Template '${existing.name}' (unpublished) soft-deleted.` }], structuredContent: structured }
       },
     )
 
@@ -2240,7 +2265,7 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const template = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] }, select: { id: true } })
+        const template = await db.websiteTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] }, select: { id: true } })
         if (!template) return notFound("Website Template", id)
         const rows = await db.websiteTemplateVersion.findMany({
           where: { websiteTemplateId: template.id },
@@ -2285,7 +2310,7 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const template = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] }, select: { id: true } })
+        const template = await db.websiteTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] }, select: { id: true } })
         if (!template) return notFound("Website Template", id)
         const snapshot = await db.websiteTemplateVersion.findUnique({ where: { websiteTemplateId_version: { websiteTemplateId: template.id, version } } })
         if (!snapshot) {
@@ -2338,7 +2363,7 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const existing = await db.websiteTemplate.findFirst({ where: { OR: [{ id }, { slug: id }] } })
+        const existing = await db.websiteTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Website Template", id)
 
         if (!existing.demoVercelProjectId) {
@@ -2443,7 +2468,7 @@ const handler = createMcpHandler(
         }
 
         const existing = await db.websiteTemplate.findFirst({
-          where: { OR: [{ id }, { slug: id }] },
+          where: { deletedAt: null, OR: [{ id }, { slug: id }] },
           include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
         })
         if (!existing) return notFound("Website Template", id)

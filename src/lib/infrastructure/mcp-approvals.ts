@@ -5,14 +5,18 @@ export type ApprovalAction =
   | "publish_website_template"
   | "publish_global_component"
   | "set_default_schema_template"
+  | "delete_schema_template"
   | "cascade_delete_schema_template"
+  | "delete_website_template"
 
 export const APPROVAL_ACTION_LABELS: Record<ApprovalAction, string> = {
   publish_schema_template: "Publikasikan Schema Template",
   publish_website_template: "Publikasikan Website Template",
   publish_global_component: "Publikasikan Global Component",
   set_default_schema_template: "Jadikan schema default workspace baru",
-  cascade_delete_schema_template: "Hapus Schema Template beserta Website Template-nya",
+  delete_schema_template: "Soft-delete Schema Template (published)",
+  cascade_delete_schema_template: "Soft-delete Schema Template + Website Template-nya",
+  delete_website_template: "Soft-delete Website Template (published)",
 }
 
 export interface ApprovalSummary {
@@ -82,19 +86,38 @@ async function applyApprovalAction(request: { action: string; targetId: string }
       ])
       return { ok: true, message: "This Schema Template now seeds every new workspace." }
     }
+    case "delete_schema_template": {
+      const template = await db.schemaTemplate.findUnique({ where: { id: request.targetId }, select: { id: true, isDefault: true } })
+      if (!template) return { ok: false, message: "Schema Template no longer exists." }
+      if (template.isDefault) return { ok: false, message: "This is the platform default schema — make another template the default first." }
+      await db.schemaTemplate.update({ where: { id: template.id }, data: { deletedAt: new Date() } })
+      return { ok: true, message: "Schema Template soft-deleted." }
+    }
     case "cascade_delete_schema_template": {
       const template = await db.schemaTemplate.findUnique({ where: { id: request.targetId }, select: { id: true, isDefault: true, demoTenantId: true } })
       if (!template) return { ok: false, message: "Schema Template no longer exists." }
       if (template.isDefault) return { ok: false, message: "This is the platform default schema — make another template the default first." }
-      const dependents = await db.websiteTemplate.findMany({ where: { schemaTemplateId: template.id }, select: { demoVercelProjectId: true } })
+      const dependents = await db.websiteTemplate.findMany({ where: { schemaTemplateId: template.id }, select: { id: true, demoVercelProjectId: true } })
       const { deleteVercelProject } = await import("@/lib/vercel-client")
       for (const dependent of dependents) {
         if (dependent.demoVercelProjectId) await deleteVercelProject(dependent.demoVercelProjectId).catch(() => null)
       }
-      // Website Templates (and their version history) cascade with it.
-      await db.schemaTemplate.delete({ where: { id: template.id } })
+      await Promise.all([
+        db.schemaTemplate.update({ where: { id: template.id }, data: { deletedAt: new Date() } }),
+        db.websiteTemplate.updateMany({ where: { schemaTemplateId: template.id }, data: { deletedAt: new Date() } }),
+      ])
       if (template.demoTenantId) await db.tenant.delete({ where: { id: template.demoTenantId } }).catch(() => null)
-      return { ok: true, message: `Schema Template deleted with ${dependents.length} Website Template(s).` }
+      return { ok: true, message: `Schema Template and ${dependents.length} Website Template(s) soft-deleted.` }
+    }
+    case "delete_website_template": {
+      const template = await db.websiteTemplate.findUnique({ where: { id: request.targetId }, select: { id: true, demoVercelProjectId: true } })
+      if (!template) return { ok: false, message: "Website Template no longer exists." }
+      if (template.demoVercelProjectId) {
+        const { deleteVercelProject } = await import("@/lib/vercel-client")
+        await deleteVercelProject(template.demoVercelProjectId).catch(() => null)
+      }
+      await db.websiteTemplate.update({ where: { id: template.id }, data: { deletedAt: new Date() } })
+      return { ok: true, message: "Website Template soft-deleted." }
     }
     default:
       return { ok: false, message: `Unknown action '${request.action}'.` }

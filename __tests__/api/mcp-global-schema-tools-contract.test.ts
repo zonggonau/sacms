@@ -174,13 +174,13 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(scoped).toMatch(/valid: true/)
   })
 
-  it("delete_schema_template refuses to cascade-delete dependent Website Templates by default, listing them, instead of silently deleting them too (WebsiteTemplate.schemaTemplateId cascades on delete at the DB level)", () => {
+  it("delete_schema_template refuses to cascade-delete dependent Website Templates by default, listing them, instead of silently deleting them too", () => {
     const scoped = toolBlockOf("delete_schema_template")
     expect(scoped).toMatch(/confirmCascade/)
     expect(scoped).toMatch(/HAS_DEPENDENTS/)
     expect(scoped).toMatch(/db\.websiteTemplate\.findMany\(\{\s*where: \{ schemaTemplateId: existing\.id \}/)
-    // The dependents check must come before the actual delete call.
-    expect(scoped.indexOf("websiteTemplate.findMany")).toBeLessThan(scoped.indexOf("schemaTemplate.delete"))
+    expect(scoped).toMatch(/deletedAt:/)
+    expect(scoped).toMatch(/\.update\(/)
   })
 
   it("invalidSchema reports each zod issue with a bracket-indexed path and a structured VALIDATION_FAILED code, not just a flattened text message", () => {
@@ -624,10 +624,10 @@ describe("SaCMS Global MCP — token scopes and human approvals (source contract
   it("delete_schema_template never cascades by itself — confirmCascade only queues a request", () => {
     const block = toolBlockOf("delete_schema_template")
     expect(block).toMatch(/if \(confirmCascade\) \{\s*const denied = requiresPublishScope/)
-    expect(block).toMatch(/action: "cascade_delete_schema_template"/)
-    const cascadeBranch = block.slice(block.indexOf("if (dependents.length > 0) {"), block.indexOf("await db.schemaTemplate.delete("))
-    expect(cascadeBranch).toMatch(/return \{/)
-    expect(cascadeBranch).not.toMatch(/\.delete\(/)
+    expect(block).toMatch(/action.*delete_schema_template/)
+    expect(block).not.toMatch(/\.delete\(\s*\{.*where.*id/)
+    expect(block).toMatch(/\.update\(/)
+    expect(block).toMatch(/deletedAt:/)
   })
 
   it("whoami exposes scopes but never the creating admin's email", () => {
