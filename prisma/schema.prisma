@@ -492,6 +492,10 @@ model Component {
   tenantId        String?
   // See ContentType.draftTemplateId — same draft-tag convention.
   draftTemplateId String?
+  // Soft delete: component marked for deletion but not yet purged, allowing
+  // recovery within grace period (similar to ContentEntry.deletedAt). Once set,
+  // component is hidden from UI and not available for schema operations.
+  deletedAt       DateTime?
   schemaFields    SchemaField[]
   tenant          Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tenants         TenantComponentAssignment[]

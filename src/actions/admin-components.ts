@@ -14,7 +14,8 @@ export async function getAdminComponentsAction() {
 
     const components = await db.component.findMany({
       where: {
-        tenantId: null
+        tenantId: null,
+        deletedAt: null,
       },
       include: {
         schemaFields: {
@@ -71,7 +72,8 @@ export async function getAdminComponentBySlugAction(slug: string) {
     const component = await db.component.findFirst({
       where: {
         slug,
-        tenantId: null
+        tenantId: null,
+        deletedAt: null,
       },
       include: {
         schemaFields: {
@@ -260,7 +262,11 @@ export async function deleteAdminComponentAction(id: string) {
       }
     }
 
-    await db.component.delete({ where: { id } })
+    // Soft delete: mark as deleted instead of hard delete, allowing recovery
+    await db.component.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    })
 
     revalidatePath(`/admin/components`)
     return { success: true }
