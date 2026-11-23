@@ -7,6 +7,7 @@ import { TemplatesInfinite } from "./templates-infinite"
 
 const PAGE_SIZE = 21 // 3 columns x 7 rows
 
+export const dynamic = "force-dynamic" // Query DB at request time, skip prerendering
 export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
