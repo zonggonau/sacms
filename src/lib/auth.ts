@@ -293,16 +293,18 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user, account }) {
       if (!user) {
         if (typeof token.id !== "string") {
-          return null // Invalid session, no account ID
+          // No valid account ID in token - return as-is
+          return token
         }
         const currentUser = await db.user.findUnique({
           where: { id: token.id },
           select: { name: true, email: true, image: true, role: true, plan: true },
         })
-        // If account no longer exists, invalidate the token silently (session callback will handle)
+        // If account no longer exists, return token as-is (no user data to update)
+        // Session callback won't have role/plan/email to populate session
         if (!currentUser) {
-          console.debug("[auth] Clearing token for deleted account:", token.id)
-          return null
+          console.debug("[auth] Account deleted, session will be empty for user:", token.id)
+          return token
         }
         token.role = currentUser.role === "admin" || currentUser.role === "karyawan" ? "user" : currentUser.role
         token.plan = currentUser.plan
