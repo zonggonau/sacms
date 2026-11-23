@@ -279,14 +279,15 @@ export async function forgotPassword(email: string) {
 
     try {
       await sendPasswordResetEmail(user.email, token)
-    } catch {
+    } catch (err) {
       await db.verificationToken.deleteMany({ where: { token } }).catch(() => {})
-      console.error("Password reset email delivery failed")
+      console.error("Password reset email delivery failed:", err)
+      return { error: "Gagal mengirim email reset. Silakan coba lagi dalam beberapa menit atau hubungi support." }
     }
 
-    return { 
-      success: true, 
-      message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi." 
+    return {
+      success: true,
+      message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi."
     }
   } catch (error) {
     console.error("Forgot Password Error:", error)
