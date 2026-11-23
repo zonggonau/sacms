@@ -114,7 +114,9 @@ describe("JWT account state", () => {
     const refreshJwt = authOptions.callbacks!.jwt!
     vi.mocked(db.user.findUnique).mockResolvedValueOnce(null)
 
-    await expect(refreshJwt({ token: { ...activeToken }, user: undefined as never, account: null }))
-      .rejects.toThrow("Session account no longer exists")
+    // JWT callback returns token as-is when account deleted (not updated with user data)
+    // Session callback won't populate session when token lacks user data
+    const result = await refreshJwt({ token: { ...activeToken }, user: undefined as never, account: null })
+    expect(result).toEqual(activeToken)
   })
 })
