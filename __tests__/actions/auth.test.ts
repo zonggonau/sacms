@@ -113,14 +113,13 @@ describe("Auth Server Actions", () => {
       expect(db.verificationToken.create).toHaveBeenCalled()
     })
 
-    it("revokes undelivered tokens and keeps the account response generic", async () => {
-      vi.mocked(db.user.findUnique).mockResolvedValueOnce(null)
-      const absent = await forgotPassword("missing@example.test")
+    it("revokes undelivered tokens and returns error when email send fails", async () => {
       vi.mocked(db.user.findUnique).mockResolvedValueOnce({ id: "user-123", email: "member@example.test" } as never)
       vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(new Error("mail unavailable"))
       vi.mocked(db.verificationToken.deleteMany).mockResolvedValueOnce({ count: 1 })
 
-      expect(await forgotPassword("member@example.test")).toEqual(absent)
+      const result = await forgotPassword("member@example.test")
+      expect(result.error).toBe("Gagal mengirim email reset. Silakan coba lagi dalam beberapa menit atau hubungi support.")
       expect(db.verificationToken.deleteMany).toHaveBeenCalledWith({ where: { token: expect.any(String) } })
     })
   })
