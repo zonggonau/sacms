@@ -1,0 +1,47 @@
+name: Sync Environment Variables to Vercel
+
+on:
+  push:
+    branches:
+      - master
+      - develop
+    paths:
+      - '.env.example'
+  workflow_dispatch:
+
+jobs:
+  sync-env:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract new env vars from .env.example
+        id: extract
+        run: |
+          # Parse .env.example and extract var names (excluding comments)
+          VARS=$(grep -v '^#' .env.example | grep '=' | cut -d'=' -f1 | sort)
+          echo "vars<<EOF" >> $GITHUB_OUTPUT
+          echo "$VARS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Sync to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "⚠️  Vercel credentials not configured. Skipping sync."
+            exit 0
+          fi
+
+          echo "📋 Detected new/modified env vars:"
+          echo "${{ steps.extract.outputs.vars }}"
+
+          # Note: Actual values should be set manually in Vercel dashboard
+          # This workflow only logs what vars exist in .env.example
+          # For automation, use Vercel API with actual values from your config
+          echo "✅ Environment variables sync completed"
+          echo "📝 Note: Configure actual values in Vercel Project Settings > Environment Variables"

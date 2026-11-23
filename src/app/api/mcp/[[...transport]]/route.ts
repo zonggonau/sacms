@@ -2763,7 +2763,73 @@ Default stack (standard baseline for every frontend built here, not optional unl
     // creates one if none exists yet, never invalidates a working secret.
 
     // =========================================================================
-    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
+    // 8. DEVELOPMENT & ENVIRONMENT TOOLS
+    // =========================================================================
+
+    // ── sync_dev_env ─────────────────────────────────────────────────────────
+    server.registerTool(
+      "sync_dev_env",
+      {
+        title: "Sync Development Environment Variables",
+        description: "Generate and download development environment (.env.local) for this workspace with API credentials pre-configured to access sacms.cloud. Returns env vars needed to use @sacms/sdk: NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT, SACMS_API_KEY. Perfect for setting up a local developer environment without manual credential copying.",
+        inputSchema: {
+          format: z.enum(["env", "json"]).optional().describe("Output format: 'env' for .env.local file format, 'json' for structured object"),
+        },
+      },
+      async ({ format = "env" }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        try {
+          // Get dev env config from Settings
+          const setting = await db.setting.findUnique({
+            where: { key: `${auth.tenantId}_dev_env_config` },
+          })
+
+          let envConfig = {
+            NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud/api",
+            NEXT_PUBLIC_SACMS_TENANT: auth.tenantSlug,
+            SACMS_API_KEY: "",
+          }
+
+          if (setting) {
+            envConfig = { ...envConfig, ...JSON.parse(setting.value) }
+          }
+
+          if (format === "json") {
+            return {
+              content: [{ type: "text" as const, text: JSON.stringify(envConfig, null, 2) }],
+              structuredContent: envConfig,
+            }
+          }
+
+          // Format as .env file
+          const envContent = Object.entries(envConfig)
+            .map(([key, value]) => `${key}="${value}"`)
+            .join("\n")
+
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `# SaCMS Development Environment - ${auth.tenantSlug}\n# Generated for workspace: ${auth.tenantName}\n# Save as .env.local in your project root\n\n${envContent}`,
+              },
+            ],
+            structuredContent: { format: "env", content: envContent },
+          }
+        } catch (error) {
+          console.error("Error syncing dev env:", error)
+          return {
+            isError: true,
+            content: [{ type: "text" as const, text: "Failed to generate dev environment" }],
+          }
+        }
+      }
+    )
+
+    // =========================================================================
+    // 9. HOSTING & CLOUD DEPLOYMENT TOOLS (SACMS CLOUD HOSTING)
     // =========================================================================
 
     // ── apply_website_template ────────────────────────────────────────────────

@@ -84,8 +84,9 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
   const clean = rawToken.trim()
   const hashed = createHash("sha256").update(clean).digest("hex")
 
+  // Tokens are always hashed on create; plaintext lookup removed 2026-11-23.
   const token = await db.apiToken.findFirst({
-    where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
+    where: { token: hashed, type: "mcp-global-schema" },
     select: { id: true, name: true, permissions: true, expiresAt: true },
   })
   if (!token) return null
@@ -97,7 +98,7 @@ export async function resolveGlobalSchemaToken(rawToken: string): Promise<Global
 
   db.apiToken
     .updateMany({
-      where: { OR: [{ token: hashed }, { token: clean }], type: "mcp-global-schema" },
+      where: { token: hashed, type: "mcp-global-schema" },
       data: { lastUsedAt: new Date() },
     })
     .catch(() => {})
