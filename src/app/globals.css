@@ -45,72 +45,114 @@
 }
 
 :root {
-  --radius: 0.75rem;
+  /* SaCMS Design System v1.0 - Light Mode */
+  --radius: 0.25rem;
+
+  /* Base Colors - Light */
   --background: #ffffff;
-  --foreground: #09090b;
-  --card: #ffffff;
-  --card-foreground: #09090b;
-  --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: oklch(0.646 0.222 41.116);
+  --foreground: #1a1a1a;
+  --card: #f9f9f9;
+  --card-foreground: #1a1a1a;
+  --popover: #f9f9f9;
+  --popover-foreground: #1a1a1a;
+
+  /* Brand Accents */
+  --primary: #ff6b35;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
-  --secondary-foreground: #18181b;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: oklch(0.646 0.222 41.116);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --secondary: #1d7f7e;
+  --secondary-foreground: #ffffff;
+
+  /* Semantic */
+  --muted: #f5f5f5;
+  --muted-foreground: #666666;
+  --accent: #1d7f7e;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* UI Elements */
+  --border: #eeeeee;
+  --input: #f9f9f9;
+  --ring: #f59e0b;
+
+  /* Status Colors */
+  --status-published: #10b981;
+  --status-draft: #f59e0b;
+  --status-archived: #999999;
+  --status-failed: #ef4444;
+  --status-pending: #60a5fa;
+
+  /* Charts */
+  --chart-1: #ff6b35;
+  --chart-2: #1d7f7e;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #ef4444;
+
+  /* Sidebar */
   --sidebar: #fafafa;
-  --sidebar-foreground: #09090b;
-  --sidebar-primary: oklch(0.646 0.222 41.116);
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-primary: #ff6b35;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f4f5;
-  --sidebar-accent-foreground: #18181b;
-  --sidebar-border: #e4e4e7;
-  --sidebar-ring: oklch(0.646 0.222 41.116);
+  --sidebar-accent: #1d7f7e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #eeeeee;
+  --sidebar-ring: #f59e0b;
 }
 
 .dark {
-  --background: #09090b;
-  --foreground: #fafafa;
-  --card: #121215;
-  --card-foreground: #fafafa;
-  --popover: #121215;
-  --popover-foreground: #fafafa;
-  --primary: oklch(0.646 0.222 41.116);
+  /* SaCMS Design System v1.0 - Dark Mode */
+
+  /* Base Colors - Dark */
+  --background: #0f0f0f;
+  --foreground: #f1f1f1;
+  --card: #1a1a1a;
+  --card-foreground: #f1f1f1;
+  --popover: #1a1a1a;
+  --popover-foreground: #f1f1f1;
+
+  /* Brand Accents (unchanged in dark) */
+  --primary: #ff6b35;
   --primary-foreground: #ffffff;
-  --secondary: #18181b;
-  --secondary-foreground: #fafafa;
-  --muted: #18181b;
-  --muted-foreground: #a1a1aa;
-  --accent: #18181b;
-  --accent-foreground: #fafafa;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: #27272a;
-  --input: #27272a;
-  --ring: oklch(0.646 0.222 41.116);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
+  --secondary: #1d7f7e;
+  --secondary-foreground: #ffffff;
+
+  /* Semantic */
+  --muted: #252525;
+  --muted-foreground: #a8a8a0;
+  --accent: #1d7f7e;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* UI Elements */
+  --border: #2f2f2b;
+  --input: #252525;
+  --ring: #f59e0b;
+
+  /* Status Colors (unchanged) */
+  --status-published: #10b981;
+  --status-draft: #f59e0b;
+  --status-archived: #999999;
+  --status-failed: #ef4444;
+  --status-pending: #60a5fa;
+
+  /* Charts */
+  --chart-1: #ff6b35;
+  --chart-2: #1d7f7e;
+  --chart-3: #f59e0b;
+  --chart-4: #10b981;
+  --chart-5: #ef4444;
+
+  /* Sidebar */
   --sidebar: #0e0e11;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: oklch(0.646 0.222 41.116);
+  --sidebar-foreground: #f1f1f1;
+  --sidebar-primary: #ff6b35;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #18181b;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #27272a;
-  --sidebar-ring: oklch(0.646 0.222 41.116);
+  --sidebar-accent: #1d7f7e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2f2f2b;
+  --sidebar-ring: #f59e0b;
 }
 
 @layer base {

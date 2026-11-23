@@ -1,19 +1,23 @@
 import type { Metadata } from "next"
-import { Geist, Geist_Mono } from "next/font/google"
+import { Work_Sans, Fira_Code } from "next/font/google"
 import "./globals.css"
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/providers"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const workSans = Work_Sans({
+  variable: "--font-work-sans",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
+  display: "swap",
 })
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const firaCode = Fira_Code({
+  variable: "--font-fira-code",
   subsets: ["latin"],
+  weight: ["400"],
+  display: "swap",
 })
 
 import { getSiteUrl, SEO_CONFIG } from "@/lib/seo"
@@ -96,7 +100,7 @@ export default async function RootLayout({
     <html lang="id" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground overflow-x-hidden`}
+        className={`${workSans.variable} ${firaCode.variable} antialiased bg-background text-foreground overflow-x-hidden`}
       >
         <Providers session={session}>
           {children}

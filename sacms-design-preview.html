@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SaCMS Design System Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F5;
+      --surface-primary: #FFFFFF;
+      --surface-secondary: #F9F9F9;
+      --text-primary: #1A1A1A;
+      --text-secondary: #666666;
+      --text-muted: #999999;
+      --border: #EEEEEE;
+      --accent-primary: #FF6B35;
+      --accent-secondary: #1D7F7E;
+      --accent-warning: #F59E0B;
+      --accent-success: #10B981;
+      --accent-error: #EF4444;
+      --accent-info: #60A5FA;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg-primary: #0F0F0F;
+        --bg-secondary: #1A1A1A;
+        --surface-primary: #1A1A1A;
+        --surface-secondary: #252525;
+        --text-primary: #F1F1F1;
+        --text-secondary: #A8A8A0;
+        --text-muted: #747468;
+        --border: #2F2F2B;
+      }
+    }
+
+    :root[data-theme="dark"] {
+      --bg-primary: #0F0F0F;
+      --bg-secondary: #1A1A1A;
+      --surface-primary: #1A1A1A;
+      --surface-secondary: #252525;
+      --text-primary: #F1F1F1;
+      --text-secondary: #A8A8A0;
+      --text-muted: #747468;
+      --border: #2F2F2B;
+    }
+
+    :root[data-theme="light"] {
+      --bg-primary: #FFFFFF;
+      --bg-secondary: #F5F5F5;
+      --surface-primary: #FFFFFF;
+      --surface-secondary: #F9F9F9;
+      --text-primary: #1A1A1A;
+      --text-secondary: #666666;
+      --text-muted: #999999;
+      --border: #EEEEEE;
+    }
+
+    body {
+      font-family: 'Work Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.5;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0;
+    }
+
+    /* Header & Controls */
+    .preview-header {
+      background: var(--surface-primary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .preview-header h1 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-toggle {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--surface-secondary);
+      color: var(--text-primary);
+      font-family: 'Work Sans', sans-serif;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-toggle:hover {
+      background: var(--accent-secondary);
+      color: white;
+    }
+
+    .btn-toggle.active {
+      background: var(--accent-primary);
+      color: white;
+      border-color: var(--accent-primary);
+    }
+
+    /* Viewport Selector */
+    .viewport-selector {
+      display: flex;
+      gap: 4px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px;
+      background: var(--surface-secondary);
+    }
+
+    .viewport-btn {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'Work Sans', sans-serif;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .viewport-btn.active {
+      background: var(--accent-primary);
+      color: white;
+      border-radius: 3px;
+    }
+
+    /* Main Preview Area */
+    .preview-main {
+      padding: 24px;
+      display: grid;
+      gap: 32px;
+    }
+
+    .preview-screen {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-primary);
+      overflow: hidden;
+      display: none;
+    }
+
+    .preview-screen.active {
+      display: block;
+    }
+
+    .screen-title {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-secondary);
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .screen-content {
+      padding: 24px;
+    }
+
+    /* Dashboard Screen */
+    .workspace-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .workspace-item {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      background: var(--surface-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      min-height: 44px;
+      position: relative;
+    }
+
+    .workspace-item.archived {
+      border-left: 4px solid var(--text-muted);
+    }
+
+    .workspace-item.active-workspace {
+      border-left: 4px solid var(--accent-secondary);
+    }
+
+    .workspace-left {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .workspace-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      background: var(--accent-secondary);
+      flex-shrink: 0;
+    }
+
+    .workspace-info {
+      min-width: 0;
+    }
+
+    .workspace-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .workspace-status {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+
+    .status-badge.draft {
+      color: var(--accent-warning);
+      background: var(--surface-secondary);
+      border: 1px solid var(--accent-warning);
+    }
+
+    .status-badge.published {
+      color: white;
+      background: var(--accent-success);
+    }
+
+    .status-badge.archived {
+      color: var(--text-muted);
+      background: var(--surface-secondary);
+      border: 1px solid var(--border);
+    }
+
+    /* Content Editor Screen */
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 24px;
+      min-height: 500px;
+    }
+
+    .editor-main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .editor-btn {
+      padding: 8px 12px;
+      background: var(--surface-secondary);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'Work Sans', sans-serif;
+      color: var(--text-primary);
+      transition: all 0.2s;
+    }
+
+    .editor-btn:hover {
+      background: var(--border);
+    }
+
+    .editor-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .editor-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .editor-input {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface-secondary);
+      color: var(--text-primary);
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .editor-textarea {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface-secondary);
+      color: var(--text-primary);
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+      min-height: 200px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .editor-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar-section {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .sidebar-title {
+      padding: 12px;
+      background: var(--surface-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Deploy Logs Table */
+    .logs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .logs-table th {
+      text-align: left;
+      padding: 12px;
+      background: var(--surface-secondary);
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+
+    .logs-table td {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      height: 36px;
+      vertical-align: middle;
+    }
+
+    .logs-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .logs-table tr:hover td {
+      background: var(--surface-secondary);
+    }
+
+    .log-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .log-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .log-icon.success {
+      background: var(--accent-success);
+    }
+
+    .log-icon.error {
+      background: var(--accent-error);
+    }
+
+    .log-icon.pending {
+      background: var(--accent-info);
+    }
+
+    .log-timestamp {
+      font-family: 'Fira Code', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .log-message {
+      font-family: 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--text-primary);
+    }
+
+    /* Buttons */
+    .btn-primary {
+      padding: 10px 16px;
+      background: var(--accent-primary);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-family: 'Work Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    .btn-secondary {
+      padding: 10px 16px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 4px;
+      font-family: 'Work Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent-secondary);
+    }
+
+    .action-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 24px;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .editor-sidebar {
+        order: -1;
+      }
+
+      .logs-table {
+        font-size: 12px;
+      }
+
+      .logs-table th, .logs-table td {
+        padding: 8px;
+      }
+
+      .workspace-item {
+        flex-direction: column;
+        height: auto;
+        align-items: flex-start;
+      }
+
+      .preview-header {
+        flex-direction: column;
+      }
+
+      .controls {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .viewport-selector {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    .info-box {
+      background: var(--surface-secondary);
+      border-left: 4px solid var(--accent-info);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-header">
+    <h1>SaCMS Design System Preview</h1>
+    <div class="controls">
+      <div class="viewport-selector">
+        <button class="viewport-btn active" data-viewport="desktop">Desktop</button>
+        <button class="viewport-btn" data-viewport="tablet">Tablet</button>
+        <button class="viewport-btn" data-viewport="mobile">Mobile</button>
+      </div>
+      <button class="btn-toggle active" data-theme="light">Light</button>
+      <button class="btn-toggle" data-theme="dark">Dark</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="preview-main">
+      <!-- Screen 1: Dashboard/Workspace List -->
+      <div class="preview-screen active" data-screen="dashboard">
+        <div class="screen-title">Dashboard — Daftar Workspace</div>
+        <div class="screen-content">
+          <div class="info-box">
+            ✓ Status dengan ikon + text, left border 4px. No color dependency. Mudah dibaca.
+          </div>
+          <div class="workspace-list">
+            <div class="workspace-item active-workspace">
+              <div class="workspace-left">
+                <div class="workspace-icon"></div>
+                <div class="workspace-info">
+                  <div class="workspace-name">Blog PT Papuan Craft</div>
+                  <div class="workspace-status">Workspace aktif • 24 entries</div>
+                </div>
+              </div>
+              <div class="status-badge published">✓ Published</div>
+            </div>
+            <div class="workspace-item">
+              <div class="workspace-left">
+                <div class="workspace-icon" style="background: var(--accent-secondary);"></div>
+                <div class="workspace-info">
+                  <div class="workspace-name">E-commerce Nusantara</div>
+                  <div class="workspace-status">Produksi • 142 entries</div>
+                </div>
+              </div>
+              <div class="status-badge draft">◎ Draft</div>
+            </div>
+            <div class="workspace-item archived">
+              <div class="workspace-left">
+                <div class="workspace-icon" style="background: var(--text-muted);"></div>
+                <div class="workspace-info">
+                  <div class="workspace-name">Beta Test Project</div>
+                  <div class="workspace-status">Archived • 0 entries</div>
+                </div>
+              </div>
+              <div class="status-badge archived">📦 Archived</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 2: Content Editor -->
+      <div class="preview-screen" data-screen="editor">
+        <div class="screen-title">Content Editor — Artikel Panjang</div>
+        <div class="screen-content">
+          <div class="info-box">
+            ✓ Comfortable untuk artikel panjang. 44px spacing. Work Sans 300/400 readability. Focus ring amber. Dark mode `#0F0F0F` + `#1A1A1A` untuk long editing sessions.
+          </div>
+          <div class="editor-layout">
+            <div class="editor-main">
+              <div class="editor-field">
+                <div class="editor-label">Judul Artikel</div>
+                <input type="text" class="editor-input" value="Panduan Lengkap: Membangun Sistem CMS Modern di Indonesia" placeholder="Masukkan judul artikel">
+              </div>
+              <div class="editor-field">
+                <div class="editor-label">Konten Utama</div>
+                <textarea class="editor-textarea" placeholder="Mulai menulis konten Anda di sini...">Dalam era digital ini, kebutuhan akan sistem manajemen konten yang handal dan mudah digunakan semakin meningkat. SaCMS hadir sebagai solusi inovatif yang dirancang khusus untuk kebutuhan bisnis lokal Indonesia.
+
+Dengan antarmuka yang intuitif dan fitur-fitur canggih, SaCMS memungkinkan Anda untuk mengelola konten dengan lebih efisien. Baik Anda seorang blogger, pengusaha digital, atau perusahaan besar, SaCMS siap mendukung pertumbuhan bisnis Anda.
+
+Artikel ini akan membahas secara mendalam tentang bagaimana memanfaatkan SaCMS untuk meningkatkan produktivitas tim editorial Anda. Mari kita mulai dengan pemahaman dasar tentang konsep-konsep utama dalam sistem manajemen konten.
+
+## Keunggulan Utama SaCMS
+
+Pertama, SaCMS menawarkan fleksibilitas yang luar biasa dalam mengelola berbagai jenis konten. Dari artikel blog sederhana hingga katalog produk kompleks, sistem ini dapat disesuaikan sesuai kebutuhan spesifik bisnis Anda.
+
+Kedua, performa tinggi adalah prioritas utama. Dengan infrastruktur cloud yang modern dan optimisasi database canggih, SaCMS menjamin kecepatan akses konten yang maksimal, meningkatkan pengalaman pengguna akhir.
+
+Ketiga, keamanan data adalah fondasi kepercayaan. Enkripsi tingkat enterprise, backup otomatis, dan audit trail lengkap memastikan informasi bisnis Anda selalu aman.
+
+## Implementasi Praktis
+
+Untuk memulai dengan SaCMS, Anda tidak perlu keahlian teknis mendalam. Tim support kami yang berpengalaman siap membantu setiap langkah implementasi. Proses onboarding dirancang untuk bisa diselesaikan dalam hitungan hari, bukan minggu atau bulan.</textarea>
+              </div>
+            </div>
+            <div class="editor-sidebar">
+              <div class="sidebar-section">
+                <div class="sidebar-title">Status</div>
+                <div class="sidebar-content">
+                  <div class="status-badge published">✓ Published</div>
+                  <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Last updated: 2 jam yang lalu</div>
+                </div>
+              </div>
+              <div class="sidebar-section">
+                <div class="sidebar-title">Metadata</div>
+                <div class="sidebar-content">
+                  <div style="font-size: 12px;">
+                    <div style="color: var(--text-secondary); margin-bottom: 4px;">Author</div>
+                    <div style="color: var(--text-primary);">Budi Santoso</div>
+                  </div>
+                </div>
+              </div>
+              <div class="sidebar-section">
+                <div class="sidebar-title">Aksi</div>
+                <div class="sidebar-content">
+                  <button class="btn-primary" style="width: 100%;">Simpan</button>
+                  <button class="btn-secondary" style="width: 100%; margin-top: 8px;">Preview</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Screen 3: Deploy Logs -->
+      <div class="preview-screen" data-screen="logs">
+        <div class="screen-title">Developer — Deployment Logs (36px compact rows)</div>
+        <div class="screen-content">
+          <div class="info-box">
+            ✓ Tabel tetap terbaca di mobile. 36px rows untuk log density. Fira Code untuk timestamp/paths. Status dengan ikon + text, no color dependency. Left border jika perlu.
+          </div>
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 15%;">Waktu</th>
+                <th style="width: 35%;">Pesan</th>
+                <th style="width: 40%;">Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="log-status"><div class="log-icon success"></div> Success</div></td>
+                <td><span class="log-timestamp">2024-11-23 14:32:15</span></td>
+                <td><span class="log-message">Deploy completed</span></td>
+                <td><span class="log-timestamp">ghcr.io/zonggonau/sacms:v1.20.0</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon success"></div> Success</div></td>
+                <td><span class="log-timestamp">2024-11-23 14:31:48</span></td>
+                <td><span class="log-message">Build & tests passed</span></td>
+                <td><span class="log-timestamp">158 tests, 0 failures</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon pending"></div> Running</div></td>
+                <td><span class="log-timestamp">2024-11-23 14:30:12</span></td>
+                <td><span class="log-message">Building container</span></td>
+                <td><span class="log-timestamp">Step 5/8: RUN bun build</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon error"></div> Failed</div></td>
+                <td><span class="log-timestamp">2024-11-22 09:15:33</span></td>
+                <td><span class="log-message">Test suite failed</span></td>
+                <td><span class="log-timestamp">mcp-approvals.test.ts (lint error)</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon success"></div> Success</div></td>
+                <td><span class="log-timestamp">2024-11-21 16:42:10</span></td>
+                <td><span class="log-message">Build & tests passed</span></td>
+                <td><span class="log-timestamp">158 tests, 0 failures, 2m 34s</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon success"></div> Success</div></td>
+                <td><span class="log-timestamp">2024-11-21 16:39:56</span></td>
+                <td><span class="log-message">Deploy to production</span></td>
+                <td><span class="log-timestamp">164.68.116.79 — zero-downtime</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon pending"></div> Running</div></td>
+                <td><span class="log-timestamp">2024-11-21 16:38:20</span></td>
+                <td><span class="log-message">Container push to GHCR</span></td>
+                <td><span class="log-timestamp">ghcr.io/zonggonau/sacms:v1.19.5</span></td>
+              </tr>
+              <tr>
+                <td><div class="log-status"><div class="log-icon success"></div> Success</div></td>
+                <td><span class="log-timestamp">2024-11-21 16:35:08</span></td>
+                <td><span class="log-message">Prisma migrations applied</span></td>
+                <td><span class="log-timestamp">0 pending, schema synced</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const root = document.documentElement;
+
+    // Theme toggle
+    document.querySelectorAll('[data-theme]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const theme = btn.dataset.theme;
+        root.setAttribute('data-theme', theme);
+        document.querySelectorAll('[data-theme]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        localStorage.setItem('theme', theme);
+      });
+    });
+
+    // Viewport toggle
+    document.querySelectorAll('[data-viewport]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const viewport = btn.dataset.viewport;
+        const style = document.createElement('style');
+        style.id = 'viewport-style';
+        const existing = document.getElementById('viewport-style');
+        if (existing) existing.remove();
+
+        if (viewport === 'mobile') {
+          style.textContent = '.container { max-width: 375px !important; margin: 0 auto; }';
+        } else if (viewport === 'tablet') {
+          style.textContent = '.container { max-width: 768px !important; margin: 0 auto; }';
+        }
+        document.head.appendChild(style);
+
+        document.querySelectorAll('[data-viewport]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Screen toggle
+    document.querySelectorAll('[data-screen]').forEach((el, idx) => {
+      if (idx === 0) el.classList.add('active');
+    });
+
+    // Load saved theme
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      root.setAttribute('data-theme', savedTheme);
+      document.querySelector(`[data-theme="${savedTheme}"]`)?.classList.add('active');
+    }
+  </script>
+</body>
+</html>
