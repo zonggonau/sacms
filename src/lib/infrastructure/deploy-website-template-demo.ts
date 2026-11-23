@@ -83,23 +83,32 @@ async function waitForBuildTerminal(deploymentId: string, maxAttempts = BUILD_PO
 
 /** Exported for get_website_template_demo_status — a fresh, on-demand
  *  check of a demo's CURRENT state, independent of redeploying it. */
-export async function verifyDemoUrl(url: string): Promise<{ verified: boolean; error?: string }> {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10000)
-  try {
-    const res = await fetch(url, { method: "GET", signal: controller.signal, headers: { "User-Agent": "SaCMS-Template-Demo-Verify/1.0" } })
-    const html = await res.text().catch(() => "")
-    if (!res.ok) return { verified: false, error: `HTTP ${res.status}` }
-    if (LOOKS_LIKE_ERROR_PAGE_RE.test(html)) return { verified: false, error: "Response looks like a deployment error/protection page, not the actual site." }
-    return { verified: true }
-  } catch (err: any) {
-    return { verified: false, error: err?.message || "Fetch failed" }
-  } finally {
-    clearTimeout(timeoutId)
+export async function verifyDemoUrl(url: string, maxRetries = 1): Promise<{ verified: boolean; error?: string }> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+    try {
+      const res = await fetch(url, { method: "GET", signal: controller.signal, headers: { "User-Agent": "SaCMS-Template-Demo-Verify/1.0" } })
+      const html = await res.text().catch(() => "")
+      if (!res.ok) return { verified: false, error: `HTTP ${res.status}` }
+      if (LOOKS_LIKE_ERROR_PAGE_RE.test(html)) return { verified: false, error: "Response looks like a deployment error/protection page, not the actual site." }
+      return { verified: true }
+    } catch (err: any) {
+      // Retry transient errors (timeout, connection reset) but not permanent ones (404, etc)
+      const isTransient = err?.name === "AbortError" || err?.code === "ECONNRESET" || err?.code === "ETIMEDOUT"
+      if (isTransient && attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)))
+        continue
+      }
+      return { verified: false, error: err?.message || "Fetch failed" }
+    } finally {
+      clearTimeout(timeoutId)
+    }
   }
+  return { verified: false, error: "Max retries exceeded" }
 }
 
-const MAX_SITEMAP_ROUTES_CHECKED = 5
+const MAX_SITEMAP_ROUTES_CHECKED = 15
 
 /** Extracts up to `limit` distinct, non-root paths from a sitemap.xml
  *  body's <loc> entries — a tiny regex extractor rather than a full XML
@@ -172,7 +181,8 @@ export async function verifyDemoRoutes(
     .catch(() => [] as string[])
 
   for (const path of extraPaths) {
-    const result = await verifyDemoUrl(`${origin}${path}`)
+    // Allow retry for transient failures on extra routes (but homepage already retried)
+    const result = await verifyDemoUrl(`${origin}${path}`, 1)
     routes.push({ path, verified: result.verified, error: result.error })
   }
 
