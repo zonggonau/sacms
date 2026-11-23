@@ -94,7 +94,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await getServerSession(authOptions)
+  let session = null
+  try {
+    session = await getServerSession(authOptions)
+  } catch (error) {
+    // Handle case where JWT is valid but account no longer exists
+    console.warn("[auth] Session retrieval failed — treating as logged out:", error instanceof Error ? error.message : "unknown error")
+  }
 
   return (
     <html lang="id" suppressHydrationWarning>
