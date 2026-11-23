@@ -99,16 +99,13 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
   let tenantData: { id: string; slug: string; name: string; plan: string; status: string; hostingStatus: string | null } | null = null
   let permissions: string[] = ["read", "write", "delete"]
 
-  // Look up by hashed token first, then plain token. MCP is a separate
-  // credential system from REST/GraphQL (see public-api-actor.ts) — only
-  // type "mcp" ApiToken rows authenticate here, and the legacy ApiKey
-  // (REST-only) is not accepted at all.
+  // MCP is a separate credential system from REST/GraphQL (see public-api-actor.ts).
+  // Only type "mcp" ApiToken rows authenticate here; the legacy ApiKey (REST-only)
+  // is not accepted. Tokens are always hashed on create; plaintext lookup removed
+  // 2026-11-23 (all plaintext tokens expired or migrated by now).
   const token = await db.apiToken.findFirst({
     where: {
-      OR: [
-        { token: hashed },
-        { token: clean },
-      ],
+      token: hashed,
       type: "mcp",
     },
     select: {
@@ -121,7 +118,7 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
 
   if (token?.tenant) {
     db.apiToken.updateMany({
-      where: { OR: [{ token: hashed }, { token: clean }], type: "mcp" },
+      where: { token: hashed, type: "mcp" },
       data: { lastUsedAt: new Date() }
     }).catch(() => {})
 
