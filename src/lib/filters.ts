@@ -17,10 +17,6 @@ import { Prisma } from "@prisma/client"
  *
  * Operators: $eq, $ne, $gt, $gte, $lt, $lte, $contains, $startsWith, $endsWith,
  *            $in, $notIn, $null, $notNull
- *
- * Removed (broken/redundant):
- *   - $containsi: alias for $contains (ILIKE already case-insensitive)
- *   - $or: broken logic, use multiple filters instead (implicit AND)
  */
 
 const ALLOWED_OPERATORS = new Set([
@@ -31,6 +27,12 @@ const ALLOWED_OPERATORS = new Set([
   "$lt",
   "$lte",
   "$contains",
+  // Fifth external audit: documented (and used by real callers, e.g. the
+  // @sacms/sdk README) as a case-insensitive contains, but never actually
+  // accepted — silently dropped like any other unrecognized operator.
+  // $contains is already case-insensitive (ILIKE), so this is a plain
+  // alias, not new SQL-building logic (see conditionToSQL).
+  "$containsi",
   "$startsWith",
   "$endsWith",
   "$in",
@@ -54,10 +56,6 @@ interface FilterCondition {
  * Parse filter query params from URLSearchParams into structured conditions.
  * Input: ?filters[title][$contains]=next&filters[price][$gte]=100
  *
- * Note: $or is not supported (broken implementation). Use multiple filter
- * conditions instead (implicit AND). E.g. for "field1=x OR field2=y",
- * make separate API calls or compose the results client-side.
- *
  * Fifth external audit: a filter key this function couldn't recognize
  * (unknown field, unknown operator, or a shape it didn't parse at all) used
  * to be silently dropped — the single most dangerous finding, since a
@@ -69,8 +67,9 @@ interface FilterCondition {
 export function parseFilters(
   searchParams: URLSearchParams,
   allowedFields: Set<string>
-): { conditions: FilterCondition[]; rejected: string[] } {
+): { conditions: FilterCondition[]; orGroups: FilterCondition[][]; rejected: string[] } {
   const conditions: FilterCondition[] = []
+  const orGroups: FilterCondition[][] = []
   const rejected: string[] = []
   // Fifth external audit: the SDK (and real Strapi convention) serializes
   // an array-valued operator ($in/$notIn) as indexed sub-keys —
@@ -94,16 +93,47 @@ export function parseFilters(
       continue
     }
 
-    // Parse: filters[field][$op] or filters[field][$op][idx]
-    const parts = key.match(/filters\[([^\]]+)\](?:\[([^\]]+)\])?(?:\[([^\]]+)\])?/)
+    // Parse: filters[field][$op], filters[field][$op][idx], or filters[$or/$and][idx][field][$op]
+    const parts = key.match(/filters\[([^\]]+)\](?:\[([^\]]+)\])?(?:\[([^\]]+)\])?(?:\[([^\]]+)\])?/)
     if (!parts) {
       rejected.push(key)
       continue
     }
 
-    const [, p1, p2, p3] = parts
+    const [, p1, p2, p3, p4] = parts
 
-    if (p1 && p2 && p3 && /^\d+$/.test(p3)) {
+    if (p1 === "$or" && p2 && p3 && p4) {
+      // filters[$or][0][field][$op]
+      const idx = parseInt(p2)
+      if (isNaN(idx) || idx < 0 || idx > 10) {
+        rejected.push(key)
+        continue
+      }
+      const field = p3
+      const op = p4
+
+      if (!allowedFields.has(field) || !ALLOWED_OPERATORS.has(op)) {
+        rejected.push(key)
+        continue
+      }
+
+      while (orGroups.length <= idx) orGroups.push([])
+      orGroups[idx].push({ field, operator: op, value })
+      conditionCount++
+    } else if (p1 === "$and" && p2 && p3 && p4) {
+      // filters[$and][0][field][$op] — folds into the flat `conditions`
+      // list; see this file's top-of-file comment for why.
+      const field = p3
+      const op = p4
+
+      if (!allowedFields.has(field) || !ALLOWED_OPERATORS.has(op)) {
+        rejected.push(key)
+        continue
+      }
+
+      conditions.push({ field, operator: op, value })
+      conditionCount++
+    } else if (p1 && p2 && p3 && !p4 && /^\d+$/.test(p3)) {
       // filters[field][$op][idx] — array-valued operator, see this
       // function's own header comment.
       const field = p1
@@ -144,7 +174,7 @@ export function parseFilters(
     conditions.push({ field, operator: op, value: values })
   }
 
-  return { conditions, rejected }
+  return { conditions, orGroups, rejected }
 }
 
 /**
@@ -155,6 +185,7 @@ export function parseFilters(
  */
 export function buildFilterSQL(
   conditions: FilterCondition[],
+  orGroups: FilterCondition[][],
   paramOffset: number = 1
 ): { fragments: string[]; params: unknown[]; nextParam: number } {
   const fragments: string[] = []
@@ -168,6 +199,37 @@ export function buildFilterSQL(
       params.push(...result.params)
       paramIdx += result.params.length
     }
+  }
+
+  // Fifth external audit: `orGroups[i]` is every condition belonging to
+  // the SAME `$or` array index — i.e. ONE alternative, whose own
+  // conditions must be AND'ed together (Strapi semantics: $or: [{a, b},
+  // {c}] means (a AND b) OR (c)). This used to build each index's own
+  // `(...)` fragment by OR-ing ITS conditions together, then AND the
+  // per-index fragments against each other at the top level — exactly
+  // backwards on both axes. For the common single-condition-per-index
+  // case (filters[$or][0][field][$eq]=x&filters[$or][1][field][$eq]=y,
+  // i.e. "field = x OR field = y"), that inversion collapsed straight to
+  // `field = x AND field = y`, impossible for one field to satisfy at
+  // once — confirmed as exactly why $or always returned zero rows.
+  const orAlternatives: string[] = []
+  for (const group of orGroups) {
+    if (group.length === 0) continue
+    const groupFragments: string[] = []
+    for (const cond of group) {
+      const result = conditionToSQL(cond, paramIdx)
+      if (result) {
+        groupFragments.push(result.sql)
+        params.push(...result.params)
+        paramIdx += result.params.length
+      }
+    }
+    if (groupFragments.length > 0) {
+      orAlternatives.push(groupFragments.length > 1 ? `(${groupFragments.join(" AND ")})` : groupFragments[0])
+    }
+  }
+  if (orAlternatives.length > 0) {
+    fragments.push(`(${orAlternatives.join(" OR ")})`)
   }
 
   return { fragments, params, nextParam: paramIdx }
@@ -199,6 +261,11 @@ function conditionToSQL(
     case "$lte":
       return numericOrDateComparison(field, numericPath, "<=", cond.value, paramIdx)
     case "$contains":
+    // Fifth external audit: documented and expected to work (an alias for
+    // the already-case-insensitive $contains, see ALLOWED_OPERATORS'
+    // own comment) — no separate SQL needed, ILIKE is already
+    // case-insensitive on Postgres.
+    case "$containsi":
       return {
         sql: `${jsonPath} ILIKE $${paramIdx}`,
         params: [`%${escapeLike(String(cond.value))}%`],

@@ -41,7 +41,7 @@ describe("Filter Engine", () => {
       params.append("filters[$or][0][status][$eq]", "featured")
       params.append("filters[$or][0][price][$gt]", "500")
       
-      const { conditions } = parseFilters(params, allowedFields)
+      const { conditions, orGroups } = parseFilters(params, allowedFields)
       
       expect(conditions).toHaveLength(0)
       expect(orGroups[0]).toHaveLength(2)
@@ -54,7 +54,7 @@ describe("Filter Engine", () => {
       params.append("filters[$and][0][status][$eq]", "featured")
       params.append("filters[$and][1][price][$gt]", "500")
 
-      const { conditions } = parseFilters(params, allowedFields)
+      const { conditions, orGroups } = parseFilters(params, allowedFields)
 
       expect(orGroups).toHaveLength(0)
       expect(conditions).toHaveLength(2)
@@ -133,6 +133,34 @@ describe("Filter Engine", () => {
     })
   })
 
+  describe("parseFilters — negative controls for $or and $containsi", () => {
+    const rejectedFor = (query: string) => {
+      const { conditions, orGroups, rejected } = parseFilters(new URLSearchParams(query), allowedFields)
+      return { rejected, accepted: conditions.length + orGroups.flat().length }
+    }
+
+    it.each([
+      ["typo'd field inside $or", "filters[$or][0][titlee][$eq]=x"],
+      ["unsupported operator inside $or", "filters[$or][0][title][$regex]=x"],
+      ["$or index above the cap", "filters[$or][11][title][$eq]=x"],
+      ["negative $or index", "filters[$or][-1][title][$eq]=x"],
+      ["non-numeric $or index", "filters[$or][abc][title][$eq]=x"],
+      ["$or key missing its operator", "filters[$or][0][title]=x"],
+      ["$or nested inside $and (unsupported nesting)", "filters[$and][0][$or][0][title][$eq]=x"],
+      ["$containsi on a typo'd field", "filters[titlee][$containsi]=x"],
+    ])("rejects %s instead of silently dropping it", (_label, query) => {
+      const { rejected, accepted } = rejectedFor(query)
+      expect(rejected).toEqual([query.split("=")[0]])
+      expect(accepted).toBe(0)
+    })
+
+    it("still reports the one bad key when it sits next to valid $or alternatives", () => {
+      const query = "filters[$or][0][title][$eq]=a&filters[$or][1][titlee][$eq]=b"
+      const { rejected } = rejectedFor(query)
+      expect(rejected).toEqual(["filters[$or][1][titlee][$eq]"])
+    })
+  })
+
   describe("isSafeFieldIdentifier", () => {
     it("accepts slugify-style slugs", () => {
       expect(isSafeFieldIdentifier("title")).toBe(true)
@@ -151,7 +179,7 @@ describe("Filter Engine", () => {
   describe("buildFilterSQL", () => {
     it("should generate correct SQL for equality", () => {
       const conditions = [{ field: "title", operator: "$eq", value: "Test" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
       
       expect(fragments[0]).toBe('"data"->>\'title\' = $1')
       expect(params).toEqual(["Test"])
@@ -159,7 +187,7 @@ describe("Filter Engine", () => {
 
     it("should generate correct SQL for numeric comparison", () => {
       const conditions = [{ field: "price", operator: "$gt", value: "100" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
       
       expect(fragments[0]).toBe('("data"->>\'price\')::numeric > $1')
       expect(params).toEqual([100])
@@ -167,7 +195,7 @@ describe("Filter Engine", () => {
 
     it("should generate correct SQL for $contains (ILIKE)", () => {
       const conditions = [{ field: "title", operator: "$contains", value: "next" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
       
       expect(fragments[0]).toBe('"data"->>\'title\' ILIKE $1')
       expect(params).toEqual(["%next%"])
@@ -178,7 +206,7 @@ describe("Filter Engine", () => {
         { field: "title", operator: "$eq", value: "ok" },
         { field: "price'); DROP TABLE content_entries;--", operator: "$eq", value: "x" },
       ]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
       expect(fragments).toHaveLength(1)
       expect(fragments[0]).toBe('"data"->>\'title\' = $1')
       expect(params).toEqual(["ok"])
@@ -189,7 +217,7 @@ describe("Filter Engine", () => {
         { field: "category", operator: "$eq", value: "tutorial" },
         { field: "price", operator: "$lte", value: "200" }
       ]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
       
       expect(fragments).toHaveLength(2)
       expect(fragments[0]).toContain("$1")
@@ -209,7 +237,7 @@ describe("Filter Engine", () => {
         [{ field: "status", operator: "$eq", value: "archived" }],
         [{ field: "status", operator: "$eq", value: "deleted" }],
       ]
-      const { fragments, params } = buildFilterSQL([])
+      const { fragments, params } = buildFilterSQL([], orGroups)
 
       expect(fragments[0]).toBe('("data"->>\'status\' = $1 OR "data"->>\'status\' = $2)')
       expect(params).toEqual(["archived", "deleted"])
@@ -223,7 +251,7 @@ describe("Filter Engine", () => {
         { field: "status", operator: "$eq", value: "featured" },
         { field: "price", operator: "$gt", value: "500" },
       ]]
-      const { fragments, params } = buildFilterSQL([])
+      const { fragments, params } = buildFilterSQL([], orGroups)
 
       expect(fragments[0]).toBe('(("data"->>\'status\' = $1 AND ("data"->>\'price\')::numeric > $2))')
       expect(params).toEqual(["featured", 500])
@@ -237,7 +265,7 @@ describe("Filter Engine", () => {
         ],
         [{ field: "category", operator: "$eq", value: "clearance" }],
       ]
-      const { fragments, params } = buildFilterSQL([])
+      const { fragments, params } = buildFilterSQL([], orGroups)
 
       expect(fragments[0]).toBe(
         '(("data"->>\'status\' = $1 AND ("data"->>\'price\')::numeric > $2) OR "data"->>\'category\' = $3)',
@@ -247,7 +275,7 @@ describe("Filter Engine", () => {
 
     it("should handle $in operator with array expansion", () => {
       const conditions = [{ field: "category", operator: "$in", value: "a, b, c" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
 
       expect(fragments[0]).toBe('"data"->>\'category\' IN ($1,$2,$3)')
       expect(params).toEqual(["a", "b", "c"])
@@ -255,15 +283,24 @@ describe("Filter Engine", () => {
 
     it("handles $in with a real array value (the shape parseFilters now actually produces)", () => {
       const conditions = [{ field: "category", operator: "$in", value: ["a", "b", "c"] }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
 
       expect(fragments[0]).toBe('"data"->>\'category\' IN ($1,$2,$3)')
       expect(params).toEqual(["a", "b", "c"])
     })
 
+    it("escapes LIKE wildcards in a $containsi value so '%' and '_' match literally", () => {
+      const conditions = [
+        { field: "title", operator: "$containsi", value: "50%" },
+        { field: "title", operator: "$containsi", value: "a_b" },
+      ]
+      const { params } = buildFilterSQL(conditions, [])
+      expect(params).toEqual(["%50\\%%", "%a\\_b%"])
+    })
+
     it("accepts $containsi and generates the same case-insensitive ILIKE as $contains", () => {
       const conditions = [{ field: "title", operator: "$containsi", value: "Next" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
 
       expect(fragments[0]).toBe('"data"->>\'title\' ILIKE $1')
       expect(params).toEqual(["%Next%"])
@@ -274,7 +311,7 @@ describe("Filter Engine", () => {
     // to a timestamptz comparison instead of crashing the whole query.
     it("falls back to a timestamptz comparison for $gte on a date value instead of casting it to ::numeric", () => {
       const conditions = [{ field: "publishedAt", operator: "$gte", value: "2026-01-15" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
 
       expect(fragments[0]).toBe('("data"->>\'publishedAt\')::timestamptz >= $1::timestamptz')
       expect(params).toEqual([new Date("2026-01-15").toISOString()])
@@ -282,7 +319,7 @@ describe("Filter Engine", () => {
 
     it("still uses the numeric path for $gte when the value genuinely is a number", () => {
       const conditions = [{ field: "price", operator: "$gte", value: "100" }]
-      const { fragments, params } = buildFilterSQL(conditions)
+      const { fragments, params } = buildFilterSQL(conditions, [])
 
       expect(fragments[0]).toBe('("data"->>\'price\')::numeric >= $1')
       expect(params).toEqual([100])
@@ -290,7 +327,7 @@ describe("Filter Engine", () => {
 
     it("drops a $gte condition whose value is neither a number nor a parseable date, instead of crashing the query", () => {
       const conditions = [{ field: "price", operator: "$gte", value: "not-a-number-or-date!!" }]
-      const { fragments } = buildFilterSQL(conditions)
+      const { fragments } = buildFilterSQL(conditions, [])
       expect(fragments).toHaveLength(0)
     })
   })
