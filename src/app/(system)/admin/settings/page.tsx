@@ -111,7 +111,6 @@ export default function AdminSettingsPage() {
     aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
     vercelAccessToken: "",
     vercelTeamId: "",
-    vercelProjectId: "",
     aiSdkDefaultModel: "google/gemini-2.5-flash",
     freePlanAiMonthlyWords: "10000",
 
@@ -653,17 +652,7 @@ export default function AdminSettingsPage() {
                       />
                       <p className="text-[10px] text-muted-foreground">Dipakai di setiap panggilan API bergantung-tim (deploy, domain kustom) & Vercel Sandbox untuk AI Site.</p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Vercel Project ID</Label>
-                      <Input
-                        type="text"
-                        value={settings.vercelProjectId}
-                        onChange={e => setSettings(prev => ({ ...prev, vercelProjectId: e.target.value }))}
-                        placeholder="prj_xxxxxxxxxxxxxxxx"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                      <p className="text-[10px] text-muted-foreground">Project tempat preview Vercel Sandbox AI Site berjalan — terpisah dari project deploy milik tiap tenant.</p>
-                    </div>
+
                   </div>
                 </CardContent>
               </Card>

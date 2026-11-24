@@ -2381,7 +2381,7 @@ const handler = createMcpHandler(
         const existing = await db.websiteTemplate.findFirst({ where: { deletedAt: null, OR: [{ id }, { slug: id }] } })
         if (!existing) return notFound("Website Template", id)
 
-        if (!existing.demoVercelProjectId) {
+        if (!existing.demoVercelProjectId || (!existing.demoDeploymentId && !existing.demoUrl)) {
           const structured = {
             deployed: false,
             demoUrl: null,

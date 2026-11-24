@@ -1638,6 +1638,8 @@ model MemberRolePermission {
 }
 
 model McpPreviewSession {
+  vercelProjectId String?
+  vercelTeamId    String?
   id            String @id
   scope         String
   targetId      String

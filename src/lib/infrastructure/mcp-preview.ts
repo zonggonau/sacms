@@ -7,7 +7,7 @@ import { db } from "@/lib/database"
 import { findSchemaDemoWorkspace } from "./demo-tenant"
 import { previewCredential, previewRelay } from "./preview-access"
 import { resolveApiOrigin } from "./frontend-env"
-import { getVercelProjectId, getVercelTeamId, getVercelToken } from "@/lib/vercel-client"
+import { createTargetProject, getVercelTeamId, getVercelToken } from "@/lib/vercel-client"
 import { websiteTemplateFilesSchema, websiteTemplateFileSchema, type WebsiteTemplateFile } from "@/lib/validations/website-template"
 import type { McpPreviewSession } from "../../../prisma/generated-client"
 
@@ -23,9 +23,11 @@ function describeSession(scope: string, target: string, session: McpPreviewSessi
     sourceVersion: session?.sourceVersion ?? null }
 }
 
-async function credentials() {
-  const [token, teamId, projectId] = await Promise.all([getVercelToken(), getVercelTeamId(), getVercelProjectId()])
-  return { token, teamId, projectId }
+async function sessionSandbox(session: McpPreviewSession) {
+  if (!session.vercelProjectId || !session.vercelTeamId || !session.sandbox) {
+    throw Error("Sesi lama belum menyimpan proyek Sandbox. Simpan perubahan, hentikan sesi, lalu buka preview baru.")
+  }
+  return Sandbox.get({ name: session.sandbox, projectId: session.vercelProjectId, teamId: session.vercelTeamId, token: await getVercelToken() })
 }
 
 function checkPaths(files: WebsiteTemplateFile[]) {
@@ -57,7 +59,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
       if (input.templateId) throw Error("Use siteId for a workspace preview")
       const auth = workspace()
       if (!auth || !(write ? auth.canWrite : auth.canRead)) throw Error("Insufficient workspace permission")
-      const site = await db.tenant.findUniqueOrThrow({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+      const site = await db.tenant.findUniqueOrThrow({ where: { id: auth.tenantId }, select: { vercelProjectId: true, vercelDeploymentUrl: true } })
       if (input.siteId && site.vercelProjectId !== input.siteId) throw Error("Site not found in workspace")
       const { getLatestDeploymentSource } = await import("./mcp-deployment-source")
       const snapshot = await getLatestDeploymentSource(auth.tenantId)
@@ -66,14 +68,14 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
         { path: "app/layout.jsx", content: "export default function Layout({ children }) { return <html><body>{children}</body></html> }" },
         { path: "app/page.jsx", content: "export default function Home() { return <main /> }" },
       ]
-      if (!snapshot && site.vercelProjectId) throw Error("Import existing site source with get_deployment_source before editing")
+      if (!snapshot && site.vercelDeploymentUrl) throw Error("Import existing site source with get_deployment_source before editing")
       return { id: auth.tenantId, slug: auth.tenantSlug, files, version: snapshot?.id ?? "initial",
         sourceVersion: new Date(0), schemaTemplateId: "", schemaTemplate: null, projectId: site.vercelProjectId }
     }
     if (input.siteId || !actor?.() || !input.templateId) throw Error("Template and authorization required")
     const t = await db.websiteTemplate.findFirstOrThrow({ where: { deletedAt: null, OR: [{ id: input.templateId }, { slug: input.templateId }] },
       include: { schemaTemplate: { select: { id: true, demoTenantId: true } } } })
-    return { ...t, version: t.sourceVersion.toISOString(), projectId: null }
+    return { ...t, version: t.sourceVersion.toISOString(), projectId: t.demoVercelProjectId }
   }
   const lookup = (targetId: string) => db.mcpPreviewSession.findUnique({ where: { scope_targetId: { scope, targetId } } })
   async function current(input: { templateId?: string; siteId?: string }, write = false) {
@@ -110,8 +112,31 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     if (s.id !== id) return result(describe(t.slug, s))
     let box: Sandbox | undefined
     try {
-      box = await Sandbox.create({ ...await credentials(), runtime: "node24", ports: [3001], timeout: lifetime, persistent: false })
-      await db.mcpPreviewSession.update({ where: { id }, data: { sandbox: box.name, upstream: box.domain(3001) } })
+      const [token, teamId] = await Promise.all([getVercelToken(), getVercelTeamId()])
+      if (!token || !teamId) throw Error("Token Vercel dan Team ID harus dikonfigurasi untuk membuat Sandbox.")
+      let projectId = t.projectId
+      if (!projectId) {
+        const name = ((workspace ? "sacms-" : "sacms-demo-") + t.slug).toLowerCase().replace(/[^a-z0-9-]/g, "-")
+        const created = await createTargetProject(name, teamId, token)
+        // Another request (e.g. the first hosting build) can bind the target
+        // while Vercel provisions its project. Keep the authoritative binding.
+        if (workspace) {
+          await db.tenant.updateMany({ where: { id: t.id, vercelProjectId: null }, data: { vercelProjectId: created } })
+          projectId = (await db.tenant.findUniqueOrThrow({ where: { id: t.id }, select: { vercelProjectId: true } })).vercelProjectId
+        } else {
+          await db.websiteTemplate.updateMany({ where: { id: t.id, deletedAt: null, demoVercelProjectId: null }, data: { demoVercelProjectId: created } })
+          projectId = (await db.websiteTemplate.findFirstOrThrow({ where: { id: t.id, deletedAt: null }, select: { demoVercelProjectId: true } })).demoVercelProjectId
+        }
+        if (!projectId) throw Error("Gagal menyimpan proyek Vercel untuk target preview.")
+      }
+      const config = { token, teamId, projectId }
+      box = await Sandbox.create({ ...config, runtime: "node24", ports: [3001], timeout: lifetime, persistent: false }).catch((error: unknown) => {
+        if ((error as { response?: { status?: number } } | null)?.response?.status === 404) {
+          throw new Error(`Vercel mengembalikan 404 saat membuat Sandbox untuk project ${config.projectId} di team ${config.teamId}. Periksa proyek yang terhubung dengan target ini dan akses token team.`)
+        }
+        throw error
+      })
+      await db.mcpPreviewSession.update({ where: { id }, data: { vercelProjectId: projectId, vercelTeamId: teamId, sandbox: box.name, upstream: box.domain(3001) } })
       await box.runCommand({ cmd: "node", args: ["-e", previewRelay], detached: true, env: { PREVIEW_UPSTREAM_KEY: previewCredential(id, "upstream") } })
       await box.writeFiles(initial)
       if ((await box.runCommand("npm", ["install", "--no-audit", "--no-fund"])).exitCode !== 0) throw Error("Preview dependency install failed")
@@ -149,7 +174,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     const { s } = await current(input)
     const file = parseFiles(s.files).find(f => f.path === path)
     if (!file) throw Error("File not found")
-    const box = await Sandbox.get({ ...await credentials(), name: s.sandbox! })
+    const box = await sessionSandbox(s)
     const bytes = await box.readFileToBuffer({ path: file.path })
     if (!bytes) throw Error("File no longer exists in Sandbox")
     const content = bytes.toString(file.encoding ?? "utf-8")
@@ -162,7 +187,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     for (const file of changedFiles) merged.set(file.path, file)
     const files = parseFiles([...merged.values()])
     const batch = buffers(changedFiles)
-    const box = await Sandbox.get({ ...await credentials(), name: s.sandbox! })
+    const box = await sessionSandbox(s)
     const lock = await db.mcpPreviewSession.updateMany({ where: { id: s.id, revision: expectedRevision, status: "ready" }, data: { status: "editing" } })
     if (!lock.count) throw Error("CONFLICT: preview revision changed")
     try {
@@ -211,10 +236,10 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     const s = await lookup(t.id)
     if (!s || !active(s) || s.dirty && !discardChanges) return result(describe(t.slug, s))
     if (s.status !== "ready") throw Error("Preview is busy")
-    const box = await Sandbox.get({ ...await credentials(), name: s.sandbox! })
+    const box = s.vercelProjectId && s.vercelTeamId ? await sessionSandbox(s) : null
     const locked = await db.mcpPreviewSession.updateMany({ where: { id: s.id, revision: s.revision, status: "ready" }, data: { status: "stopping" } })
     if (!locked.count) throw Error("CONFLICT: preview changed")
-    try { await box.stop() } catch (error) {
+    try { await box?.stop() } catch (error) {
       await db.mcpPreviewSession.updateMany({ where: { id: s.id, status: "stopping" }, data: { status: "ready" } })
       throw error
     }

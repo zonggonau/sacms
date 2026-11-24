@@ -48,16 +48,20 @@ export async function getVercelTeamId(): Promise<string> {
   return (process.env.VERCEL_TEAM_ID || "").trim()
 }
 
-/** Same resolution as `getVercelTeamId` — the Vercel project AI Site's
- *  Sandbox previews run under. */
-export async function getVercelProjectId(): Promise<string> {
-  try {
-    const settings = await getPlatformSettings()
-    if (settings?.vercelProjectId?.trim()) {
-      return settings.vercelProjectId.trim()
-    }
-  } catch {}
-  return (process.env.VERCEL_PROJECT_ID || "").trim()
+/** Provision an empty project for a target that has never been deployed. */
+export async function createTargetProject(name: string, teamId: string, token: string): Promise<string> {
+  const response = await fetch(`${VERCEL_API_BASE}/v11/projects?teamId=${encodeURIComponent(teamId)}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ name, framework: "nextjs" }),
+    redirect: "error",
+  })
+  if (!response.ok) throw Error(`Vercel gagal membuat proyek ${name} di team ${teamId} (HTTP ${response.status}).`)
+  const project = await response.json()
+  if (typeof project.id !== "string" || !project.id.startsWith("prj_") || project.accountId !== teamId) {
+    throw Error("Vercel mengembalikan identitas proyek yang tidak sesuai.")
+  }
+  return project.id
 }
 
 async function getVercelHeaders() {
