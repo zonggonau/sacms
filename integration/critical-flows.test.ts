@@ -110,7 +110,7 @@ describe("critical SaCMS workflows against PostgreSQL", () => {
     expect(renewed.currentPeriodEnd!.getTime()).toBeGreaterThan(periodEnd.getTime())
   })
 
-  it("applies a website template in a provisioned workspace and resumes after deploy failure", async () => {
+  it("applies a website template in a provisioned workspace and resumes after a source-save transaction fails", async () => {
     const tenant = await db.tenant.create({ data: { name: "Template CI", slug: "template-ci", useOwnerInfra: false } })
     await ensureSiteSettings(tenant.id, tenant.name)
     const schemaTemplate = await db.schemaTemplate.create({ data: {
@@ -120,19 +120,23 @@ describe("critical SaCMS workflows against PostgreSQL", () => {
         singleTypes: [{ name: "Site Settings", slug: "site-settings", fields: [{ name: "Contact", slug: "contact", type: "text" }] }],
       },
     } })
-    const template = await db.websiteTemplate.create({
-      data: {
-        name: "Website CI", slug: "website-ci", schemaTemplateId: schemaTemplate.id,
-        files: [{ path: "app/page.tsx", content: "export default function Page() { return null }" }],
-      },
-      include: { schemaTemplate: true },
-    })
-    vi.mocked(deployTenantFrontend).mockRejectedValueOnce(new Error("hosting failure"))
-      .mockResolvedValueOnce({ deploymentId: "fixture", url: "https://example.test", state: "READY", apiKeyName: "test", simulated: false })
+    const template = {
+      id: "website-ci", schemaTemplate,
+      files: [{ path: "app/page.tsx", content: "export default function Page() { return null }" }],
+    }
+    // The missing catalog row makes the final tenant FK write fail after schema import.
+    await expect(applyWebsiteTemplateToTenant(tenant.id, tenant.slug, template)).rejects.toMatchObject({ code: "P2003" })
+    expect(await db.mcpDeploymentSource.count({ where: { tenantId: tenant.id } })).toBe(0)
 
-    await expect(applyWebsiteTemplateToTenant(tenant.id, tenant.slug, template)).rejects.toThrow("hosting failure")
+    await db.websiteTemplate.create({ data: {
+      id: template.id, name: "Website CI", slug: "website-ci", schemaTemplateId: schemaTemplate.id, files: template.files,
+    } })
     const result = await applyWebsiteTemplateToTenant(tenant.id, tenant.slug, template)
     expect(result).toMatchObject({ ok: true, imported: 0 })
+    if (!result.ok) throw new Error(result.message)
+    const source = await db.mcpDeploymentSource.findUniqueOrThrow({ where: { id: result.sourceRevision } })
+    expect(source).toMatchObject({ tenantId: tenant.id, files: [{ name: "app/page.tsx", content: template.files[0].content, encoding: "utf-8" }] })
+    expect(deployTenantFrontend).not.toHaveBeenCalled()
     expect(await db.tenant.findUnique({ where: { id: tenant.id } })).toMatchObject({ sourceWebsiteTemplateId: template.id })
     const settings = await db.singleType.findFirstOrThrow({ where: { tenantId: tenant.id, slug: "site-settings" } })
     expect(await db.schemaField.count({ where: { singleTypeId: settings.id, slug: "contact" } })).toBe(1)
