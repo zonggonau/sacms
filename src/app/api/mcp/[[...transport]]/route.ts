@@ -2793,67 +2793,49 @@ Default stack (standard baseline for every frontend built here, not optional unl
     // creates one if none exists yet, never invalidates a working secret.
 
     // =========================================================================
-    // 8. DEVELOPMENT & ENVIRONMENT TOOLS
+    // 8. LOCAL DEVELOPMENT TOOLS
     // =========================================================================
 
     // ── sync_dev_env ─────────────────────────────────────────────────────────
+    // Same env set deploy_to_sacms pushes to Vercel, so a project downloaded to
+    // an IDE runs locally against the exact credentials production uses.
     server.registerTool(
       "sync_dev_env",
       {
-        title: "Sync Development Environment Variables",
-        description: "Generate and download development environment (.env.local) for this workspace with API credentials pre-configured to access sacms.cloud. Returns env vars needed to use @sacms/sdk: NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT, SACMS_API_KEY. Perfect for setting up a local developer environment without manual credential copying.",
+        title: "Get Local Development .env",
+        description:
+          "Returns a ready-to-save .env.local for running this workspace's frontend locally against SaCMS: " +
+          "NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT, SACMS_API_KEY (the same server-side key deploy_to_sacms injects), " +
+          "plus every custom variable saved via add_deployment_env or the dashboard's Environment tab. " +
+          "Write it to .env.local (never commit it). To add a third-party variable, call add_deployment_env — it is stored " +
+          "for the workspace, pushed to the hosting project, and re-applied on every deploy, so local and deployed env stay in sync.",
         inputSchema: {
-          format: z.enum(["env", "json"]).optional().describe("Output format: 'env' for .env.local file format, 'json' for structured object"),
+          format: z.enum(["env", "json"]).optional().describe("'env' (default) for .env.local file content, 'json' for a key/value object"),
         },
+        outputSchema: {
+          format: z.enum(["env", "json"]),
+          keys: z.array(z.string()),
+          content: z.string(),
+        },
+        annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
       },
       async ({ format = "env" }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "read")) return permissionDenied("read")
+        // SACMS_API_KEY can write content over REST, so a read-only MCP token must not obtain it.
+        if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        try {
-          // Get dev env config from Settings
-          const setting = await db.setting.findUnique({
-            where: { key: `${auth.tenantId}_dev_env_config` },
-          })
+        const { resolveFrontendEnv, renderDotEnv, resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const env = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, resolveApiOrigin())
+        const content =
+          format === "json"
+            ? JSON.stringify(env, null, 2)
+            : `# SaCMS local env for workspace "${auth.tenantSlug}". Save as .env.local; do not commit.\n${renderDotEnv(env)}`
+        const structured = { format, keys: Object.keys(env), content }
 
-          let envConfig = {
-            NEXT_PUBLIC_SACMS_API_URL: "https://sacms.cloud/api",
-            NEXT_PUBLIC_SACMS_TENANT: auth.tenantSlug,
-            SACMS_API_KEY: "",
-          }
-
-          if (setting) {
-            envConfig = { ...envConfig, ...JSON.parse(setting.value) }
-          }
-
-          if (format === "json") {
-            return {
-              content: [{ type: "text" as const, text: JSON.stringify(envConfig, null, 2) }],
-              structuredContent: envConfig,
-            }
-          }
-
-          // Format as .env file
-          const envContent = Object.entries(envConfig)
-            .map(([key, value]) => `${key}="${value}"`)
-            .join("\n")
-
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `# SaCMS Development Environment - ${auth.tenantSlug}\n# Generated for workspace: ${auth.tenantName}\n# Save as .env.local in your project root\n\n${envContent}`,
-              },
-            ],
-            structuredContent: { format: "env", content: envContent },
-          }
-        } catch (error) {
-          console.error("Error syncing dev env:", error)
-          return {
-            isError: true,
-            content: [{ type: "text" as const, text: "Failed to generate dev environment" }],
-          }
+        return {
+          content: [{ type: "text" as const, text: content }],
+          structuredContent: structured,
         }
       }
     )

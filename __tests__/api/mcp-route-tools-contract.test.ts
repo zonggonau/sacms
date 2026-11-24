@@ -499,3 +499,19 @@ describe("MCP workspace server route — source contract", () => {
     expect(routeSource).not.toMatch(/deployToVercel\([^)]*\bauth\.tenantSlug\b[^)]*\)/)
   })
 })
+
+describe("sync_dev_env — local .env for a downloaded project", () => {
+  it("builds the env from the same resolver deploy_to_sacms uses, not a separately maintained setting", () => {
+    const block = toolBlockOf("sync_dev_env")
+    expect(block).toMatch(/resolveFrontendEnv\(auth\.tenantId, auth\.tenantSlug, resolveApiOrigin\(\)\)/)
+    expect(block).toMatch(/renderDotEnv\(env\)/)
+    expect(block).not.toMatch(/_dev_env_config/)
+    expect(block).not.toMatch(/sacms\.cloud\/api/)
+  })
+
+  it("requires write scope, since the returned SACMS_API_KEY can write over REST", () => {
+    const block = toolBlockOf("sync_dev_env")
+    expect(block).toMatch(/if \(!hasScope\(auth, "write"\)\) return permissionDenied\("write"\)/)
+    expect(block.indexOf('hasScope(auth, "write")')).toBeLessThan(block.indexOf("resolveFrontendEnv("))
+  })
+})
