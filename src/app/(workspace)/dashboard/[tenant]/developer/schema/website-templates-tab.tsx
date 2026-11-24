@@ -136,9 +136,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
         : ""
       toast({
         title: "Website Template Diterapkan",
-        description: (data.deployment?.url
-          ? `Schema dibuat dan situs sedang di-deploy. Lihat statusnya di tab Hosting: ${data.deployment.url}`
-          : "Schema dibuat dan situs sedang di-deploy. Cek tab Hosting untuk status terbaru.") + envNote,
+        description: "Schema dan source website tersimpan. Tinjau preview sebelum merilis dari Infrastruktur → Hosting." + envNote,
       })
       onApplied?.()
     } catch (err: any) {

@@ -71,3 +71,10 @@ describe("getOperation", () => {
     expect(operation?.status).toBe("running")
   })
 })
+
+it("isolates workspace operation results from other tenants and the Global endpoint", async () => {
+  findUnique.mockResolvedValue({ id: "op-a", tenantId: "a", status: "succeeded" })
+  expect(await getOperation("op-a", "a")).toMatchObject({ tenantId: "a" })
+  expect(await getOperation("op-a", "b")).toBeNull()
+  expect(await getOperation("op-a")).toBeNull()
+})

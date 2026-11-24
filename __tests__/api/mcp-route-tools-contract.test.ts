@@ -370,27 +370,10 @@ describe("MCP workspace server route — source contract", () => {
     }
   })
 
-  it("rollback_website still deploys straight to production — it's the emergency-recovery path, not gated behind promote_deployment", () => {
-    const scoped = toolBlockOf("rollback_website")
-    expect(scoped).toMatch(/deployToVercel\([^)]*"production"\)/)
-  })
-
-  it("registers promote_deployment as the only path from a staging candidate to production, gated on its own HTTP checks", () => {
-    const scoped = toolBlockOf("promote_deployment")
-    expect(scoped).toMatch(/deploymentId: z\.string\(\)/)
-    expect(scoped).toMatch(/runHttpChecks/)
-    expect(scoped).toMatch(/CHECKS_FAILED/)
-    expect(scoped).toMatch(/promoteDeployment\(/)
-    expect(scoped).toMatch(/promoted: true/)
-    // A failed check must never reach Vercel's actual promote call —
-    // assert the early return precedes the promoteDeployment call in
-    // source order, which is what prevents that.
-    expect(scoped.indexOf("CHECKS_FAILED")).toBeLessThan(scoped.indexOf("promoteDeployment("))
-  })
-
-  it("promote_deployment never promotes fully blind — defaults to checking '/' when no checks are given", () => {
-    const scoped = toolBlockOf("promote_deployment")
-    expect(scoped).toMatch(/effectiveChecks = checks && checks\.length > 0 \? checks : \[\{ path: "\/" \}\]/)
+  it("keeps rollback in staging and hands production release to Hosting", () => {
+    expect(toolBlockOf("rollback_website")).toMatch(/deployToVercel\([^)]*"staging"\)/)
+    expect(toolBlockOf("promote_deployment")).toContain("DASHBOARD_REQUIRED")
+    expect(routeSource).not.toContain("await promoteDeployment(")
   })
 
   it("registers get_deployment_runtime_logs as a separate tool from get_deployment_build_logs, for diagnosing a runtime HTTP 500 a build log would never show", () => {

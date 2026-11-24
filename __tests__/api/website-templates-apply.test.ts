@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import type { Prisma } from "@/lib/database"
 
+vi.mock("server-only", () => ({}))
 vi.mock("next-auth", () => ({ getServerSession: vi.fn() }))
 vi.mock("@/lib/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/tenant-access", () => ({ getTenantAccess: vi.fn() }))
@@ -21,6 +22,7 @@ const { fakeTenantDb, fakeSetting } = vi.hoisted(() => ({
 
 vi.mock("@/lib/database", () => ({
   db: {
+    mcpDeploymentSource: { create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     websiteTemplate: { findUnique: vi.fn() },
     tenant: { update: vi.fn().mockResolvedValue({}) },
     setting: fakeSetting,
@@ -100,7 +102,10 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
       state = null
       return { count: 1 }
     })
-    vi.mocked(db.$transaction).mockImplementation(async (run: any) => run(db))
+    vi.mocked(db.$transaction).mockImplementation(async (run: any) => {
+      const before = state
+      try { return await run(db) } catch (error) { state = before; throw error }
+    })
   })
 
   it("404s when the website template doesn't exist", async () => {
@@ -150,14 +155,9 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(fakeTenantDb, "tenant1", fakeTemplate.schemaTemplate.schema, {}, {
       mergeSingleTypeSlug: "site-settings",
     })
-    expect(deployTenantFrontend).toHaveBeenCalledWith(
-      "tenant1",
-      "acme",
-      "https://sacms.cloud",
-      [{ name: "app/page.tsx", content: "export default function Page() { return null }" }],
-    )
+    expect(deployTenantFrontend).not.toHaveBeenCalled()
     expect(body.imported).toBe(3)
-    expect(body.deployment.url).toBe("https://acme.sites.sacms.cloud")
+    expect(body.sourceRevision).toBe("rev-1")
     expect(setTenantCustomEnvVars).not.toHaveBeenCalled()
     expect(body.envVarsApplied).toEqual([])
     expect(db.tenant.update).toHaveBeenCalledWith({
@@ -169,7 +169,7 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
   it("resumes deployment after a failed attempt without reimporting the schema", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
     vi.mocked(isTenantPlanPaid).mockReturnValue(true)
-    vi.mocked(deployTenantFrontend).mockRejectedValueOnce(new Error("hosting temporarily unavailable"))
+    vi.mocked(db.mcpDeploymentSource.create).mockRejectedValueOnce(new Error("hosting temporarily unavailable"))
 
     const first = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(first.status).toBe(500)
@@ -177,7 +177,7 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     const retry = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(retry.status).toBe(200)
     expect(materializeSchemaIntoTenant).toHaveBeenCalledTimes(1)
-    expect(deployTenantFrontend).toHaveBeenCalledTimes(2)
+    expect(db.mcpDeploymentSource.create).toHaveBeenCalledTimes(2)
   })
 
   it("merges the template's resolved env vars into the Environment tab BEFORE deploying", async () => {

@@ -1,3 +1,4 @@
+import { matchesPreviewCredential, previewCredential } from "@/lib/infrastructure/preview-access"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
@@ -60,6 +61,45 @@ let inMemoryFirstUserDone = false
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Handle every asset on a preview host before platform routes or cookies.
+  const previewHost = request.nextUrl.hostname.toLowerCase()
+  if (previewHost.endsWith(".preview.sacms.cloud")) {
+    const match = /^([a-f0-9]{16})\.preview\.sacms\.cloud$/.exec(previewHost)
+    if (!match) return new NextResponse(null, { status: 404 })
+    const session = await db.mcpPreviewSession.findUnique({ where: { id: match[1] },
+      select: { scope: true, status: true, expiresAt: true, upstream: true } })
+    if (!session || !["global", "workspace"].includes(session.scope) || !["ready", "editing"].includes(session.status) ||
+      session.expiresAt.getTime() <= Date.now() || !session.upstream) return new NextResponse(null, { status: 410 })
+    if (!["GET", "HEAD"].includes(request.method)) return new NextResponse(null, { status: 405 })
+    const expected = previewCredential(match[1], "browser")
+    const grant = request.nextUrl.searchParams.get("preview_access")
+    if (grant && matchesPreviewCredential(grant, expected)) {
+      const clean = request.nextUrl.clone()
+      clean.searchParams.delete("preview_access")
+      const redirect = NextResponse.redirect(clean)
+      redirect.headers.set("cache-control", "no-store")
+      redirect.headers.set("referrer-policy", "no-referrer")
+      redirect.cookies.set("__Host-sacms-preview", expected, { secure: true, httpOnly: true, sameSite: "strict", path: "/", expires: session.expiresAt })
+      return redirect
+    }
+    if (!matchesPreviewCredential(request.cookies.get("__Host-sacms-preview")?.value, expected)) return new NextResponse(null, { status: 403 })
+    const upstream = new URL(session.upstream)
+    upstream.pathname = pathname
+    upstream.search = request.nextUrl.search
+    const response = await fetch(upstream, { method: request.method, redirect: "manual", cache: "no-store",
+      headers: { accept: request.headers.get("accept") || "*/*", "x-sacms-preview": previewCredential(match[1], "upstream") } })
+    const headers = new Headers({ "cache-control": "private, no-store", "referrer-policy": "no-referrer" })
+    for (const key of ["content-type", "content-language"]) {
+      const value = response.headers.get(key)
+      if (value) headers.set(key, value)
+    }
+    const location = response.headers.get("location")
+    if (location) {
+      const next = new URL(location, upstream)
+      if (next.origin === upstream.origin) headers.set("location", request.nextUrl.origin + next.pathname + next.search + next.hash)
+    }
+    return new NextResponse(response.body, { status: response.status, headers })
+  }
   // Fast path: static assets and Next internals need none of the logic below.
   if (isSkippablePath(pathname)) {
     const response = NextResponse.next()
@@ -1092,6 +1132,7 @@ async function applyWorkspaceApiPolicy(
 
 export const config = {
   matcher: [
+    { source: "/:path*", has: [{ type: "host", value: ".*\\.preview\\.sacms\\.cloud" }] },
     // Match all API routes and pages; skip Next internals and common static assets
     // (a defence-in-depth match for isSkippablePath()).
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|woff2?|ttf|otf|eot|css|js|map|webmanifest)$).*)",

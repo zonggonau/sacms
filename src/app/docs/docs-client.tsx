@@ -755,24 +755,21 @@ const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "deploy_website_patch",
     title: "Deploy a Targeted Revision (Changed Files Only)",
-    description: "Revise a live website by sending ONLY the files that actually changed instead of the whole project — use this for every follow-up edit after the first deploy_to_sacms (\"ubah warna header\", \"ganti logo\"). SaCMS merges changedFiles onto the exact baseSourceRevision snapshot and deploys the result to a staging candidate; it does not touch production until promote_deployment confirms it.",
+    description: "Revise a live website by sending ONLY the files that actually changed instead of the whole project — use this for every follow-up edit after the first deploy_to_sacms (\"ubah warna header\", \"ganti logo\"). SaCMS merges changedFiles onto the exact baseSourceRevision snapshot and deploys the result to a staging candidate; it does not touch production until an administrator releases it from Hosting.",
     inputs: [
       { name: "baseSourceRevision", type: "string", required: true, description: "The sourceRevision this patch is based on, from a previous deploy or get_deployment_source response" },
       { name: "changedFiles", type: "array", required: true, description: "Only the files being added or changed — array of { name, content, encoding? }" },
       { name: "deletedFiles", type: "array", required: false, description: "File paths to remove entirely" },
       { name: "envVars", type: "object", required: false, description: "Extra env vars for this deploy" }
     ],
-    sampleResponse: { ok: true, deploymentId: "dpl_def456", sourceRevision: "rev_002", deploymentUrl: "https://my-workspace-def456.vercel.app", changedCount: 1, unchangedCount: 24, state: "READY", message: "✅ Patch deployed — call promote_deployment to go live." }
+    sampleResponse: { ok: true, deploymentId: "dpl_def456", sourceRevision: "rev_002", deploymentUrl: "https://my-workspace-def456.vercel.app", changedCount: 1, unchangedCount: 24, state: "READY", message: "✅ Patch deployed — open Infrastructure → Hosting to release." }
   },
   {
     name: "promote_deployment",
-    title: "Verify and Promote a Staging Candidate to Production",
-    description: "The only way a deploy_to_sacms/deploy_website_patch staging candidate ever reaches the live production domain. Runs HTTP checks against the candidate's own URL first and only promotes if every check passes — never promotes blind, and never rebuilds anything (it just re-points the production alias).",
-    inputs: [
-      { name: "deploymentId", type: "string", required: true, description: "The staging candidate's deployment id, from deploy_to_sacms/deploy_website_patch" },
-      { name: "checks", type: "array", required: false, description: "Paths to verify on the candidate before promoting, e.g. [{ path: \"/\" }]. Defaults to just \"/\"" }
-    ],
-    sampleResponse: { ok: true, promoted: true, deploymentId: "dpl_def456", productionUrl: "https://my-workspace.sites.sacms.cloud", checks: [{ path: "/", status: 200, ok: true }], message: "✅ Promoted to production." }
+    title: "Open Production Hosting",
+    description: "Returns the workspace Hosting link. An administrator releases the reviewed source from that page.",
+    inputs: [],
+    sampleResponse: { code: "DASHBOARD_REQUIRED", hostingUrl: "https://sacms.cloud/dashboard/my-workspace/developer/infrastructure?tab=hosting" }
   },
   {
     name: "get_deployment_source",
@@ -801,7 +798,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "sourceRevision", type: "string", required: true, description: "The sourceRevision to restore, from list_website_versions" }
     ],
-    sampleResponse: { ok: true, deploymentId: "dpl_ghi789", sourceRevision: "rev_003", productionUrl: "https://my-workspace.sites.sacms.cloud", state: "READY", message: "✅ Rolled back — call promote_deployment to go live." }
+    sampleResponse: { ok: true, deploymentId: "dpl_ghi789", sourceRevision: "rev_003", productionUrl: "https://my-workspace.sites.sacms.cloud", state: "READY", message: "✅ Rolled back — open Infrastructure → Hosting to release." }
   },
   {
     name: "get_deployment_build_logs",

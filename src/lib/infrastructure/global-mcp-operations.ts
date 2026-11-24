@@ -9,6 +9,9 @@ export type OperationKind =
   | "create_website_template"
   | "update_website_template"
   | "redeploy_website_template_demo"
+  | "apply_website_template"
+  | "deploy_site_version"
+  | "deploy_to_sacms"
   | "verify_build"
 
 export interface OperationOutcome {
@@ -26,8 +29,8 @@ export interface OperationOutcome {
  * context (the MCP auth) propagates into `run` because it starts inside the
  * same async chain as the request.
  */
-export async function startBackgroundOperation(kind: OperationKind, tokenId: string | null, run: () => Promise<OperationOutcome>) {
-  const operation = await db.globalMcpOperation.create({ data: { kind, tokenId, status: "running" } })
+export async function startBackgroundOperation(kind: OperationKind, tokenId: string | null, run: () => Promise<OperationOutcome>, tenantId?: string) {
+  const operation = await db.globalMcpOperation.create({ data: { kind, tokenId, ...(tenantId ? { tenantId } : {}), status: "running" } })
 
   void (async () => {
     try {
@@ -54,9 +57,9 @@ export async function startBackgroundOperation(kind: OperationKind, tokenId: str
   return operation
 }
 
-export async function getOperation(id: string) {
+export async function getOperation(id: string, tenantId: string | null = null) {
   const operation = await db.globalMcpOperation.findUnique({ where: { id } })
-  if (!operation) return null
+  if (!operation || (operation.tenantId ?? null) !== tenantId) return null
   if (operation.status === "running" && Date.now() - operation.startedAt.getTime() > STALE_AFTER_MS) {
     return db.globalMcpOperation.update({
       where: { id },

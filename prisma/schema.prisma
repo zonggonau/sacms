@@ -876,6 +876,7 @@ model McpBuildRun {
 // recent rows per tenant on write (see mcp-deployment-source.ts) — this is
 // a rolling window for agent round-tripping, not a permanent archive.
 model McpDeploymentSource {
+  schemaSnapshot Json?
   id           String   @id @default(cuid())
   tenantId     String
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1006,6 +1007,7 @@ model WebsiteTemplate {
   // future status/log check target the exact build instead of only the
   // "latest" one (same distinction the per-workspace MCP server's
   // get_deployment_status/get_deployment_build_logs rely on).
+  demoSourceVersion   DateTime?
   demoDeploymentId    String?
   // SHA256 hash of the last verified routes (homepage + sitemap paths),
   // for drift detection — if the demo domain changes (old → new), routes
@@ -1126,6 +1128,7 @@ model McpApprovalRequest {
 // a row still "running" long past any realistic budget means the process
 // restarted mid-run and is reported as interrupted on read.
 model GlobalMcpOperation {
+  tenantId String?
   id         String    @id @default(cuid())
   kind       String
   status     String    @default("running") // running | succeeded | failed
@@ -1632,4 +1635,22 @@ model MemberRolePermission {
   @@unique([memberRoleId, contentTypeSlug, action])
   @@index([memberRoleId])
   @@map("member_role_permissions")
+}
+
+model McpPreviewSession {
+  id            String @id
+  scope         String
+  targetId      String
+  target        String
+  sandbox       String?
+  upstream      String?
+  status        String
+  revision      Int @default(0)
+  dirty         Boolean @default(false)
+  sourceVersion String
+  files         Json
+  expiresAt     DateTime
+
+  @@unique([scope, targetId])
+  @@map("mcp_preview_sessions")
 }

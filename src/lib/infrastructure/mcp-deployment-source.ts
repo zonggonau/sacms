@@ -17,6 +17,7 @@ export interface DeploymentSourceManifestEntry {
 }
 
 export interface McpDeploymentSourceRecord {
+  schemaSnapshot?: unknown
   id: string
   tenantId: string
   deploymentId: string
@@ -71,6 +72,7 @@ export async function saveDeploymentSource(
   deploymentId: string,
   projectId: string | null | undefined,
   files: DeploymentSourceFile[],
+  schemaSnapshot?: object,
 ): Promise<McpDeploymentSourceRecord> {
   const manifest = buildManifest(files)
   const created = await db.mcpDeploymentSource.create({
@@ -78,6 +80,7 @@ export async function saveDeploymentSource(
       tenantId,
       deploymentId,
       projectId: projectId || null,
+      ...(schemaSnapshot ? { schemaSnapshot } : {}),
       manifest: manifest as any,
       files: files as any,
     },

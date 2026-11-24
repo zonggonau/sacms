@@ -11,6 +11,7 @@ export interface WebsiteTemplateDemoInput {
   id: string
   slug: string
   files: { path: string; content: string; encoding?: "utf-8" | "base64" }[]
+  sourceVersion?: Date
   seedMissingContent?: boolean
   schemaTemplate: {
     id: string
@@ -22,6 +23,7 @@ export interface WebsiteTemplateDemoInput {
 }
 
 export interface RouteCheckResult {
+  status?: number
   path: string
   verified: boolean
   error?: string
@@ -83,16 +85,16 @@ async function waitForBuildTerminal(deploymentId: string, maxAttempts = BUILD_PO
 
 /** Exported for get_website_template_demo_status — a fresh, on-demand
  *  check of a demo's CURRENT state, independent of redeploying it. */
-export async function verifyDemoUrl(url: string, maxRetries = 1): Promise<{ verified: boolean; error?: string }> {
+export async function verifyDemoUrl(url: string, maxRetries = 1, explicitPath = false): Promise<{ verified: boolean; status?: number; error?: string }> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 10000)
     try {
-      const res = await fetch(url, { method: "GET", signal: controller.signal, headers: { "User-Agent": "SaCMS-Template-Demo-Verify/1.0" } })
+      const res = await fetch(url, { method: "GET", ...(explicitPath ? { redirect: "manual" as const } : {}), signal: controller.signal, headers: { "User-Agent": "SaCMS-Template-Demo-Verify/1.0" } })
       const html = await res.text().catch(() => "")
-      if (!res.ok) return { verified: false, error: `HTTP ${res.status}` }
-      if (LOOKS_LIKE_ERROR_PAGE_RE.test(html)) return { verified: false, error: "Response looks like a deployment error/protection page, not the actual site." }
-      return { verified: true }
+      if (!res.ok) return { verified: false, status: res.status, error: `HTTP ${res.status}` }
+      if (LOOKS_LIKE_ERROR_PAGE_RE.test(html)) return { verified: false, status: res.status, error: "Response looks like a deployment error/protection page, not the actual site." }
+      return { verified: true, status: res.status }
     } catch (err: any) {
       // Retry transient errors (timeout, connection reset) but not permanent ones (404, etc)
       const isTransient = err?.name === "AbortError" || err?.code === "ECONNRESET" || err?.code === "ETIMEDOUT"
@@ -160,6 +162,8 @@ export async function verifyDemoRoutes(
      *  to actually start routing right after deploy — only worth the
      *  retry cost right after a deploy, not on an on-demand status check
      *  of an already-settled domain. */
+    paths?: string[]
+    includeHttpStatus?: boolean
     retryHomepage?: boolean
   } = {},
 ): Promise<{ verified: boolean; routes: RouteCheckResult[] }> {
@@ -173,17 +177,17 @@ export async function verifyDemoRoutes(
       home = await verifyDemoUrl(origin)
     }
   }
-  routes.push({ path: "/", verified: home.verified, error: home.error })
+  routes.push({ path: "/", ...(opts.paths || opts.includeHttpStatus ? { status: home.status ?? 0 } : {}), verified: home.verified, error: home.error })
 
-  const extraPaths = await fetch(`${origin}/sitemap.xml`, { signal: AbortSignal.timeout(8000) })
+  const extraPaths = opts.paths ? [...new Set(opts.paths.filter(path => path !== "/"))] : await fetch(`${origin}/sitemap.xml`, { signal: AbortSignal.timeout(8000) })
     .then((res) => (res.ok ? res.text() : ""))
     .then((xml) => (xml ? extractSitemapPaths(xml, MAX_SITEMAP_ROUTES_CHECKED) : []))
     .catch(() => [] as string[])
 
   for (const path of extraPaths) {
     // Allow retry for transient failures on extra routes (but homepage already retried)
-    const result = await verifyDemoUrl(`${origin}${path}`, 1)
-    routes.push({ path, verified: result.verified, error: result.error })
+    const result = await verifyDemoUrl(`${origin}${path}`, 1, !!opts.paths)
+    routes.push({ path, ...(opts.paths || opts.includeHttpStatus ? { status: result.status ?? 0 } : {}), verified: result.verified, error: result.error })
   }
 
   return { verified: routes.every((r) => r.verified), routes }
@@ -267,6 +271,7 @@ export async function deployWebsiteTemplateDemo(
         demoVercelProjectId: deployResult.projectId || undefined,
         demoUrl: url,
         demoDeployedAt: new Date(),
+        demoSourceVersion: websiteTemplate.sourceVersion ?? null,
         demoDeploymentId: deployResult.id || undefined,
       },
     })

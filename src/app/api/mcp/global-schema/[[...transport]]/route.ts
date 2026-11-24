@@ -30,6 +30,9 @@
 
 import { createMcpHandler } from "mcp-handler"
 import { z } from "zod"
+import { schemaRequirements } from "@/lib/infrastructure/site-schema-contract"
+import { previewRoutePaths } from "@/lib/infrastructure/preview-route-paths"
+import { registerGlobalPreviews } from "@/lib/infrastructure/mcp-preview"
 import { db } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
@@ -389,6 +392,7 @@ function serializeSchemaTemplate(t: {
 
 /** The demoDeployment sub-object every create/update_website_template response carries. */
 const DEMO_DEPLOYMENT_OUTPUT_SHAPE = z.object({
+  sourceVersion: z.string().nullable().optional(),
   status: z.enum(["ok", "failed", "skipped"]),
   error: z.string().optional(),
   deploymentId: z.string().optional(),
@@ -777,6 +781,8 @@ const handler = createMcpHandler(
         if (auth && !auth.scopes.includes(required)) return scopeDenied(name, required)
         return toolHandler(...args)
       })
+
+    registerGlobalPreviews(server, () => authContext.getStore())
 
     // ── get_builder_guide ──────────────────────────────────────────────────
     // Kabar Nusa report bug 4: the full workflow used to live entirely in
@@ -1445,6 +1451,7 @@ const handler = createMcpHandler(
         },
         outputSchema: {
           ...WEBSITE_TEMPLATE_OUTPUT_SHAPE,
+          installation: z.object({ schemaTemplateId: z.string(), schemaTemplateSlug: z.string(), schemaVersion: z.string(), requirements: z.array(z.unknown()) }),
           fileSizes: z.array(FILE_SIZE_OUTPUT).optional().describe("Only populated when listPathsOnly was true. bytes/sha256 are of the real (decoded) bytes, so a binary asset's sha256 matches `sha256sum` of the file on disk."),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -1455,7 +1462,7 @@ const handler = createMcpHandler(
 
         const template = await db.websiteTemplate.findFirst({
           where: { deletedAt: null, OR: [{ id }, { slug: id }] },
-          include: { schemaTemplate: { select: { id: true, name: true, slug: true } } },
+          include: { schemaTemplate: { select: { id: true, name: true, slug: true, schema: true, sourceVersion: true } } },
         })
         if (!template) return notFound("Website Template", id)
 
@@ -1470,7 +1477,7 @@ const handler = createMcpHandler(
           files = allFiles.filter((f) => wanted.has(f.path))
         }
 
-        const structured = { ...serializeWebsiteTemplate({ ...template, files }), ...(fileSizes ? { fileSizes } : {}) }
+        const structured = { ...serializeWebsiteTemplate({ ...template, files }), installation: { schemaTemplateId: template.schemaTemplate.id, schemaTemplateSlug: template.schemaTemplate.slug, schemaVersion: template.schemaTemplate.sourceVersion.toISOString(), requirements: schemaRequirements(template.schemaTemplate.schema) }, ...(fileSizes ? { fileSizes } : {}) }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
@@ -1523,6 +1530,7 @@ const handler = createMcpHandler(
             `encoding: "base64" and base64 content (no data: prefix); only for ${BINARY_ASSET_EXTENSIONS.join("/")}, ` +
             "max 1MB each and 5MB in total. Put big photos in the demo's media library (upload_demo_media) instead.",
           ),
+          deployDemo: z.boolean().optional().describe("Explicitly release a hosted catalog demo. For interactive preview use start_preview."),
           published: z.boolean().optional().describe(
             "true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately.",
           ),
@@ -1538,7 +1546,7 @@ const handler = createMcpHandler(
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, idempotencyKey, dryRun, verifyBuild, background, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
+      async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, deployDemo, idempotencyKey, dryRun, verifyBuild, background, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (published && !dryRun) {
@@ -1745,13 +1753,14 @@ const handler = createMcpHandler(
         })
 
         const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
-        const demo = await deployWebsiteTemplateDemo({
+        const demo = deployDemo ? await deployWebsiteTemplateDemo({
           id: template.id,
+          sourceVersion: template.sourceVersion,
           slug: template.slug,
           files: parsedFiles.data,
           schemaTemplate,
           seedMissingContent,
-        })
+        }) : null
 
         // Re-read rather than patch the in-memory `template` by hand —
         // deployWebsiteTemplateDemo persists the authoritative demo* fields
@@ -1763,7 +1772,7 @@ const handler = createMcpHandler(
           : []
         const structured = {
           ...serializeWebsiteTemplateSummary(saved),
-          demoDeployment: describeDemoDeployment(demo),
+          demoDeployment: demo ? { ...describeDemoDeployment(demo), sourceVersion: template.sourceVersion.toISOString() } : { status: "skipped" as const },
           ...(pendingApprovals.length ? { pendingApprovals } : {}),
         }
         return {
@@ -1800,6 +1809,7 @@ const handler = createMcpHandler(
           schema: schemaTemplateBundleSchema.optional().describe("Full replacement for the backing Schema Template's groups/contentTypes/singleTypes/components. Call list_field_types first — don't guess an options shape."),
           published: z.boolean().optional().describe("true REQUESTS publication: the item is saved as a draft and a super admin must approve it in the dashboard (returned in pendingApprovals; needs the publish scope). false unpublishes immediately."),
           expectedVersion: z.string().optional().describe("The `sourceVersion` you last read for this template (from get_website_template) — NOT `updatedAt`, which also moves on every demo redeploy even with no source change. If someone else changed files/schema since, this rejects with code: \"CONFLICT\" instead of silently overwriting their change — re-read and retry with the fresh value."),
+          deployDemo: z.boolean().optional().describe("Source changes are saved without deploying by default. Set true only for an explicit catalog demo release."),
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
           confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
@@ -1818,7 +1828,7 @@ const handler = createMcpHandler(
         // destructive tools behind confirmation must treat this as one.
         annotations: { destructiveHint: true, idempotentHint: false, openWorldHint: true },
       },
-      async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background, restoreFromVersion, restoreSchema }) {
+      async function updateWebsiteTemplateTool({ id, name, icon, description, files, changedFiles, deletedFiles, schema, published, expectedVersion, deployDemo, confirmSharedUpdate, confirmRemoveDemoContent, dryRun, verifyBuild, background, restoreFromVersion, restoreSchema }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (published === true && !dryRun) {
@@ -1982,7 +1992,7 @@ const handler = createMcpHandler(
             }
           }
           return tx.websiteTemplate.update({
-            where: { id: existing.id },
+            where: { id: existing.id, ...(expectedVersion ? { sourceVersion: existing.sourceVersion } : {}) },
             data: {
               ...(name !== undefined ? { name } : {}),
               ...(icon !== undefined ? { icon } : {}),
@@ -1999,6 +2009,7 @@ const handler = createMcpHandler(
             },
           })
         }, { timeout: 20000 }).catch((error: unknown) => {
+          if (expectedVersion && (error as { code?: string })?.code === "P2025") return null
           if (error instanceof DemoContentError) return error
           throw error
         })
@@ -2031,7 +2042,7 @@ const handler = createMcpHandler(
         // A real file OR schema change warrants a redeploy (the demo needs
         // to reflect either) — a metadata-only edit (name/icon/description/
         // published) shouldn't rebuild it.
-        if (filesData !== undefined || schemaUpdated) {
+        if (deployDemo === true && (filesData !== undefined || schemaUpdated)) {
           // Use the latest definition after an in-place schema update.
           const freshSchemaTemplate = schemaUpdated
             ? await db.schemaTemplate.findUnique({ where: { id: existing.schemaTemplate.id } })
@@ -2039,6 +2050,7 @@ const handler = createMcpHandler(
           const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
           const demo = await deployWebsiteTemplateDemo({
             id: template.id,
+          sourceVersion: template.sourceVersion,
             slug: template.slug,
             files: filesData ?? (template.files as unknown as WebsiteTemplateFile[]),
             schemaTemplate: freshSchemaTemplate || existing.schemaTemplate,
@@ -2046,7 +2058,7 @@ const handler = createMcpHandler(
           const saved = (await db.websiteTemplate.findUnique({ where: { id: template.id } })) || template
           const structured = {
             ...serializeWebsiteTemplateSummary(saved),
-            demoDeployment: describeDemoDeployment(demo),
+            demoDeployment: { ...describeDemoDeployment(demo), sourceVersion: template.sourceVersion.toISOString() },
             ...(pendingApprovals.length ? { pendingApprovals } : {}),
           }
           return {
@@ -2344,23 +2356,25 @@ const handler = createMcpHandler(
         title: "Get Website Template Demo Status (Read-Only)",
         description: "Read a Website Template's demo deployment status WITHOUT redeploying anything — the build stage of its most recent deploy, a FRESH HTTP check of the homepage AND (if the demo has a sitemap.xml) up to 5 more real routes from it, and error logs when something's broken: build log errors if the build itself failed, or RUNTIME log errors if the build succeeded but a specific route still 500s at request time. Call this instead of create_website_template/update_website_template just to check on an existing demo, and before deciding whether redeploy_website_template_demo is actually needed.",
         inputSchema: {
+          paths: previewRoutePaths.optional(),
           id: z.string().describe("Website Template id or slug"),
         },
         outputSchema: {
+          sourceVersion: z.string().nullable().optional(),
           deployed: z.boolean(),
           demoUrl: z.string().nullable(),
           deploymentId: z.string().nullable(),
           state: z.string().optional(),
           verified: z.boolean().optional(),
           verificationError: z.string().optional(),
-          routes: z.array(z.object({ path: z.string(), verified: z.boolean(), error: z.string().optional() })).optional(),
+          routes: z.array(z.object({ path: z.string(), url: z.string(), sourceVersion: z.string().nullable(), status: z.number().optional(), verified: z.boolean(), error: z.string().optional() })).optional(),
           buildErrorLines: z.array(z.string()).optional(),
           runtimeErrorLines: z.array(z.string()).optional(),
           message: z.string(),
         },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
       },
-      async ({ id }) => {
+      async ({ id, paths }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
@@ -2388,7 +2402,7 @@ const handler = createMcpHandler(
         // demo whose every list/detail route 500'd still reported
         // `verified: true` as long as "/" rendered.
         const verification = existing.demoUrl
-          ? await verifyDemoRoutes(existing.demoUrl)
+          ? await verifyDemoRoutes(existing.demoUrl, { paths, includeHttpStatus: true })
           : { verified: false, routes: [] as { path: string; verified: boolean; error?: string }[] }
         const verificationError = verification.routes.find((r) => !r.verified)?.error
 
@@ -2429,7 +2443,8 @@ const handler = createMcpHandler(
           verificationError: buildFailed
             ? `Latest build ${status?.state}.${verification.verified ? " The URL above is still serving a PREVIOUS successful deployment, not this one." : ""} Check buildErrorLines.`
             : verificationError,
-          routes: verification.routes,
+          sourceVersion: existing.demoSourceVersion?.toISOString() ?? null,
+          routes: verification.routes.map(route => ({ ...route, url: existing.demoUrl!.replace(/\/$/, "") + route.path, sourceVersion: status?.state === "READY" ? existing.demoSourceVersion?.toISOString() ?? null : null })),
           buildErrorLines,
           runtimeErrorLines,
           message: buildFailed
@@ -2477,13 +2492,14 @@ const handler = createMcpHandler(
         const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
         const demo = await deployWebsiteTemplateDemo({
           id: existing.id,
+          sourceVersion: existing.sourceVersion,
           slug: existing.slug,
           files: existing.files as unknown as WebsiteTemplateFile[],
           schemaTemplate: existing.schemaTemplate,
         })
 
         const saved = (await db.websiteTemplate.findUnique({ where: { id: existing.id } })) || existing
-        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: describeDemoDeployment(demo) }
+        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: { ...describeDemoDeployment(demo), sourceVersion: existing.sourceVersion.toISOString() } }
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,

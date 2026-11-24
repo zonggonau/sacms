@@ -145,6 +145,8 @@ export function HostingDeploymentsView({
   const [isSavingLink, setIsSavingLink] = useState(false)
 
   // Redeploy (re-run the existing hosting project, no new files)
+  const [sourceRevision, setSourceRevision] = useState<string | null>(null)
+  const [hasProduction, setHasProduction] = useState(false)
   const [isRedeploying, setIsRedeploying] = useState(false)
 
   // Delete project (irreversible — wipes the Vercel project; no auto-redeploy)
@@ -234,13 +236,15 @@ export function HostingDeploymentsView({
 
       if (deployRes.ok) {
         const deployData = await deployRes.json()
+        setSourceRevision(deployData.sourceRevision ?? null)
+        setHasProduction(deployData.hasProduction === true)
         const domainData = domainRes?.ok ? await domainRes.json() : null
 
         const activeVercelUrl = deployData.vercelDeploymentUrl || domainData?.vercelDeployment?.url || null
         const activeProjectId = deployData.vercelProjectId || domainData?.vercelDeployment?.projectId || null
         const activeCustomDomain = deployData.customDomain || domainData?.vercelDeployment?.customDomain || null
 
-        if (activeVercelUrl) {
+        if (activeVercelUrl && deployData.hasProduction) {
           const formattedUrl = activeVercelUrl.startsWith("http") ? activeVercelUrl : `https://${activeVercelUrl}`
           let host = formattedUrl
           try {
@@ -256,6 +260,8 @@ export function HostingDeploymentsView({
           })
           setLinkUrlInput(formattedUrl)
           setLinkProjectIdInput(activeProjectId || "")
+        } else {
+          setVercelDeployment(null)
         }
       }
     } catch {
@@ -322,16 +328,16 @@ export function HostingDeploymentsView({
 
   const handleRedeploy = async () => {
     setIsRedeploying(true)
-    const toastId = toast.loading("Memulai redeploy...")
+    const toastId = toast.loading("Memulai deploy production...")
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "redeploy" }),
+        body: JSON.stringify({ action: "deploy-production", sourceRevision }),
       })
       const data = await res.json()
       if (res.ok && data.success) {
-        toast.success("Redeploy berhasil dimulai — perubahan akan aktif setelah build selesai.", { id: toastId })
+        toast.success("Deploy production dimulai — perubahan akan aktif setelah build selesai.", { id: toastId })
         await fetchDeploymentData()
         if (data.url) runHealthPing(data.url)
       } else {
@@ -656,12 +662,12 @@ export function HostingDeploymentsView({
                 variant="outline"
                 size="sm"
                 onClick={handleRedeploy}
-                disabled={isRedeploying || !vercelDeployment}
-                title="Build ulang deployment yang sudah ada — gunakan ini setelah mengubah variabel Environment"
+                disabled={isRedeploying || (!sourceRevision && !hasProduction)}
+                title="Rilis versi source tersimpan ke production"
                 className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
               >
                 <Rocket className={`h-3.5 w-3.5 mr-1.5 text-primary ${isRedeploying ? "animate-pulse" : ""}`} />
-                {isRedeploying ? "Me-redeploy..." : "Redeploy"}
+                {isRedeploying ? "Memulai deploy..." : hasProduction ? "Redeploy Production" : "Deploy Production"}
               </Button>
               <Button
                 variant="outline"

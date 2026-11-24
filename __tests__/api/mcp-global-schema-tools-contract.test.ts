@@ -590,7 +590,10 @@ describe("SaCMS Global MCP — binary assets in Website Template bundles (source
     const demo = readFileSync(join(__dirname, "../../src/lib/infrastructure/deploy-website-template-demo.ts"), "utf-8")
     expect(demo).toMatch(/websiteTemplate\.files\.map\(\(f\) => \(\{ name: f\.path, content: f\.content, encoding: f\.encoding \}\)\)/)
     const apply = readFileSync(join(__dirname, "../../src/lib/infrastructure/apply-website-template.ts"), "utf-8")
-    expect(apply).toMatch(/templateFiles\.map\(\(\{ path, content, encoding \}\) => \(\{ name: path, content, encoding \}\)\)/)
+    expect(apply).toContain('encoding: encoding ?? "utf-8"')
+    expect(apply).toContain("tx.mcpDeploymentSource.create")
+    // Binary content is retained with its declared encoding.
+    expect(apply).toMatch(/templateFiles\.map\(\(\{ path, content, encoding \}\) => \(\{ name: path, content, encoding:/)
   })
 })
 

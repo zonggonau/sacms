@@ -220,7 +220,7 @@ export async function deployToVercel(
   // this tenant's branded subdomain first (best-effort, idempotent) so a
   // brand-new project shows it immediately instead of only from the next
   // deploy onward.
-  if (data.projectId && tenantSlug) {
+  if (data.projectId && tenantSlug && target === "production") {
     await ensureBrandedSubdomain(data.projectId, tenantSlug)
   }
   const deploymentUrl = data.url ? `https://${data.url}` : undefined
@@ -274,10 +274,12 @@ export async function deployToVercel(
  */
 async function fetchLatestProductionDeployment(
   projectId: string,
+  readyOnly = false,
 ): Promise<{ uid: string; url?: string; readyState?: string } | null> {
   const headers = await getVercelHeaders()
   const teamId = await getVercelTeamId()
   const listParams = new URLSearchParams({ projectId, target: "production", limit: "1" })
+  if (readyOnly) listParams.set("state", "READY")
   if (teamId) listParams.set("teamId", teamId)
   const listRes = await fetch(`${VERCEL_API_BASE}/v7/deployments?${listParams.toString()}`, { headers })
   if (!listRes.ok) {
@@ -287,6 +289,16 @@ async function fetchLatestProductionDeployment(
   const listData = await listRes.json().catch(() => ({}))
   const latest = Array.isArray(listData.deployments) ? listData.deployments[0] : null
   return latest?.uid ? latest : null
+}
+
+/** null means the provider could not confirm the current state. */
+export async function hasReadyProduction(projectId: string): Promise<boolean | null> {
+  if (!await getVercelToken()) return null
+  try {
+    return Boolean(await fetchLatestProductionDeployment(projectId, true))
+  } catch {
+    return null
+  }
 }
 
 /**

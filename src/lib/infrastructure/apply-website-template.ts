@@ -3,9 +3,9 @@ import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
 import { randomUUID } from "node:crypto"
 import { websiteTemplateRunKey, type TemplateRun } from "./website-template-run"
-import { deployTenantFrontend } from "./deploy-frontend"
+import { schemaRequirements } from "./site-schema-contract"
+import { buildManifest } from "./mcp-deployment-source"
 import {
-  resolveApiOrigin,
   resolveWebsiteTemplateEnvVars,
   getTenantCustomEnvVarList,
   setTenantCustomEnvVars,
@@ -22,7 +22,7 @@ export type ApplyWebsiteTemplateResult =
       ok: true
       imported: number
       envVarsApplied: string[]
-      deployment: Awaited<ReturnType<typeof deployTenantFrontend>>
+      sourceRevision: string
     }
   | { ok: false; code: "WORKSPACE_NOT_EMPTY"; message: string }
 
@@ -34,7 +34,7 @@ const APPLY_LEASE_MS = 10 * 60_000
  * Schema Template into this workspace's real Content Types/Single Types/
  * Components, pre-fills the Environment tab from the bundle's
  * `.env.example` (resolving any `{{SACMS_*}}` placeholder to this
- * workspace's real values), then deploys the bundled frontend. Extracted
+ * workspace's real values), then saves the bundled frontend as a workspace revision. Extracted
  * from api/tenant/[tenant]/website-templates/[id]/apply/route.ts (Kabar
  * Nusa report P0: applying a template was dashboard-only, no MCP path at
  * all) so both callers run the exact same logic instead of two copies
@@ -118,18 +118,14 @@ export async function applyWebsiteTemplateToTenant(
     }
 
     // Keep each file's encoding so binary assets (logo, fonts) deploy as real bytes.
-    const files = templateFiles.map(({ path, content, encoding }) => ({ name: path, content, encoding }))
-    const deployment = await deployTenantFrontend(tenantId, tenantSlug, resolveApiOrigin(), files)
-    if (["ERROR", "CANCELED", "CANCELLED"].includes(deployment.state.toUpperCase())) {
-      throw new Error("Website deployment did not start successfully")
-    }
+    const files = templateFiles.map(({ path, content, encoding }) => ({ name: path, content, encoding: encoding ?? "utf-8" as const }))
     const completed = await db.$transaction(async (tx) => {
       const removed = await tx.setting.deleteMany({ where: { key, value: claimedValue } })
       if (!removed.count) return false
       await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: websiteTemplate.id } })
-      return true
+      return tx.mcpDeploymentSource.create({ data: { tenantId, schemaSnapshot: schemaRequirements(websiteTemplate.schemaTemplate.schema), deploymentId: "draft:" + randomUUID(), files, manifest: buildManifest(files) as unknown as object }, select: { id: true } })
     })
-    return completed ? { ok: true, imported, envVarsApplied, deployment } : busy
+    return completed ? { ok: true, imported, envVarsApplied, sourceRevision: completed.id } : busy
   } finally {
     await db.setting.updateMany({
       where: { key, value: claimedValue },

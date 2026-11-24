@@ -130,6 +130,7 @@ describe("deployWebsiteTemplateDemo", () => {
         demoUrl: "https://demo-modern-dark.sites.sacms.cloud",
         demoDeployedAt: expect.any(Date),
         demoDeploymentId: "dpl_1",
+        demoSourceVersion: null,
       },
     })
   })
@@ -288,6 +289,15 @@ describe("verifyDemoRoutes", () => {
   const originalFetch = global.fetch
   afterEach(() => {
     global.fetch = originalFetch
+  })
+
+  it("checks explicit detail paths even without a sitemap and reports HTTP status", async () => {
+    const fetch = vi.fn(async (url: string) => new Response("page", { status: url.endsWith("/missing") ? 404 : 200 }))
+    global.fetch = fetch as typeof global.fetch
+    const result = await verifyDemoRoutes("https://demo.example", { paths: ["/", "/detail/42", "/missing", "/detail/42"] })
+    expect(fetch.mock.calls.map(([url]) => url)).toEqual(["https://demo.example", "https://demo.example/detail/42", "https://demo.example/missing"])
+    expect(result.routes.map(route => route.status)).toEqual([200, 200, 404])
+    expect(result.verified).toBe(false)
   })
 
   it("checks every route a real sitemap.xml lists, and fails overall if even one of them 500s", async () => {

@@ -1,11 +1,11 @@
+import { getLatestDeploymentSource } from "@/lib/infrastructure/mcp-deployment-source"
 import { NextResponse } from "next/server"
 import { getWebsiteTemplateRun, websiteTemplateRunKey } from "@/lib/infrastructure/website-template-run"
 import { db, getTenantDb } from "@/lib/database"
-import { addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
+import { hasReadyProduction, addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
-import { getFrontendDeployToken, resolveApiOrigin } from "@/lib/infrastructure/frontend-env"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 import { wipeTenantSchema } from "@/lib/schema-wipe"
 
@@ -55,6 +55,8 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
       hostingStatus,
       hostingExpiresAt,
       isHostingActive,
+      sourceRevision: (await db.mcpDeploymentSource.findFirst({ where: { tenantId }, orderBy: { createdAt: "desc" }, select: { id: true } }))?.id ?? null,
+      hasProduction: vercelProjectId ? (await hasReadyProduction(vercelProjectId)) ?? Boolean(vercelUrl) : false,
       vercelDeploymentUrl: vercelUrl,
       vercelProjectId,
       customDomain,
@@ -70,7 +72,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
 export const POST = withStaffAuth(
   async (req, _context, { access, session }) => {
     const body = await req.json().catch(() => ({}))
-    const { action = "deploy", files = [], domain } = body
+    const { action, domain } = body
 
     const tenant = access.tenant
     const tenantId = tenant.id
@@ -125,7 +127,7 @@ export const POST = withStaffAuth(
 
     // ── BILLING GATE: deploying to production requires a paid plan ──────────
     const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
-    if ((action === "deploy" || action === "redeploy" || action === "domain") && !isPaid) {
+    if ((action === "deploy-production" || action === "deploy" || action === "redeploy" || action === "domain") && !isPaid) {
       return apiError("plan_limit", {
         message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
         details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
@@ -133,12 +135,23 @@ export const POST = withStaffAuth(
     }
 
     // ── ACTION: REDEPLOY (re-run the existing project, no new files) ───────
-    if (action === "redeploy") {
+    if (action === "deploy-production") {
       try {
-        const deployResult = await redeployTenantFrontend(tenantId, tenantSlug)
+        const source = await getLatestDeploymentSource(tenantId)
+        if ((source?.id ?? null) !== body.sourceRevision) return NextResponse.json({ error: "Versi source berubah. Refresh Hosting sebelum merilis." }, { status: 409 })
+        if (!source && !(await db.tenant.findUnique({ where: { id: tenantId }, select: { vercelDeploymentUrl: true } }))?.vercelDeploymentUrl) return NextResponse.json({ error: "Simpan source website sebelum deploy production." }, { status: 400 })
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const deployResult = source
+          ? await deployTenantFrontend(tenantId, tenantSlug, resolveApiOrigin(), source.files)
+          : await redeployTenantFrontend(tenantId, tenantSlug)
+        if (source && deployResult.deploymentId) {
+          const key = tenantId + "_productionSource_" + deployResult.deploymentId
+          await db.setting.upsert({ where: { key }, create: { key, tenantId, value: source.id }, update: { value: source.id } })
+        }
         return NextResponse.json({
           success: true,
           ...deployResult,
+          sourceVersion: source?.id ?? null,
           hostType: deployResult.simulated ? "simulation" : "vercel",
         })
       } catch (err: any) {
@@ -378,122 +391,7 @@ export const POST = withStaffAuth(
       return NextResponse.json({ success: true })
     }
 
-    // ── ACTION 2: 1-CLICK DEPLOY TO VERCEL ──────────────────────────────────
-    // Need the token's own plaintext value (not just that it exists) to bake
-    // into the placeholder page below when no real files are supplied yet.
-    // Same token `deployTenantFrontend` resolves internally via
-    // `resolveFrontendEnv` — reuse it here instead of minting a second,
-    // separately-named one; `getFrontendDeployToken` is idempotent.
-    const deployToken = await getFrontendDeployToken(tenantId, tenantSlug)
-
-    // req.nextUrl.origin is wherever the admin's own browser hit this route
-    // from — right for a real public domain, but a dead address to bake
-    // into the placeholder's own fetch call when triggered from local dev.
-    const origin = resolveApiOrigin()
-    const projectName = `sacms-${tenantSlug}`
-
-    // Prepare Next.js starter files if not provided
-    const deployFiles = files.length > 0 ? files : [
-      {
-        name: "package.json",
-        content: JSON.stringify({
-          name: projectName,
-          version: "1.0.0",
-          private: true,
-          scripts: {
-            dev: "next dev",
-            build: "next build",
-            start: "next start"
-          },
-          dependencies: {
-            next: "15.2.0",
-            react: "19.0.0",
-            "react-dom": "19.0.0",
-            "lucide-react": "^1.16.0",
-            tailwindcss: "^4.0.0"
-          }
-        }, null, 2)
-      },
-      {
-        name: "app/layout.tsx",
-        /* eslint-disable no-restricted-syntax -- scaffolded source for the
-         * end user's own standalone deployed site, not SaCMS's dashboard UI;
-         * that site has its own styling, not SaCMS's theme tokens. */
-        content: `export const metadata = { title: "${tenant.name} - Official Site" }
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="id">
-      <head>
-        <script src="https://cdn.tailwindcss.com"></script>
-      </head>
-      <body className="bg-slate-950 text-slate-50 min-h-screen antialiased">
-        {children}
-      </body>
-    </html>
-  )
-}`,
-        /* eslint-enable no-restricted-syntax */
-      },
-      {
-        name: "app/page.tsx",
-        /* eslint-disable no-restricted-syntax -- scaffolded source for the
-         * end user's own standalone deployed site, not SaCMS's dashboard UI. */
-        content: `import { Globe, ArrowRight, Sparkles } from "lucide-react"
-
-async function getSiteData() {
-  try {
-    const res = await fetch("${origin}/api/public/${tenantSlug}/content/articles?pagination[pageSize]=6", {
-      headers: { "Authorization": "Bearer ${deployToken}" },
-      next: { revalidate: 60 }
-    })
-    return await res.json()
-  } catch (err) {
-    return { data: [] }
-  }
-}
-
-export default async function HomePage() {
-  const cmsData = await getSiteData()
-  return (
-    <main className="max-w-5xl mx-auto px-6 py-20">
-      <header className="text-center space-y-4 mb-16">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
-          <Sparkles className="w-3.5 h-3.5" /> Powered by SaCMS Cloud Edge
-        </div>
-        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">${tenant.name}</h1>
-        <p className="text-slate-400 max-w-xl mx-auto text-sm md:text-base">Website produksi otomatis terhubung ke SaCMS Headless Content Hub.</p>
-      </header>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cmsData.data && cmsData.data.length > 0 ? (
-          cmsData.data.map((item: any) => (
-            <article key={item.id} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 hover:border-emerald-500/40 transition-all">
-              <h2 className="text-lg font-bold text-white">{item.title || item.name || "Konten"}</h2>
-              <p className="text-xs text-slate-400 line-clamp-3">{item.excerpt || item.description || "Deskripsi konten..."}</p>
-            </article>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12 border border-dashed border-slate-800 rounded-2xl text-slate-400 text-sm">
-            Website Anda telah online di Cloud Edge! Tambahkan konten pertama Anda di dashboard SaCMS.
-          </div>
-        )}
-      </div>
-    </main>
-  )
-}`,
-        /* eslint-enable no-restricted-syntax */
-      }
-    ]
-
-    // Execute the deploy + persist deployment info — shared with AI Site's
-    // "Publish" action so both end up on the exact same Vercel project.
-    const deployResult = await deployTenantFrontend(tenantId, tenantSlug, origin, deployFiles)
-
-    return NextResponse.json({
-      success: true,
-      ...deployResult,
-      hostType: deployResult.simulated ? "simulation" : "vercel",
-    })
+    return NextResponse.json({ error: "Gunakan Deploy Production di Infrastruktur → Hosting." }, { status: 400 })
   },
   { minRole: "admin" },
 )

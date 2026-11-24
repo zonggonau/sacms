@@ -15,11 +15,15 @@
 
 import { createMcpHandler } from "mcp-handler"
 import { z } from "zod"
+import { activeSchema, schemaRequirements, compareSchema } from "@/lib/infrastructure/site-schema-contract"
+import { startBackgroundOperation, getOperation } from "@/lib/infrastructure/global-mcp-operations"
+import { previewRoutePaths } from "@/lib/infrastructure/preview-route-paths"
+import { registerWorkspacePreviews } from "@/lib/infrastructure/mcp-preview"
 import { db, getTenantDb } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
-import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs, promoteDeployment, getRuntimeLogs, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
+import { deployToVercel, getDeploymentStatus, getLatestDeployment, getDeploymentFiles, getDeploymentBuildLogs, getRuntimeLogs, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
 import {
   startOrResumeBuildRun,
   getBuildRun,
@@ -589,14 +593,38 @@ async function countComponentDependents(
 
 // ─── MCP Handler with Complete CRUD Capabilities ─────────────────────────────
 
+async function trackWorkspaceOperation(kind: "apply_website_template" | "deploy_site_version" | "deploy_to_sacms", tenantId: string, work: () => Promise<{ isError?: boolean; structuredContent?: unknown; content: { type: string; text: string }[] }>) {
+  const operation = await startBackgroundOperation(kind, null, async () => {
+    const response = await work()
+    const failed = response.isError || (response.structuredContent as { ok?: boolean } | undefined)?.ok === false
+    return { failed, result: response.structuredContent, error: failed ? response.content[0]?.text : undefined }
+  }, tenantId)
+  const structured = { operationId: operation.id, status: "running" as const }
+  return { structuredContent: structured, content: [{ type: "text" as const, text: JSON.stringify(structured) }] }
+}
+
 const handler = createMcpHandler(
   async (server) => {
+    registerWorkspacePreviews(server, () => {
+      const auth = authContext.getStore()
+      return auth && { tenantId: auth.tenantId, tenantSlug: auth.tenantSlug, canRead: hasScope(auth, "read"), canWrite: hasScope(auth, "write") && auth.isHostingPlanPaid }
+    })
 
     // =========================================================================
     // 1. FULL SCHEMA & INTROSPECTION TOOLS
     // =========================================================================
 
     // ── get_full_schema ──────────────────────────────────────────────────────
+    server.registerTool("get_operation_status", { description: "Poll an apply or deploy operation in the active workspace.", inputSchema: { operationId: z.string() } }, async ({ operationId }) => {
+      const auth = authContext.getStore()
+      if (!auth) return UNAUTHORIZED
+      if (!hasScope(auth, "read")) return permissionDenied("read")
+      const op = await getOperation(operationId, auth.tenantId)
+      if (!op) return { isError: true, content: [{ type: "text" as const, text: "Operation not found" }] }
+      const structured = { operationId, kind: op.kind, status: op.status, result: op.result, error: op.error, startedAt: op.startedAt.toISOString(), finishedAt: op.finishedAt?.toISOString() ?? null }
+      return { structuredContent: structured, content: [{ type: "text" as const, text: JSON.stringify(structured) }] }
+    })
+
     server.registerTool(
       "get_full_schema",
       {
@@ -2639,14 +2667,11 @@ Default stack (standard baseline for every frontend built here, not optional unl
 10. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
 11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
 
-## Phase 4 — Ship it (deploy to STAGING, verify, then explicitly promote — nothing goes live by itself)
-12. For a BRAND-NEW build, call \`deploy_to_sacms\` with the full \`files\` set (pass the \`runId\` from Phase 0, and consider passing \`idempotencyKey\` — a string unique to this submission — so a retry after a lost response returns the same deployment instead of a second one). This deploys to a STAGING candidate, NOT the live domain — a Vercel build reporting READY only means the code compiled, it says nothing about whether the app actually serves correctly at runtime (confirmed live: a rich-text patch once reported READY while the production domain itself returned HTTP 500 on every request). If the user explicitly wants a brand-new site rather than a revision of whatever is already live, pass intent: "create" — you'll get a TARGET_CONFLICT back if one already exists instead of it being silently overwritten; confirm with the user, then retry with confirmOverwrite: true. Binary assets (a PNG icon, a font) go in \`files\` with \`encoding: "base64"\`. The response includes \`deploymentUrl\` (this candidate's own fetchable URL) and \`sourceRevision\` — keep both for the next steps.
-12b. For a REVISION of a site that's already live ("ubah warna header", "ganti logo", "tambahkan dark mode"), call \`get_deployment_source\` first (manifestOnly: true if you just need to see what's there) to get a \`sourceRevision\` — if none is persisted yet (a deployment from before this feature, or made outside these tools), a full read automatically imports it so you get a real one back. A stored snapshot is re-validated on every read too — if an older one turns out corrupted (a wrapper-directory path, a bad binary asset), it's transparently repaired via a fresh import and comes back with \`code: "SOURCE_REPAIRED"\`, or \`code: "SOURCE_NEEDS_REIMPORT"\` if you asked for specific \`paths\` so no repair ran. If a full read comes back with \`code: "SOURCE_INCOMPLETE"\` (truncated/partial — raise maxFiles) or \`code: "SOURCE_INVALID"\` (a binary asset failed its own format's signature check, listed in \`invalidAssets\`), don't treat it as a usable base yet. Make the targeted change, then call \`deploy_website_patch\` with \`baseSourceRevision\` and only the \`changedFiles\`/\`deletedFiles\` — never resend the whole project for a small ask, and never invent what the current file looks like. This ALSO deploys to staging, same as deploy_to_sacms — the live site is untouched until you promote. If it rejects with CONFLICT (\`SOURCE_IMPORT_REQUIRED\` when the base was never persisted, or \`SOURCE_CORRUPTED\` when the stored revision itself fails validation), re-read the source with \`get_deployment_source\` and retry with the fresh \`sourceRevision\` it gives you. \`list_website_versions\`/\`rollback_website\` exist if the user wants to go back to an earlier revision instead — \`rollback_website\` is the one exception that DOES go straight to production (it's the emergency-recovery path) and runs the same validation, refusing a corrupted target with \`SOURCE_CORRUPTED\` too, so it never reproduces an old bug.
-13. Call \`get_deployment_status\` with the candidate's \`deploymentId\` to confirm it's READY (built successfully) before trying to verify or promote it — a build that's still BUILDING or came back ERROR isn't ready for either. If the state comes back errored/failed, call \`get_deployment_build_logs\` to see WHY before fixing and redeploying.
-14. Once READY, call \`promote_deployment\` with that SAME \`deploymentId\` — this is the ONLY way a staging candidate reaches the live domain. Pass \`checks: [{path, expectedText}, ...]\` covering every page/feed/manifest file that matters (home, a detail page, an RSS/JSON feed, a PWA manifest) — omit it and it still checks "/" by default, but never promotes fully blind. For a binary asset (a PWA icon), don't rely on status 200 alone — add \`expectedSignature\` (its format) and/or \`expectedChecksum\` (sha256 of the exact bytes you deployed) so a corrupted file is actually caught. If even one check fails, you get back \`code: "CHECKS_FAILED"\` and production is untouched — nothing was promoted; fix the issue (call \`get_deployment_runtime_logs\` with this deploymentId to see the actual request/response activity behind an HTTP 500 — build logs alone won't show it) and try again, rather than resubmitting the same deploy. Only once this returns \`promoted: true\` has anything a visitor sees actually changed; its \`productionUrl\` is the real public domain to report to the user.
-15. (Optional, for extra confidence after promotion) \`verify_deployment_url\` can re-check the production domain directly — pass \`deploymentId\` to confirm production is ACTUALLY serving what you just promoted, which comes back as \`code: "PRODUCTION_VERSION_MISMATCH"\` if Vercel's alias propagation is still catching up (retry shortly, not a real failure). This is a convenience re-check, not the promotion gate — that's \`promote_deployment\`, step 14.
-16. If a deploy_to_sacms/deploy_website_patch/promote_deployment response never arrives (network drop, tool timeout), do NOT blindly resubmit — call \`get_build_run\` with the \`runId\` (or the \`idempotencyKey\` you submitted with, if you used one) to see what actually happened before deciding whether to retry. A run sitting in stage \`"staged"\` means it deployed to staging but was never promoted — check whether that's still what you want before promoting it now.
-17. If deploy_to_sacms/deploy_website_patch/promote_deployment/rollback_website rejects with \`code: "RATE_LIMITED"\`, wait \`retryAfterSeconds\` before retrying — and if you passed an \`idempotencyKey\`, retry with that EXACT SAME key (it's safe to immediately after a rate-limit rejection specifically, unlike a genuinely in-flight submission).
+## Phase 4 — Review and release
+12. For a new site or an applied template, open start_preview. Read files with read_preview_file and update the same Sandbox with apply_preview_changes and expectedRevision.
+13. Open accessUrl from get_preview_url and check the homepage and relevant routes with the current workspace content.
+14. Save the reviewed source with save_preview_changes and expectedSourceVersion. Give the administrator the Hosting link. Only the administrator releases production there.
+15. For existing staging builds, get_deployment_status and verify_deployment_url can verify their deploymentId. Inspect runtime errors before a release. deploy_website_patch and rollback_website create staging candidates only.
 
 ## Rules that apply throughout
 - Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically. The env var a deployed frontend reads to call the SaCMS API is \`SACMS_API_KEY\` (confirm via \`get_api_info\`/\`list_deployment_env\`, never assume a name).
@@ -2850,16 +2875,20 @@ Default stack (standard baseline for every frontend built here, not optional unl
       "apply_website_template",
       {
         title: "Apply a Catalog Website Template to This Workspace",
-        description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and deploys its bundled frontend — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Only works on a workspace with NO existing Content Types/Single Types/Components (call get_full_schema first to confirm it's actually empty) — applying on top of unrelated existing structures would silently skip slug-conflicting models and leave a confusing mix behind. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
+        description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and saves its bundled frontend for Sandbox editing — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Only works on a workspace with NO existing Content Types/Single Types/Components (call get_full_schema first to confirm it's actually empty) — applying on top of unrelated existing structures would silently skip slug-conflicting models and leave a confusing mix behind. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
         inputSchema: {
+          dryRun: z.boolean().optional(),
+          background: z.boolean().optional(),
           templateId: z.string().describe("Website Template id or slug to apply, e.g. from the dashboard's Website Template gallery URL or card."),
         },
         outputSchema: z.union([
+          z.object({ mode: z.literal("dry_run"), plan: z.record(z.string(), z.unknown()) }),
+          z.object({ operationId: z.string(), status: z.literal("running") }),
           z.object({
             ok: z.literal(true),
             imported: z.number(),
             envVarsApplied: z.array(z.string()),
-            deploymentUrl: z.string(),
+            sourceRevision: z.string(),
             message: z.string(),
           }),
           z.object({
@@ -2869,7 +2898,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
           }),
         ]),
       },
-      async ({ templateId }) => {
+      async function applyTemplate({ templateId, dryRun, background }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -2888,6 +2917,39 @@ Default stack (standard baseline for every frontend built here, not optional unl
           return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
         }
 
+        if (dryRun) {
+          const [current, snapshot, tenantDb] = await Promise.all([activeSchema(auth.tenantId, auth.tenantSlug), getLatestDeploymentSource(auth.tenantId), getTenantDb(auth.tenantSlug)])
+          const { getWebsiteTemplateRun } = await import("@/lib/infrastructure/website-template-run")
+          const [run, contentType, singleType, component] = await Promise.all([
+            getWebsiteTemplateRun(auth.tenantId),
+            tenantDb.contentType.findFirst({ where: { tenantId: auth.tenantId }, select: { slug: true } }),
+            tenantDb.singleType.findFirst({ where: { tenantId: auth.tenantId, slug: { not: "site-settings" } }, select: { slug: true } }),
+            tenantDb.component.findFirst({ where: { tenantId: auth.tenantId }, select: { slug: true } }),
+          ])
+          const canApply = run ? run.templateId === websiteTemplate.id && run.expiresAt <= Date.now() : !(contentType || singleType || component)
+          const incoming = schemaRequirements(websiteTemplate.schemaTemplate.schema)
+          const exists = (m: typeof incoming[number]) => current.some(c => c.kind === m.kind && c.slug === m.slug)
+          const incomingFiles = websiteTemplate.files as { path: string; content: string; encoding?: string }[]
+          const incomingPaths = incomingFiles.map(f => f.path)
+          const oldFiles = new Map(snapshot?.files.map(f => [f.name, f]) ?? [])
+          const filesToReplace = incomingFiles.filter(file => {
+            const old = oldFiles.get(file.path)
+            return old && (old.content !== file.content || (old.encoding ?? "utf-8") !== (file.encoding ?? "utf-8"))
+          }).map(file => file.path)
+          const oldPaths = snapshot?.files.map(f => f.name) ?? []
+          const plan = {
+            templateVersion: websiteTemplate.sourceVersion.toISOString(), schemaTemplateId: websiteTemplate.schemaTemplateId,
+            canApply, resumesExistingRun: run?.templateId === websiteTemplate.id,
+            modelsToAdd: incoming.filter(m => !exists(m)), slugConflicts: incoming.filter(m => exists(m) && !(m.kind === "singleTypes" && m.slug === "site-settings")),
+            mergedModels: incoming.filter(m => exists(m) && m.kind === "singleTypes" && m.slug === "site-settings"),
+            filesToReplace, unchangedFiles: incomingPaths.filter(path => oldFiles.has(path) && !filesToReplace.includes(path)), filesToAdd: incomingPaths.filter(path => !oldPaths.includes(path)),
+            filesRemovedFromNewRevision: oldPaths.filter(path => !incomingPaths.includes(path)), existingSourceVersion: snapshot?.id ?? null,
+            contentImpact: { existingEntries: await tenantDb.contentEntry.count({ where: { tenantId: auth.tenantId, deletedAt: null } }), entriesDeleted: 0 },
+            policy: "Apply requires an empty workspace, except the built-in site-settings singleton; existing saved source remains in history.",
+          }
+          return { structuredContent: { mode: "dry_run" as const, plan }, content: [{ type: "text" as const, text: JSON.stringify(plan) }] }
+        }
+        if (background) return trackWorkspaceOperation("apply_website_template", auth.tenantId, () => applyTemplate({ templateId, dryRun: false, background: false }))
         const { applyWebsiteTemplateToTenant } = await import("@/lib/infrastructure/apply-website-template")
         const result = await applyWebsiteTemplateToTenant(auth.tenantId, auth.tenantSlug, websiteTemplate as any)
 
@@ -2900,8 +2962,8 @@ Default stack (standard baseline for every frontend built here, not optional unl
           ok: true as const,
           imported: result.imported,
           envVarsApplied: result.envVarsApplied,
-          deploymentUrl: result.deployment.url,
-          message: `✅ Website Template '${websiteTemplate.name}' diterapkan — ${result.imported} model schema dibuat, frontend sedang di-deploy ke ${result.deployment.url}.`,
+          sourceRevision: result.sourceRevision,
+          message: `✅ Website Template '${websiteTemplate.name}' diterapkan — ${result.imported} model schema dibuat, source website tersimpan untuk preview.`,
         }
         return {
           content: [{ type: "text" as const, text: structured.message }],
@@ -3059,8 +3121,9 @@ Default stack (standard baseline for every frontend built here, not optional unl
       "deploy_to_sacms",
       {
         title: "Deploy Website / App to SaCMS Cloud Hosting (Staging — Does NOT Go Live)",
-        description: "Deploy generated website frontend files (Next.js, HTML, React) to a STAGING candidate on SaCMS Cloud Hosting — NOT the live production domain. A Vercel build reporting READY only means the code compiled; it says nothing about whether the deployed app actually serves correctly at runtime (confirmed live: a patch reported READY while the production domain itself returned HTTP 500 on every request). Returns deploymentUrl — this candidate's own immutable, fetchable URL — and sourceRevision (pass THAT to deploy_website_patch as baseSourceRevision for the next targeted edit). Once you've checked the candidate actually works (fetch deploymentUrl yourself, or just pass checks straight to promote_deployment), call promote_deployment with this deploymentId to make it live — nothing a visitor sees changes until you do. Always deploys to this workspace's single hosting project (same one the dashboard's deploy button and AI Site's Publish use) — repeat calls update that same project rather than creating a new one, which also means it's always safe to call again if a previous response never arrived. Pass intent: \"create\" when the user explicitly wants a brand-new site (not a revision of the one already live) — if this workspace already has a deployment, you'll get a TARGET_CONFLICT back instead of silently overwriting it; confirm with the user first, then either retry with confirmOverwrite: true, or omit intent entirely to proceed as an ordinary update. For a targeted revision (\"ubah warna header\", \"kecilkan logo\") prefer deploy_website_patch over this tool once you have a sourceRevision — it only needs the files that actually changed.",
+        description: "Build a staging candidate from the supplied workspace source. For interactive editing use start_preview. Release the saved version from Infrastructure → Hosting.",
         inputSchema: {
+          background: z.boolean().optional(),
           projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
           files: z.array(z.object({
             name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
@@ -3074,7 +3137,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission (e.g. a hash of the files+intent). If this tool's response is ever lost, retry with the SAME key — you'll get back the already-completed deployment instead of a second one. Omit if you don't need this (default behavior is unchanged)."),
         },
         outputSchema: {
-          ok: z.boolean(),
+          ok: z.boolean(), operationId: z.string().optional(), status: z.string().optional(),
           code: z.string().optional(),
           deploymentId: z.string().optional(),
           sourceRevision: z.string().optional(),
@@ -3091,7 +3154,24 @@ Default stack (standard baseline for every frontend built here, not optional unl
           message: z.string(),
         },
       },
-      async ({ files, envVars, intent, confirmOverwrite, runId, idempotencyKey }) => {
+      async ({ background, ...args }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+        if (!background) return deploySiteFiles(args)
+        const op = await trackWorkspaceOperation("deploy_to_sacms", auth.tenantId, () => deploySiteFiles(args))
+        return { ...op, structuredContent: { ...op.structuredContent, ok: true, message: "Poll get_operation_status." } }
+      },
+    )
+
+    async function deploySiteFiles({ files, envVars, intent, confirmOverwrite, runId, idempotencyKey }: {
+      files: { name: string; content: string; encoding?: "utf-8" | "base64" }[]
+      envVars?: Record<string, string>
+      intent?: "create" | "update"
+      confirmOverwrite?: boolean
+      runId?: string
+      idempotencyKey?: string
+    }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -3263,6 +3343,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
               result.id,
               result.projectId,
               normalizedFiles as DeploymentSourceFile[],
+              await activeSchema(auth.tenantId, auth.tenantSlug).catch(() => undefined),
             )
             sourceRevision = saved.id
           } catch (e) {
@@ -3282,7 +3363,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
           return {
             content: [{
               type: "text" as const,
-              text: `🚧 Deploy ke STAGING Sukses (belum live)!\n- Deployment ID: ${result.id}\n- Staging URL: ${result.deploymentUrl || result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || lockedProjectName}\n- Env terkirim: ${Object.keys(mergedEnv).join(", ")}\n\nIni BELUM tampil ke pengunjung. Cek staging URL di atas, lalu panggil promote_deployment dengan deploymentId "${result.id}" untuk menjadikannya live.`
+              text: `Staging: ${result.deploymentUrl || result.url}. Rilis dari Infrastruktur → Hosting.`
             }],
             structuredContent: {
               ok: true,
@@ -3302,7 +3383,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
               projectName: result.projectName || lockedProjectName,
               envKeysSent: Object.keys(mergedEnv),
               simulated: !!result.simulated,
-              message: `Deployed to STAGING, not live yet. Fetch ${result.deploymentUrl || result.url} yourself, or just call promote_deployment with deploymentId: "${result.id}" and your checks — it verifies and promotes in one call. For the next targeted revision (while still iterating, before promoting), use deploy_website_patch with baseSourceRevision: "${sourceRevision}".`,
+              message: "Staging ready for review. Release from Infrastructure → Hosting.",
             },
           }
         } catch (err: any) {
@@ -3318,15 +3399,38 @@ Default stack (standard baseline for every frontend built here, not optional unl
             isError: true,
           }
         }
-      }
-    )
+    }
 
+    server.registerTool(
+      "deploy_site_version",
+      {
+        title: "Deploy a Saved Workspace Source Version",
+        description: "Deploy a specific saved sourceVersion to staging. Release from Infrastructure → Hosting.",
+        inputSchema: { background: z.boolean().optional(), sourceVersion: z.string().min(1), siteId: z.string().optional(), idempotencyKey: z.string().optional() },
+      },
+      async ({ sourceVersion, siteId, idempotencyKey, background }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+        const snapshot = await getDeploymentSourceByRevision(auth.tenantId, sourceVersion)
+        const site = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+        if (!site || !snapshot || (siteId && siteId !== site.vercelProjectId) ||
+          (snapshot.projectId && snapshot.projectId !== site.vercelProjectId)) {
+          return { isError: true, content: [{ type: "text" as const, text: "Version not found for this workspace site" }] }
+        }
+        if (findSourceIssues(snapshot.files).length) {
+          return { isError: true, content: [{ type: "text" as const, text: "Invalid saved source. Re-import with get_deployment_source." }] }
+        }
+        const run = () => deploySiteFiles({ files: snapshot.files, intent: "update", idempotencyKey })
+        return background ? trackWorkspaceOperation("deploy_site_version", auth.tenantId, run) : run()
+      },
+    )
     // ── deploy_website_patch ─────────────────────────────────────────────────
     server.registerTool(
       "deploy_website_patch",
       {
         title: "Deploy a Targeted Revision (Changed Files Only, Staging — Does NOT Go Live)",
-        description: "Revise this workspace's website by sending ONLY the files that actually changed, instead of the whole project — call deploy_to_sacms once first (or get_deployment_source to recover a sourceRevision for an existing deployment), then use THIS for every follow-up edit (\"ubah warna header\", \"ganti logo\", \"tambahkan dark mode\"). SaCMS merges your changedFiles onto the exact persisted snapshot of baseSourceRevision and deploys the merged result to a STAGING candidate — you never have to resend unrelated files, and files you don't mention are guaranteed byte-identical to the base. Like deploy_to_sacms, this does NOT touch the live production domain: a READY build says nothing about runtime correctness (confirmed live: a rich-text patch reported READY while production itself 500'd), so verify the candidate and call promote_deployment before anyone sees it. Rejects with CONFLICT if the workspace's source has moved on since baseSourceRevision was read (someone else deployed in between) — call get_deployment_source or get_website source again to get the current sourceRevision before retrying, rather than overwriting work you haven't seen.",
+        description: "Build a staging candidate by patching a saved sourceRevision. Deploy Production is available in Infrastructure → Hosting.",
         inputSchema: {
           baseSourceRevision: z.string().describe("The sourceRevision this patch is based on — from a previous deploy_to_sacms/deploy_website_patch/rollback_website response, or get_deployment_source."),
           changedFiles: z.array(z.object({
@@ -3497,7 +3601,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
 
           let sourceRevision: string | undefined
           try {
-            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, mergedFiles as DeploymentSourceFile[])
+            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, mergedFiles as DeploymentSourceFile[], await activeSchema(auth.tenantId, auth.tenantSlug).catch(() => undefined))
             sourceRevision = saved.id
           } catch (e) {
             console.warn("[MCP deploy_website_patch] Failed to persist source snapshot:", e)
@@ -3529,10 +3633,10 @@ Default stack (standard baseline for every frontend built here, not optional unl
             state: result.state,
             message: concurrentChangeDetected
               ? "This staging deploy succeeded, but another deploy happened WHILE it was running against a DIFFERENT base — call get_deployment_source to check the current state before patching again or promoting."
-              : `Deployed to STAGING, not live yet. Fetch ${result.deploymentUrl || result.url} yourself, or call promote_deployment with deploymentId: "${result.id}" and your checks — it verifies and promotes in one call.`,
+              : "Staging ready for review. Release from Infrastructure → Hosting.",
           }
           return {
-            content: [{ type: "text" as const, text: `🚧 Patch Deploy ke STAGING Sukses (belum live)!\n- Deployment ID: ${result.id}\n- sourceRevision: ${sourceRevision}\n- Staging URL: ${result.deploymentUrl || result.url}\n- File diubah: ${changedFiles.length}, dihapus: ${(deletedFiles || []).length}, tidak berubah: ${structured.unchangedCount}${concurrentChangeDetected ? "\n⚠️ Perubahan bersamaan terdeteksi selama deploy ini — cek get_deployment_source." : "\n\nPanggil promote_deployment untuk menjadikannya live."}` }],
+            content: [{ type: "text" as const, text: `🚧 Patch Deploy ke STAGING Sukses (belum live)!\n- Deployment ID: ${result.id}\n- sourceRevision: ${sourceRevision}\n- Staging URL: ${result.deploymentUrl || result.url}\n- File diubah: ${changedFiles.length}, dihapus: ${(deletedFiles || []).length}, tidak berubah: ${structured.unchangedCount}${concurrentChangeDetected ? "\n⚠️ Perubahan bersamaan terdeteksi selama deploy ini — cek get_deployment_source." : "\n\nRilis melalui Infrastruktur → Hosting."}` }],
             structuredContent: structured,
           }
         } catch (err: any) {
@@ -3552,132 +3656,19 @@ Default stack (standard baseline for every frontend built here, not optional unl
     server.registerTool(
       "promote_deployment",
       {
-        title: "Verify and Promote a Staging Candidate to Production",
-        description: "The ONLY way a deploy_to_sacms/deploy_website_patch staging candidate ever reaches the live production domain — call this after the candidate is ready, instead of assuming a READY build is safe to show visitors. Runs HTTP checks against the CANDIDATE's own URL first (defaults to just \"/\" if you don't pass checks — never promotes fully blind), and only calls Vercel's promote API if ALL of them pass; if even one fails, nothing about production changes and you get back code: \"CHECKS_FAILED\" with which check(s) failed. This does NOT rebuild anything — it just re-points the project's production alias at a deployment that already exists, which is near-instant once checks pass. For a multi-page build, pass multiple checks (home, a detail page, a feed, a PWA icon) the same way you would to verify_deployment_url — a homepage-only check must not be the only thing gating a promotion. If something looks wrong after checks fail, call get_deployment_runtime_logs on this SAME deploymentId to see the actual request/response activity that caused it (an HTTP 500 a check caught here won't show up in get_deployment_build_logs — that's build-time output only).",
-        inputSchema: {
-          deploymentId: z.string().describe("The staging candidate's deployment id, from deploy_to_sacms/deploy_website_patch's response. Required — this tool never guesses \"whatever's latest\"."),
-          checks: z.array(z.object({
-            path: z.string().describe("Path to check on the CANDIDATE's own URL, e.g. \"/\", \"/artikel/contoh-slug\", \"/feed.xml\", \"/icon-192.png\"."),
-            expectedText: z.string().optional().describe("A substring expected in that path's rendered HTML/body."),
-            expectedContentType: z.string().optional().describe("Substring expected in the response's Content-Type header, e.g. \"image/png\"."),
-            expectedSignature: z.enum(["png", "jpeg", "gif", "ico"]).optional().describe("Confirms the response body's raw bytes start with this format's own magic number."),
-            expectedChecksum: z.string().optional().describe("sha256 hex of the exact bytes expected (from deploy_to_sacms/get_deployment_source's checksum for that file)."),
-          })).max(10).optional().describe("Required checks against the candidate's own URL. Omit to just check \"/\" returns 200 with no error page — still a real check, never skipped entirely."),
-          runId: z.string().optional().describe("The runId from start_website_build, if you have one — marks it done once promoted, or leaves it \"staged\" (retryable) if checks fail."),
-        },
-        outputSchema: {
-          ok: z.boolean(),
-          code: z.string().optional(),
-          promoted: z.boolean(),
-          deploymentId: z.string(),
-          productionUrl: z.string().optional(),
-          checks: z.array(z.object({
-            path: z.string(),
-            url: z.string(),
-            status: z.number(),
-            ok: z.boolean(),
-            htmlLength: z.number(),
-            containsExpectedText: z.boolean().optional(),
-            looksLikeErrorPage: z.boolean(),
-            contentType: z.string().optional(),
-            contentTypeOk: z.boolean().optional(),
-            signatureOk: z.boolean().optional(),
-            checksumOk: z.boolean().optional(),
-          })),
-          message: z.string(),
-        },
+        title: "Open Production Hosting",
+        description: "Production release requires an administrator to click Deploy Production in Infrastructure → Hosting.",
+        inputSchema: { deploymentId: z.string().optional() },
       },
-      async ({ deploymentId, checks, runId }) => {
+      async () => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        if (!auth.isHostingPlanPaid) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Payment Required: Fitur deploy SaCMS Cloud Hosting memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions` }],
-            isError: true,
-          }
-        }
-
-        try {
-          const resolved = await resolveDeploymentId(auth, deploymentId)
-          if (!resolved.ok) return resolved.response
-          const candidateUrl = resolved.status?.deploymentUrl
-          const projectId = resolved.status?.projectId
-          if (!candidateUrl || !projectId) {
-            return {
-              content: [{ type: "text" as const, text: `❌ Tidak bisa menemukan URL/project untuk deployment '${deploymentId}'.` }],
-              structuredContent: { ok: false, promoted: false, deploymentId, checks: [], code: "NOT_FOUND", message: "Deployment URL or project could not be resolved." },
-              isError: true,
-            }
-          }
-
-          const effectiveChecks = checks && checks.length > 0 ? checks : [{ path: "/" }]
-          const results = await runHttpChecks(candidateUrl, effectiveChecks)
-          const allChecksOk = results.every((r) => r.ok)
-
-          if (!allChecksOk) {
-            const firstFailure = results.find((r) => !r.ok)
-            // Deliberately does NOT advance the run to "failed" — the
-            // staging candidate itself is fine to retry checks against
-            // (fix the files, deploy_website_patch again, or just call
-            // this again with different checks), unlike a genuine deploy
-            // exception below.
-            return {
-              content: [{ type: "text" as const, text: `❌ CHECKS_FAILED — ${firstFailure?.url} mengembalikan status ${firstFailure?.status}. Promosi DIBATALKAN, production tidak berubah. Panggil get_deployment_runtime_logs dengan deploymentId ini untuk diagnosis lebih lanjut.\n${JSON.stringify(results, null, 2)}` }],
-              structuredContent: { ok: false, promoted: false, deploymentId, checks: results, code: "CHECKS_FAILED", message: `${results.filter((r) => !r.ok).length} of ${results.length} check(s) failed — production was NOT changed.` },
-              isError: true,
-            }
-          }
-
-          const promo = await promoteDeployment(projectId, deploymentId)
-          if (!promo.ok) {
-            if (runId) advanceBuildRun(auth.tenantId, runId, { lastError: `Promote failed: ${promo.message || promo.status}` })
-            return {
-              content: [{ type: "text" as const, text: `❌ Semua pemeriksaan lolos, tetapi Vercel menolak promosi: ${promo.message || promo.status}` }],
-              structuredContent: { ok: false, promoted: false, deploymentId, checks: results, code: "PROMOTE_FAILED", message: promo.message || `Vercel returned status ${promo.status}.` },
-              isError: true,
-            }
-          }
-
-          // Now really live — re-resolve the project's current production
-          // domain fresh (the string itself rarely changes, but this is
-          // the one moment it's guaranteed accurate) and persist it, same
-          // fields the old always-production deploy flow used to set
-          // directly from deployToVercel's own result.
-          const latest = await getLatestDeployment(projectId).catch(() => null)
-          const productionUrl = latest?.productionUrl || undefined
-          if (productionUrl) {
-            await Promise.all([
-              db.tenant.update({ where: { id: auth.tenantId }, data: { vercelDeploymentUrl: productionUrl, vercelProjectId: projectId } }),
-              db.setting.upsert({
-                where: { key: `${auth.tenantId}_vercelDeploymentUrl` },
-                update: { value: productionUrl },
-                create: { tenantId: auth.tenantId, key: `${auth.tenantId}_vercelDeploymentUrl`, value: productionUrl },
-              }),
-            ]).catch((e) => console.warn("[MCP promote_deployment] Failed to persist promoted deployment:", e))
-          }
-
-          if (runId) {
-            advanceBuildRun(auth.tenantId, runId, { stage: "done", deploymentId, lastError: null })
-          }
-
-          return {
-            content: [{ type: "text" as const, text: `✅ Dipromosikan ke production!\n- Deployment ID: ${deploymentId}\n- Live URL: ${productionUrl || "(tidak bisa diresolve, cek get_deployment_status)"}\n- Semua ${results.length} pemeriksaan lolos.` }],
-            structuredContent: { ok: true, promoted: true, deploymentId, productionUrl, checks: results, message: "Promoted to production — this is now what visitors see." },
-          }
-        } catch (err: any) {
-          if (runId) advanceBuildRun(auth.tenantId, runId, { lastError: err.message })
-          return {
-            content: [{ type: "text" as const, text: `❌ Gagal mempromosikan deployment: ${err.message}` }],
-            structuredContent: { ok: false, promoted: false, deploymentId, checks: [], code: "PROMOTE_FAILED", message: err.message },
-            isError: true,
-          }
-        }
-      }
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const hostingUrl = resolveApiOrigin() + "/dashboard/" + encodeURIComponent(auth.tenantSlug) + "/developer/infrastructure?tab=hosting"
+        return { structuredContent: { code: "DASHBOARD_REQUIRED", hostingUrl }, content: [{ type: "text" as const, text: "Rilis production melalui " + hostingUrl }] }
+      },
     )
 
-    // ── get_deployment_runtime_logs ──────────────────────────────────────────
     server.registerTool(
       "get_deployment_runtime_logs",
       {
@@ -3784,6 +3775,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         title: "Rollback to a Previous Deployed Version",
         description: "Redeploy a previous sourceRevision's exact files (from list_website_versions) — use this when a revision broke something and the user wants to go back, instead of trying to manually reconstruct the old state. This creates a NEW deployment (and a new sourceRevision) with the old content, it does not delete what's live now.",
         inputSchema: {
+          dryRun: z.boolean().optional().describe("Inspect compatibility before restoring to staging."),
           sourceRevision: z.string().describe("The sourceRevision to restore, from list_website_versions."),
           runId: z.string().optional(),
         },
@@ -3795,12 +3787,13 @@ Default stack (standard baseline for every frontend built here, not optional unl
           productionUrl: z.string().optional(),
           deploymentUrl: z.string().optional(),
           state: z.string().optional(),
+          schemaCompatibility: z.record(z.string(), z.unknown()).optional(),
           issues: z.array(z.string()).optional(),
           retryAfterSeconds: z.number().optional(),
           message: z.string(),
         },
       },
-      async ({ sourceRevision, runId }) => {
+      async ({ sourceRevision, runId, dryRun }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -3832,6 +3825,11 @@ Default stack (standard baseline for every frontend built here, not optional unl
           }
         }
 
+        const schemaCompatibility = compareSchema(target.schemaSnapshot, await activeSchema(auth.tenantId, auth.tenantSlug))
+        if (dryRun) {
+          const structured = { ok: true, sourceRevision, schemaCompatibility, message: "Compatibility review only." }
+          return { structuredContent: structured, content: [{ type: "text" as const, text: JSON.stringify(structured) }] }
+        }
         const deployLimit = await rateLimit(`mcp_deploy:${auth.tenantId}`, { limit: 3, windowSeconds: 300 })
         if (!deployLimit.success) {
           const retryAfterSeconds = Math.max(1, Math.ceil((deployLimit.resetAt - Date.now()) / 1000))
@@ -3858,7 +3856,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
           // NOW); gating it behind an extra staging+promote cycle would
           // defeat its whole purpose.
           const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
-          const result = await deployToVercel(lockedProjectName, normalizedTargetFiles, resolvedEnv, subdomainLabel, "production")
+          const result = await deployToVercel(lockedProjectName, normalizedTargetFiles, resolvedEnv, subdomainLabel, "staging")
 
           if (result.projectId && !result.simulated) {
             pushEnvToVercelProject(result.projectId, resolvedEnv).catch((e) =>
@@ -3868,13 +3866,13 @@ Default stack (standard baseline for every frontend built here, not optional unl
           if (result.url) {
             await db.tenant.update({
               where: { id: auth.tenantId },
-              data: { vercelDeploymentUrl: result.url, vercelProjectId: result.projectId || undefined },
+              data: { vercelProjectId: result.projectId || undefined },
             }).catch((e) => console.warn("[MCP rollback_website] Failed to persist deployment:", e))
           }
 
           let newSourceRevision: string | undefined
           try {
-            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, normalizedTargetFiles)
+            const saved = await saveDeploymentSource(auth.tenantId, result.id, result.projectId, normalizedTargetFiles, target.schemaSnapshot as object | undefined)
             newSourceRevision = saved.id
           } catch (e) {
             console.warn("[MCP rollback_website] Failed to persist source snapshot:", e)
@@ -3891,6 +3889,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
 
           const structured = {
             ok: true,
+            schemaCompatibility,
             deploymentId: result.id,
             sourceRevision: newSourceRevision,
             productionUrl: result.url,
@@ -3926,6 +3925,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         },
         outputSchema: {
           deploymentId: z.string(),
+          sourceVersion: z.string().nullable().optional(),
           state: z.string(),
           productionUrl: z.string().nullable(),
           deploymentUrl: z.string(),
@@ -3942,7 +3942,10 @@ Default stack (standard baseline for every frontend built here, not optional unl
           if (!resolved.ok) return resolved.response
           const status = resolved.status!
 
+          const released = await db.setting.findUnique({ where: { key: auth.tenantId + "_productionSource_" + resolved.id }, select: { value: true } })
+          const snapshot = released ? null : await getDeploymentSourceByDeploymentId(auth.tenantId, resolved.id)
           const structured = {
+            sourceVersion: released?.value ?? snapshot?.id ?? null,
             deploymentId: resolved.id,
             state: status.state,
             productionUrl: status.productionUrl,
@@ -3968,6 +3971,58 @@ Default stack (standard baseline for every frontend built here, not optional unl
     )
 
     // ── get_deployment_source ────────────────────────────────────────────────
+    server.registerTool(
+      "get_content_preview_url",
+      {
+        title: "Preview Saved CMS Content",
+        description: "Open the current saved CMS fields, including drafts, in the authenticated workspace dashboard. For an entry, pass its ID. For a single type, pass its slug and locale.",
+        inputSchema: { kind: z.enum(["entry", "single"]), id: z.string().min(1), locale: z.string().default("id") },
+      },
+      async ({ kind, id, locale }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+        const tenantDb = await getTenantDb(auth.tenantSlug)
+        const record = kind === "entry"
+          ? await tenantDb.contentEntry.findFirst({ where: { id, tenantId: auth.tenantId, deletedAt: null }, select: { status: true } })
+          : await tenantDb.tenantSingleTypeAssignment.findFirst({ where: { tenantId: auth.tenantId, locale, enabled: true, singleType: { slug: id, draftTemplateId: null } }, select: { draftData: true, publishedAt: true } })
+        if (!record) return { isError: true, content: [{ type: "text" as const, text: "Content not found in this workspace" }] }
+        const hasDraft = "status" in record ? record.status !== "PUBLISHED" : record.draftData != null || !record.publishedAt
+        const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const url = new URL(resolveApiOrigin())
+        url.pathname = "/dashboard/" + encodeURIComponent(auth.tenantSlug) + "/cms/preview/" + kind + "/" + encodeURIComponent(id)
+        url.searchParams.set("locale", locale)
+        return { structuredContent: { previewUrl: url.href, previewKind: "content", contentMode: hasDraft ? "draft" : "published", access: "workspace-session" }, content: [{ type: "text" as const, text: url.href }] }
+      },
+    )
+    server.registerTool(
+      "get_site_source",
+      {
+        title: "Get Saved Workspace Site Source",
+        description: "Read the latest saved source snapshot or a specific sourceVersion. The workspace is selected by the MCP token. For a deployment without a snapshot, call get_deployment_source to import it.",
+        inputSchema: {
+          siteId: z.string().optional().describe("Workspace hosting project ID. Omit for the default website."),
+          sourceVersion: z.string().optional(),
+        },
+      },
+      async ({ siteId, sourceVersion }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+        const site = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelProjectId: true } })
+        if (!site || (siteId && site.vercelProjectId !== siteId)) {
+          return { isError: true, content: [{ type: "text" as const, text: "Site not found in this workspace" }] }
+        }
+        const snapshot = sourceVersion
+          ? await getDeploymentSourceByRevision(auth.tenantId, sourceVersion)
+          : await getLatestDeploymentSource(auth.tenantId)
+        if (!snapshot || (siteId && snapshot.projectId && snapshot.projectId !== siteId)) {
+          return { isError: true, content: [{ type: "text" as const, text: "Source version not found for this site" }] }
+        }
+        const structured = { siteId: site.vercelProjectId, sourceVersion: snapshot.id, files: snapshot.files }
+        return { structuredContent: structured, content: [{ type: "text" as const, text: JSON.stringify(structured) }] }
+      },
+    )
     server.registerTool(
       "get_deployment_source",
       {
@@ -4147,6 +4202,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         title: "Verify the Live Deployment Actually Works",
         description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data, AND the production domain can still be serving an OLDER deployment if Vercel hasn't finished promoting the new one. Pass deploymentId (or a runId that has one recorded) to bind this check to that SPECIFIC build — if the production domain isn't actually serving it yet, this returns PRODUCTION_VERSION_MISMATCH instead of a false pass. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. For a binary asset (a PWA icon, a favicon) a plain HTTP 200 can still be a corrupted file — pass expectedSignature (\"png\"/\"jpeg\"/\"gif\"/\"ico\") to confirm its bytes match that format's own magic number, expectedChecksum (sha256 hex of the real bytes you deployed, from deploy_to_sacms/get_deployment_source) for an exact match, and/or expectedContentType to check the response header. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring + binary signature/checksum) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
         inputSchema: {
+          paths: previewRoutePaths.optional(),
           path: z.string().optional().describe("Shorthand for a single check: path on this workspace's own live deployment domain, e.g. \"/\" (default) or \"/artikel/contoh-slug\". Ignored if checks is provided."),
           expectedText: z.string().optional().describe("Shorthand for a single check's expectedText. Ignored if checks is provided."),
           checks: z.array(z.object({
@@ -4164,6 +4220,8 @@ Default stack (standard baseline for every frontend built here, not optional unl
           code: z.string().optional(),
           verifiedDeploymentId: z.string().optional(),
           checks: z.array(z.object({
+            deploymentId: z.string().nullable(),
+            sourceVersion: z.string().nullable(),
             path: z.string(),
             url: z.string(),
             status: z.number(),
@@ -4184,7 +4242,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
           looksLikeErrorPage: z.boolean(),
         },
       },
-      async ({ path, expectedText, checks, deploymentId, runId }) => {
+      async ({ path, paths, expectedText, checks, deploymentId, runId }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
@@ -4211,15 +4269,14 @@ Default stack (standard baseline for every frontend built here, not optional unl
           // ACTUALLY serving it — a provider-reported READY build can sit
           // unpromoted while the domain keeps serving the previous one.
           let productionVersionMismatch = false
-          if (targetDeploymentId && tenant.vercelProjectId) {
-            const latest = await getLatestDeployment(tenant.vercelProjectId)
-            if (latest && latest.id !== targetDeploymentId) {
-              productionVersionMismatch = true
-            }
-          }
-
-          const effectiveChecks = checks && checks.length > 0 ? checks : [{ path, expectedText }]
-          const results = await runHttpChecks(tenant.vercelDeploymentUrl, effectiveChecks)
+          const latest = tenant.vercelProjectId ? await getLatestDeployment(tenant.vercelProjectId) : null
+          const servedId = latest?.state === "READY" ? latest.id : null
+          productionVersionMismatch = Boolean(targetDeploymentId && servedId !== targetDeploymentId)
+          const released = servedId ? await db.setting.findUnique({ where: { key: auth.tenantId + "_productionSource_" + servedId }, select: { value: true } }) : null
+          const source = servedId && !released ? await getDeploymentSourceByDeploymentId(auth.tenantId, servedId) : null
+          const effectiveChecks = checks && checks.length > 0 ? checks : paths ? paths.map(path => ({ path })) : [{ path, expectedText }]
+          const results = (await runHttpChecks(tenant.vercelDeploymentUrl, effectiveChecks))
+            .map(check => ({ ...check, deploymentId: servedId, sourceVersion: released?.value ?? source?.id ?? null }))
 
           const allChecksOk = results.every((r) => r.ok)
           const allOk = allChecksOk && !productionVersionMismatch
@@ -4685,7 +4742,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "This server gives you live access to one SaCMS workspace's headless CMS: its schema, content, and deploy pipeline. Default stack for any frontend you build here is Next.js + TypeScript + shadcn/ui (every component AND color token from shadcn's own system) unless the user asks for something else. Before writing any frontend code or answering questions about this workspace's data, call get_agent_playbook once — it has the full ordered workflow (build/revise request → start_website_build → discover schema → explore real content → scaffold → deploy to staging → verify → promote → verify production). For an actual build/create/revise-website request specifically, call start_website_build before anything else — it hands back a runId you can resume later with get_build_run even from a new conversation. For a REVISION of a site already live, prefer get_deployment_source + deploy_website_patch (sends only changed files, with conflict detection) over deploy_to_sacms, which expects the full project — get_deployment_source auto-imports a deployment that predates this feature so patching still works on it. IMPORTANT: deploy_to_sacms/deploy_website_patch deploy to a STAGING candidate, NOT the live domain — a READY build says nothing about runtime correctness. promote_deployment is the ONLY way a candidate reaches production: it runs your HTTP checks against the candidate first and only promotes if they all pass, refusing with CHECKS_FAILED otherwise (use get_deployment_runtime_logs to diagnose a failure — build logs alone won't show a runtime HTTP 500). rollback_website is the one exception that still deploys straight to production, since it's the emergency-recovery path. Pass idempotencyKey to deploy_to_sacms/deploy_website_patch if you want a lost response's retry to resolve to the same deployment instead of a second one; look it up afterward via get_build_run. verify_deployment_url can bind to a specific deploymentId and will flag PRODUCTION_VERSION_MISMATCH rather than a false pass if the domain hasn't caught up yet. Never invent Content Types, fields, or data; everything must come from these tools. Never guess a base URL, token, or domain — call get_api_info / get_openapi_spec instead, they resolve the real ones automatically. If you'd rather use a typed client than hand-written fetch() calls, call check_sdk_availability first — it live-checks whether @sacms/sdk is actually published before you suggest installing it. A richText field's value is raw HTML and a markdown field's value is raw Markdown source — query_content/get_content_entry/get_single_type attach a _renderHints entry next to any such field, spelling out exactly how to render it; never interpolate either one as plain text, or visitors see the literal tags/syntax.",
+      "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK.",
   }
 )
 

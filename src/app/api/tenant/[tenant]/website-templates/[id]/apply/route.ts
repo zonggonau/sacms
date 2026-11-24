@@ -47,7 +47,7 @@ export const POST = withStaffAuth(
       success: true,
       imported: result.imported,
       envVarsApplied: result.envVarsApplied,
-      deployment: result.deployment,
+      sourceRevision: result.sourceRevision,
     })
   },
   { minRole: "admin" },

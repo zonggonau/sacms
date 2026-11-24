@@ -21,7 +21,8 @@ const { fakeTenantDb, findSetting } = vi.hoisted(() => ({
 
 vi.mock("@/lib/database", () => ({
   db: {
-    setting: { findUnique: findSetting, deleteMany: vi.fn().mockResolvedValue({}) },
+    setting: { upsert: vi.fn(), findUnique: findSetting, deleteMany: vi.fn().mockResolvedValue({}) },
+    mcpDeploymentSource: { findFirst: vi.fn() },
     tenant: { update: vi.fn().mockResolvedValue({}) },
   },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
@@ -57,6 +58,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { db } from "@/lib/database"
 import { deleteVercelProject } from "@/lib/vercel-client"
 import { assertSchemaEditable } from "@/lib/schema-lock"
+import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import { POST } from "@/app/api/tenant/[tenant]/ai-builder/deploy/route"
 
 const mockSession = vi.mocked(getServerSession)
@@ -84,6 +86,24 @@ describe("POST /api/tenant/[tenant]/ai-builder/deploy — action: reset-website"
       where.key?.endsWith("_vercelProjectId") ? { value: "prj_1" } : null,
     )
     vi.mocked(deleteVercelProject).mockResolvedValue({ ok: true } as any)
+  })
+
+  it("releases only the saved revision displayed in Hosting", async () => {
+    const files = [{ name: "app/page.tsx", content: "export default function Page() { return null }", encoding: "utf-8" }]
+    vi.mocked(db.mcpDeploymentSource.findFirst).mockResolvedValue({ id: "reviewed", files } as any)
+    const stale = await POST(req({ action: "deploy-production", sourceRevision: "older" }), ctx({ tenant: "acme" }))
+    expect(stale.status).toBe(409)
+    expect(deployTenantFrontend).not.toHaveBeenCalled()
+    vi.mocked(deployTenantFrontend).mockResolvedValue({ deploymentId: "production", simulated: false } as any)
+    const released = await POST(req({ action: "deploy-production", sourceRevision: "reviewed" }), ctx({ tenant: "acme" }))
+    expect(released.status).toBe(200)
+    expect(deployTenantFrontend).toHaveBeenCalledWith("tenant1", "acme", "https://sacms.cloud", files)
+  })
+
+  it("rejects a legacy direct deploy with caller-supplied files", async () => {
+    const response = await POST(req({ action: "deploy", files: [] }), ctx({ tenant: "acme" }))
+    expect(response.status).toBe(400)
+    expect(deployTenantFrontend).not.toHaveBeenCalled()
   })
 
   it("is blocked entirely for the SaCMS Global workspace", async () => {
