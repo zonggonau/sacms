@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { registerUser, forgotPassword, resetPassword } from "@/actions/auth"
 import { db } from "@/lib/database"
 import { sendPasswordResetEmail } from "@/lib/mail"
+import { captureException } from "@sentry/nextjs"
 
 vi.mock("@/lib/database", () => ({
   db: {
@@ -38,6 +39,8 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/rate-limit", () => ({
   checkActionRateLimit: vi.fn().mockResolvedValue(null),
 }))
+
+vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }))
 
 describe("Auth Server Actions", () => {
   beforeEach(() => {
@@ -113,14 +116,29 @@ describe("Auth Server Actions", () => {
       expect(db.verificationToken.create).toHaveBeenCalled()
     })
 
-    it("revokes undelivered tokens and returns error when email send fails", async () => {
+    it("revokes undelivered tokens, reports the failure, and keeps the account response generic", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValueOnce(null)
+      const absent = await forgotPassword("missing@example.test")
       vi.mocked(db.user.findUnique).mockResolvedValueOnce({ id: "user-123", email: "member@example.test" } as never)
       vi.mocked(sendPasswordResetEmail).mockRejectedValueOnce(new Error("mail unavailable"))
       vi.mocked(db.verificationToken.deleteMany).mockResolvedValueOnce({ count: 1 })
 
-      const result = await forgotPassword("member@example.test")
-      expect(result.error).toBe("Gagal mengirim email reset. Silakan coba lagi dalam beberapa menit atau hubungi support.")
+      expect(await forgotPassword("member@example.test")).toEqual(absent)
       expect(db.verificationToken.deleteMany).toHaveBeenCalledWith({ where: { token: expect.any(String) } })
+      await vi.waitFor(() =>
+        expect(captureException).toHaveBeenCalledWith(expect.any(Error), { tags: { action: "forgot-password" } }),
+      )
+    })
+
+    it("keeps the account response generic when the reset token cannot be stored", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValueOnce(null)
+      const absent = await forgotPassword("missing@example.test")
+      vi.mocked(db.user.findUnique).mockResolvedValueOnce({ id: "user-123", email: "member@example.test" } as never)
+      vi.mocked(db.verificationToken.create).mockRejectedValueOnce(new Error("db write failed"))
+      vi.mocked(db.verificationToken.deleteMany).mockResolvedValueOnce({ count: 0 })
+
+      expect(await forgotPassword("member@example.test")).toEqual(absent)
+      expect(sendPasswordResetEmail).not.toHaveBeenCalled()
     })
   })
 

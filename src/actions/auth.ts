@@ -7,6 +7,14 @@ import crypto from "crypto"
 import { headers } from "next/headers"
 import { checkActionRateLimit } from "@/lib/rate-limit"
 
+type ForgotPasswordResult = { success?: true; message?: string; error?: string }
+
+const FORGOT_PASSWORD_RESPONSE: ForgotPasswordResult = {
+  success: true,
+  message:
+    "Jika email tersebut terdaftar, tautan reset kata sandi akan dikirim. Belum menerima dalam beberapa menit? Periksa folder spam atau coba lagi.",
+}
+
 export async function registerUser(formData: any) {
   try {
     const rlError = await checkActionRateLimit("register", await headers(), 5, 60)
@@ -241,7 +249,7 @@ export async function resendVerificationAction(email: string) {
   }
 }
 
-export async function forgotPassword(email: string) {
+export async function forgotPassword(email: string): Promise<ForgotPasswordResult> {
 
   try {
     const rlError = await checkActionRateLimit("forgot-password", await headers(), 5, 60)
@@ -255,40 +263,28 @@ export async function forgotPassword(email: string) {
       where: { email: email.toLowerCase() },
     })
 
-    // If user doesn't exist, we still return success to prevent email enumeration
-    if (!user) {
-      return { 
-        success: true, 
-        message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi." 
-      }
-    }
+    // Registered and unregistered emails must get an identical response, or the
+    // form becomes an account-enumeration oracle. Failures are reported to ops.
+    if (!user) return FORGOT_PASSWORD_RESPONSE
 
-    // Generate Verification Token
     const token = crypto.randomBytes(32).toString("hex")
     const expires = new Date()
-    expires.setHours(expires.getHours() + 1) // 1 hour expiry for reset link
-
-    // Use "reset:" prefix for identifier to distinguish from email verification
-    await db.verificationToken.create({
-      data: {
-        identifier: `reset:${user.email}`,
-        token,
-        expires,
-      },
-    })
+    expires.setHours(expires.getHours() + 1)
 
     try {
+      await db.verificationToken.create({
+        data: { identifier: `reset:${user.email}`, token, expires },
+      })
       await sendPasswordResetEmail(user.email, token)
     } catch (err) {
       await db.verificationToken.deleteMany({ where: { token } }).catch(() => {})
-      console.error("Password reset email delivery failed:", err)
-      return { error: "Gagal mengirim email reset. Silakan coba lagi dalam beberapa menit atau hubungi support." }
+      console.error("Password reset delivery failed:", err)
+      import("@sentry/nextjs")
+        .then((Sentry) => Sentry.captureException(err, { tags: { action: "forgot-password" } }))
+        .catch(() => {})
     }
 
-    return {
-      success: true,
-      message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi."
-    }
+    return FORGOT_PASSWORD_RESPONSE
   } catch (error) {
     console.error("Forgot Password Error:", error)
     return { error: "Terjadi kesalahan pada server" }
