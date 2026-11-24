@@ -4724,7 +4724,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
     instructions:
-      "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK.",
+      "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. If a page errors or renders blank, read get_preview_logs. Call extend_preview before expiresAt during long sessions; an expired session with unsaved edits can still be saved, and start_preview resumes it. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK.",
   }
 )
 

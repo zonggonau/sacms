@@ -45,6 +45,7 @@ const READ_TOOLS = [
   "get_preview_url",
   "get_website_template_preview",
   "read_preview_file",
+  "get_preview_logs",
   "list_global_components",
   "get_global_component",
   "get_operation_status",

@@ -12,6 +12,9 @@ import { websiteTemplateFilesSchema, websiteTemplateFileSchema, type WebsiteTemp
 import type { McpPreviewSession } from "../../../prisma/generated-client"
 
 const lifetime = 30 * 60_000
+const INSTALL_LOG = "/tmp/sacms-install.log"
+const DEV_LOG = "/tmp/sacms-dev.log"
+const LOG_TAIL_BYTES = 8_000
 const parseFiles = (value: unknown) => websiteTemplateFilesSchema.parse(value)
 const active = (s: McpPreviewSession) => s.expiresAt.getTime() > Date.now() && ["ready", "starting", "editing"].includes(s.status)
 
@@ -28,6 +31,12 @@ async function sessionSandbox(session: McpPreviewSession) {
     throw Error("Sesi lama belum menyimpan proyek Sandbox. Simpan perubahan, hentikan sesi, lalu buka preview baru.")
   }
   return Sandbox.get({ name: session.sandbox, projectId: session.vercelProjectId, teamId: session.vercelTeamId, token: await getVercelToken() })
+}
+
+async function tailLog(box: Sandbox, path: string, bytes = LOG_TAIL_BYTES) {
+  const buffer = await box.readFileToBuffer({ path }).catch(() => null)
+  if (!buffer) return { log: "", truncated: false }
+  return { log: buffer.subarray(Math.max(0, buffer.length - bytes)).toString("utf8"), truncated: buffer.length > bytes }
 }
 
 function checkPaths(files: WebsiteTemplateFile[]) {
@@ -89,7 +98,8 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
   async function getPreview(input: { templateId?: string; siteId?: string }) {
     const t = await template(input)
     const s = await lookup(t.id)
-    return result(describe(t.slug, s && active(s) ? s : null))
+    // An expired session that still holds unsaved edits is reported as "expired", so the agent saves or resumes it.
+    return result(describe(t.slug, s && (active(s) || (s.dirty && s.status === "ready")) ? s : null))
   }
   async function startPreview(input: { templateId?: string; siteId?: string }) {
     const t = await template(input, true)
@@ -97,13 +107,15 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     if (existing && active(existing)) return result(describe(t.slug, existing))
     const demo = t.schemaTemplate ? await findSchemaDemoWorkspace(db, t.schemaTemplate) : { id: t.id, slug: t.slug }
     if (!demo) throw Error("Template has no verified demo workspace")
-    const files = parseFiles(t.files)
+    const resumable = existing && !active(existing) && existing.dirty && existing.status === "ready" ? existing : null
+    const files = parseFiles(resumable ? resumable.files : t.files)
     const initial = buffers(files)
     const id = randomBytes(8).toString("hex")
     const s = await db.$transaction(async tx => {
       if (existing) await tx.mcpPreviewSession.deleteMany({ where: { id: existing.id } })
       return tx.mcpPreviewSession.create({ data: { id, scope, targetId: t.id, target: t.slug, status: "starting",
-        files, sourceVersion: t.version, expiresAt: new Date(Date.now() + lifetime) } })
+        files, sourceVersion: resumable?.sourceVersion ?? t.version, revision: resumable?.revision ?? 0, dirty: !!resumable,
+        expiresAt: new Date(Date.now() + lifetime) } })
     }).catch(async error => {
       const winner = await lookup(t.id)
       if (winner && active(winner)) return winner
@@ -139,14 +151,15 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
       await db.mcpPreviewSession.update({ where: { id }, data: { vercelProjectId: projectId, vercelTeamId: teamId, sandbox: box.name, upstream: box.domain(3001) } })
       await box.runCommand({ cmd: "node", args: ["-e", previewRelay], detached: true, env: { PREVIEW_UPSTREAM_KEY: previewCredential(id, "upstream") } })
       await box.writeFiles(initial)
-      if ((await box.runCommand("npm", ["install", "--no-audit", "--no-fund"])).exitCode !== 0) throw Error("Preview dependency install failed")
+      const install = await box.runCommand({ cmd: "sh", args: ["-c", `npm install --no-audit --no-fund > ${INSTALL_LOG} 2>&1`] })
+      if (install.exitCode !== 0) throw Error("Preview dependency install failed:\n" + (await tailLog(box, INSTALL_LOG, 4_000)).log)
       const demoKey = "sacms_live_" + randomBytes(24).toString("hex")
       await db.apiToken.create({ data: { name: "Template preview " + id, tenantId: demo.id,
         type: "read-only", permissions: ["read"], token: createHash("sha256").update(demoKey).digest("hex"), expiresAt: s.expiresAt } })
-      await box.runCommand({ cmd: "npm", args: ["run", "dev", "--", "--hostname", "127.0.0.1", "--port", "3000"], detached: true,
+      await box.runCommand({ cmd: "sh", args: ["-c", `npm run dev -- --hostname 127.0.0.1 --port 3000 > ${DEV_LOG} 2>&1`], detached: true,
         env: { NEXT_PUBLIC_SACMS_TENANT: demo.slug, NEXT_PUBLIC_SACMS_API_URL: resolveApiOrigin(), SACMS_API_KEY: demoKey } })
       const probe = await box.runCommand("node", ["-e", "async function ready(){for(let i=0;i<60;i++){try{if((await fetch('http://localhost:3000')).ok)return}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)}ready()"])
-      if (probe.exitCode !== 0) throw Error("Preview server did not become ready")
+      if (probe.exitCode !== 0) throw Error("Preview server did not become ready:\n" + (await tailLog(box, DEV_LOG, 4_000)).log)
       await verifyPublicPreview(id)
       return result(describe(t.slug, await db.mcpPreviewSession.update({ where: { id }, data: { status: "ready" } })))
     } catch (error) {
@@ -201,7 +214,10 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     }
   })
   server.registerTool("save_preview_changes", { description: "Save the current revision to its source history. Workspace production releases are made from Infrastructure → Hosting.", inputSchema: { ...selector, expectedSourceVersion: z.string() } }, async ({ expectedSourceVersion, ...input }) => {
-    const { s, t } = await current(input, true)
+    const t = await template(input, true)
+    const s = await lookup(t.id)
+    // An expired session keeps its edited files in the DB, so they can still be saved.
+    if (!s || s.status !== "ready" || (!active(s) && !s.dirty)) throw Error("Preview is not ready")
     if (expectedSourceVersion !== s.sourceVersion || expectedSourceVersion !== t.version) throw Error("CONFLICT: source version changed")
     if (!s.dirty) return result(describe(t.slug, s))
     if (workspace) {
@@ -231,6 +247,22 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
       return { ...describe(t.slug, updated), version }
     })
     return result(saved)
+  })
+  server.registerTool("get_preview_logs", { description: "Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes.", inputSchema: selector }, async input => {
+    const { s } = await current(input)
+    const box = await sessionSandbox(s)
+    const [dev, install] = await Promise.all([tailLog(box, DEV_LOG), tailLog(box, INSTALL_LOG, 2_000)])
+    return result({ revision: s.revision, devServer: dev.log, devServerTruncated: dev.truncated, install: install.log })
+  })
+  server.registerTool("extend_preview", { description: "Keep an active preview running for another 30 minutes from now. Call it before expiresAt during a long edit session; an expired session with unsaved edits can still be saved, and start_preview resumes it.", inputSchema: selector }, async input => {
+    const { s } = await current(input, true)
+    const expiresAt = new Date(Date.now() + lifetime)
+    const extendBy = expiresAt.getTime() - s.expiresAt.getTime()
+    if (extendBy <= 0) return result(describe(s.target, s))
+    const box = await sessionSandbox(s)
+    await box.extendTimeout(extendBy)
+    await db.apiToken.updateMany({ where: { name: "Template preview " + s.id }, data: { expiresAt } })
+    return result(describe(s.target, await db.mcpPreviewSession.update({ where: { id: s.id }, data: { expiresAt } })))
   })
   server.registerTool("stop_preview", { description: "Stop a preview. Unsaved edits require discardChanges.", inputSchema: { ...selector, discardChanges: z.boolean().optional() } }, async ({ discardChanges, ...input }) => {
     const t = await template(input, true)

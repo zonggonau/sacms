@@ -91,7 +91,11 @@ export async function proxy(request: NextRequest) {
       const redirect = NextResponse.redirect(clean)
       redirect.headers.set("cache-control", "no-store")
       redirect.headers.set("referrer-policy", "no-referrer")
-      redirect.cookies.set("__Host-sacms-preview", expected, { secure: true, httpOnly: true, sameSite: "strict", path: "/", expires: session.expiresAt })
+      // Lax, not Strict: the accessUrl is usually opened from an AI chat on another
+      // site, and browsers withhold Strict cookies on the redirect that follows a
+      // cross-site navigation. No expires: the session row decides validity, so
+      // extend_preview works without re-issuing the cookie.
+      redirect.cookies.set("__Host-sacms-preview", expected, { secure: true, httpOnly: true, sameSite: "lax", path: "/" })
       return redirect
     }
     if (!matchesPreviewCredential(request.cookies.get("__Host-sacms-preview")?.value, expected)) return new NextResponse(null, { status: 403 })
