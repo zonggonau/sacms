@@ -101,8 +101,8 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
 
   // MCP is a separate credential system from REST/GraphQL (see public-api-actor.ts).
   // Only type "mcp" ApiToken rows authenticate here; the legacy ApiKey (REST-only)
-  // is not accepted. Tokens are always hashed on create; plaintext lookup removed
-  // 2026-11-23 (all plaintext tokens expired or migrated by now).
+  // is not accepted. Lookup is by hash only: production had zero plaintext rows
+  // of any token type when the plaintext fallback was removed (checked 2026-11-24).
   const token = await db.apiToken.findFirst({
     where: {
       token: hashed,
@@ -112,9 +112,14 @@ export async function resolveToken(rawToken: string): Promise<AuthContext | null
       id: true,
       tenantId: true,
       permissions: true,
+      expiresAt: true,
       tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } }
     },
   })
+
+  // Tokens are minted with a 90-day expiresAt that this route never checked,
+  // so an expired token kept working indefinitely.
+  if (token?.expiresAt && token.expiresAt.getTime() <= Date.now()) return null
 
   if (token?.tenant) {
     db.apiToken.updateMany({

@@ -98,6 +98,40 @@ describe("MCP route — resolveToken", () => {
     expect(await resolveToken("sacms_bogus")).toBeNull()
   })
 
+  it("rejects an expired token instead of letting it work indefinitely", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
+      id: "tok-1",
+      tenantId: "tenant-1",
+      permissions: ["read"],
+      expiresAt: new Date(Date.now() - 1000),
+      tenant: makeTenant({ status: "active" }),
+    } as any)
+    vi.mocked(db.subscription.findFirst).mockResolvedValue({ id: "sub-1", status: "active" } as any)
+
+    expect(await resolveToken("mcp_expired")).toBeNull()
+    expect(db.apiToken.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("accepts a token whose expiry is still in the future", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
+      id: "tok-1",
+      tenantId: "tenant-1",
+      permissions: ["read"],
+      expiresAt: new Date(Date.now() + 60_000),
+      tenant: makeTenant({ status: "active" }),
+    } as any)
+    vi.mocked(db.subscription.findFirst).mockResolvedValue({ id: "sub-1", status: "active" } as any)
+
+    expect(await resolveToken("mcp_valid")).not.toBeNull()
+  })
+
+  it("looks the token up by its sha256 hash only, never by the raw value", async () => {
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue(null)
+    await resolveToken("mcp_raw")
+    const where = vi.mocked(db.apiToken.findFirst).mock.calls[0][0]!.where
+    expect(where).toEqual({ token: expect.stringMatching(/^[0-9a-f]{64}$/), type: "mcp" })
+  })
+
   it("marks the tenant unpaid when there is no active/paid/trialing subscription and no active hosting", async () => {
     vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "tok-1",
