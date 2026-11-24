@@ -5,7 +5,7 @@ type McpServer = Parameters<Parameters<typeof createMcpHandler>[0]>[0]
 import { z } from "zod"
 import { db } from "@/lib/database"
 import { findSchemaDemoWorkspace } from "./demo-tenant"
-import { previewCredential, previewRelay } from "./preview-access"
+import { previewCredential, previewRelay, verifyPublicPreview } from "./preview-access"
 import { resolveApiOrigin } from "./frontend-env"
 import { createTargetProject, getVercelTeamId, getVercelToken } from "@/lib/vercel-client"
 import { websiteTemplateFilesSchema, websiteTemplateFileSchema, type WebsiteTemplateFile } from "@/lib/validations/website-template"
@@ -147,6 +147,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
         env: { NEXT_PUBLIC_SACMS_TENANT: demo.slug, NEXT_PUBLIC_SACMS_API_URL: resolveApiOrigin(), SACMS_API_KEY: demoKey } })
       const probe = await box.runCommand("node", ["-e", "async function ready(){for(let i=0;i<60;i++){try{if((await fetch('http://localhost:3000')).ok)return}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)}ready()"])
       if (probe.exitCode !== 0) throw Error("Preview server did not become ready")
+      await verifyPublicPreview(id)
       return result(describe(t.slug, await db.mcpPreviewSession.update({ where: { id }, data: { status: "ready" } })))
     } catch (error) {
       await box?.stop().catch(() => {})

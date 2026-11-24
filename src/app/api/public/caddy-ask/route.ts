@@ -44,6 +44,15 @@ export async function GET(req: NextRequest) {
       return new NextResponse("Bad Request: missing domain parameter", { status: 400 })
     }
 
+    if (domain.endsWith(".preview.sacms.cloud")) {
+      const match = /^([0-9a-f]{16})\.preview\.sacms\.cloud$/.exec(domain)
+      const session = match && await db.mcpPreviewSession.findFirst({
+        where: { id: match[1], scope: { in: ["workspace", "global"] }, status: { in: ["starting", "ready", "editing"] }, expiresAt: { gt: new Date() }, upstream: { not: null } },
+        select: { id: true },
+      })
+      return new NextResponse(session ? "OK" : "Forbidden", { status: session ? 200 : 403 })
+    }
+
     if (await isRealPlatformSubdomain(domain)) {
       return new NextResponse("OK", { status: 200 })
     }

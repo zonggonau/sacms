@@ -1,5 +1,9 @@
 import { expect, it, vi } from "vitest"
 
+vi.mock("@/lib/infrastructure/preview-access", async importOriginal => ({
+  ...await importOriginal<typeof import("@/lib/infrastructure/preview-access")>(),
+  verifyPublicPreview: vi.fn(async () => {}),
+}))
 vi.mock("server-only", () => ({}))
 const { db, box } = vi.hoisted(() => ({
   db: { tenant: { findUniqueOrThrow: vi.fn() }, mcpDeploymentSource: { findFirst: vi.fn() }, websiteTemplate: { updateMany: vi.fn(), findFirstOrThrow: vi.fn(), update: vi.fn() },

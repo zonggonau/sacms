@@ -1,4 +1,4 @@
-import { matchesPreviewCredential, previewCredential } from "@/lib/infrastructure/preview-access"
+import { matchesPreviewCredential, previewCredential, previewProbePath } from "@/lib/infrastructure/preview-access"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
@@ -62,19 +62,31 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Handle every asset on a preview host before platform routes or cookies.
-  const previewHost = request.nextUrl.hostname.toLowerCase()
+  const previewHost = (request.headers.get("host")?.split(":")[0] ?? request.nextUrl.hostname).toLowerCase()
   if (previewHost.endsWith(".preview.sacms.cloud")) {
     const match = /^([a-f0-9]{16})\.preview\.sacms\.cloud$/.exec(previewHost)
     if (!match) return new NextResponse(null, { status: 404 })
     const session = await db.mcpPreviewSession.findUnique({ where: { id: match[1] },
       select: { scope: true, status: true, expiresAt: true, upstream: true } })
-    if (!session || !["global", "workspace"].includes(session.scope) || !["ready", "editing"].includes(session.status) ||
+    if (!session || !["global", "workspace"].includes(session.scope) || !["starting", "ready", "editing"].includes(session.status) ||
       session.expiresAt.getTime() <= Date.now() || !session.upstream) return new NextResponse(null, { status: 410 })
+    if (pathname === previewProbePath && request.method === "HEAD" &&
+      matchesPreviewCredential(request.headers.get("x-sacms-preview-probe") ?? undefined, previewCredential(match[1], "probe"))) {
+      const upstream = await fetch(new URL("/", session.upstream), {
+        method: "HEAD", redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(6000),
+        headers: { "x-sacms-preview": previewCredential(match[1], "upstream") },
+      }).catch(() => null)
+      if (!upstream?.ok) return new NextResponse(null, { status: 502 })
+      return new NextResponse(null, { status: 204, headers: { "cache-control": "no-store", "x-sacms-preview-proof": previewCredential(match[1], "proof") } })
+    }
+    if (session.status === "starting") return new NextResponse(null, { status: 503 })
     if (!["GET", "HEAD"].includes(request.method)) return new NextResponse(null, { status: 405 })
     const expected = previewCredential(match[1], "browser")
     const grant = request.nextUrl.searchParams.get("preview_access")
     if (grant && matchesPreviewCredential(grant, expected)) {
-      const clean = request.nextUrl.clone()
+      const clean = new URL(`https://${previewHost}`)
+      clean.pathname = pathname
+      clean.search = request.nextUrl.search
       clean.searchParams.delete("preview_access")
       const redirect = NextResponse.redirect(clean)
       redirect.headers.set("cache-control", "no-store")
@@ -96,7 +108,7 @@ export async function proxy(request: NextRequest) {
     const location = response.headers.get("location")
     if (location) {
       const next = new URL(location, upstream)
-      if (next.origin === upstream.origin) headers.set("location", request.nextUrl.origin + next.pathname + next.search + next.hash)
+      if (next.origin === upstream.origin) headers.set("location", `https://${previewHost}` + next.pathname + next.search + next.hash)
     }
     return new NextResponse(response.body, { status: response.status, headers })
   }
