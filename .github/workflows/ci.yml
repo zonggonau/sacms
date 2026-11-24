@@ -163,35 +163,15 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Ensure Target Directory Exists on Server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
-          username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          timeout: 60s
-          command_timeout: 10m
-          script: |
-            mkdir -p /opt/sacms/db/backups
-            mkdir -p /opt/sacms/db/manual-migrations
-            mkdir -p /opt/sacms/caddy_data
-            mkdir -p /opt/sacms/caddy_config
-            mkdir -p /opt/sacms/scripts
-
       - name: Sync Compose and Caddy Config to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
-          username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
-          port: ${{ secrets.SERVER_PORT || 22 }}
-          timeout: 60s
-          command_timeout: 10m
-          source: "docker-compose.yml,Caddyfile,docker/cron/crontab,db/manual-migrations/*.sql"
-          target: "/opt/sacms"
+        shell: bash
+        env:
+          VPS_HOST: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
+          VPS_USER: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
+          VPS_KEY: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+          VPS_PASSWORD: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
+          VPS_PORT: ${{ secrets.SERVER_PORT || 22 }}
+        run: bash scripts/ci/sync-vps-config.sh
 
       - name: Execute Zero-Downtime Deployment & DB Migration
         uses: appleboy/ssh-action@v1.0.3
