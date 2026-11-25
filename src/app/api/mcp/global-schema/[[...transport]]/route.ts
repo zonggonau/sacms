@@ -33,6 +33,7 @@ import { z } from "zod"
 import { schemaRequirements } from "@/lib/infrastructure/site-schema-contract"
 import { previewRoutePaths } from "@/lib/infrastructure/preview-route-paths"
 import { registerGlobalPreviews } from "@/lib/infrastructure/mcp-preview"
+import { GLOBAL_MCP_INSTRUCTIONS, GLOBAL_MCP_VERSION } from "@/lib/mcp/global-guidance"
 import { db } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
@@ -430,7 +431,7 @@ const DRY_RUN_OUTPUT_SHAPE = z.object({
 
 /** Returned instead of the normal result when a call runs in the background
  *  (`background: true`, or a dryRun with `verifyBuild: true`). Poll
- *  get_operation_status with `operationId`; its `result` then carries the
+ *  get_global_operation_status with `operationId`; its `result` then carries the
  *  same structuredContent the synchronous call would have returned. */
 const ASYNC_OPERATION_OUTPUT_SHAPE = z.object({
   mode: z.literal("async"),
@@ -446,7 +447,7 @@ function asyncOperationResponse(operation: { id: string; status: string }, kind:
     ok: true as const,
     operationId: operation.id,
     status: operation.status,
-    message: `${kind} is running in the background. Poll get_operation_status with this operationId until status is "succeeded" or "failed".`,
+    message: `${kind} is running in the background. Poll get_global_operation_status with this operationId until status is "succeeded" or "failed".`,
   }
   return { content: [{ type: "text" as const, text: `⏳ ${structured.message}\noperationId: ${operation.id}` }], structuredContent: structured }
 }
@@ -733,7 +734,7 @@ If you're working inside a real local Next.js project with shell access (Claude 
 ## Validate before you save
 For anything non-trivial, call \`create_website_template\` with \`dryRun: true\` FIRST — it validates files, schema shape, every relationSlug/componentSlug/allowedComponents reference against the rest of the SAME bundle, every field's \`type\` against the real 36-type list, and select/multiselect choices (including every \`dummyData\` entry's values against the same per-type rules real content creation uses), returning exact paths like \"schema.contentTypes[2].fields[4].options.choices\" for anything wrong, without creating or deploying anything. Write REAL, representative \`dummyData\` per Content Type/Single Type — the demo preview now seeds it directly instead of generic placeholder text (see "Demo preview" below), so vague/generic dummyData means a vague/generic-looking demo. Pass \`idempotencyKey\` if you want a lost response's retry to resolve to the same template instead of a duplicate.
 
-A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\` (with \`dryRun: true\`, on create or update) to run a real \`next build\` in a throwaway sandbox and render-check the routes; this catches a bundle that fails to build or builds but 500s at runtime (e.g. a package the bundler leaves external). It returns an \`operationId\`: poll \`get_operation_status\` until \`succeeded\`/\`failed\`.
+A plain dryRun only checks shape — it does NOT build. Add \`verifyBuild: true\` (with \`dryRun: true\`, on create or update) to run a real \`next build\` in a throwaway sandbox and render-check the routes; this catches a bundle that fails to build or builds but 500s at runtime (e.g. a package the bundler leaves external). It returns an \`operationId\`: poll \`get_global_operation_status\` until \`succeeded\`/\`failed\`.
 
 ## Approvals and token scopes
 Publishing (\`published: true\` on a Schema Template, Website Template or Global Component), \`isDefault: true\`, and a cascading \`delete_schema_template\` are never applied by you: the item is saved without that change and the request is returned in \`pendingApprovals\` (or \`pendingApproval\`). A super admin approves or rejects it in the SaCMS dashboard (/admin/developer/approvals). Tell the user it's waiting, and check it with \`get_approval_status\` — don't retry the flag in a loop. Each token has scopes (read, demo, write, publish); a tool outside them returns FORBIDDEN_SCOPE, and \`whoami\` shows what this token may do.
@@ -745,7 +746,7 @@ Put them in \`files\` like any other file, with \`encoding: "base64"\` and the b
 Every files/schema change is recorded as a version (diff summary, which token made it, when; the last 30 are kept). \`list_template_versions\` shows the history, \`get_template_version\` reads a snapshot (paths + sha256, or specific files with \`paths\`), and \`update_website_template({ id, restoreFromVersion: N })\` rolls back — files only by default, add \`restoreSchema: true\` for the schema too. A restore goes through every normal update guard and is itself recorded, so it can be undone. \`get_website_template\` with \`listPathsOnly\` returns each file's sha256 too, so you can sync a local copy by fetching only files that differ.
 
 ## Long-running calls
-\`create_website_template\`, \`update_website_template\` and \`redeploy_website_template_demo\` accept \`background: true\`: they return an \`operationId\` immediately instead of holding the connection open through the whole demo deploy, so a dropped connection can't lose the result. Poll \`get_operation_status\`; its \`result\` is the same structuredContent the synchronous call returns. Always pair a background create with \`idempotencyKey\`.
+\`create_website_template\`, \`update_website_template\` and \`redeploy_website_template_demo\` accept \`background: true\`: they return an \`operationId\` immediately instead of holding the connection open through the whole demo deploy, so a dropped connection can't lose the result. Poll \`get_global_operation_status\`; its \`result\` is the same structuredContent the synchronous call returns. Always pair a background create with \`idempotencyKey\`.
 
 ## Demo preview and verification
 \`create_website_template\` initializes empty demo models from sample data. Read actual values with \`get_demo_single_type_entry\` or \`list_demo_content_entries\`. Read both editor and published values before diagnosing a frontend that appears empty. Use \`upload_demo_media\` to obtain a demo media ID, then \`update_demo_single_type_entry\` or \`save_demo_content_entry\` to store it, including inside Component and Repeater fields.
@@ -1536,8 +1537,8 @@ const handler = createMcpHandler(
           ),
           idempotencyKey: z.string().optional().describe("A key unique to THIS submission. If this tool's response is ever lost, retry with the SAME key — you'll get back the already-created template instead of a duplicate (and, when `schema` was given, a second orphaned backing Schema Template). Ignored when dryRun is true."),
           dryRun: z.boolean().optional().describe("Validate everything (files, schema shape, relationSlug/componentSlug/allowedComponents references, select/multiselect choices, schemaTemplateId existence) WITHOUT creating anything or deploying a demo. Returns the same validation errors a real call would reject with, each with an exact path like \"schema.contentTypes[2].fields[4].options.choices\" — call this first for anything non-trivial instead of discovering a mistake only after it's already saved."),
-          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the bundle in a throwaway Vercel sandbox and render-check its routes (catches a bundle that type-checks but fails to build, or builds but 500s at runtime). Takes a few minutes, so it always returns an operationId — poll get_operation_status. Nothing is saved or deployed to the demo."),
-          background: z.boolean().optional().describe("Run the create + demo deploy in the background and return an operationId immediately instead of holding the connection open for the whole deploy. Poll get_operation_status. Pair with idempotencyKey. Ignored with dryRun."),
+          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the bundle in a throwaway Vercel sandbox and render-check its routes (catches a bundle that type-checks but fails to build, or builds but 500s at runtime). Takes a few minutes, so it always returns an operationId — poll get_global_operation_status. Nothing is saved or deployed to the demo."),
+          background: z.boolean().optional().describe("Run the create + demo deploy in the background and return an operationId immediately instead of holding the connection open for the whole deploy. Poll get_global_operation_status. Pair with idempotencyKey. Ignored with dryRun."),
         },
         outputSchema: z.union([
           DRY_RUN_OUTPUT_SHAPE,
@@ -1813,8 +1814,8 @@ const handler = createMcpHandler(
           confirmSharedUpdate: z.boolean().optional().describe("Required (after confirming with the user) when `schema` is being changed AND another Website Template also follows the same backing Schema Template — see this tool's own description."),
           confirmRemoveDemoContent: z.boolean().optional().describe("Required after user approval to remove a Content Type that still contains demo entries."),
           dryRun: z.boolean().optional().describe("Validate everything (merged files, schema shape/references, expectedVersion conflict, HAS_DEPENDENTS) WITHOUT writing anything or redeploying the demo — same idea as create_website_template's dryRun, call this first for a non-trivial change."),
-          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the merged bundle in a throwaway Vercel sandbox against this template's demo data, and render-check its routes. Always returns an operationId — poll get_operation_status. Nothing is saved or redeployed."),
-          background: z.boolean().optional().describe("Run the update + demo redeploy in the background and return an operationId immediately. Poll get_operation_status. Ignored with dryRun."),
+          verifyBuild: z.boolean().optional().describe("With dryRun: also run a REAL `next build` of the merged bundle in a throwaway Vercel sandbox against this template's demo data, and render-check its routes. Always returns an operationId — poll get_global_operation_status. Nothing is saved or redeployed."),
+          background: z.boolean().optional().describe("Run the update + demo redeploy in the background and return an operationId immediately. Poll get_global_operation_status. Ignored with dryRun."),
           restoreFromVersion: z.number().int().min(1).optional().describe("Roll back to a version from list_template_versions: uses that snapshot's files (and its schema too with restoreSchema: true) instead of `files`/`changedFiles`/`schema`, through every guard a normal update has (expectedVersion, HAS_DEPENDENTS, demo content). Combine with dryRun to preview. Recorded as a new version, so a restore can itself be undone."),
           restoreSchema: z.boolean().optional().describe("With restoreFromVersion: also restore the backing Schema Template's schema from that snapshot. Default false (files only)."),
         },
@@ -2213,11 +2214,12 @@ const handler = createMcpHandler(
       },
     )
 
-    server.registerTool(
-      "get_operation_status",
+    const registerOperationStatus = (name: string, description: string) =>
+      server.registerTool(
+      name,
       {
         title: "Get Background Operation Status",
-        description: "Poll a background operation started by create_website_template/update_website_template/redeploy_website_template_demo with background: true, or by a dryRun with verifyBuild: true. Keep polling (every ~10-20s) while status is \"running\". When it finishes, `result` carries the same structuredContent the synchronous call would have returned; on \"failed\", `error` says why.",
+        description,
         inputSchema: {
           operationId: z.string().describe("The operationId returned by the call that started it."),
         },
@@ -2256,6 +2258,10 @@ const handler = createMcpHandler(
         return { content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }], structuredContent: structured }
       },
     )
+    registerOperationStatus("get_global_operation_status", "Poll a background operation started by create_website_template/update_website_template/redeploy_website_template_demo with background: true, or by a dryRun with verifyBuild: true. Keep polling (every ~10-20s) while status is \"running\". When it finishes, `result` carries the same structuredContent the synchronous call would have returned; on \"failed\", `error` says why.")
+    // Deprecated alias: same tool under the name it had before, so existing
+    // clients keep working. Remove after the next major release.
+    registerOperationStatus("get_operation_status", "Deprecated alias of get_global_operation_status (same behavior). Use get_global_operation_status.")
 
     server.registerTool(
       "list_template_versions",
@@ -2467,7 +2473,7 @@ const handler = createMcpHandler(
         description: "Redeploy the demo frontend from the stored files and verify it while preserving the demo entries. Use get_website_template_demo_status to diagnose a failed build. Reset sample content separately with reset_demo_content.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
-          background: z.boolean().optional().describe("Run the redeploy in the background and return an operationId immediately. Poll get_operation_status."),
+          background: z.boolean().optional().describe("Run the redeploy in the background and return an operationId immediately. Poll get_global_operation_status."),
         },
         outputSchema: z.union([
           ASYNC_OPERATION_OUTPUT_SHAPE,
@@ -2762,29 +2768,14 @@ const handler = createMcpHandler(
     )
   },
   {
-    serverInfo: { name: "sacms-global-schema-mcp", version: "1.20.0" },
+    serverInfo: { name: "sacms-global-schema-mcp", version: GLOBAL_MCP_VERSION },
     // Kept short deliberately — confirmed live that at least one real MCP
     // client (Claude Code) truncates a long `instructions` string outright
     // (this field used to run ~6,178 characters and was cut off mid-word
     // well before the end, so everything past the cut never reached the
     // agent). Call get_builder_guide for the full workflow; this is only
     // the handful of rules too safety-critical to risk never being read.
-    instructions:
-      "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates and Website " +
-      "Templates and their linked internal demo workspaces. Customer workspaces use /api/mcp. " +
-      "Call get_website_agent_workflow when building a website. Analyze the brief before creating or reusing its demo workspace. " +
-      "Verify the actual demo schema before building the frontend and review security before deploying. " +
-      "get_builder_guide covers the " +
-      "workflow (schema+frontend build order, dry-run validation, demo preview contract, every structured " +
-      "error code, and reusable Global Components via list_global_components/get_global_component). Four " +
-      "rules too important to risk missing: (1) default stack for every Website Template " +
-      "is Next.js + TypeScript + shadcn/ui, every component AND color token from shadcn's own system, " +
-      "unless the user asks for something else; (2) call list_field_types before writing any " +
-      "schema field — it has the real options/relationSlug shape per type and flags silently-ignored " +
-      "options, never guess one; (3) richText field values are real HTML needing a sanitized " +
-      "dangerouslySetInnerHTML in the frontend, never string interpolation, and markdown values need a " +
-      "Markdown renderer, not an HTML sink; (4) for anything non-trivial, call create_website_template with " +
-      "dryRun: true first — it validates the whole bundle without creating or deploying anything.",
+    instructions: GLOBAL_MCP_INSTRUCTIONS,
   },
 )
 

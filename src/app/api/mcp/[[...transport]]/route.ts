@@ -19,6 +19,7 @@ import { activeSchema, schemaRequirements, compareSchema } from "@/lib/infrastru
 import { startBackgroundOperation, getOperation } from "@/lib/infrastructure/global-mcp-operations"
 import { previewRoutePaths } from "@/lib/infrastructure/preview-route-paths"
 import { registerWorkspacePreviews } from "@/lib/infrastructure/mcp-preview"
+import { WORKSPACE_MCP_INSTRUCTIONS, WORKSPACE_MCP_VERSION, buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 import { db, getTenantDb } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
@@ -2633,44 +2634,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
-        const playbook = `# SaCMS Agent Playbook — Workspace: ${auth.tenantName}
-
-You are connected to a live, real headless CMS workspace via MCP. Follow these phases IN ORDER — do not invent Content Types, fields, or data; everything must come from these tools.
-
-## Phase 0 — Build/revise requests only
-0. If the user is asking you to build, create, or revise this workspace's website/app (not just browse schema/content), call \`start_website_build\` before anything else — it registers a resumable \`runId\` and flags a target conflict up front if this workspace already has a live site and the user wants a brand-new one. If the user instead opens a NEW conversation referring back to an earlier build ("lanjutkan website kemarin"), call \`get_build_run\` first to resume its actual last-known state instead of starting over or guessing. If the user instead wants to start from an existing catalog Website Template (a pre-built schema+frontend bundle) rather than building from scratch, call \`apply_website_template\` with its id/slug — it only works on an empty workspace (no existing Content Types/Single Types/Components), skip the rest of this playbook once it succeeds, the schema AND the deployed frontend are both already done.
-
-## Phase 1 — Discover the real schema
-1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
-2. Call \`list_field_types\` BEFORE picking a field type or writing its \`options\` — it gives the real \`options\`/\`relationSlug\` shape and the entry-value shape per type, and flags several options that are silently ignored at render time instead of erroring (so guessing them wastes a turn, it doesn't fail loudly). Needing a small FIXED set of choices → \`select\`/\`multiselect\` with \`options.choices\`; needing an open-ended or separately-managed set of records → \`relation\` with \`relationSlug\`. Never guess an options shape instead of calling this tool.
-3. If the schema is missing something the user asked for, use \`create_content_type\` / \`update_content_type\` / \`create_component\` / \`create_single_type\` etc. to extend it — the schema has no "finalized/locked" state, it's always editable. Before designing a new Component from scratch for something generic/common (a testimonial, a team member card, a pricing tier), call \`list_global_components\` first — SaCMS's platform-wide catalog may already have a ready-made field shape; \`get_global_component\` returns its \`fields\` array ready to pass straight into \`create_component\`.
-4. If the workspace has many Content Types, organize them into sidebar folders with \`list_content_type_groups\` / \`create_content_type_group\` / \`assign_content_type_to_group\` (up to 3 levels deep) — Single Types have no grouping concept in SaCMS, don't invent one for them.
-
-## Phase 2 — Explore real content before writing any UI
-5. Call \`query_content\` (or \`get_single_type\`) for each relevant type to see ACTUAL records — real field values, not assumptions. This tells you what's actually populated vs. empty.
-6. Never hardcode placeholder text/images in the frontend for anything that has a schema field — render from the real data instead, even if a given record is currently empty.
-
-## Phase 3 — Scaffold the frontend
-Default stack (standard baseline for every frontend built here, not optional unless the user explicitly asks for something else): Next.js (App Router) + TypeScript + shadcn/ui — every component AND every color token comes from shadcn's own system (see step 7c), not a hand-rolled design system or a different component library.
-7. For each Content Type: build a list page + a detail page. For each Single Type: build its one dedicated page (e.g. homepage, about, site-settings feed the header/footer).
-7b. Every workspace is guaranteed to already have a \`site-settings\` Single Type (auto-provisioned at workspace creation, never missing) with these exact field slugs: \`brand-name\`, \`tagline\`, \`logo\` (media), \`favicon\` (media), \`default-color-mode\` (one of \`system\`/\`light\`/\`dark\`), \`primary-color-light\`/\`primary-color-dark\`, \`secondary-color-light\`/\`secondary-color-dark\`, \`text-color-light\`/\`text-color-dark\` (all six colors as hex strings). Read it with \`get_single_type\` (slug \`site-settings\`) instead of guessing field names, and read/apply it in the frontend's theme (CSS variables, dark-mode class) and header/footer instead of hardcoding brand colors or a logo URL. For a "ganti warna/logo/brand" request, write through \`update_single_type_content\` with \`singleTypeSlug: "site-settings"\` — the user can also edit these same fields directly from Konten → Pengaturan Site in the dashboard, so both stay in sync automatically.
-7c. Design system: build the UI on shadcn/ui conventions (Tailwind CSS + Radix primitives) — compose pages from shadcn's own component patterns (Button, Card, Badge, Input, Dialog, DropdownMenu, etc. with their standard \`variant\`/\`size\` props) instead of one-off custom markup for things shadcn already solves. Theme it with CSS variables (\`--background\`, \`--foreground\`, \`--primary\`, \`--border\`, \`--radius\`, etc. in \`:root\` plus a \`.dark\` override) and set \`--primary\`/\`--foreground\`/etc. from this workspace's REAL \`site-settings\` brand colors (step 7b) — never ship shadcn's own default zinc/slate palette untouched, every page should read as THIS brand. Typography follows the same shadcn convention: load a real font via \`next/font\` (Google or local) bound to a \`--font-sans\` CSS variable and reference it through Tailwind's \`font-sans\`, instead of leaving the browser's default serif/sans-serif or hardcoding a font-family string — shadcn's own generator does exactly this, never ship a page with no font loaded at all. Keep one consistent radius and spacing scale across every component rather than mixing ad-hoc rounded corners. Avoid generic AI-template tells on top of that — a purple-to-blue gradient hero, emoji as section icons, everything centered — shadcn's own clean, neutral look already reads as professional once it's actually themed to the brand instead of left at its defaults. If you're working inside a real local Next.js project with shell access (Claude Code, Cursor, etc.) rather than only producing file content for this MCP's tools, consider installing shadcn's own Skill (\`npx/pnpm/bun dlx skills add shadcn/ui\` — activates once it finds your project's \`components.json\`) for live, authoritative CLI reference, theming, and composition rules (e.g. \`FieldGroup\` for forms, \`ToggleGroup\` for option sets) beyond this prose summary.
-8. Map every field type to the right UI primitive: \`media\`→image/file, \`mediaMultiple\`→gallery, \`richText\`→sanitized dangerouslySetInnerHTML (its value is REAL HTML from the dashboard's WYSIWYG editor — rendering it as plain text shows the literal <p>/<strong>/<ul> tags to visitors, confirmed live), \`markdown\`→a Markdown renderer (react-markdown or equivalent — its value is raw Markdown source, not HTML), \`relation\`→linked record, \`component\`/\`repeater\`→nested group, \`seo\`→meta tags, \`color\`→theme token, \`currency\`/\`percent\`/\`rating\`→formatted number.
-9. Fetch data either by calling these MCP tools directly during generation, OR from the generated app's own runtime via the REST/GraphQL API — call \`get_api_info\` for the base URL, auth header, filtering/pagination syntax, and a ready-to-paste Next.js sample, or \`check_sdk_availability\` for a typed \`@sacms/sdk\` client instead of hand-written \`fetch()\` calls (it live-checks the package is actually published before suggesting it). Call \`get_or_create_api_key\` if the generated app needs its own long-lived token.
-10. If the frontend needs a third-party API key (e.g. a payment, print-on-demand, or maps provider), call \`list_deployment_env\` FIRST to check whether it's already configured — if the key name is already there, just reference \`process.env.<KEY>\` in your code; do not ask the user to paste the secret into chat, and do not invent an env var name without checking. If it's missing, tell the user the exact variable name to set (via the dashboard's Environment tab or \`add_deployment_env\`) before the code can work end to end.
-11. Need REAL data from that third-party API right now (e.g. to see its actual response shape, or to populate a catalog while scaffolding) instead of just referencing the key in generated code? Call \`call_external_api\` with \`{{ENV_KEY}}\` in place of the secret (e.g. \`headers: { "Authorization": "Bearer {{PRINTFUL_API_KEY}}" }\`) — SaCMS substitutes the real value server-side and returns the response. Never try to call the third-party API directly from your own sandbox/runtime; it has no access to this workspace's secrets.
-
-## Phase 4 — Review and release
-12. For a new site or an applied template, open start_preview. Read files with read_preview_file and update the same Sandbox with apply_preview_changes and expectedRevision.
-13. Open accessUrl from get_preview_url and check the homepage and relevant routes with the current workspace content.
-14. Save the reviewed source with save_preview_changes and expectedSourceVersion. Give the administrator the Hosting link. Only the administrator releases production there.
-15. For existing staging builds, get_deployment_status and verify_deployment_url can verify their deploymentId. Inspect runtime errors before a release. deploy_website_patch and rollback_website create staging candidates only.
-
-## Rules that apply throughout
-- Never guess a base URL, token, or domain — every tool above resolves the real one for this workspace automatically. The env var a deployed frontend reads to call the SaCMS API is \`SACMS_API_KEY\` (confirm via \`get_api_info\`/\`list_deployment_env\`, never assume a name).
-- Content Entry mutations (\`create_content_entry\`/\`update_content_entry\`/\`delete_content_entry\`) go through the same validation/RBAC as the dashboard — they will reject invalid data, that's expected.
-- Webhooks (\`list_webhooks\`/\`create_webhook\`/\`test_webhook\`) exist if the user wants this workspace to notify an external system on content changes — unrelated to frontend scaffolding.
-- This playbook applies to every connection — re-read it any time you're unsure what to do next, instead of guessing the shape of this workspace's data.`
+        const playbook = buildWorkspacePlaybook(auth.tenantName)
 
         return { content: [{ type: "text" as const, text: playbook }] }
       }
@@ -2957,7 +2921,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
       "start_website_build",
       {
         title: "Start or Resume a Website Build",
-        description: "The entry point for any build, create, or revise request against this workspace's website/app — call it before get_full_schema whenever the ask is build-shaped, not just schema/content browsing. Example intents this covers: \"buatkan portal berita untuk workspace ini dan deploy ke SaCMS\", \"ubah warna header website saya\", \"ganti logo di website yang sudah ada\", \"lanjutkan build kemarin\" / \"build a responsive news site and deploy it to SaCMS\", \"change the header color on my site\", \"continue the build from before\". Returns a runId tied to this workspace — pass it to deploy_to_sacms and verify_deployment_url as you go, and call get_build_run (even from a brand-new conversation) to resume exactly where a previous attempt left off if this one gets interrupted. This tool only registers intent and flags a target conflict up front if one exists — it never touches schema or deploys anything by itself. If the user only asked for a plan, design, or preview rather than an actual live deploy, stop there and show it to them — do not go on to call deploy_to_sacms just because you called this.",
+        description: "The entry point for any build, create, or revise request against this workspace's website/app — call it before get_full_schema whenever the ask is build-shaped, not just schema/content browsing. Example intents this covers: \"buatkan portal berita untuk workspace ini dan deploy ke SaCMS\", \"ubah warna header website saya\", \"ganti logo di website yang sudah ada\", \"lanjutkan build kemarin\" / \"build a responsive news site and deploy it to SaCMS\", \"change the header color on my site\", \"continue the build from before\". Returns a runId tied to this workspace — keep it to resume this build later with get_build_run, and call get_build_run (even from a brand-new conversation) to resume exactly where a previous attempt left off if this one gets interrupted. This tool only registers intent and flags a target conflict up front if one exists — it never touches schema or deploys anything by itself. If the user only asked for a plan, design, or preview rather than an actual live deploy, stop there and show it to them — do not open start_preview or deploy just because you called this.",
         inputSchema: {
           intent: z.enum(["create", "update"]).optional().describe("\"create\" for a brand-new website, \"update\" for a revision of whatever is already live. Omit to auto-detect: \"update\" if this workspace already has a deployment, \"create\" otherwise."),
         },
@@ -2996,11 +2960,11 @@ Default stack (standard baseline for every frontend built here, not optional unl
           // build is (chatgpt1.md P1 finding: the old generic nextStep did
           // exactly that, even for "update").
           const nextAction = conflict
-            ? { tool: null, reason: `Workspace already has a live site at ${tenant?.vercelDeploymentUrl}. Confirm with the user before overwriting it.` }
+            ? { tool: null, reason: `Workspace already has a live site at ${tenant?.vercelDeploymentUrl}. Confirm with the user whether this is a revision of it or a brand-new site that replaces it.` }
             : resumed
               ? { tool: "get_build_run", args: { runId: run.id }, reason: `Resuming an in-progress run at stage "${run.stage}" — re-check its state before continuing instead of starting over.` }
               : resolvedIntent === "update"
-                ? { tool: "get_deployment_source", args: {}, reason: "This is a revision of a site that's already live — read the current deployed files before changing anything, then prefer deploy_website_patch over deploy_to_sacms for the actual change." }
+                ? { tool: "get_deployment_source", args: {}, reason: "This is a revision of a site that's already live — read the current deployed files with get_deployment_source, then make only the requested change in start_preview, save it, and an administrator releases it." }
                 : { tool: "get_full_schema", args: {}, reason: "This is a brand-new build — discover the real schema before scaffolding any UI." }
 
           const structured = {
@@ -3012,12 +2976,12 @@ Default stack (standard baseline for every frontend built here, not optional unl
             conflict,
             existingUrl: conflict ? tenant?.vercelDeploymentUrl || undefined : undefined,
             nextStep: conflict
-              ? `Workspace already has a live site at ${tenant?.vercelDeploymentUrl}. Confirm with the user whether to overwrite it before deploying — then pass confirmOverwrite: true to deploy_to_sacms, or treat this as a revision instead (call deploy_to_sacms without intent: "create").`
+              ? `Workspace already has a live site at ${tenant?.vercelDeploymentUrl}. Confirm with the user whether this is a revision of it (get_deployment_source, then start_preview) or a brand-new site that replaces it.`
               : resumed
                 ? `Resuming an in-progress run at stage "${run.stage}" — call get_build_run anytime to re-check this state. Continue from where it left off instead of starting over.`
                 : resolvedIntent === "update"
-                  ? "This is a revision of an already-live site — call get_deployment_source first to read the current files, then use deploy_website_patch (not deploy_to_sacms) for the actual change so you only send what changed."
-                  : "Call get_agent_playbook for the full phase order, then get_full_schema, scaffold the frontend, and call deploy_to_sacms with this runId.",
+                  ? "This is a revision of an already-live site — call get_deployment_source first to read the current files, then open start_preview and change only what the user asked for. Save with save_preview_changes; an administrator releases it."
+                  : "Call get_agent_playbook for the full phase order, then get_full_schema, scaffold the frontend, open start_preview, and save with save_preview_changes. Keep this runId to resume the build later with get_build_run.",
             nextAction,
           }
 
@@ -3101,7 +3065,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
       "deploy_to_sacms",
       {
         title: "Deploy Website / App to SaCMS Cloud Hosting (Staging — Does NOT Go Live)",
-        description: "Build a staging candidate from the supplied workspace source. For interactive editing use start_preview. Release the saved version from Infrastructure → Hosting.",
+        description: "One-shot STAGING build from the supplied source. This is NOT the normal release path: for building or editing use start_preview → apply_preview_changes → save_preview_changes, then an administrator releases from Infrastructure → Hosting. Use this only when the user explicitly asks for a one-shot staging deploy.",
         inputSchema: {
           background: z.boolean().optional(),
           projectName: z.string().optional().describe("Ignored — kept only for backward compatibility with older callers. The deploy always targets this workspace's one locked hosting project, never a caller-chosen name (a different name here would silently orphan the previous project from configure_deployment_domain/add_deployment_env/make_deployment_public, which only ever manage the workspace's current project)."),
@@ -4711,7 +4675,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
 
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "4.7.1" },
+    serverInfo: { name: "sacms-mcp", version: WORKSPACE_MCP_VERSION },
     // Many MCP clients (Claude Desktop/Code, Cursor, Windsurf, VS Code
     // Copilot) load a server's `instructions` into the model's context
     // automatically on connect — no manual invocation needed. This is the
@@ -4721,8 +4685,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
     // short since it's injected into every conversation; the full ordered
     // workflow lives in the get_agent_playbook tool for clients that ignore
     // this field or that an agent wants to re-read on demand.
-    instructions:
-      "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. If a page errors or renders blank, read get_preview_logs. Call extend_preview before expiresAt during long sessions; an expired session with unsaved edits can still be saved, and start_preview resumes it. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK.",
+    instructions: WORKSPACE_MCP_INSTRUCTIONS,
   }
 )
 
