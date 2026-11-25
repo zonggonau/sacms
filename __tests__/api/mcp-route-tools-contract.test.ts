@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "fs"
 import { join } from "path"
+import { WORKSPACE_MCP_INSTRUCTIONS, buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 
 // Static source-text contract checks for the MCP audit's P0 fixes
 // (chatgpt.md, chatgpt1.md): no tool should claim to be "the first step"
@@ -312,9 +313,10 @@ describe("MCP workspace server route — source contract", () => {
 
   // ── richText/markdown rendering-contract finding ──────────────────────────
 
-  it("get_agent_playbook warns richText needs sanitized dangerouslySetInnerHTML and markdown needs a Markdown renderer, not plain-text interpolation", () => {
-    expect(routeSource).toMatch(/richText.*dangerouslySetInnerHTML/)
-    expect(routeSource).toMatch(/markdown.*Markdown renderer/i)
+  it("get_agent_playbook warns richText needs sanitized dangerouslySetInnerHTML and markdown needs a Markdown renderer", () => {
+    const playbook = buildWorkspacePlaybook("Test")
+    expect(playbook).toMatch(/richText.*dangerouslySetInnerHTML/)
+    expect(playbook).toMatch(/markdown.*Markdown renderer/i)
   })
 
   // ── chatgpt5.md round — error-contract consistency ────────────────────────
@@ -431,11 +433,9 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/_renderHints:\s*renderHints/)
   })
 
-  it("the server's top-level instructions also warn about richText/markdown rendering, not just a tool description buried deeper", () => {
-    const instructionsStart = routeSource.indexOf("instructions:")
-    const instructionsBlock = routeSource.slice(instructionsStart, instructionsStart + 4000)
-    expect(instructionsBlock).toMatch(/richText field's value is raw HTML/)
-    expect(instructionsBlock).toMatch(/_renderHints/)
+  it("the server's top-level instructions also warn about richText/markdown rendering", () => {
+    expect(WORKSPACE_MCP_INSTRUCTIONS).toMatch(/richText field's value is raw HTML/)
+    expect(WORKSPACE_MCP_INSTRUCTIONS).toMatch(/_renderHints/)
   })
 
   // ── check_sdk_availability: @sacms/sdk is an ordinary npm package, so its
@@ -458,11 +458,8 @@ describe("MCP workspace server route — source contract", () => {
   })
 
   it("get_agent_playbook and the top-level instructions both point to check_sdk_availability", () => {
-    const playbookBlock = toolBlockOf("get_agent_playbook")
-    expect(playbookBlock).toMatch(/check_sdk_availability/)
-    const instructionsStart = routeSource.indexOf("instructions:")
-    const instructionsBlock = routeSource.slice(instructionsStart, instructionsStart + 4000)
-    expect(instructionsBlock).toMatch(/check_sdk_availability/)
+    expect(buildWorkspacePlaybook("Test")).toMatch(/check_sdk_availability/)
+    expect(WORKSPACE_MCP_INSTRUCTIONS).toMatch(/check_sdk_availability/)
   })
 
   // ── Kabar Nusa report: apply_website_template — applying a catalog
@@ -489,9 +486,8 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/WORKSPACE_NOT_EMPTY/)
   })
 
-  it("get_agent_playbook's Phase 0 offers apply_website_template as the catalog-template alternative to building from scratch", () => {
-    const playbookBlock = toolBlockOf("get_agent_playbook")
-    expect(playbookBlock).toMatch(/apply_website_template/)
+  it("get_agent_playbook's Phase 0 offers apply_website_template as the catalog-template alternative", () => {
+    expect(buildWorkspacePlaybook("Test")).toMatch(/apply_website_template/)
   })
 
   it("defines resolveSubdomainLabel (read-only — never generates a token for an existing tenant) and every deployToVercel call site uses it instead of the raw tenant slug", () => {

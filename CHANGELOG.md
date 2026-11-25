@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **MCP workspace release path**: website changes are built and released through one path only: `start_preview` → `apply_preview_changes` → `save_preview_changes`, then an administrator releases from Infrastructure → Hosting. `deploy_to_sacms` is now documented as a one-shot staging build, not the normal release path. The playbook, `instructions`, and tool descriptions all say the same thing (workspace MCP 4.8.0).
+- **MCP guidance in one place**: the workspace `instructions` and playbook moved to `src/lib/mcp/workspace-guidance.ts`, and the global `instructions` moved to `src/lib/mcp/global-guidance.ts`. Their version numbers are set there too (global MCP 1.21.0).
+- **MCP documentation**: `docs/mcp/` covers both servers, the release path, auth and token scopes, and maintenance. `docs/mcp/tool-manifest.json` lists every tool and is checked by a test.
+
+### Deprecated
+- **`get_operation_status` on the global MCP server**: renamed to `get_global_operation_status`. The old name still works as an alias and will be removed in the next major release. The workspace server's `get_operation_status` is unchanged.
+
 ### Removed
 - **Bring-Your-Own-VPS Hosting**: Removed the customer-facing VPS/VDS provisioning feature end-to-end — the Contabo provisioning integration (`lib/contabo.ts`), VPS catalog/ordering actions (`actions/vps-service.ts`), the "Cloud Server" catalog page, the per-workspace VPS lifecycle UI, the `UserVpsService` model and table, every `vps-*`/`vds-*` pricing slug across billing/checkout/plan-enforcement, and the now-unused `ssh2` dependency. Every workspace now uses SaCMS's own managed infrastructure (`ManagedInfraService`/BYODB for a dedicated database, and `StorageAddon` for storage upgrades) instead.
 - **In-Dashboard AI Website Builder**: Removed the single-file AI website generator (Developer Portal > AI Instant Website), its `TenantStaticSite` model/table, the `/api/tenant/[tenant]/static-site/*` routes, the public `/site/[tenant]` serving route, the `write_static_site` MCP tool, and the "site" custom-domain target. Frontend development now happens in an IDE, connected to SaCMS via MCP (`deploy_to_vercel` and the other developer-facing MCP tools).

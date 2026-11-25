@@ -511,10 +511,9 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(toolBlockOf('get_website_template')).toMatch(/allFiles\.map\(describeFileSize\)/)
   })
 
-  it('registers a read-only get_operation_status tool', () => {
-    const scoped = toolBlockOf('get_operation_status')
-    expect(scoped).toMatch(/readOnlyHint: true/)
-    expect(scoped).toMatch(/getOperation\(operationId\)/)
+  it('registers a read-only get_global_operation_status tool, with get_operation_status kept as an alias', () => {
+    expect(routeSource).toMatch(/registerOperationStatus = [\s\S]*readOnlyHint: true[\s\S]*getOperation\(operationId\)/)
+    expect(routeSource).toMatch(/registerOperationStatus\("get_operation_status"/)
   })
 
   // ── Audit follow-up round ──────────────────────────────────────────────────

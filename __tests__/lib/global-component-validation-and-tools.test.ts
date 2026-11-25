@@ -1,3 +1,4 @@
+import { buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 import { describe, it, expect } from "vitest"
 import { readFileSync } from "fs"
 import { join } from "path"
@@ -173,7 +174,7 @@ describe("Global Component discovery tools — source contract (per-workspace se
   })
 
   it("the agent playbook's Phase 1 points agents at list_global_components/get_global_component before designing a Component from scratch", () => {
-    expect(perWorkspaceRouteSource).toMatch(/Phase 1[\s\S]{0,2500}list_global_components[\s\S]{0,400}get_global_component/)
+    expect(buildWorkspacePlaybook("Test")).toMatch(/Phase 1[\s\S]{0,2500}list_global_components[\s\S]{0,400}get_global_component/)
   })
 })
 
