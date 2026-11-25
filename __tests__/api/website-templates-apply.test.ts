@@ -24,7 +24,7 @@ vi.mock("@/lib/database", () => ({
   db: {
     mcpDeploymentSource: { create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     websiteTemplate: { findUnique: vi.fn() },
-    websiteTemplatePurchase: { findUnique: vi.fn().mockResolvedValue(null) },
+    websiteTemplatePurchase: { findUnique: vi.fn().mockResolvedValue({ id: "purchase-1" }) },
     tenant: { update: vi.fn().mockResolvedValue({}) },
     setting: fakeSetting,
     $transaction: vi.fn(),
@@ -117,17 +117,18 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
   })
 
-  it.each(["free", "starter", "enterprise", "custom"])("blocks a %s-plan workspace with a plan_limit error, before touching the workspace schema", async (plan) => {
-    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
+  it("blocks a template that is not for sale, before touching the workspace schema", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: null } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(403)
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
     expect(deployTenantFrontend).not.toHaveBeenCalled()
   })
 
-  it.each(["pro", "starter"])("blocks a %s workspace that has not bought the template", async (plan) => {
+  it.each(["business", "pro", "starter"])("blocks a %s workspace that has not bought the template", async (plan) => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: 150_000 } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
     mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(403)
@@ -209,9 +210,10 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(body.envVarsApplied).toEqual(["NEXT_PUBLIC_API_URL"])
   })
 
-  it("gives a super_admin no exemption: a Starter workspace stays blocked", async () => {
+  it("gives a super_admin no exemption: a Starter workspace that has not bought the template stays blocked", async () => {
     mockSession.mockResolvedValue({ user: { id: "user1", role: "super_admin" } } as any)
-    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: 150_000 } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
     mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "starter" } } as any)
 
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))

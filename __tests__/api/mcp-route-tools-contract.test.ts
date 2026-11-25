@@ -474,10 +474,10 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/import\("@\/lib\/infrastructure\/apply-website-template"\)/)
   })
 
-  it("apply_website_template gates on write scope and per-template access (Business free, Starter/Pro bought) before applying", () => {
+  it("apply_website_template gates on write scope and per-template access (every plan buys each template once) before applying", () => {
     const scoped = toolBlockOf("apply_website_template")
     expect(scoped).toMatch(/hasScope\(auth, "write"\)/)
-    expect(scoped).toMatch(/resolveWebsiteTemplateAccess\(auth\.tenantId, auth\.plan, websiteTemplate\)/)
+    expect(scoped).toMatch(/resolveWebsiteTemplateAccess\(auth\.tenantId, websiteTemplate\)/)
     expect(scoped).toMatch(/canApplyWithAccess\(templateAccess\)/)
     expect(scoped.indexOf("resolveWebsiteTemplateAccess(")).toBeLessThan(scoped.indexOf("applyWebsiteTemplateToTenant("))
   })

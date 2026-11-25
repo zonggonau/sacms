@@ -8,7 +8,7 @@ const clip = (text: string) => (text.length <= MIDTRANS_TEXT_MAX ? text : `${tex
 
 /**
  * POST /api/tenant/[tenant]/website-templates/[id]/purchase
- * Starts a one-time Midtrans checkout for a Starter/Pro workspace to own one
+ * Starts a one-time Midtrans checkout for a workspace to own one
  * template. The purchase row is written only when payment fulfillment confirms
  * the TPL- order (see lib/billing/payment-success.ts).
  */
@@ -27,8 +27,8 @@ export const POST = withStaffAuth(
       where: { tenantId_websiteTemplateId: { tenantId: tenant.id, websiteTemplateId: template.id } },
       select: { id: true },
     })
-    const templateAccess = websiteTemplateAccess(tenant.plan, !!owned, template.price)
-    if (templateAccess === "free" || templateAccess === "owned") {
+    const templateAccess = websiteTemplateAccess(!!owned, template.price)
+    if (templateAccess === "owned") {
       return apiError("conflict", { message: "Template ini sudah bisa digunakan workspace ini, tidak perlu dibeli." })
     }
     if (templateAccess !== "purchasable" || !template.price) {

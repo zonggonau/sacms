@@ -1,52 +1,34 @@
 import { db } from "@/lib/database"
 
-// Business workspaces use every Website Template free. Starter and Pro buy each
-// template once. Every other plan (Free, Enterprise, Custom) cannot use them.
-const FREE_PLANS = new Set(["business", "bisnis"])
-const PURCHASE_PLANS = new Set(["starter", "standard", "standar", "pro", "professional", "profesional"])
-
+// Every plan buys each Website Template once. A template without a price is not for sale.
 export type WebsiteTemplateAccess =
-  | "free" // Business plan
   | "owned" // bought by this workspace
-  | "purchasable" // Starter/Pro, template has a price
-  | "unavailable" // Starter/Pro, template not for sale
-  | "locked" // plan cannot use templates
+  | "purchasable" // template has a price, workspace has not bought it yet
+  | "unavailable" // template not for sale
 
 /** Payment order prefix for one-time template purchases; fulfilled in payment-success.ts. */
 export const WEBSITE_TEMPLATE_ORDER_PREFIX = "TPL-"
 
-const normalizePlan = (plan: string | null | undefined) => (plan || "free").trim().toLowerCase()
-
-export const canPurchaseWebsiteTemplates = (plan: string | null | undefined) => PURCHASE_PLANS.has(normalizePlan(plan))
-
-export function websiteTemplateAccess(plan: string | null | undefined, owned: boolean, price: number | null | undefined): WebsiteTemplateAccess {
-  const p = normalizePlan(plan)
-  if (FREE_PLANS.has(p)) return "free"
-  if (!PURCHASE_PLANS.has(p)) return "locked"
+export function websiteTemplateAccess(owned: boolean, price: number | null | undefined): WebsiteTemplateAccess {
   if (owned) return "owned"
   return price && price > 0 ? "purchasable" : "unavailable"
 }
 
-export const WEBSITE_TEMPLATE_ACCESS_MESSAGE: Record<Exclude<WebsiteTemplateAccess, "free" | "owned">, string> = {
+export const WEBSITE_TEMPLATE_ACCESS_MESSAGE: Record<Exclude<WebsiteTemplateAccess, "owned">, string> = {
   purchasable: "Template ini perlu dibeli terlebih dahulu untuk workspace ini.",
-  unavailable: "Template ini belum dijual untuk plan workspace Anda.",
-  locked: "Website Template tersedia gratis di plan Business, atau bisa dibeli satuan di plan Starter dan Pro. Upgrade plan workspace untuk menggunakannya.",
+  unavailable: "Template ini belum dijual.",
 }
 
-/** Resolves this workspace's access to one template, checking a paid purchase when needed. */
+/** Resolves this workspace's access to one template, checking its purchase record. */
 export async function resolveWebsiteTemplateAccess(
   tenantId: string,
-  plan: string | null | undefined,
   template: { id: string; price: number | null },
 ): Promise<WebsiteTemplateAccess> {
-  const needsPurchase = canPurchaseWebsiteTemplates(plan)
-  const owned = needsPurchase
-    ? !!(await db.websiteTemplatePurchase.findUnique({
-        where: { tenantId_websiteTemplateId: { tenantId, websiteTemplateId: template.id } },
-        select: { id: true },
-      }))
-    : false
-  return websiteTemplateAccess(plan, owned, template.price)
+  const owned = !!(await db.websiteTemplatePurchase.findUnique({
+    where: { tenantId_websiteTemplateId: { tenantId, websiteTemplateId: template.id } },
+    select: { id: true },
+  }))
+  return websiteTemplateAccess(owned, template.price)
 }
 
-export const canApplyWithAccess = (access: WebsiteTemplateAccess) => access === "free" || access === "owned"
+export const canApplyWithAccess = (access: WebsiteTemplateAccess) => access === "owned"

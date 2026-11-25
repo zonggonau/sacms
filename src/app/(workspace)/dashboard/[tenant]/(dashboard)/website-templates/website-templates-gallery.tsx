@@ -211,7 +211,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   // get a 403 back.
   const canApply = currentRole === "owner" || currentRole === "admin"
   const canApplyTemplate = (t: WebsiteTemplateItem) =>
-    canApply && (t.access === "free" || t.access === "owned") && !isResetting && applyingId === null &&
+    canApply && t.access === "owned" && !isResetting && applyingId === null &&
     (pendingTemplateId ? pendingTemplateId === t.id : isWorkspaceEmpty)
 
   // One action per template, shared by the card and table layouts.
@@ -235,7 +235,6 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
     }
     const reason =
       t.access === "unavailable" ? "Template ini belum dijual untuk plan workspace Anda"
-      : t.access === "locked" ? "Gratis di plan Business, atau beli satuan di plan Starter dan Pro"
       : !canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template"
       : "Lanjutkan template yang tertunda atau reset workspace"
     return (
@@ -349,24 +348,12 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
 
   return (
     <div className="space-y-3">
-      {planAccess === "locked" && (
-        <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-muted-foreground">
-              Website Template gratis di plan <strong className="text-foreground">Business</strong>, atau bisa dibeli satuan di plan <strong className="text-foreground">Starter</strong> dan <strong className="text-foreground">Pro</strong>. Demo tetap bisa dilihat;{" "}
-              <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">upgrade plan</a> untuk menggunakannya.
-            </p>
-          </CardContent>
-        </Card>
-      )}
       {planAccess === "purchase" && (
         <p className="text-[11px] text-muted-foreground">
-          Di plan workspace Anda, setiap template dibeli satuan (sekali bayar, berlaku permanen untuk workspace ini). Semua template gratis di plan{" "}
-          <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">Business</a>.
+          Setiap template dibeli satuan di semua plan (sekali bayar, berlaku permanen untuk workspace ini).
         </p>
       )}
-      {planAccess !== "locked" && !isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
+      {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>

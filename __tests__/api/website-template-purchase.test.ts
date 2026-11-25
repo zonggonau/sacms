@@ -54,10 +54,10 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
     expect(items[0].price).toBe(150_000)
   })
 
-  it("refuses a Business workspace, which already uses every template free", async () => {
+  it("starts a checkout for a Business workspace too, since every plan buys templates", async () => {
     asPlan("business")
-    expect((await buy()).status).toBe(409)
-    expect(db.paymentTransaction.create).not.toHaveBeenCalled()
+    expect((await buy()).status).toBe(200)
+    expect(db.paymentTransaction.create).toHaveBeenCalled()
   })
 
   it("refuses a template the workspace already owns", async () => {
@@ -74,10 +74,10 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
     expect(db.paymentTransaction.create).not.toHaveBeenCalled()
   })
 
-  it.each(["free", "enterprise", "custom"])("refuses a %s workspace, which cannot use templates", async (plan) => {
+  it.each(["free", "enterprise", "custom"])("starts a checkout for a %s workspace", async (plan) => {
     asPlan(plan)
-    expect((await buy()).status).toBe(403)
-    expect(createSnapPayment).not.toHaveBeenCalled()
+    expect((await buy()).status).toBe(200)
+    expect(createSnapPayment).toHaveBeenCalled()
   })
 
   it("404s for a template that is not published", async () => {

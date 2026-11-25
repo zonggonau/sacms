@@ -29,7 +29,7 @@ export const POST = withStaffAuth(
     }
 
     // Free on Business; Starter/Pro must have bought this template (see website-template-access).
-    const templateAccess = await resolveWebsiteTemplateAccess(tenant.id, tenant.plan, websiteTemplate)
+    const templateAccess = await resolveWebsiteTemplateAccess(tenant.id, websiteTemplate)
     if (!canApplyWithAccess(templateAccess)) {
       return apiError("plan_limit", {
         message: WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess as keyof typeof WEBSITE_TEMPLATE_ACCESS_MESSAGE],

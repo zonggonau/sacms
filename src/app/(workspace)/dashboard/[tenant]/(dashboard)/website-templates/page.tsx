@@ -5,7 +5,6 @@ import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { serializeTenantSchema } from "@/lib/schema-template-sync"
 import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
-import { websiteTemplateAccess } from "@/lib/billing/website-template-access"
 import { WebsiteTemplatesClient } from "./website-templates-client"
 
 export default async function WebsiteTemplatesPage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -21,8 +20,8 @@ export default async function WebsiteTemplatesPage({ params }: { params: Promise
   const isWorkspaceEmpty = !!schema && schema.contentTypes.length === 0 && schema.components.length === 0 &&
     schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)
 
-  const plan = websiteTemplateAccess(access.tenant.plan, false, 1)
-  const planAccess = plan === "free" ? "free" : plan === "purchasable" ? "purchase" : "locked"
+  // Every plan buys templates one at a time, so the gallery always shows the purchase flow.
+  const planAccess = "purchase" as const
 
   return (
     <WebsiteTemplatesClient

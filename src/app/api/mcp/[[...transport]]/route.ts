@@ -2890,7 +2890,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         // Free on Business; Starter/Pro must have bought this template. Buying
         // happens in the dashboard (Website Template tab), never through MCP.
         const { canApplyWithAccess, resolveWebsiteTemplateAccess, WEBSITE_TEMPLATE_ACCESS_MESSAGE } = await import("@/lib/billing/website-template-access")
-        const templateAccess = await resolveWebsiteTemplateAccess(auth.tenantId, auth.plan, websiteTemplate)
+        const templateAccess = await resolveWebsiteTemplateAccess(auth.tenantId, websiteTemplate)
         if (!canApplyWithAccess(templateAccess)) {
           const reason = WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess as keyof typeof WEBSITE_TEMPLATE_ACCESS_MESSAGE]
           const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${reason} Beli atau upgrade di /dashboard/${auth.tenantSlug}/website-templates.` }

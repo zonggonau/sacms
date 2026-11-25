@@ -29,7 +29,7 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
   ])
   const owned = new Set(purchases.map((p) => p.websiteTemplateId))
   return NextResponse.json({
-    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(access.tenant.plan, owned.has(t.id), t.price) })),
+    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price) })),
     pendingTemplateId: pending?.templateId ?? null,
   })
 })
