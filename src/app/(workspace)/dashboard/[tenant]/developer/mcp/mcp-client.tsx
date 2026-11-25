@@ -922,6 +922,9 @@ export function MCPDashboardClient({
                 ) : (
                   /* Plain URL + Token fields for web-UI-based connectors */
                   <div className="space-y-3">
+                    <p className="text-[11px] text-muted-foreground">
+                      Cara termudah: masukkan <strong className="text-foreground">Server URL</strong> saja. Aplikasi akan membuka halaman persetujuan SaCMS, dan Anda memilih workspace yang boleh diakses. Tidak perlu menyalin token. Jika aplikasi meminta token secara langsung, gunakan URL + Token di bawah.
+                    </p>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-bold text-foreground">Server URL</Label>
                       <pre className="p-3 bg-muted/40 rounded-xl border border-border/80 font-mono text-xs text-foreground overflow-x-auto whitespace-pre-wrap break-all">

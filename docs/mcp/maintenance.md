@@ -46,6 +46,13 @@ Versi hanya disimpan di `WORKSPACE_MCP_VERSION` atau `GLOBAL_MCP_VERSION`. `serv
 | `mcp-route-auth.test.ts`, `mcp-global-schema-auth.test.ts` | Auth dan token |
 | `mcp-route-tools-contract.test.ts`, `mcp-global-schema-tools-contract.test.ts` | Perilaku tool tertentu |
 
+## OAuth
+
+Kode OAuth ada di `src/lib/mcp/oauth/`, dan endpoint-nya di `src/app/api/oauth/` dan `src/app/oauth/authorize/`. Alurnya dan aturan keamanannya ada di [oauth.md](oauth.md). Saat mengubahnya:
+- Jangan menulis token asli ke database. Hanya hash yang disimpan.
+- Redirect ke klien hanya boleh ke URI yang terdaftar.
+- Tes yang wajib lolos: `mcp-oauth-protocol.test.ts`, `mcp-oauth-service.test.ts`, `mcp-oauth-routes.test.ts`.
+
 ## Susunan file
 
 Route hanya membuat server, mendaftarkan modul, dan menangani HTTP. Isi tool ada di modul domain:

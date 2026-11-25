@@ -33,6 +33,7 @@ Website workspace dirilis dengan satu jalur, tanpa pengecualian:
 ## Auth
 
 - Kedua server menerima `Authorization: Bearer <token>`. Itu cara yang direkomendasikan.
+- **Workspace MCP mendukung OAuth 2.1** (PKCE, registrasi klien dinamis, refresh token). Klien cukup memasukkan Server URL dan menyetujui akses di SaCMS. Lihat [oauth.md](oauth.md).
 - Kedua server juga menerima `?token=` di URL. Dashboard membuat URL ini hanya untuk ChatGPT, Grok, Generic, dan Claude.ai web, yang tidak punya kolom header. Klien lain harus memakai header.
 - Token URL bisa bocor lewat riwayat, screenshot, atau proxy. Kalau curiga bocor, putar tokennya lewat tombol **Putar** di `/developer/mcp`. Token lama langsung tidak berlaku, dan token baru ditampilkan sekali.
 - Pemeriksaan log: Caddy di `Caddyfile` tidak punya directive `log`, jadi access log tidak aktif. Route MCP tidak mencatat URL request. Tidak ada jalur log yang memuat query string `?token=`.

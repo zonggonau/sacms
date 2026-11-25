@@ -1399,9 +1399,11 @@ model OAuthClient {
 
 model OAuthCode {
   id                  String   @id @default(cuid())
+  // SHA-256 of the authorization code. The plain code is only sent to the client's redirect.
   code                String   @unique
   clientId            String
   tenantId            String
+  userId              String
   redirectUri         String?
   codeChallenge       String?
   codeChallengeMethod String?
@@ -1413,14 +1415,18 @@ model OAuthCode {
   @@map("oauth_codes")
 }
 
+// Refresh tokens only. Access tokens are ordinary `mcp` ApiToken rows, so the
+// MCP route verifies them like any other MCP token. Only hashes are stored.
 model OAuthToken {
-  id           String   @id @default(cuid())
-  accessToken  String   @unique
-  refreshToken String?  @unique
-  clientId     String
-  tenantId     String
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  id               String    @id @default(cuid())
+  refreshTokenHash String    @unique
+  clientId         String
+  tenantId         String
+  userId           String
+  accessTokenId    String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])

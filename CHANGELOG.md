@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **OAuth 2.1 for the workspace MCP server** (`/api/mcp`): ChatGPT, Grok, and Claude.ai can connect by Server URL alone. The client opens a SaCMS consent page, and the owner or admin picks the workspace. Discovery (RFC 9728, RFC 8414), dynamic client registration (RFC 7591), PKCE S256, single-use codes, and rotating refresh tokens. Access tokens are one-hour `mcp` tokens. Details in `docs/mcp/oauth.md`. Not yet verified against the live ChatGPT, Grok, and Claude.ai clients.
+- **Rotate a workspace MCP token** from `/developer/mcp` ("Putar"). The old token and any OAuth connection that used it are revoked.
+
 ### Changed
 - **MCP workspace release path**: website changes are built and released through one path only: `start_preview` → `apply_preview_changes` → `save_preview_changes`, then an administrator releases from Infrastructure → Hosting. `deploy_to_sacms` is now documented as a one-shot staging build, not the normal release path. The playbook, `instructions`, and tool descriptions all say the same thing (workspace MCP 4.8.0).
 - **MCP guidance in one place**: the workspace `instructions` and playbook moved to `src/lib/mcp/workspace-guidance.ts`, and the global `instructions` moved to `src/lib/mcp/global-guidance.ts`. Their version numbers are set there too (global MCP 1.21.0).

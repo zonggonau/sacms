@@ -8,6 +8,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
 import { GLOBAL_MCP_SCOPES, resolveGlobalMcpScopes } from "@/lib/mcp-global-scopes"
+import { dropConnectionsForAccessToken } from "@/lib/mcp/oauth/service"
 
 function generateMcpToken(): string {
   return `mcp_${randomBytes(24).toString("hex")}`
@@ -146,6 +147,8 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
 
     if (!token) return { error: "Token MCP tidak ditemukan" }
 
+    // An OAuth-connected client must not come back through its refresh token.
+    await dropConnectionsForAccessToken(tokenId)
     await db.apiToken.delete({
       where: { id: tokenId },
     })
@@ -205,6 +208,8 @@ export async function rotateMcpTokenAction(tenantSlug: string, tokenId: string) 
       return fresh
     })
 
+    // If the old token was an OAuth connection's access token, its refresh token goes too.
+    await dropConnectionsForAccessToken(old.id)
     revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
 
     return {

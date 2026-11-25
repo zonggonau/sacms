@@ -36,6 +36,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  async rewrites() {
+    // OAuth discovery (RFC 9728 / RFC 8414) lives at /.well-known/*, which clients
+    // expect at the origin root. The handler sits under /api/oauth/.
+    return [{ source: "/.well-known/:path*", destination: "/api/oauth/well-known/:path*" }]
+  },
   serverExternalPackages: ["node:inspector"],
   experimental: {
     agentUpgrade: "security",

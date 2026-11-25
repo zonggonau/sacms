@@ -11,6 +11,7 @@ import { registerWebhookTools } from "@/lib/mcp/workspace/webhook-tools"
 import { registerPlatformTools } from "@/lib/mcp/workspace/platform-tools"
 import { registerBuildTools } from "@/lib/mcp/workspace/build-tools"
 import { registerDeployTools } from "@/lib/mcp/workspace/deploy-tools"
+import { publicOrigin } from "@/lib/mcp/oauth/protocol"
 
 const handler = createMcpHandler(
   async (server) => {
@@ -117,7 +118,18 @@ async function handleMcpRequest(req: Request): Promise<Response> {
 
     const auth = await authenticateRequest(req)
     if (!auth) {
-      return NextResponse.json({ error: "Unauthorized: Invalid or missing API token." }, { status: 401 })
+      // RFC 9728: point the client at the protected-resource metadata so it can
+      // start the OAuth flow. Clients that already hold a token ignore this.
+      const origin = publicOrigin(new URL(req.url).origin)
+      return NextResponse.json(
+        { error: "Unauthorized: Invalid or missing API token." },
+        {
+          status: 401,
+          headers: {
+            "WWW-Authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/api/mcp"`,
+          },
+        },
+      )
     }
     if (auth.paymentError) {
       return NextResponse.json({

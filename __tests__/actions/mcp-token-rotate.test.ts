@@ -12,6 +12,7 @@ const { db, tx } = vi.hoisted(() => {
   }
   const db = {
     apiToken: { findFirst: vi.fn() },
+    oAuthToken: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     $transaction: vi.fn(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx)),
   }
   return { db, tx }
