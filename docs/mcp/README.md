@@ -33,7 +33,9 @@ Website workspace dirilis dengan satu jalur, tanpa pengecualian:
 ## Auth
 
 - Kedua server menerima `Authorization: Bearer <token>`. Itu cara yang direkomendasikan.
-- Kedua server juga menerima `?token=` di URL. Dashboard masih membuat URL ini untuk klien yang hanya punya kolom URL. Jangan memakai cara ini untuk klien baru.
+- Kedua server juga menerima `?token=` di URL. Dashboard membuat URL ini hanya untuk ChatGPT, Grok, Generic, dan Claude.ai web, yang tidak punya kolom header. Klien lain harus memakai header.
+- Token URL bisa bocor lewat riwayat, screenshot, atau proxy. Kalau curiga bocor, putar tokennya lewat tombol **Putar** di `/developer/mcp`. Token lama langsung tidak berlaku, dan token baru ditampilkan sekali.
+- Pemeriksaan log: Caddy di `Caddyfile` tidak punya directive `log`, jadi access log tidak aktif. Route MCP tidak mencatat URL request. Tidak ada jalur log yang memuat query string `?token=`.
 - Token global diverifikasi dengan hash SHA-256 dan dicek `expiresAt`. Token tanpa scope valid ditolak.
 
 ## Nama tool yang sama di dua server

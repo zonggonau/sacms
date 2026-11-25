@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import {
   createMcpTokenAction,
   deleteMcpTokenAction,
+  rotateMcpTokenAction,
 } from "@/actions/mcp-tokens"
 
 interface MCPDashboardClientProps {
@@ -441,6 +442,32 @@ export function MCPDashboardClient({
     }
   }
 
+  const handleRotateMcpToken = async (token: McpTokenRow) => {
+    if (
+      !(await confirm({
+        title: `Putar token MCP "${token.name}"?`,
+        description: "Token lama langsung tidak berlaku. Sambungkan ulang ChatGPT, Grok, Claude.ai, atau editor Anda dengan URL/token baru yang akan ditampilkan sekali.",
+        confirmLabel: "Putar token",
+        variant: "destructive",
+      }))
+    )
+      return
+    setMcpBusy(true)
+    try {
+      const res = await rotateMcpTokenAction(tenantSlug, token.id)
+      if (res.error || !res.success || !("token" in res)) {
+        toast({ variant: "destructive", title: "Gagal", description: res.error || "Gagal memutar token" })
+        return
+      }
+      setMcpTokens((prev) => [res.token, ...prev.filter((t) => t.id !== token.id)])
+      setMcpPlainToken(res.plainToken)
+      setRevealedTokenId(res.token.id)
+      toast({ title: "Token diputar", description: "Token lama sudah dicabut. Simpan token baru sekarang." })
+    } finally {
+      setMcpBusy(false)
+    }
+  }
+
   const handleDeleteMcpToken = async (token: McpTokenRow) => {
     if (
       !(await confirm({
@@ -739,6 +766,15 @@ export function MCPDashboardClient({
                           {copiedToken ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={mcpBusy}
+                        onClick={() => handleRotateMcpToken(token)}
+                        className="font-bold rounded-xl h-8 px-3 text-xs shrink-0"
+                      >
+                        Putar
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"

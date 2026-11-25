@@ -159,6 +159,74 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
   }
 }
 
+/**
+ * Rotate a workspace MCP token: issue a new secret with the same name, scopes,
+ * and description, then revoke the old one in the same transaction. Use this
+ * when a token URL may have leaked (ChatGPT, Grok, and Claude.ai web connectors
+ * carry the token in the URL). The new plain token is returned once.
+ */
+export async function rotateMcpTokenAction(tenantSlug: string, tokenId: string) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return { error: "Unauthorized" }
+
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return { error: "Forbidden or Tenant not found" }
+
+    if (access.role !== "admin" && access.role !== "owner" && session.user.role !== "super_admin") {
+      return { error: "Hanya Admin dan Owner yang dapat memutar token MCP" }
+    }
+
+    const old = await db.apiToken.findFirst({
+      where: { id: tokenId, tenantId: access.tenantId, type: "mcp" },
+    })
+    if (!old) return { error: "Token MCP tidak ditemukan" }
+
+    const token = generateMcpToken()
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 90)
+
+    const created = await db.$transaction(async (tx) => {
+      const fresh = await tx.apiToken.create({
+        data: {
+          tenantId: access.tenantId,
+          name: old.name,
+          description: old.description,
+          token: hashedToken,
+          type: "mcp",
+          permissions: old.permissions as any,
+          createdBy: session.user.id,
+          expiresAt,
+        },
+      })
+      // Revoke the old secret only if it is still there (a concurrent delete is fine).
+      await tx.apiToken.deleteMany({ where: { id: old.id, tenantId: access.tenantId, type: "mcp" } })
+      return fresh
+    })
+
+    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+
+    return {
+      success: true,
+      plainToken: token,
+      oldTokenId: old.id,
+      token: {
+        id: created.id,
+        name: created.name,
+        description: created.description,
+        type: created.type,
+        createdAt: created.createdAt.toISOString(),
+        lastUsedAt: null,
+        expiresAt: created.expiresAt ? created.expiresAt.toISOString() : null,
+      },
+    }
+  } catch (error) {
+    console.error("Error rotating MCP token:", error)
+    return { error: "Internal server error" }
+  }
+}
+
 // ─── Platform "Schema Template" MCP tokens ─────────────────────────────────
 // A completely separate token type/server (src/app/api/mcp/global-schema)
 // from the regular per-workspace "mcp" token above — authenticates against
