@@ -698,7 +698,7 @@ export function HostingDeploymentsView({
                 asChild
                 className="rounded-xl h-9 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer"
               >
-                <Link href={`/dashboard/${tenantSlug}/developer/schema`}>
+                <Link href={`/dashboard/${tenantSlug}/website-templates`}>
                   <Bot className="h-3.5 w-3.5 mr-1.5" />
                   Website Template
                 </Link>

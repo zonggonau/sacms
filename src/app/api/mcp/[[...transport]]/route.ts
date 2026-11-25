@@ -2893,7 +2893,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         const templateAccess = await resolveWebsiteTemplateAccess(auth.tenantId, auth.plan, websiteTemplate)
         if (!canApplyWithAccess(templateAccess)) {
           const reason = WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess as keyof typeof WEBSITE_TEMPLATE_ACCESS_MESSAGE]
-          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${reason} Beli atau upgrade di /dashboard/${auth.tenantSlug}/developer/schema.` }
+          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${reason} Beli atau upgrade di /dashboard/${auth.tenantSlug}/website-templates.` }
           return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
         }
 

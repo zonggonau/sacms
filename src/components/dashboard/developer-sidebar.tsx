@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   Key, Webhook, Plug,
-  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight,
-  Terminal
+  DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight,
+  Terminal, Network
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
@@ -19,7 +19,7 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
   const pathname = usePathname()
 
   const builderNavItems = [
-    { title: "Website Template", href: `/dashboard/${tenantId}/developer/schema`, icon: Bot, badge: "AI" },
+    { title: "Diagram Schema", href: `/dashboard/${tenantId}/developer/schema`, icon: Network, badge: "AI" },
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/components`, icon: Puzzle },

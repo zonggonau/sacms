@@ -2,21 +2,18 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Database, Loader2, X,
-  Globe, Lock, LockOpen,
+  Lock, LockOpen,
 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
-import { WebsiteTemplatesTab } from "./website-templates-tab"
 
 interface SchemaGeneratorClientProps {
   tenantSlug: string
@@ -28,8 +25,6 @@ interface SchemaGeneratorClientProps {
   initialFinalized: boolean
   /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
   currentRole: string
-  /** free: Business; purchase: Starter/Pro buy each template; locked: plan cannot use templates. */
-  planAccess: "free" | "purchase" | "locked"
 }
 
 const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
@@ -40,7 +35,6 @@ export function SchemaGeneratorClient({
   existingSchemaSummary,
   initialFinalized,
   currentRole,
-  planAccess,
 }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -48,7 +42,6 @@ export function SchemaGeneratorClient({
   const [showGenerator, setShowGenerator] = useState(false)
   const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
   const [schema, setSchema] = useState<SchemaExport>(EMPTY_SCHEMA)
-  const [activeTab, setActiveTab] = useState("website-templates")
 
   // Draft/Final lock — enforced server-side on every dashboard-facing
   // schema mutation (content-types/single-types/components actions +
@@ -58,12 +51,11 @@ export function SchemaGeneratorClient({
   const [isTogglingLock, setIsTogglingLock] = useState(false)
 
   useEffect(() => {
-    // Only the two tabs that still exist — a stale link to a removed tab
-    // (e.g. ?tab=schema-templates) falls through to the default instead of
-    // landing on a tab with no matching trigger.
-    const tab = new URLSearchParams(window.location.search).get("tab")
-    if (tab === "website-templates" || tab === "diagram") setActiveTab(tab)
-  }, [])
+    // The Website Template gallery moved to its own page in the workspace sidebar.
+    if (new URLSearchParams(window.location.search).get("tab") === "website-templates") {
+      router.replace(`/dashboard/${tenantSlug}/website-templates`)
+    }
+  }, [router, tenantSlug])
 
   useEffect(() => {
     let cancelled = false
@@ -168,53 +160,24 @@ export function SchemaGeneratorClient({
 
       {/* ── Full-width tabbed workspace ── */}
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col gap-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <TabsList>
-              <TabsTrigger value="website-templates" className="gap-1.5">
-                <Globe className="h-3.5 w-3.5" /> Website Template
-              </TabsTrigger>
-              <TabsTrigger value="diagram" className="gap-1.5">
-                <Database className="h-3.5 w-3.5" /> Diagram Schema
-              </TabsTrigger>
-            </TabsList>
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <div className="flex items-center justify-between gap-3 shrink-0">
+            <h2 className="flex items-center gap-1.5 text-sm font-bold text-foreground">
+              <Database className="h-4 w-4" /> Diagram Schema
+            </h2>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFullscreenDiagram(true)}
+              className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+            >
+              <Maximize2 className="h-3 w-3" /> Full Screen
+            </Button>
           </div>
-
-          <TabsContent value="website-templates" className="min-h-0 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            <div className="mx-auto w-full max-w-7xl">
-              <WebsiteTemplatesTab
-                tenantSlug={tenantSlug}
-                currentRole={currentRole}
-                planAccess={planAccess}
-                isWorkspaceEmpty={
-                  schema.contentTypes.length === 0 && schema.components.length === 0 &&
-                  schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)
-                }
-                onApplied={() => {
-                  setActiveTab("diagram")
-                  setRefreshKey((k) => k + 1)
-                }}
-                onReset={() => setRefreshKey((k) => k + 1)}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="diagram" className="flex min-h-0 flex-col gap-2 data-[state=inactive]:hidden">
-            <div className="flex items-center justify-end shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFullscreenDiagram(true)}
-                className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-              >
-                <Maximize2 className="h-3 w-3" /> Full Screen
-              </Button>
-            </div>
-            <div className="flex-1 min-h-[480px] rounded-2xl border border-border/80 bg-muted/10 overflow-hidden">
-              <SchemaDiagram data={schema} height="100%" />
-            </div>
-          </TabsContent>
-        </Tabs>
+          <div className="flex-1 min-h-[480px] rounded-2xl border border-border/80 bg-muted/10 overflow-hidden">
+            <SchemaDiagram data={schema} height="100%" />
+          </div>
+        </div>
       </div>
 
       {/* ── AI Schema Generator — half-screen side panel, not a full overlay, so the Diagram Schema tab stays visible on the other half ── */}

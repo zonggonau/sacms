@@ -43,6 +43,7 @@ import {
   Rocket,
   Plug,
   Globe,
+  Network,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect, useMemo } from "react"
@@ -261,6 +262,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       label: "DEVELOPER & SYSTEM",
       items: [
         ...(isAdmin ? [
+          { title: "Website Template", href: "/website-templates", icon: Globe, matchPrefix: true },
           {
             title: s.infrastructure,
             href: "/infrastructure",
@@ -273,7 +275,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             icon: Code,
             badge: "AI",
             children: [
-              { title: "Website Template", href: "/developer/schema", icon: Globe, matchPrefix: true },
+              { title: "Diagram Schema", href: "/developer/schema", icon: Network, matchPrefix: true },
               { title: "Content Types", href: "/developer/content-types", icon: DatabaseIcon, matchPrefix: true },
               { title: "Server MCP", href: "/developer/mcp", icon: Plug, matchPrefix: true },
               { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },
