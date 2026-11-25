@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   LayoutDashboard,
   Users,
@@ -248,7 +247,9 @@ export function GlobalAdminSidebar() {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 py-4">
+      {/* min-h-0 lets this flex child shrink and scroll; without it, opening every
+          group grew the column and pushed the footer below the screen. */}
+      <div className="flex-1 min-h-0 overflow-y-auto py-4">
         <nav className="px-3 space-y-1">
           {filteredNavSections.map((section) => {
             const hasActiveItem = section.items.some(isActive)
@@ -295,10 +296,10 @@ export function GlobalAdminSidebar() {
             )
           })}
         </nav>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
-      <div className="border-t border-border p-4 space-y-2">
+      <div className="border-t border-border p-4 space-y-2 shrink-0">
         <div className="flex items-center gap-3">
           <button 
             type="button"

@@ -17,7 +17,6 @@ import {
 import { useState, useEffect } from "react"
 import { useTheme } from "next-themes"
 import { useSession, signOut } from "next-auth/react"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
@@ -86,7 +85,7 @@ export function BillingSubSidebar() {
       />
 
       {/* Nav items */}
-      <ScrollArea className="flex-1 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto py-4">
         <div className="px-3 space-y-6">
           <div className="space-y-1">
             <p className="px-3 mb-2 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">
@@ -133,7 +132,7 @@ export function BillingSubSidebar() {
             </div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer terstandarisasi dengan user avatar, theme toggle, dan sign out */}
       <div className="border-t border-border p-3 space-y-2 shrink-0">

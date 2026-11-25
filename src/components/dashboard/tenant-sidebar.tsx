@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils"
 import { isPlatformStaff } from "@/lib/platform-roles"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import {
   LayoutDashboard,
@@ -364,7 +363,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 py-4">
+      <div className="flex-1 min-h-0 overflow-y-auto py-4">
         <nav className="px-3 space-y-5">
           {navSections.map((section, idx) => (
             <div key={section.label || `section-${idx}`}>
@@ -474,10 +473,10 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             </div>
           ))}
         </nav>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
-      <div className="border-t p-3 space-y-2">
+      <div className="border-t p-3 space-y-2 shrink-0">
         <Link
           href={href("/support")}
           onClick={() => setMobileOpen(false)}
