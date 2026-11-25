@@ -24,7 +24,7 @@ export const POST = withStaffAuth(
       include: { schemaTemplate: true },
     })
     if (!websiteTemplate) return apiError("not_found", { message: "Website Template tidak ditemukan" })
-    if (!access.isGlobal && !websiteTemplate.published) {
+    if (!websiteTemplate.published) {
       return apiError("not_found", { message: "Website Template tidak ditemukan" })
     }
 

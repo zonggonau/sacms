@@ -20,10 +20,6 @@ import { wipeTenantSchema } from "@/lib/schema-wipe"
  */
 export const POST = withStaffAuth(
   async (_req, _context, { access }) => {
-    if (access.isGlobal) {
-      return apiError("forbidden", { message: "Hapus semua schema tidak tersedia untuk workspace SaCMS Global." })
-    }
-
     const lockError = await assertSchemaEditable(access.tenantId)
     if (lockError) return apiError("forbidden", { message: lockError.error })
 

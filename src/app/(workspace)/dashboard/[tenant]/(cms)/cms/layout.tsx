@@ -94,7 +94,7 @@ export default async function CMSLayout({
 
   // Fetch content types directly in Server Component
   const tenantDb = await getTenantDb(tenantId)
-  const where = studioModelWhere(tenantId, access.isGlobal)
+  const where = studioModelWhere(tenantId)
   const [availableContentTypes, availableSingleTypes, contentTypeGroups] = await Promise.all([
     tenantDb.contentType.findMany({
       where,

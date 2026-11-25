@@ -10,7 +10,7 @@ vi.mock("@/lib/database", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/database")>()
   return actual
 })
-vi.mock("@/lib/license", () => ({ isEnterpriseTenant: vi.fn() }))
+vi.mock("@/lib/license", () => ({ isEnterpriseTenant: vi.fn(), INSTANCE_LICENSE_ID: "globalId" }))
 vi.mock("@/lib/settings", () => ({ getGlobalWorkspaceId: vi.fn().mockResolvedValue("global1") }))
 
 import { db, isWorkspaceEligibleForByoInfra } from "@/lib/database"
@@ -59,7 +59,7 @@ describe("isWorkspaceEligibleForByoInfra", () => {
     vi.mocked(isEnterpriseTenant).mockResolvedValue(true)
 
     expect(await isWorkspaceEligibleForByoInfra("tenant1")).toBe(true)
-    expect(isEnterpriseTenant).toHaveBeenCalledWith("global1", "owner1")
+    expect(isEnterpriseTenant).toHaveBeenCalledWith("globalId", "owner1")
   })
 
   it("returns false when the tenant is not found", async () => {

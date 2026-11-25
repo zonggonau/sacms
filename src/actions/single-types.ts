@@ -56,7 +56,6 @@ export async function getSingleTypesAction(tenantSlug: string, scope?: "studio")
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -129,7 +128,6 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {

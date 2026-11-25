@@ -29,7 +29,7 @@ const dedicated = new PrismaClient({ datasources: { db: { url: dedicatedUrl } } 
 afterAll(async () => { await Promise.all([db.$disconnect(), dedicated.$disconnect()]) })
 
 function allowWorkspace(tenant: { id: string; name: string; slug: string; plan: string }) {
-  vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: tenant.id, userId: "cms-ci-user", role: "owner", isGlobal: false, tenant })
+  vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: tenant.id, userId: "cms-ci-user", role: "owner", tenant })
 }
 
 describe("CMS portal and backups against PostgreSQL", () => {

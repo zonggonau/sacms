@@ -25,7 +25,6 @@ interface SchemaGeneratorClientProps {
     contentTypes: Array<{ name: string; slug: string; fieldCount: number }>
     singleTypes: Array<{ name: string; slug: string; fieldCount: number }>
   }
-  isGlobal: boolean
   initialFinalized: boolean
   /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
   currentRole: string
@@ -39,7 +38,6 @@ export function SchemaGeneratorClient({
   tenantSlug,
   hasSchema,
   existingSchemaSummary,
-  isGlobal,
   initialFinalized,
   currentRole,
   canUseTemplates,
@@ -120,8 +118,7 @@ export function SchemaGeneratorClient({
             Beta
           </Badge>
         </h1>
-        {!isGlobal && (
-          <>
+        <>
             <Badge
               variant="outline"
               className={
@@ -143,8 +140,7 @@ export function SchemaGeneratorClient({
               {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : finalized ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
               {finalized ? "Kembalikan ke Draft" : "Publish Schema"}
             </Button>
-          </>
-        )}
+        </>
         <Button
           size="sm"
           variant="outline"
@@ -188,7 +184,6 @@ export function SchemaGeneratorClient({
             <div className="mx-auto w-full max-w-7xl">
               <WebsiteTemplatesTab
                 tenantSlug={tenantSlug}
-                isGlobal={isGlobal}
                 currentRole={currentRole}
                 canUseTemplates={canUseTemplates}
                 isWorkspaceEmpty={

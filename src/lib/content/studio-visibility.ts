@@ -1,11 +1,10 @@
-export function studioModelWhere(tenantId: string, isGlobal: boolean) {
+export function studioModelWhere(tenantId: string) {
   return {
     draftTemplateId: null,
     showInCms: true,
     OR: [
       { tenantId },
       { tenantId: null, tenants: { some: { tenantId, enabled: true } } },
-      ...(isGlobal ? [{ tenantId: null }] : []),
     ],
   }
 }

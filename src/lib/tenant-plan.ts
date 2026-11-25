@@ -1,5 +1,5 @@
 import { db } from "./database"
-import { isEnterpriseTenant } from "./license"
+import { INSTANCE_LICENSE_ID, isEnterpriseTenant } from "./license"
 import { PlanConfig, UserPlanConfig, USER_PLAN_LIMITS, DEFAULT_LIMITS } from "./constants/tenant-limits"
 
 export type { PlanConfig, UserPlanConfig }
@@ -109,8 +109,7 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     select: { plan: true },
   })
 
-  const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
-  let isEnterprise = await isEnterpriseTenant(globalId)
+  let isEnterprise = await isEnterpriseTenant(INSTANCE_LICENSE_ID)
   if (!isEnterprise) {
     isEnterprise = await isEnterpriseTenant(tenantId)
   }

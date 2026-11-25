@@ -12,7 +12,7 @@ import { getWebsiteTemplateRun } from "@/lib/infrastructure/website-template-run
 
 export const GET = withStaffAuth(async (_req, _context, { access }) => {
   const templates = await db.websiteTemplate.findMany({
-    where: access.isGlobal ? {} : { published: true },
+    where: { published: true },
     orderBy: { createdAt: "desc" },
     select: {
       id: true, name: true, slug: true, schemaTemplateId: true, icon: true,

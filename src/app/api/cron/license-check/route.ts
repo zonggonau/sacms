@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
-import { getGlobalWorkspaceId } from "@/lib/settings"
-import { validateLicense } from "@/lib/license"
+import { INSTANCE_LICENSE_ID, validateLicense } from "@/lib/license"
 import { authorizeCronRequest } from "@/lib/cron-auth"
 
 /**
@@ -23,7 +22,7 @@ export async function GET(request: Request) {
   if (unauthorized) return unauthorized
 
   try {
-    const tenantId = await getGlobalWorkspaceId()
+    const tenantId = INSTANCE_LICENSE_ID
 
     // validateLicense() short-circuits on a warm, still-"active" LicenseCache
     // row and skips its own re-check (including the online call) entirely —

@@ -61,10 +61,9 @@ interface SingleTypesClientProps {
   tenantSlug: string
   limit?: number
   current?: number
-  isGlobalTenant?: boolean
 }
 
-export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false }: SingleTypesClientProps) {
+export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, current = 0 }: SingleTypesClientProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -375,12 +374,12 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                                       <EyeOff className="mr-2 h-3.5 w-3.5" /> Batalkan Terbit
                                     </DropdownMenuItem>
                                   )}
-                                  {(!st.isGlobal || isGlobalTenant) && (
+                                  {!st.isGlobal && (
                                     <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/developer/single-types/${st.slug}/edit`)} className="text-xs cursor-pointer rounded-lg">
                                       <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit Skema
                                     </DropdownMenuItem>
                                   )}
-                                  {(!st.isGlobal || isGlobalTenant) && (
+                                  {!st.isGlobal && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => handleDeleteClick(st)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">

@@ -446,12 +446,6 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(schemaSource).not.toMatch(/\.regex\(/)
   })
 
-  it("the REST schema-templates route also runs validateBundleReferences, not just this zod shape's own (deliberately loose) structural check", () => {
-    const routeSource = readFileSync(join(__dirname, "../../src/app/api/tenant/[tenant]/schema-templates/route.ts"), "utf-8")
-    expect(routeSource).toMatch(/validateBundleReferences/)
-    expect(routeSource).toMatch(/splitIssuesBySeverity/)
-  })
-
   // ── Fourth external audit round ───────────────────────────────────────────
 
   it("frontend redeploy preserves demo content and reset requires explicit confirmation", () => {

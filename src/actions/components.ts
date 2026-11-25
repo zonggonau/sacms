@@ -40,7 +40,6 @@ export async function getComponentsAction(tenantSlug: string) {
               }
             }
           },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -120,7 +119,6 @@ export async function getComponentBySlugAction(tenantSlug: string, slug: string)
             tenantId: null,
             tenants: { some: { tenantId: access.tenantId, enabled: true } }
           },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {

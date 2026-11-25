@@ -32,7 +32,6 @@ export default async function CMSEditEntryPage({
       OR: [
         { tenantId: access.tenantId },
         { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-        ...(access.isGlobal ? [{ tenantId: null }] : [])
       ]
     },
     include: { schemaFields: { orderBy: { order: 'asc' } } },

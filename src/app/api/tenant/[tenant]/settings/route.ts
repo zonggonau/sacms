@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
-import { isEnterpriseTenant } from "@/lib/license"
+import { INSTANCE_LICENSE_ID, isEnterpriseTenant } from "@/lib/license"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { parseCorsOrigins, readWorkspaceApiPolicy } from "@/lib/workspace-api-policy"
 
@@ -65,9 +65,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
       daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
     }
 
-    const { getGlobalWorkspaceId } = await import("@/lib/settings");
-    const globalId = await getGlobalWorkspaceId();
-    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
+    let isEnterprise = await isEnterpriseTenant(INSTANCE_LICENSE_ID, session.user.id)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
     }

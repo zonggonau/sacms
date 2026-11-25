@@ -190,7 +190,7 @@ export async function assignContentTypeToGroupAction(
     if (!rbac.allowed) return { error: "Forbidden" }
 
     const tenantDb = await getTenantDb(tenantSlug)
-    const result = await assignContentTypeToGroup(tenantDb, access.tenantId, contentTypeId, groupId, access.isGlobal)
+    const result = await assignContentTypeToGroup(tenantDb, access.tenantId, contentTypeId, groupId)
     if ("error" in result) return result
 
     revalidatePath(`/dashboard/${tenantSlug}/developer/content-types`)

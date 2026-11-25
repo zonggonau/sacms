@@ -126,7 +126,6 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.isGlobal ? [{ tenantId: null }] : []),
         ],
       },
       include: {

@@ -4,7 +4,7 @@ vi.mock("@/lib/tenant-plan", () => ({
   getTenantPlanConfig: vi.fn(),
   getUserPlanConfig: vi.fn(),
 }))
-vi.mock("@/lib/license", () => ({ isEnterpriseTenant: vi.fn() }))
+vi.mock("@/lib/license", () => ({ isEnterpriseTenant: vi.fn(), INSTANCE_LICENSE_ID: "globalId" }))
 vi.mock("@/lib/settings", () => ({ getGlobalWorkspaceId: vi.fn().mockResolvedValue("global-ws") }))
 
 import { db } from "@/lib/database"
@@ -94,7 +94,7 @@ describe("storage quota", () => {
     vi.mocked(isEnterpriseTenant).mockResolvedValue(true)
 
     expect((await getStorageQuota("t1")).limitBytes).toBeNull()
-    expect(isEnterpriseTenant).toHaveBeenCalledWith("global-ws")
+    expect(isEnterpriseTenant).toHaveBeenCalledWith("globalId")
   })
 
   it("falls back to original sizes when a connected database has no variantBytes column", async () => {

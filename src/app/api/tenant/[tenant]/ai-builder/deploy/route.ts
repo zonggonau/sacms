@@ -207,10 +207,6 @@ export const POST = withStaffAuth(
     // fail against an external system — on failure nothing is written to
     // the DB yet, so a retry is always safe. ──────────────────────────────
     if (action === "reset-website") {
-      if (access.isGlobal) {
-        return apiError("forbidden", { message: "Reset website tidak tersedia untuk workspace SaCMS Global." })
-      }
-
       const lockError = await assertSchemaEditable(tenantId)
       if (lockError) return apiError("forbidden", { message: lockError.error })
       const applying = await getWebsiteTemplateRun(tenantId)

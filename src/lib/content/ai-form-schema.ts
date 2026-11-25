@@ -16,14 +16,12 @@ export const aiFormContextSchema = z.record(z.string().max(128), z.string().max(
 
 export async function loadAiFormSchema(
   target: AiFormTarget,
-  access: { tenantId: string; isGlobal: boolean; role: string },
+  access: { tenantId: string; role: string },
 ): Promise<{ name: string; fields: AiField[] } | null> {
   if (target.kind === "singleType" && !isWorkspaceAdmin(access.role)) return null
   const client = await getTenantDbById(access.tenantId)
   if (target.kind === "contentType") {
-    const resolved = await resolveWritableContentType(client, target.slug, {
-      tenantId: access.tenantId, isGlobal: access.isGlobal,
-    })
+    const resolved = await resolveWritableContentType(client, target.slug, { tenantId: access.tenantId })
     return resolved.ok ? { name: resolved.data.contentType.name, fields: resolved.data.fields } : null
   }
 
@@ -34,7 +32,6 @@ export async function loadAiFormSchema(
       { tenantId: access.tenantId },
       { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
       ...(target.kind === "component" ? [{ tenantId: null, tenants: { none: {} } }] : []),
-      ...(access.isGlobal ? [{ tenantId: null }] : []),
     ],
   }
   const include = { schemaFields: { orderBy: { order: "asc" as const } } }

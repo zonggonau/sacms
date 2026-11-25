@@ -68,7 +68,7 @@ export default async function CMSDashboardPage({
 
   const tenantId = access.tenantId
   const tenantDb = await getTenantDb(tenantSlug)
-  const visibleCollections = studioModelWhere(tenantId, access.isGlobal)
+  const visibleCollections = studioModelWhere(tenantId)
   const visibleEntries = { tenantId, deletedAt: null, contentType: visibleCollections }
   const canReadContent = roleHasPermission(access.role, PERMISSIONS.CONTENT_READ)
 
@@ -166,7 +166,7 @@ export default async function CMSDashboardPage({
             </Link>
           </Button>
 
-          {(isWorkspaceAdmin(access.role) || access.isGlobal) && (
+          {isWorkspaceAdmin(access.role) && (
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
               <Link href={`/dashboard/${tenantSlug}/developer/content-types`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />

@@ -188,14 +188,13 @@ export async function assignContentTypeToGroup(
   tenantId: string,
   contentTypeId: string,
   groupId: string | null,
-  isGlobalActor: boolean,
 ) {
   const contentType = await tenantDb.contentType.findUnique({ where: { id: contentTypeId } })
   if (!contentType) return { error: "Koleksi tidak ditemukan" }
 
   const isGlobal = contentType.tenantId === null
   const isOwnedByOther = contentType.tenantId !== null && contentType.tenantId !== tenantId
-  if (isGlobal && !isGlobalActor) return { error: "Koleksi global tidak dapat diubah oleh admin tenant" }
+  if (isGlobal) return { error: "Koleksi global tidak dapat diubah oleh admin tenant" }
   if (isOwnedByOther) return { error: "Koleksi milik tenant lain tidak dapat diubah" }
 
   if (groupId) {

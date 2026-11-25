@@ -1162,15 +1162,8 @@ const handler = createMcpHandler(
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        // Same "is THIS workspace the Global one" check tenant-access.ts's
-        // isGlobal uses (id OR slug) — only Global's own workspace may
-        // re-group a shared/global Content Type (tenantId: null).
-        const { getGlobalWorkspaceId } = await import("@/lib/settings")
-        const globalId = await getGlobalWorkspaceId()
-        const isGlobalActor = auth.tenantId === globalId || auth.tenantSlug === globalId
-
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const result = await assignContentTypeToGroup(tenantDb, auth.tenantId, contentTypeId, groupId ?? null, isGlobalActor)
+        const result = await assignContentTypeToGroup(tenantDb, auth.tenantId, contentTypeId, groupId ?? null)
         if ("error" in result) return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
         return { content: [{ type: "text" as const, text: JSON.stringify(result.contentType, null, 2) }] }
       },

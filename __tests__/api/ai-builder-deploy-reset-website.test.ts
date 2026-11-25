@@ -73,7 +73,6 @@ const regularAccess = {
   role: "admin",
   tenantId: "tenant1",
   userId: "user1",
-  isGlobal: false,
   tenant: { id: "tenant1", slug: "acme", plan: "business", vercelProjectId: "prj_1" },
 }
 
@@ -116,13 +115,6 @@ describe("POST /api/tenant/[tenant]/ai-builder/deploy — action: reset-website"
     const response = await POST(req({ action: "deploy", files: [] }), ctx({ tenant: "acme" }))
     expect(response.status).toBe(400)
     expect(deployTenantFrontend).not.toHaveBeenCalled()
-  })
-
-  it("is blocked entirely for the SaCMS Global workspace", async () => {
-    mockAccess.mockResolvedValue({ ...regularAccess, isGlobal: true } as any)
-    const res = await POST(req({ action: "reset-website" }), ctx({ tenant: "sacms-global" }))
-    expect(res.status).toBe(403)
-    expect(deleteVercelProject).not.toHaveBeenCalled()
   })
 
   it("is blocked while the schema is finalized (draft lock)", async () => {

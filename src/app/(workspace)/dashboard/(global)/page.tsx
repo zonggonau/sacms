@@ -5,7 +5,7 @@ import { redirect } from "next/navigation"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import type { WorkspacePlan, AddonPlan } from "@/components/dashboard/workspace-creation-dialog"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
-import { isEnterpriseTenant } from "@/lib/license"
+import { INSTANCE_LICENSE_ID, isEnterpriseTenant } from "@/lib/license"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { isPlatformStaff } from "@/lib/platform-roles"
 import { enforceUserPlanLimit, getStorageQuota, validateWorkspacePlanBinding } from "@/lib/plan-enforcement"
@@ -76,7 +76,7 @@ export default async function WorkspaceSelectionPage() {
     })
   ])
 
-  let isGlobalEnterprise = await isEnterpriseTenant(globalId)
+  let isGlobalEnterprise = await isEnterpriseTenant(INSTANCE_LICENSE_ID)
   if (!isGlobalEnterprise) {
     isGlobalEnterprise = await isEnterpriseTenant(session.user.id)
   }

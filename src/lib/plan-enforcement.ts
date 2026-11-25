@@ -1,7 +1,7 @@
 import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
-import { isEnterpriseTenant, validateLicense } from "./license"
+import { INSTANCE_LICENSE_ID, isEnterpriseTenant, validateLicense } from "./license"
 import { isPlatformStaff } from "./platform-roles"
 import { countOwnedWorkspaces } from "./workspace-creation-limit"
 /**
@@ -80,8 +80,7 @@ function formatBytes(bytes: number): string {
 /** Instance-level enterprise license (self-hosted install). A per-tenant license does not lift the storage quota. */
 async function isInstanceEnterpriseLicensed(): Promise<boolean> {
   try {
-    const { getGlobalWorkspaceId } = await import('@/lib/settings')
-    return await isEnterpriseTenant(await getGlobalWorkspaceId())
+    return await isEnterpriseTenant(INSTANCE_LICENSE_ID)
   } catch {
     return false
   }
@@ -371,13 +370,11 @@ export async function checkStorageUpload(
  */
 async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | null> {
   try {
-    const { getGlobalWorkspaceId } = await import('@/lib/settings')
-    const globalTenantId = await getGlobalWorkspaceId()
-    // 1. Check global enterprise license first
-    let enterprise = await isEnterpriseTenant(globalTenantId)
+    // 1. Check the instance-wide enterprise license first
+    let enterprise = await isEnterpriseTenant(INSTANCE_LICENSE_ID)
     
     // 2. Fallback to tenant-specific license or dedicated plan if no global license
-    if (!enterprise && tenantId && tenantId !== globalTenantId) {
+    if (!enterprise && tenantId) {
       enterprise = await isEnterpriseTenant(tenantId)
       if (!enterprise) {
         const t = await db.tenant.findUnique({
@@ -538,9 +535,7 @@ export async function enforceUserPlanLimit(
   // 0. Enterprise Mode Bypass — a whole self-hosted instance (global tenant
   // license) always stays fully unlimited regardless of resource.
   try {
-    const { getGlobalWorkspaceId } = await import('@/lib/settings')
-    const globalTenantId = await getGlobalWorkspaceId()
-    if (await isEnterpriseTenant(globalTenantId)) {
+    if (await isEnterpriseTenant(INSTANCE_LICENSE_ID)) {
       return {
         allowed: true,
         current: 0,
@@ -630,9 +625,7 @@ export async function enforceUserAiCredits(
   // fully unlimited — distinct from an account-level license below, which
   // is bounded by its own aiCredits grant instead.
   try {
-    const { getGlobalWorkspaceId } = await import('@/lib/settings')
-    const globalTenantId = await getGlobalWorkspaceId()
-    if (await isEnterpriseTenant(globalTenantId)) {
+    if (await isEnterpriseTenant(INSTANCE_LICENSE_ID)) {
       return { allowed: true, remaining: 999999, max: 999999, current: 0, planSlug: "enterprise", message: "Enterprise Unlimited" }
     }
   } catch {}
@@ -701,9 +694,7 @@ export async function reserveUserAiCredits(
   // Instance-wide license stays unlimited — see enforceUserAiCredits's
   // comment above for why this is split from the account-level check below.
   try {
-    const { getGlobalWorkspaceId } = await import('@/lib/settings')
-    const globalTenantId = await getGlobalWorkspaceId()
-    if (await isEnterpriseTenant(globalTenantId)) {
+    if (await isEnterpriseTenant(INSTANCE_LICENSE_ID)) {
       return { allowed: true, remaining: 999999, max: 999999, message: "Enterprise Unlimited" }
     }
   } catch {}

@@ -288,10 +288,8 @@ const ownerMasterInfraCache = new Map<string, OwnerMasterInfraCacheEntry>()
 export async function isOwnerEligibleForByoInfra(ownerId: string): Promise<boolean> {
   const user = await db.user.findUnique({ where: { id: ownerId }, select: { plan: true } })
   if (user?.plan === 'enterprise' || user?.plan === 'agency') return true
-  const { isEnterpriseTenant } = await import('./license')
-  const { getGlobalWorkspaceId } = await import('./settings')
-  const globalId = await getGlobalWorkspaceId()
-  return isEnterpriseTenant(globalId, ownerId)
+  const { INSTANCE_LICENSE_ID, isEnterpriseTenant } = await import('./license')
+  return isEnterpriseTenant(INSTANCE_LICENSE_ID, ownerId)
 }
 
 const WORKSPACE_BYO_PLANS = new Set(["business", "bisnis", "enterprise"])
@@ -311,10 +309,8 @@ export async function isWorkspaceEligibleForByoInfra(tenantId: string): Promise<
   if (!tenant) return false
   if (WORKSPACE_BYO_PLANS.has((tenant.plan || "").trim().toLowerCase())) return true
   if (!tenant.ownerId) return false
-  const { isEnterpriseTenant } = await import('./license')
-  const { getGlobalWorkspaceId } = await import('./settings')
-  const globalId = await getGlobalWorkspaceId()
-  return isEnterpriseTenant(globalId, tenant.ownerId)
+  const { INSTANCE_LICENSE_ID, isEnterpriseTenant } = await import('./license')
+  return isEnterpriseTenant(INSTANCE_LICENSE_ID, tenant.ownerId)
 }
 
 export async function getOwnerMasterInfra(tenantId: string): Promise<OwnerMasterInfra> {

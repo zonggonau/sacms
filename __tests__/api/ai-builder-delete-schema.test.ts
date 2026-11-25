@@ -36,7 +36,7 @@ const mockAccess = vi.mocked(getTenantAccess)
 const ctx = (params: Record<string, string>) => ({ params: Promise.resolve(params) })
 const req = () => new Request("https://api.test/x", { method: "POST" }) as any
 
-const regularAccess = { role: "admin", tenantId: "tenant1", userId: "user1", isGlobal: false, tenant: { id: "tenant1", slug: "acme" } }
+const regularAccess = { role: "admin", tenantId: "tenant1", userId: "user1", tenant: { id: "tenant1", slug: "acme" } }
 
 describe("POST /api/tenant/[tenant]/ai-builder/delete-schema", () => {
   beforeEach(() => {
@@ -47,13 +47,6 @@ describe("POST /api/tenant/[tenant]/ai-builder/delete-schema", () => {
     fakeTenantDb.contentType.deleteMany.mockResolvedValue({ count: 0 })
     fakeTenantDb.singleType.deleteMany.mockResolvedValue({ count: 0 })
     fakeTenantDb.component.deleteMany.mockResolvedValue({ count: 0 })
-  })
-
-  it("is blocked entirely for the SaCMS Global workspace", async () => {
-    mockAccess.mockResolvedValue({ ...regularAccess, isGlobal: true } as any)
-    const res = await POST(req(), ctx({ tenant: "sacms-global" }))
-    expect(res.status).toBe(403)
-    expect(fakeTenantDb.contentType.deleteMany).not.toHaveBeenCalled()
   })
 
   it("is blocked while the schema is finalized (draft lock)", async () => {

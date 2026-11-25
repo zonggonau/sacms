@@ -68,11 +68,10 @@ interface ContentTypesClientProps {
   tenantSlug: string
   limit?: number
   current?: number
-  isGlobalTenant?: boolean
   canManageGroups?: boolean
 }
 
-export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false, canManageGroups = false }: ContentTypesClientProps) {
+export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0, canManageGroups = false }: ContentTypesClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -361,7 +360,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                                       <FolderInput className="mr-2 h-3.5 w-3.5" /> Pindahkan ke Grup
                                     </DropdownMenuItem>
                                   )}
-                                  {(!ct.isGlobal || isGlobalTenant) && (
+                                  {!ct.isGlobal && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">

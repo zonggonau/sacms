@@ -64,7 +64,6 @@ async function resolveWriteContext(
       localeClient: db,
       tenantId: access.tenantId,
       tenantSlug,
-      isGlobal: access.isGlobal,
       enforcePlan: true,
       studio: true,
     },
@@ -184,7 +183,6 @@ export async function getEntriesAction(
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
@@ -432,7 +430,6 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
@@ -766,7 +763,6 @@ export async function bulkContentAction(
         OR: [
           { tenantId: access.tenantId },
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       }
     })

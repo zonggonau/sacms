@@ -82,7 +82,7 @@ describe("API AI untuk formulir CMS", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     vi.mocked(getServerSession).mockResolvedValue({ user: { id: "editor", role: "editor" } } as never)
-    vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-1", role: "editor", isGlobal: false } as never)
+    vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-1", role: "editor" } as never)
     vi.mocked(getTenantDbById).mockResolvedValue({} as never)
     fixture(fields)
   })
@@ -102,7 +102,7 @@ describe("API AI untuk formulir CMS", () => {
       seo: { meta_title: "Kakao", meta_description: "Produk kakao." },
     } })
     expect(getTenantDbById).toHaveBeenCalledWith("tenant-1")
-    expect(resolveWritableContentType).toHaveBeenCalledWith({}, "commodities", { tenantId: "tenant-1", isGlobal: false })
+    expect(resolveWritableContentType).toHaveBeenCalledWith({}, "commodities", { tenantId: "tenant-1" })
     const [, prompt, config] = vi.mocked(safeGenerateContent).mock.calls[0]
     expect(JSON.parse(prompt).source).toEqual({ "Nama Komoditas": "Kakao" })
     expect(config).toMatchObject({ creditsCost: 2, userId: "editor", refundOnFailure: true })
@@ -130,7 +130,7 @@ describe("API AI untuk formulir CMS", () => {
     expect((await post(smartFill, payload)).status).toBe(404)
     expect(safeGenerateContent).not.toHaveBeenCalled()
 
-    vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-1", role: "admin", isGlobal: false } as never)
+    vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-1", role: "admin" } as never)
     const findFirst = vi.fn().mockResolvedValue({ name: "Beranda", schemaFields: [fields[2]] })
     vi.mocked(getTenantDbById).mockResolvedValue({ singleType: { findFirst } } as never)
     vi.mocked(safeGenerateContent).mockResolvedValue({ text: '{"description":"<p>Selamat datang</p>"}' } as never)

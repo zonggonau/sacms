@@ -290,12 +290,19 @@ export async function getCachedLicense(tenantId: string): Promise<LicenseResult 
  * 2. Online validation via license server
  * 3. Fallback to offline RSA verification
  */
+/**
+ * LicenseCache key for the instance-wide (self-hosted) license. It never names
+ * a real tenant: validateLicense() skips the tenant lookup for it and falls
+ * back to the LICENSE_KEY env var.
+ */
+export const INSTANCE_LICENSE_ID = "globalId"
+
 export async function validateLicense(tenantId: string, providedKey?: string): Promise<LicenseResult> {
   let key = providedKey
   if (!key) {
     const cached = await db.licenseCache.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
     key = cached?.licenseKey || ""
-    if (!key && tenantId !== "globalId") {
+    if (!key && tenantId !== INSTANCE_LICENSE_ID) {
       const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
       key = tenant?.licenseKey || ""
     }
@@ -440,11 +447,11 @@ export async function isEnterpriseTenant(tenantId: string, userId?: string): Pro
   if (result.valid && result.type === "enterprise") return true
 
   // Fallback to checking global license
-  if (tenantId !== "globalId") {
-    const globalCached = await getCachedLicense("globalId")
+  if (tenantId !== INSTANCE_LICENSE_ID) {
+    const globalCached = await getCachedLicense(INSTANCE_LICENSE_ID)
     if (globalCached?.valid && globalCached.type === "enterprise") return true
     
-    const globalResult = await validateLicense("globalId")
+    const globalResult = await validateLicense(INSTANCE_LICENSE_ID)
     if (globalResult.valid && globalResult.type === "enterprise") return true
   }
 

@@ -48,7 +48,6 @@ export default async function ContentTypesPage({ params }: { params: Promise<{ t
       tenantSlug={tenant}
       limit={maxLimit}
       current={currentUsageCount}
-      isGlobalTenant={access?.isGlobal}
       canManageGroups={!!access && isWorkspaceAdmin(access.role)}
     />
   )

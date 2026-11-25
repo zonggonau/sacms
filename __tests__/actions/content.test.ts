@@ -90,7 +90,6 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
-        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue(null)
@@ -108,7 +107,6 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
-        isGlobal: false,
       })
 
 
@@ -145,7 +143,6 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
-        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
@@ -183,7 +180,6 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
-        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
@@ -227,7 +223,6 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
-        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
