@@ -40,7 +40,7 @@ import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { copyToClipboard } from "@/lib/clipboard"
 import { deleteTenantAction } from "@/actions/tenant"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import Link from "next/link"
 import { WorkspaceCreationDialog, type WorkspacePlan, type AddonPlan } from "./workspace-creation-dialog"
 import { EnterpriseLicenseBanner } from "./enterprise-license-banner"
@@ -74,7 +74,11 @@ function formatBytesGb(bytes: number): string {
 }
 
 interface WorkspaceManagerProps {
+  /** This page's slice of the account's workspaces (see pagination). */
   initialTenants: Tenant[]
+  /** Counts across every workspace, not just this page. */
+  summary: { total: number; active: number; expired: number; expiringSoon: number; suspended: number }
+  pagination: { page: number; pageCount: number; total: number; pageSize: number; q: string }
   usage: { current: number; max: number | null; allowed: boolean; plan: string } | null
   dbTemplates: any[]
   workspacePlans: WorkspacePlan[]
@@ -89,6 +93,8 @@ interface WorkspaceManagerProps {
 
 export function WorkspaceManager({
   initialTenants,
+  summary,
+  pagination,
   usage,
   dbTemplates,
   workspacePlans,
@@ -99,7 +105,8 @@ export function WorkspaceManager({
 }: WorkspaceManagerProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [searchQuery, setSearchQuery] = useState("")
+  const pathname = usePathname()
+  const [searchInput, setSearchInput] = useState(pagination.q)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
 
   // Read the saved preference after mount only — a lazy useState initializer
@@ -137,15 +144,34 @@ export function WorkspaceManager({
   const [isDeleting, setIsDeleting] = useState(false)
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null)
 
-  const filteredTenants = initialTenants.filter(t => 
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.slug.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const expiredCount = summary.expired
+  const expiringSoonCount = summary.expiringSoon
+  const activeWorkspacesCount = summary.active
+  const suspendedCount = summary.suspended
 
-  const expiredCount = initialTenants.filter(t => t.isExpired || (t.daysRemaining !== null && t.daysRemaining <= 0 && t.status !== "active")).length
-  const expiringSoonCount = initialTenants.filter(t => !t.isExpired && t.daysRemaining !== null && t.daysRemaining <= 3 && t.daysRemaining > 0).length
-  const activeWorkspacesCount = initialTenants.filter(t => !t.isExpired && t.status === 'active' && (t.daysRemaining === null || t.daysRemaining > 0)).length
-  const suspendedCount = initialTenants.length - activeWorkspacesCount
+  // Search runs on the server so it covers every page. Typing waits briefly, then
+  // replaces the URL (no history entry per keystroke) and returns to page 1.
+  useEffect(() => {
+    if (searchInput === pagination.q) return
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams?.toString() ?? "")
+      if (searchInput.trim()) params.set("q", searchInput.trim())
+      else params.delete("q")
+      params.delete("page")
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+    }, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput])
+
+  const goToPage = (page: number) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
+    if (page <= 1) params.delete("page")
+    else params.set("page", String(page))
+    const qs = params.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
 
   const handleCopySlug = (slug: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -191,7 +217,7 @@ export function WorkspaceManager({
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Workspace</h1>
             <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
-              {initialTenants.length}
+              {summary.total}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -241,7 +267,7 @@ export function WorkspaceManager({
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-0.5">
               <p className="text-xs font-semibold text-muted-foreground">Total Workspace</p>
-              <p className="text-2xl font-black text-foreground">{initialTenants.length}</p>
+              <p className="text-2xl font-black text-foreground">{summary.total}</p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
               <Building2 className="h-5 w-5" />
@@ -292,8 +318,8 @@ export function WorkspaceManager({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Cari nama atau slug workspace..." 
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
             className="pl-9 h-9 text-xs rounded-xl border-border/80 bg-card"
           />
         </div>
@@ -328,7 +354,7 @@ export function WorkspaceManager({
 
       {/* Main Workspace Presentation */}
       <section className="space-y-4">
-        {initialTenants.length === 0 ? (
+        {summary.total === 0 && !pagination.q ? (
           <Card className="py-16 text-center border-dashed rounded-2xl bg-card/60">
             <CardContent className="flex flex-col items-center justify-center space-y-3">
               <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
@@ -348,18 +374,18 @@ export function WorkspaceManager({
               </Button>
             </CardContent>
           </Card>
-        ) : filteredTenants.length === 0 ? (
+        ) : initialTenants.length === 0 ? (
           <Card className="py-12 text-center rounded-2xl bg-card/40">
             <CardContent className="space-y-2">
               <Search className="h-8 w-8 text-muted-foreground mx-auto opacity-40" />
               <p className="text-sm font-semibold text-foreground">Workspace tidak ditemukan</p>
-              <p className="text-xs text-muted-foreground">Tidak ada workspace yang cocok dengan "{searchQuery}"</p>
+              <p className="text-xs text-muted-foreground">Tidak ada workspace yang cocok dengan "{pagination.q}"</p>
             </CardContent>
           </Card>
         ) : viewMode === "grid" ? (
           /* GRID VIEW (Modern Cards) */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredTenants.map((tenant) => {
+            {initialTenants.map((tenant) => {
               const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
               const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
               const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
@@ -546,7 +572,7 @@ export function WorkspaceManager({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTenants.map((tenant) => {
+                {initialTenants.map((tenant) => {
                   const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
                   const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
                   const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
@@ -688,6 +714,38 @@ export function WorkspaceManager({
                 })}
               </TableBody>
             </Table>
+          </div>
+        )}
+        {pagination.total > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-muted-foreground">
+            <span>
+              Menampilkan {(pagination.page - 1) * pagination.pageSize + 1}–{Math.min(pagination.page * pagination.pageSize, pagination.total)} dari {pagination.total} workspace
+            </span>
+            {pagination.pageCount > 1 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => goToPage(pagination.page - 1)}
+                  className="h-8 rounded-xl text-xs font-bold"
+                >
+                  Sebelumnya
+                </Button>
+                <span className="font-semibold text-foreground">
+                  Halaman {pagination.page} dari {pagination.pageCount}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pagination.page >= pagination.pageCount}
+                  onClick={() => goToPage(pagination.page + 1)}
+                  className="h-8 rounded-xl text-xs font-bold"
+                >
+                  Berikutnya
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </section>
