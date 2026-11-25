@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "fs"
+import { readFileSync, readdirSync } from "fs"
 import { join } from "path"
 import { WORKSPACE_MCP_INSTRUCTIONS, buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 
@@ -15,10 +15,12 @@ import { WORKSPACE_MCP_INSTRUCTIONS, buildWorkspacePlaybook } from "@/lib/mcp/wo
 // still catches the regression that matters here: someone reverting the
 // description text or removing a field.
 
-const routeSource = readFileSync(
+// The route file plus the per-domain tool modules it registers (src/lib/mcp/workspace/*).
+const workspaceToolDir = join(__dirname, "../../src/lib/mcp/workspace")
+const routeSource = [
   join(__dirname, "../../src/app/api/mcp/[[...transport]]/route.ts"),
-  "utf-8",
-)
+  ...readdirSync(workspaceToolDir).map((file) => join(workspaceToolDir, file)),
+].map((file) => readFileSync(file, "utf-8")).join("\n")
 
 /**
  * Locates a tool's ACTUAL `server.registerTool("name", { ... })` call and

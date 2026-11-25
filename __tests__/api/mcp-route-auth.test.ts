@@ -68,7 +68,8 @@ vi.mock("@/lib/database", () => ({
   getTenantDb: vi.fn(),
 }))
 
-const { resolveToken, hasScope, authenticateRequest } = await import("../../src/app/api/mcp/[[...transport]]/route")
+const { resolveToken, hasScope } = await import("../../src/lib/mcp/workspace/context")
+const { authenticateRequest } = await import("../../src/app/api/mcp/[[...transport]]/route")
 
 function makeTenant(overrides: Partial<{ status: string; hostingStatus: string | null; plan: string }> = {}) {
   return {

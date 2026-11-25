@@ -25,7 +25,7 @@ vi.mock("@/lib/database", () => ({
   },
 }))
 
-const { resolveGlobalSchemaToken } = await import("../../src/app/api/mcp/global-schema/[[...transport]]/route")
+const { resolveGlobalSchemaToken } = await import("../../src/lib/mcp/global/context")
 
 describe("Global Schema Template MCP route — resolveGlobalSchemaToken", () => {
   beforeEach(() => {

@@ -1,6 +1,6 @@
 import { buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "fs"
+import { readFileSync, readdirSync } from "fs"
 import { join } from "path"
 import { validateGlobalComponentFields } from "@/lib/schema-template-validation"
 
@@ -72,14 +72,18 @@ describe("validateGlobalComponentFields", () => {
 // the SDK only invokes lazily per request, so a behavioral/integration test
 // exercises nothing here — these assert the real, already-shipped shape.
 
-const globalSchemaRouteSource = readFileSync(
+// The global route plus the per-domain tool modules it registers (src/lib/mcp/global/*).
+const globalSchemaRouteSourceDir = join(__dirname, "../../src/lib/mcp/global")
+const globalSchemaRouteSource = [
   join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"),
-  "utf-8",
-)
-const perWorkspaceRouteSource = readFileSync(
+  ...readdirSync(globalSchemaRouteSourceDir).map((file) => join(globalSchemaRouteSourceDir, file)),
+].map((file) => readFileSync(file, "utf-8")).join("\n")
+// The workspace route plus the per-domain tool modules it registers (src/lib/mcp/workspace/*).
+const workspaceToolDir = join(__dirname, "../../src/lib/mcp/workspace")
+const perWorkspaceRouteSource = [
   join(__dirname, "../../src/app/api/mcp/[[...transport]]/route.ts"),
-  "utf-8",
-)
+  ...readdirSync(workspaceToolDir).map((file) => join(workspaceToolDir, file)),
+].map((file) => readFileSync(file, "utf-8")).join("\n")
 
 function toolBlockOf(source: string, tool: string): string {
   const anchor = `server.registerTool(\n      "${tool}",`

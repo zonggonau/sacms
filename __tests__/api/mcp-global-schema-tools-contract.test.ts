@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "fs"
+import { GLOBAL_MCP_INSTRUCTIONS } from "@/lib/mcp/global-guidance"
+import { readFileSync, readdirSync } from "fs"
 import { join } from "path"
 
 // Static source-text contract checks for the SaCMS Global Schema Template
@@ -15,10 +16,12 @@ import { join } from "path"
 // resending the whole bundle, mirroring deploy_website_patch's role for
 // the per-workspace server.
 
-const routeSource = readFileSync(
+// The global route plus the per-domain tool modules it registers (src/lib/mcp/global/*).
+const routeSourceDir = join(__dirname, "../../src/lib/mcp/global")
+const routeSource = [
   join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"),
-  "utf-8",
-)
+  ...readdirSync(routeSourceDir).map((file) => join(routeSourceDir, file)),
+].map((file) => readFileSync(file, "utf-8")).join("\n")
 
 function toolBlockOf(tool: string): string {
   const anchor = `server.registerTool(\n      "${tool}",`
@@ -331,13 +334,15 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
 
   it("registers get_builder_guide as the first tool, and keeps the top-level instructions short instead of the full workflow (confirmed to get truncated mid-word by at least one real MCP client at ~6,178 characters)", () => {
     expect(routeSource).toMatch(/"get_builder_guide"/)
-    const firstToolIdx = routeSource.indexOf('server.registerTool(\n      "')
-    const firstToolName = routeSource.slice(firstToolIdx).match(/"([a-z_]+)"/)?.[1]
+    // The route registers the guide module first; that module's first tool must be the guide.
+    expect(routeSource.indexOf("registerGuideTools(server)")).toBeLessThan(routeSource.indexOf("registerWebsiteTemplateTools(server)"))
+    const guideSource = readFileSync(join(__dirname, "../../src/lib/mcp/global/guide-tools.ts"), "utf-8")
+    const firstToolIdx = guideSource.indexOf('server.registerTool(\n      "')
+    const firstToolName = guideSource.slice(firstToolIdx).match(/"([a-z_]+)"/)?.[1]
     expect(firstToolName).toBe("get_builder_guide")
 
-    const instructionsStart = routeSource.indexOf("instructions:")
-    const instructionsBlock = routeSource.slice(instructionsStart, routeSource.indexOf("\n  },\n)", instructionsStart))
-    const literalChars = (instructionsBlock.match(/"((?:[^"\\]|\\.)*)"/g) || []).join("").length
+    // The instructions text lives in src/lib/mcp/global-guidance.ts and is asserted on its value.
+    const literalChars = GLOBAL_MCP_INSTRUCTIONS.length
     expect(literalChars).toBeLessThan(2000)
   })
 

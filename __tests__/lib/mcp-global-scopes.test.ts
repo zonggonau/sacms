@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { resolveGlobalMcpScopes, requiredScopeForTool, GLOBAL_MCP_SCOPES } from "@/lib/mcp-global-scopes"
 
@@ -33,7 +33,12 @@ describe("requiredScopeForTool", () => {
   })
 
   it("every get_/list_ tool actually registered on the server is reachable with a read-only token", () => {
-    const source = readFileSync(join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"), "utf-8")
+    // Tools are registered by the route and by the per-domain modules it imports.
+    const globalDir = join(__dirname, "../../src/lib/mcp/global")
+    const source = [
+      readFileSync(join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"), "utf-8"),
+      ...readdirSync(globalDir).map((file) => readFileSync(join(globalDir, file), "utf-8")),
+    ].join("\n")
     const registered = [...source.matchAll(/server\.registerTool\(\s*"([a-z_]+)"/g)].map((m) => m[1])
     expect(registered.length).toBeGreaterThan(20)
     for (const tool of registered.filter((t) => /^(get|list)_/.test(t) || t === "whoami")) {

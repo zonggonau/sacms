@@ -20,11 +20,18 @@ function toolNames(source) {
   return [...names].sort()
 }
 
+// Tool modules split out of each route (src/lib/mcp/<server>/*.ts) also register tools.
+function sourcesIn(root, dir) {
+  const abs = path.join(root, dir)
+  if (!fs.existsSync(abs)) return ""
+  return fs.readdirSync(abs).filter((f) => f.endsWith(".ts")).map((f) => fs.readFileSync(path.join(abs, f), "utf8")).join("\n")
+}
+
 function buildManifest(root = ROOT) {
   const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8")
   const preview = toolNames(read(FILES.preview))
-  const global = [...new Set([...toolNames(read(FILES.global)), ...preview])].sort()
-  const workspace = [...new Set([...toolNames(read(FILES.workspace)), ...preview])].sort()
+  const global = [...new Set([...toolNames(read(FILES.global) + sourcesIn(root, "src/lib/mcp/global")), ...preview])].sort()
+  const workspace = [...new Set([...toolNames(read(FILES.workspace) + sourcesIn(root, "src/lib/mcp/workspace")), ...preview])].sort()
   return { global, workspace, sharedPreview: preview }
 }
 
