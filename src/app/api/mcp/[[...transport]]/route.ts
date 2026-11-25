@@ -3646,7 +3646,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
-        const hostingUrl = resolveApiOrigin() + "/dashboard/" + encodeURIComponent(auth.tenantSlug) + "/developer/infrastructure?tab=hosting"
+        const hostingUrl = resolveApiOrigin() + "/dashboard/" + encodeURIComponent(auth.tenantSlug) + "/infrastructure?tab=hosting"
         return { structuredContent: { code: "DASHBOARD_REQUIRED", hostingUrl }, content: [{ type: "text" as const, text: "Rilis production melalui " + hostingUrl }] }
       },
     )

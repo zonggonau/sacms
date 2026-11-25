@@ -263,6 +263,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       items: [
         ...(isAdmin ? [
           {
+            title: s.infrastructure,
+            href: "/infrastructure",
+            icon: Rocket,
+            matchPrefix: true,
+            badge: effectiveHasDedicatedInfra ? "DEDICATED" : "CLOUD",
+          },
+          {
             title: "Developer Portal",
             icon: Code,
             badge: "AI",
@@ -273,13 +280,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },
               { title: "Webhooks", href: "/developer/webhooks", icon: Webhook, matchPrefix: true },
               { title: "API Explorer", href: "/developer/api", icon: Play, matchPrefix: true },
-              {
-                title: s.infrastructure,
-                href: "/developer/infrastructure",
-                icon: Rocket,
-                matchPrefix: true,
-                badge: effectiveHasDedicatedInfra ? "DEDICATED" : "CLOUD",
-              },
             ]
           },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },

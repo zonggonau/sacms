@@ -769,7 +769,7 @@ const MCP_TOOLS: ToolDefinition[] = [
     title: "Open Production Hosting",
     description: "Returns the workspace Hosting link. An administrator releases the reviewed source from that page.",
     inputs: [],
-    sampleResponse: { code: "DASHBOARD_REQUIRED", hostingUrl: "https://sacms.cloud/dashboard/my-workspace/developer/infrastructure?tab=hosting" }
+    sampleResponse: { code: "DASHBOARD_REQUIRED", hostingUrl: "https://sacms.cloud/dashboard/my-workspace/infrastructure?tab=hosting" }
   },
   {
     name: "get_deployment_source",

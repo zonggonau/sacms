@@ -44,6 +44,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
+import { PreviewSessionsCard, type PreviewEntry } from "./preview-sessions-card"
 import {
   Dialog,
   DialogContent,
@@ -147,6 +148,8 @@ export function HostingDeploymentsView({
   // Redeploy (re-run the existing hosting project, no new files)
   const [sourceRevision, setSourceRevision] = useState<string | null>(null)
   const [hasProduction, setHasProduction] = useState(false)
+  const [isDemoWorkspace, setIsDemoWorkspace] = useState(false)
+  const [previews, setPreviews] = useState<PreviewEntry[]>([])
   const [isRedeploying, setIsRedeploying] = useState(false)
 
   // Delete project (irreversible — wipes the Vercel project; no auto-redeploy)
@@ -238,6 +241,8 @@ export function HostingDeploymentsView({
         const deployData = await deployRes.json()
         setSourceRevision(deployData.sourceRevision ?? null)
         setHasProduction(deployData.hasProduction === true)
+        setIsDemoWorkspace(deployData.isDemoWorkspace === true)
+        setPreviews(Array.isArray(deployData.previews) ? deployData.previews : [])
         const domainData = domainRes?.ok ? await domainRes.json() : null
 
         const activeVercelUrl = deployData.vercelDeploymentUrl || domainData?.vercelDeployment?.url || null
@@ -662,8 +667,8 @@ export function HostingDeploymentsView({
                 variant="outline"
                 size="sm"
                 onClick={handleRedeploy}
-                disabled={isRedeploying || (!sourceRevision && !hasProduction)}
-                title="Rilis versi source tersimpan ke production"
+                disabled={isDemoWorkspace || isRedeploying || (!sourceRevision && !hasProduction)}
+                title={isDemoWorkspace ? "Workspace demo tidak di-deploy ke production" : "Rilis versi source tersimpan ke production"}
                 className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
               >
                 <Rocket className={`h-3.5 w-3.5 mr-1.5 text-primary ${isRedeploying ? "animate-pulse" : ""}`} />
@@ -700,6 +705,8 @@ export function HostingDeploymentsView({
               </Button>
             </div>
           </div>
+
+              <PreviewSessionsCard previews={previews} />
 
               {/* MAIN PRODUCTION DEPLOYMENT CARD */}
               {vercelDeployment ? (

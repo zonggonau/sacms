@@ -24,6 +24,7 @@ vi.mock("@/lib/database", () => ({
     setting: { upsert: vi.fn(), findUnique: findSetting, deleteMany: vi.fn().mockResolvedValue({}) },
     mcpDeploymentSource: { findFirst: vi.fn() },
     tenant: { update: vi.fn().mockResolvedValue({}) },
+    schemaTemplate: { count: vi.fn().mockResolvedValue(0) },
   },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
@@ -98,6 +99,17 @@ describe("POST /api/tenant/[tenant]/ai-builder/deploy — action: reset-website"
     const released = await POST(req({ action: "deploy-production", sourceRevision: "reviewed" }), ctx({ tenant: "acme" }))
     expect(released.status).toBe(200)
     expect(deployTenantFrontend).toHaveBeenCalledWith("tenant1", "acme", "https://sacms.cloud", files)
+  })
+
+  it("refuses every production deploy action for a demo workspace", async () => {
+    vi.mocked(db.schemaTemplate.count).mockResolvedValue(1)
+    vi.mocked(db.mcpDeploymentSource.findFirst).mockResolvedValue({ id: "reviewed", files: [] } as any)
+    for (const action of ["deploy-production", "deploy", "redeploy"]) {
+      const res = await POST(req({ action, sourceRevision: "reviewed" }), ctx({ tenant: "demo-ruang-bingkai" }))
+      expect(res.status).toBe(403)
+    }
+    expect(deployTenantFrontend).not.toHaveBeenCalled()
+    vi.mocked(db.schemaTemplate.count).mockResolvedValue(0)
   })
 
   it("rejects a legacy direct deploy with caller-supplied files", async () => {

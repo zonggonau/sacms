@@ -16,9 +16,11 @@ const INSTALL_LOG = "/tmp/sacms-install.log"
 const DEV_LOG = "/tmp/sacms-dev.log"
 const LOG_TAIL_BYTES = 8_000
 const parseFiles = (value: unknown) => websiteTemplateFilesSchema.parse(value)
-const active = (s: McpPreviewSession) => s.expiresAt.getTime() > Date.now() && ["ready", "starting", "editing"].includes(s.status)
+export const active = (s: McpPreviewSession) => s.expiresAt.getTime() > Date.now() && ["ready", "starting", "editing"].includes(s.status)
+// An expired session that still holds unsaved edits stays visible as "expired", so it gets saved or resumed.
+export const reportable = (s: McpPreviewSession) => active(s) || (s.dirty && s.status === "ready")
 
-function describeSession(scope: string, target: string, session: McpPreviewSession | null) {
+export function describeSession(scope: string, target: string, session: McpPreviewSession | null) {
   const status = !session ? "inactive" : session.expiresAt.getTime() <= Date.now() ? "expired" : session.status === "editing" ? "starting" : session.status
   return { scope, target, status, previewKind: "code", contentMode: "published", previewUrl: status === "ready" ? `https://${session!.id}.preview.sacms.cloud` : null,
     accessUrl: status === "ready" ? `https://${session!.id}.preview.sacms.cloud/?preview_access=${previewCredential(session!.id, "browser")}` : null,
@@ -98,8 +100,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
   async function getPreview(input: { templateId?: string; siteId?: string }) {
     const t = await template(input)
     const s = await lookup(t.id)
-    // An expired session that still holds unsaved edits is reported as "expired", so the agent saves or resumes it.
-    return result(describe(t.slug, s && (active(s) || (s.dirty && s.status === "ready")) ? s : null))
+    return result(describe(t.slug, s && reportable(s) ? s : null))
   }
   async function startPreview(input: { templateId?: string; siteId?: string }) {
     const t = await template(input, true)

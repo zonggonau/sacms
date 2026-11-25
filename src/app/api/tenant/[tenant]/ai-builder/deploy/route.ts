@@ -8,6 +8,7 @@ import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 import { wipeTenantSchema } from "@/lib/schema-wipe"
+import { isDemoWorkspace, listWorkspacePreviews } from "@/lib/infrastructure/workspace-previews"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
@@ -61,6 +62,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
       vercelProjectId,
       customDomain,
       plan: tenant.plan,
+      ...(await listWorkspacePreviews(tenantId, tenant.slug)),
       dnsTemplate: {
         apex: { type: "A", name: "@", value: "76.76.21.21", description: "A-Record untuk root domain (@)" },
         cname: { type: "CNAME", name: "www", value: "cname.vercel-dns.com", description: "CNAME Record untuk subdomain" },
@@ -132,6 +134,12 @@ export const POST = withStaffAuth(
         message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
         details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
       })
+    }
+
+    // A demo workspace only backs catalog Website Templates; its demo is
+    // released by the global MCP, never as a production site from Hosting.
+    if ((action === "deploy-production" || action === "deploy" || action === "redeploy") && (await isDemoWorkspace(tenantId))) {
+      return apiError("forbidden", { message: "Workspace demo tidak dapat di-deploy ke production. Demo katalog dirilis lewat MCP Global." })
     }
 
     // ── ACTION: REDEPLOY (re-run the existing project, no new files) ───────

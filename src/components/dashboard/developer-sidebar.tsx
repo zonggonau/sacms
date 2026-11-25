@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   Key, Webhook, Plug,
   Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight,
-  Terminal, Rocket
+  Terminal
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 import { MobilePortalMenu } from "@/components/dashboard/mobile-portal-menu"
@@ -30,7 +30,6 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
     { title: "Kunci API", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
     { title: "Webhooks", href: `/dashboard/${tenantId}/developer/webhooks`, icon: Webhook },
     { title: "API Explorer & Docs", href: `/dashboard/${tenantId}/developer/api`, icon: Terminal, badge: "REST & GQL" },
-    { title: "Hosting & Infrastruktur", href: `/dashboard/${tenantId}/developer/infrastructure`, icon: Rocket },
   ]
 
   const navigation = (
