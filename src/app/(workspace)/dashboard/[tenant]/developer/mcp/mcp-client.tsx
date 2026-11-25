@@ -277,22 +277,6 @@ const PLATFORMS: PlatformInfo[] = [
     ],
   },
   {
-    id: "gemini",
-    name: "Gemini / Google AI Studio",
-    icon: "🔷",
-    badge: "Dukungan Bervariasi",
-    badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    configType: "url-token",
-    steps: [
-      "Vertex AI (Google Cloud): gunakan Server URL di bawah sebagai MCP tool source pada konfigurasi agent Anda — dukungan MCP-nya paling matang di sini.",
-      "Google AI Studio / Gemini app: cari menu Tools/Extensions/Connectors di UI — jika tersedia, tempelkan Server URL (dengan token di bawah) di sana.",
-    ],
-    notes: [
-      "Dukungan MCP Google berbeda-beda antar produk dan sering diperbarui — kalau opsi 'Connector'/'MCP' belum muncul di akun Anda, coba lagi beberapa saat atau cek dokumentasi resmi Google terbaru.",
-    ],
-    caveat: "Dukungan MCP untuk konsumen (Gemini app) masih belum merata di semua wilayah/akun per rilis terbaru.",
-  },
-  {
     id: "grok",
     name: "Grok (xAI)",
     icon: "⬛",
@@ -576,7 +560,7 @@ export function MCPDashboardClient({
                   <strong className="text-foreground">Model Context Protocol (MCP)</strong> adalah standar terbuka yang membiarkan AI agent (Claude, ChatGPT, editor kode, dll.) membaca dan mengubah data workspace Anda secara langsung — bukan cuma "menebak" dari teks yang Anda ketik. Begitu tersambung, agent bisa memanggil fungsi nyata seperti "buat Content Type baru" atau "ambil 10 artikel terakhir" langsung ke database SaCMS Anda, real-time.
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Halaman ini tadinya cuma menunjukkan cara setup untuk editor kode (Antigravity, VS Code). Sekarang mencakup <strong className="text-foreground">agent chat umum juga</strong> — Claude, ChatGPT, Gemini, dan lainnya — karena dukungan MCP di platform-platform ini sudah berkembang pesat sepanjang 2025–2026.
+                  Halaman ini tadinya cuma menunjukkan cara setup untuk editor kode (Antigravity, VS Code). Sekarang mencakup <strong className="text-foreground">agent chat umum juga</strong> — Claude, ChatGPT, dan lainnya — karena dukungan MCP di platform-platform ini sudah berkembang pesat sepanjang 2025–2026.
                 </p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Platform Anda belum/tidak mendukung MCP? Semua kemampuan yang sama tetap bisa diakses lewat{" "}
