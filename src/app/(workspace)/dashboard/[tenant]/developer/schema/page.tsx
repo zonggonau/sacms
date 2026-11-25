@@ -5,7 +5,7 @@ import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isSchemaFinalized } from "@/lib/schema-lock"
 import { SchemaGeneratorClient } from "./schema-generator-client"
-import { canUseWebsiteTemplates } from "@/lib/infrastructure/hosting-plan"
+import { websiteTemplateAccess } from "@/lib/billing/website-template-access"
 
 export default async function SchemaGeneratorPage({ params }: { params: Promise<{ tenant: string }> }) {
   const session = await getServerSession(authOptions)
@@ -54,7 +54,10 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
         existingSchemaSummary={existingSchemaSummary}
         initialFinalized={finalized}
         currentRole={access.role}
-        canUseTemplates={canUseWebsiteTemplates(tenant.plan)}
+        planAccess={(() => {
+          const access = websiteTemplateAccess(tenant.plan, false, 1)
+          return access === "free" ? "free" : access === "purchasable" ? "purchase" : "locked"
+        })()}
       />
     </div>
   )

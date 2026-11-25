@@ -140,6 +140,7 @@ model Tenant {
   // point. Purely informational (Hosting tab banner) — never gates anything.
   sourceWebsiteTemplateId          String?
   sourceWebsiteTemplate            WebsiteTemplate?             @relation(fields: [sourceWebsiteTemplateId], references: [id], onDelete: SetNull)
+  websiteTemplatePurchases         WebsiteTemplatePurchase[]
   // Back-relation only (no column here) — set when this tenant IS the
   // internal demo tenant for a SchemaTemplate (see SchemaTemplate.demoTenantId).
   // Plural/list because demoTenantId isn't @unique at the DB level (see
@@ -1028,9 +1029,29 @@ model WebsiteTemplate {
   // immediately. When deleted, related demo/deployment records are cleaned up,
   // but the backing SchemaTemplate may persist (for audit + restore capability).
   deletedAt           DateTime?
+  // One-time price in IDR for workspaces that must buy templates (Starter and
+  // Pro); null means not for sale. Business workspaces use every template free.
+  price               Int?
+  purchases           WebsiteTemplatePurchase[]
 
   @@index([schemaTemplateId])
   @@map("website_templates")
+}
+
+// A paid, permanent right for one workspace to apply one Website Template.
+// Written only by payment fulfillment (order prefix TPL-), never at checkout.
+model WebsiteTemplatePurchase {
+  id                String          @id @default(cuid())
+  tenantId          String
+  websiteTemplateId String
+  orderId           String          @unique
+  amount            Float
+  createdAt         DateTime        @default(now())
+  tenant            Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  websiteTemplate   WebsiteTemplate @relation(fields: [websiteTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, websiteTemplateId])
+  @@map("website_template_purchases")
 }
 
 // A reusable CMS schema field definition — e.g. "Testimonial" (name, role,

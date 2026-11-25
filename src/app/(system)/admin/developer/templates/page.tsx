@@ -31,6 +31,8 @@ interface WebsiteTemplateItem {
   demoUrl: string | null
   createdAt: string
   deployedCount: number
+  price: number | null
+  soldCount: number
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
 
@@ -44,6 +46,8 @@ export default function AdminDeveloperTemplatesPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState("")
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({})
+  const [savingPriceId, setSavingPriceId] = useState<string | null>(null)
   const [templateToDelete, setTemplateToDelete] = useState<WebsiteTemplateItem | null>(null)
 
   const isAdmin = session?.user?.role === "super_admin"
@@ -78,6 +82,37 @@ export default function AdminDeveloperTemplatesPage() {
     if (!q) return templates
     return templates.filter((t) => t.name.toLowerCase().includes(q) || t.schemaTemplate?.name.toLowerCase().includes(q))
   }, [templates, search])
+
+  // Empty clears the price (not for sale). Saved on blur or Enter.
+  const handleSavePrice = async (t: WebsiteTemplateItem) => {
+    const draft = priceDrafts[t.id]
+    if (draft === undefined) return
+    const digits = draft.replace(/[^0-9]/g, "")
+    const price = digits ? Number(digits) : null
+    if (price === t.price) return
+    if (price !== null && price < 1000) {
+      toast({ variant: "destructive", title: "Harga tidak valid", description: "Harga minimal Rp 1.000, atau kosongkan agar tidak dijual." })
+      return
+    }
+    setSavingPriceId(t.id)
+    try {
+      const res = await fetch(`/api/admin/website-templates/${t.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ price }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        toast({ variant: "destructive", title: "Gagal", description: err.error?.message || err.error || "Gagal menyimpan harga" })
+        return
+      }
+      setTemplates((prev) => prev.map((x) => (x.id === t.id ? { ...x, price } : x)))
+      setPriceDrafts((prev) => { const next = { ...prev }; delete next[t.id]; return next })
+      toast({ title: price ? `Harga disimpan: Rp ${price.toLocaleString("id-ID")}` : "Template tidak dijual" })
+    } finally {
+      setSavingPriceId(null)
+    }
+  }
 
   const handleTogglePublish = async (t: WebsiteTemplateItem) => {
     setTogglingId(t.id)
@@ -233,7 +268,27 @@ export default function AdminDeveloperTemplatesPage() {
                         />
                         <span className="text-[11px] font-bold text-muted-foreground">{t.published ? "Published" : "Draft"}</span>
                       </div>
-                      <Badge variant="outline" className="text-[9px] font-bold rounded-full">{t.deployedCount} dipakai</Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant="outline" className="text-[9px] font-bold rounded-full">{t.deployedCount} dipakai</Badge>
+                        <Badge variant="outline" className="text-[9px] font-bold rounded-full">{t.soldCount} terjual</Badge>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor={`price-${t.id}`} className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Harga untuk Starter &amp; Pro (Rp)
+                      </label>
+                      <Input
+                        id={`price-${t.id}`}
+                        inputMode="numeric"
+                        placeholder="Kosong = tidak dijual"
+                        disabled={savingPriceId === t.id}
+                        value={priceDrafts[t.id] ?? (t.price ? t.price.toLocaleString("id-ID") : "")}
+                        onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                        onBlur={() => handleSavePrice(t)}
+                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
+                        className="h-8 rounded-lg text-xs"
+                      />
+                      <p className="text-[10px] text-muted-foreground">Business selalu gratis. Plan lain tidak bisa memakai template.</p>
                     </div>
                     {t.demoUrl && (
                       <a href={t.demoUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-[11px] font-bold text-primary hover:underline">

@@ -4,6 +4,7 @@ import { triggerWebhooks } from "@/lib/webhooks"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { advanceBillingPeriod } from "./plan-price"
 import { AI_CREDIT_PACKS } from "@/lib/constants/tenant-limits"
+import { WEBSITE_TEMPLATE_ORDER_PREFIX } from "./website-template-access"
 
 export type PaymentOutcome = "success" | "failed"
 
@@ -150,7 +151,8 @@ export async function applyPaymentOutcome(
 
     const domain = isDomain ? await attachRegisteredDomain(tx, confirmed) : undefined
     const plan = isDomain ? undefined : await grantLocalBenefits(tx, confirmed)
-    const requiresReview = !isDomain && !!confirmed.subscriptionId && !plan
+    const isTemplate = orderId.startsWith(WEBSITE_TEMPLATE_ORDER_PREFIX)
+    const requiresReview = !isDomain && (!!confirmed.subscriptionId || isTemplate) && !plan
     let invoiceId = confirmed.invoiceId
     if (invoiceId) {
       await tx.invoice.update({ where: { id: invoiceId }, data: { status: "paid", paidAt: new Date() } })
@@ -186,8 +188,29 @@ export async function applyPaymentOutcome(
   return { applied: true, status: "success" }
 }
 
+/**
+ * Records the paid, permanent right for the workspace to apply the template.
+ * Returns undefined (payment flagged needs_review) when it already owned it,
+ * e.g. paid twice from two tabs, or the template was deleted before payment.
+ */
+async function grantWebsiteTemplate(tx: Prisma.TransactionClient, payment: PaymentRow) {
+  const raw = rawCheckout(payment)
+  const tenantId = typeof raw.tenantId === "string" ? raw.tenantId : null
+  const websiteTemplateId = typeof raw.websiteTemplateId === "string" ? raw.websiteTemplateId : null
+  if (!tenantId || !websiteTemplateId) return
+  const [tenant, template, owned] = await Promise.all([
+    tx.tenant.findUnique({ where: { id: tenantId }, select: { id: true } }),
+    tx.websiteTemplate.findUnique({ where: { id: websiteTemplateId }, select: { id: true } }),
+    tx.websiteTemplatePurchase.findUnique({ where: { tenantId_websiteTemplateId: { tenantId, websiteTemplateId } }, select: { id: true } }),
+  ])
+  if (!tenant || !template || owned) return
+  await tx.websiteTemplatePurchase.create({ data: { tenantId, websiteTemplateId, orderId: payment.orderId, amount: payment.amount } })
+  return "website-template"
+}
+
 async function grantLocalBenefits(tx: Prisma.TransactionClient, payment: PaymentRow) {
   const { orderId, subscription: sub } = payment
+  if (orderId.startsWith(WEBSITE_TEMPLATE_ORDER_PREFIX)) return grantWebsiteTemplate(tx, payment)
   if (!sub || sub.status === "archived") return
   const raw = rawCheckout(payment)
   if (orderId.startsWith("SUB") || orderId.startsWith("ACC")) {

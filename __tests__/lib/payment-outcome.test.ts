@@ -33,6 +33,9 @@ let payment: ReturnType<typeof order>
 let creditBalance: number
 const invoice = vi.fn(async () => ({ id: "invoice-1" }))
 const updateSubscription = vi.fn(async () => ({ count: 1 }))
+const templateRow = vi.fn(async () => ({ id: "wt-1" }) as { id: string } | null)
+const ownedPurchase = vi.fn(async () => null as { id: string } | null)
+const createPurchase = vi.fn(async ({ data }: any) => ({ id: "purchase-1", ...data }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -59,7 +62,9 @@ beforeEach(() => {
         },
         update: async ({ data }: any) => Object.assign(draft, data),
       },
-      tenant: { update: async () => { balance += 500_000 } },
+      tenant: { update: async () => { balance += 500_000 }, findUnique: async () => ({ id: "tenant-1" }) },
+      websiteTemplate: { findUnique: templateRow },
+      websiteTemplatePurchase: { findUnique: ownedPurchase, create: createPurchase },
       subscription: { updateMany: updateSubscription },
       invoice: { create: invoice },
     })
@@ -113,5 +118,48 @@ describe("payment fulfillment", () => {
     expect(purchase).toHaveBeenCalledTimes(1)
     expect(invoice).not.toHaveBeenCalled()
     expect(publish).not.toHaveBeenCalled()
+  })
+
+  describe("one-time Website Template purchase (TPL-)", () => {
+    const templateOrder = () => {
+      payment.orderId = "TPL-123"
+      payment.amount = 150_000
+      payment.rawResponse = { type: "WEBSITE_TEMPLATE_PURCHASE", tenantId: "tenant-1", websiteTemplateId: "wt-1", templateName: "Ruang Bingkai" }
+    }
+
+    it("grants the workspace a permanent purchase exactly once, even when the webhook repeats", async () => {
+      templateOrder()
+      await expect(applyPaymentOutcome(payment.orderId, "success")).resolves.toMatchObject({ applied: true })
+      await expect(applyPaymentOutcome(payment.orderId, "success")).resolves.toMatchObject({ alreadyProcessed: true })
+      expect(createPurchase).toHaveBeenCalledTimes(1)
+      expect(createPurchase).toHaveBeenCalledWith({ data: { tenantId: "tenant-1", websiteTemplateId: "wt-1", orderId: "TPL-123", amount: 150_000 } })
+      expect(payment.fulfillmentStatus).toBe("completed")
+      expect(invoice).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "paid", amount: 150_000 }) }))
+      expect(publish).toHaveBeenCalledTimes(1)
+    })
+
+    it("holds a second paid order for a template the workspace already owns for review instead of duplicating it", async () => {
+      templateOrder()
+      ownedPurchase.mockResolvedValueOnce({ id: "purchase-0" })
+      await applyPaymentOutcome(payment.orderId, "success")
+      expect(createPurchase).not.toHaveBeenCalled()
+      expect(payment.fulfillmentStatus).toBe("needs_review")
+      expect(publish).not.toHaveBeenCalled()
+    })
+
+    it("flags a payment for review even without a subscription, e.g. the template was deleted before payment", async () => {
+      templateOrder()
+      payment.subscriptionId = null as unknown as string
+      templateRow.mockResolvedValueOnce(null)
+      await applyPaymentOutcome(payment.orderId, "success")
+      expect(createPurchase).not.toHaveBeenCalled()
+      expect(payment.fulfillmentStatus).toBe("needs_review")
+    })
+
+    it("never grants anything for a failed template payment", async () => {
+      templateOrder()
+      await expect(applyPaymentOutcome(payment.orderId, "failed")).resolves.toMatchObject({ status: "failed" })
+      expect(createPurchase).not.toHaveBeenCalled()
+    })
   })
 })

@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, LayoutTemplate, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search, AlertTriangle } from "lucide-react"
+import { Loader2, LayoutTemplate, Trash2, Filter, ExternalLink, LayoutGrid, Table2 as TableIcon, Rocket, Search, AlertTriangle, ShoppingCart } from "lucide-react"
 import { getWebsitePreviewUrl, gradientFor } from "@/lib/website-preview"
 
 interface WebsiteTemplateItem {
@@ -22,8 +22,13 @@ interface WebsiteTemplateItem {
   published: boolean
   createdAt?: string
   demoUrl?: string | null
+  price?: number | null
+  /** free: Business plan; owned: bought; purchasable/unavailable: Starter/Pro; locked: plan cannot use templates */
+  access?: "free" | "owned" | "purchasable" | "unavailable" | "locked"
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
+
+const formatRupiah = (value: number) => "Rp " + value.toLocaleString("id-ID")
 
 interface WebsiteTemplatesTabProps {
   tenantSlug: string
@@ -37,8 +42,8 @@ interface WebsiteTemplatesTabProps {
    *  same empty-workspace check the apply route itself gates on. When false, a regular tenant needs to
    *  reset before a NEW template can be applied. */
   isWorkspaceEmpty: boolean
-  /** Whether this workspace's plan may apply a Website Template (Pro/Business, see canUseWebsiteTemplates). */
-  canUseTemplates: boolean
+  /** free: Business (every template free); purchase: Starter/Pro buy each template; locked: plan cannot use templates. */
+  planAccess: "free" | "purchase" | "locked"
   /** Called after a successful "Terapkan" — parent switches to Diagram Schema and refreshes live schema. */
   onApplied?: () => void
   /** Called after a successful reset — parent just refreshes live schema; does NOT switch tabs, since the
@@ -48,7 +53,7 @@ interface WebsiteTemplatesTabProps {
 
 const ALL_SCHEMAS = "__all__"
 
-export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty, canUseTemplates, onApplied, onReset }: WebsiteTemplatesTabProps) {
+export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty, planAccess, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<WebsiteTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -56,6 +61,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   const [search, setSearch] = useState("")
   const [viewMode, setViewMode] = useState<"card" | "table">("card")
   const [applyingId, setApplyingId] = useState<string | null>(null)
+  const [purchasingId, setPurchasingId] = useState<string | null>(null)
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
@@ -73,9 +79,31 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   }
 
   useEffect(() => {
+    const onFocus = () => fetchTemplates()
+    window.addEventListener("focus", onFocus)
+    return () => window.removeEventListener("focus", onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug])
+
+  useEffect(() => {
     fetchTemplates()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tenantSlug])
+
+  const handlePurchase = async (template: WebsiteTemplateItem) => {
+    setPurchasingId(template.id)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/website-templates/${template.id}/purchase`, { method: "POST" })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data?.redirectUrl) throw new Error(data?.error?.message || data?.error || "Gagal memulai pembayaran")
+      window.open(data.redirectUrl, "_blank", "noopener,noreferrer")
+      toast({ title: "Selesaikan pembayaran", description: `Halaman pembayaran "${template.name}" dibuka di tab baru. Template bisa diterapkan setelah pembayaran terkonfirmasi.` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message })
+    } finally {
+      setPurchasingId(null)
+    }
+  }
 
   const handleApply = async (template: WebsiteTemplateItem) => {
     setApplyingId(template.id)
@@ -181,10 +209,56 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   // which owner also satisfies) — disabling it here too for anyone below
   // that is just a clearer failure mode than letting them click it and
   // get a 403 back.
-  const canApply = canUseTemplates && (currentRole === "owner" || currentRole === "admin")
-  const canApplyTemplate = (id: string) =>
-    canApply && !isResetting && applyingId === null &&
-    (pendingTemplateId ? pendingTemplateId === id : isWorkspaceEmpty)
+  const canApply = currentRole === "owner" || currentRole === "admin"
+  const canApplyTemplate = (t: WebsiteTemplateItem) =>
+    canApply && (t.access === "free" || t.access === "owned") && !isResetting && applyingId === null &&
+    (pendingTemplateId ? pendingTemplateId === t.id : isWorkspaceEmpty)
+
+  // One action per template, shared by the card and table layouts.
+  const renderAction = (t: WebsiteTemplateItem, layout: "card" | "table") => {
+    const size = layout === "card" ? "h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5" : "h-7 rounded-lg text-[11px] font-bold gap-1.5"
+    const wrap = layout === "card" ? "flex-1 inline-flex" : "inline-flex"
+    if (t.access === "purchasable" && t.price) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0} className={wrap}>
+              <Button size="sm" onClick={() => handlePurchase(t)} disabled={!canApply || purchasingId !== null} className={size}>
+                {purchasingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShoppingCart className="h-3 w-3" />}
+                Beli {formatRupiah(t.price)}
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{canApply ? "Sekali bayar, bisa diterapkan kapan saja di workspace ini" : "Hanya owner dan admin workspace yang bisa membeli template"}</TooltipContent>
+        </Tooltip>
+      )
+    }
+    const reason =
+      t.access === "unavailable" ? "Template ini belum dijual untuk plan workspace Anda"
+      : t.access === "locked" ? "Gratis di plan Business, atau beli satuan di plan Starter dan Pro"
+      : !canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template"
+      : "Lanjutkan template yang tertunda atau reset workspace"
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className={wrap}>
+            <Button size="sm" onClick={() => handleApply(t)} disabled={!canApplyTemplate(t)} className={size}>
+              {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
+              {t.access === "unavailable" ? "Belum dijual" : pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
+            </Button>
+          </span>
+        </TooltipTrigger>
+        {!canApplyTemplate(t) && <TooltipContent>{reason}</TooltipContent>}
+      </Tooltip>
+    )
+  }
+
+  const priceBadge = (t: WebsiteTemplateItem) =>
+    t.access === "owned" ? (
+      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Dimiliki</Badge>
+    ) : t.access === "purchasable" && t.price ? (
+      <Badge variant="outline" className="text-[10px] font-bold">{formatRupiah(t.price)}</Badge>
+    ) : null
 
   const ResetBanner = () => (
     <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
@@ -275,18 +349,24 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
 
   return (
     <div className="space-y-3">
-      {!canUseTemplates && (
+      {planAccess === "locked" && (
         <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
           <CardContent className="p-4 flex items-start gap-3">
             <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-[11px] text-muted-foreground">
-              Website Template hanya tersedia untuk plan <strong className="text-foreground">Pro</strong> dan <strong className="text-foreground">Business</strong>. Demo tetap bisa dilihat;{" "}
-              <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">upgrade plan</a> untuk menerapkannya.
+              Website Template gratis di plan <strong className="text-foreground">Business</strong>, atau bisa dibeli satuan di plan <strong className="text-foreground">Starter</strong> dan <strong className="text-foreground">Pro</strong>. Demo tetap bisa dilihat;{" "}
+              <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">upgrade plan</a> untuk menggunakannya.
             </p>
           </CardContent>
         </Card>
       )}
-      {canUseTemplates && !isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
+      {planAccess === "purchase" && (
+        <p className="text-[11px] text-muted-foreground">
+          Di plan workspace Anda, setiap template dibeli satuan (sekali bayar, berlaku permanen untuk workspace ini). Semua template gratis di plan{" "}
+          <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">Business</a>.
+        </p>
+      )}
+      {planAccess !== "locked" && !isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>
@@ -363,9 +443,12 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
                     {t.description && <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5">{t.description}</p>}
                   </div>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1 self-start">
-                  {t.schemaTemplate.icon} {t.schemaTemplate.name}
-                </Badge>
+                <div className="flex flex-wrap items-center gap-1.5 self-start">
+                  <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1">
+                    {t.schemaTemplate.icon} {t.schemaTemplate.name}
+                  </Badge>
+                  {priceBadge(t)}
+                </div>
                 <div className="flex items-center gap-2 mt-auto pt-1">
                   {t.demoUrl ? (
                     <Button variant="outline" size="sm" asChild className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5">
@@ -378,28 +461,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
                       <ExternalLink className="h-3 w-3" /> Buka Tab
                     </Button>
                   )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {/* span, not the Button itself — Button's own
-                          disabled:pointer-events-none would block hover
-                          from ever reaching it once !canApplyTemplate,
-                          the exact state this tooltip explains. */}
-                      <span tabIndex={0} className="flex-1 inline-flex">
-                        <Button
-                          size="sm"
-                          onClick={() => handleApply(t)}
-                          disabled={!canApplyTemplate(t.id)}
-                          className="h-7 flex-1 rounded-lg text-[11px] font-bold gap-1.5"
-                        >
-                          {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                          {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {(!canApply || !canApplyTemplate(t.id)) && (
-                      <TooltipContent>{!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : "Lanjutkan template yang tertunda atau reset workspace"}</TooltipContent>
-                    )}
-                  </Tooltip>
+                  {renderAction(t, "card")}
                 </div>
               </CardContent>
             </Card>
@@ -429,7 +491,10 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
                       </div>
                     </TableCell>
                     <TableCell className="py-3">
-                      <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1">{t.schemaTemplate.icon} {t.schemaTemplate.name}</Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge variant="outline" className="text-[10px] font-bold border-primary/20 text-primary gap-1">{t.schemaTemplate.icon} {t.schemaTemplate.name}</Badge>
+                        {priceBadge(t)}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right pr-6 py-3">
                       <div className="flex items-center justify-end gap-1.5">
@@ -444,24 +509,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
                             <ExternalLink className="h-3 w-3" /> Buka Tab
                           </Button>
                         )}
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span tabIndex={0} className="inline-flex">
-                              <Button
-                                size="sm"
-                                onClick={() => handleApply(t)}
-                                disabled={!canApplyTemplate(t.id)}
-                                className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
-                              >
-                                {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-                                {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          {(!canApply || !canApplyTemplate(t.id)) && (
-                            <TooltipContent>{!canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template" : "Lanjutkan template yang tertunda atau reset workspace"}</TooltipContent>
-                          )}
-                        </Tooltip>
+                        {renderAction(t, "table")}
                       </div>
                     </TableCell>
                   </TableRow>

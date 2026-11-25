@@ -28,8 +28,8 @@ interface SchemaGeneratorClientProps {
   initialFinalized: boolean
   /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
   currentRole: string
-  /** Whether this workspace's plan may apply a Website Template (Pro/Business). */
-  canUseTemplates: boolean
+  /** free: Business; purchase: Starter/Pro buy each template; locked: plan cannot use templates. */
+  planAccess: "free" | "purchase" | "locked"
 }
 
 const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
@@ -40,7 +40,7 @@ export function SchemaGeneratorClient({
   existingSchemaSummary,
   initialFinalized,
   currentRole,
-  canUseTemplates,
+  planAccess,
 }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -185,7 +185,7 @@ export function SchemaGeneratorClient({
               <WebsiteTemplatesTab
                 tenantSlug={tenantSlug}
                 currentRole={currentRole}
-                canUseTemplates={canUseTemplates}
+                planAccess={planAccess}
                 isWorkspaceEmpty={
                   schema.contentTypes.length === 0 && schema.components.length === 0 &&
                   schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)

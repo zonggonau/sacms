@@ -474,11 +474,12 @@ describe("MCP workspace server route — source contract", () => {
     expect(scoped).toMatch(/import\("@\/lib\/infrastructure\/apply-website-template"\)/)
   })
 
-  it("apply_website_template gates on write scope and the Pro/Business plan rule before touching anything", () => {
+  it("apply_website_template gates on write scope and per-template access (Business free, Starter/Pro bought) before applying", () => {
     const scoped = toolBlockOf("apply_website_template")
     expect(scoped).toMatch(/hasScope\(auth, "write"\)/)
-    expect(scoped).toMatch(/canUseWebsiteTemplates\(auth\.plan\)/)
-    expect(scoped.indexOf("canUseWebsiteTemplates(auth.plan)")).toBeLessThan(scoped.indexOf("applyWebsiteTemplateToTenant("))
+    expect(scoped).toMatch(/resolveWebsiteTemplateAccess\(auth\.tenantId, auth\.plan, websiteTemplate\)/)
+    expect(scoped).toMatch(/canApplyWithAccess\(templateAccess\)/)
+    expect(scoped.indexOf("resolveWebsiteTemplateAccess(")).toBeLessThan(scoped.indexOf("applyWebsiteTemplateToTenant("))
   })
 
   it("apply_website_template only matches published templates and declares a union outputSchema for the ok/error cases", () => {

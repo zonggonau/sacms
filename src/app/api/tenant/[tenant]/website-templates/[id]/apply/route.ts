@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
-import { canUseWebsiteTemplates, WEBSITE_TEMPLATE_PLAN_MESSAGE } from "@/lib/infrastructure/hosting-plan"
+import { canApplyWithAccess, resolveWebsiteTemplateAccess, WEBSITE_TEMPLATE_ACCESS_MESSAGE } from "@/lib/billing/website-template-access"
 import { applyWebsiteTemplateToTenant } from "@/lib/infrastructure/apply-website-template"
 
 /**
@@ -28,11 +28,12 @@ export const POST = withStaffAuth(
       return apiError("not_found", { message: "Website Template tidak ditemukan" })
     }
 
-    // Website Templates are a Pro/Business feature (see canUseWebsiteTemplates).
-    if (!canUseWebsiteTemplates(tenant.plan)) {
+    // Free on Business; Starter/Pro must have bought this template (see website-template-access).
+    const templateAccess = await resolveWebsiteTemplateAccess(tenant.id, tenant.plan, websiteTemplate)
+    if (!canApplyWithAccess(templateAccess)) {
       return apiError("plan_limit", {
-        message: WEBSITE_TEMPLATE_PLAN_MESSAGE,
-        details: { redirectTo: `/dashboard/${tenant.slug}/subscriptions`, plan: tenant.plan },
+        message: WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess as keyof typeof WEBSITE_TEMPLATE_ACCESS_MESSAGE],
+        details: { redirectTo: `/dashboard/${tenant.slug}/subscriptions`, plan: tenant.plan, access: templateAccess },
       })
     }
 

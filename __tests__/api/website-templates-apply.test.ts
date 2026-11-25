@@ -24,6 +24,7 @@ vi.mock("@/lib/database", () => ({
   db: {
     mcpDeploymentSource: { create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     websiteTemplate: { findUnique: vi.fn() },
+    websiteTemplatePurchase: { findUnique: vi.fn().mockResolvedValue(null) },
     tenant: { update: vi.fn().mockResolvedValue({}) },
     setting: fakeSetting,
     $transaction: vi.fn(),
@@ -121,16 +122,28 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(403)
-    expect(JSON.stringify(await res.json())).toMatch(/Pro dan Business/)
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
     expect(deployTenantFrontend).not.toHaveBeenCalled()
   })
 
-  it("lets a Pro-plan workspace apply a template", async () => {
-    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "pro" } } as any)
+  it.each(["pro", "starter"])("blocks a %s workspace that has not bought the template", async (plan) => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: 150_000 } as any)
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(res.status).toBe(403)
+    expect(JSON.stringify(await res.json())).toMatch(/perlu dibeli/)
+    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
+  })
+
+  it.each(["pro", "starter"])("lets a %s workspace apply a template it bought", async (plan) => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: 150_000 } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce({ id: "purchase-1" })
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(200)
+    expect((db as any).websiteTemplatePurchase.findUnique).toHaveBeenCalledWith({
+      where: { tenantId_websiteTemplateId: { tenantId: "tenant1", websiteTemplateId: "wt1" } }, select: { id: true },
+    })
   })
 
   it("rejects when the workspace already has a Content Type (not empty)", async () => {

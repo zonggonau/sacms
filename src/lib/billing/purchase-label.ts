@@ -41,6 +41,13 @@ export async function resolvePurchaseLabel({
   const { getAccountPlan, getWorkspacePlan, getAddon, getAiCreditPack } = await import("@/lib/pricing")
   const isAccountOrder = orderId.startsWith("ACC-")
 
+  if (raw.type === "WEBSITE_TEMPLATE_PURCHASE" || orderId.startsWith("TPL-")) {
+    return {
+      purchasedId: typeof raw.websiteTemplateId === "string" ? raw.websiteTemplateId : fallbackPlanSlug,
+      purchasedLabel: raw.templateName ? `Website Template: ${raw.templateName}` : "Website Template",
+    }
+  }
+
   if (raw.type === "ai_credits" || orderId.startsWith("AIC-")) {
     const addonId = raw.addonId || ""
     const pack = addonId ? await getAiCreditPack(addonId) : null

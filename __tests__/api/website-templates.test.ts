@@ -6,6 +6,8 @@ vi.mock("@/lib/tenant-access", () => ({ getTenantAccess: vi.fn() }))
 vi.mock("@/lib/database", () => ({
   db: {
     websiteTemplate: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    websiteTemplatePurchase: { findMany: vi.fn() },
+    setting: { findUnique: vi.fn().mockResolvedValue(null) },
   },
 }))
 
@@ -27,6 +29,7 @@ describe("GET /api/tenant/[tenant]/website-templates", () => {
     vi.clearAllMocks()
     mockSession.mockResolvedValue({ user: { id: "user1" } } as any)
     vi.mocked(db.websiteTemplate.findMany).mockResolvedValue([])
+    vi.mocked((db as any).websiteTemplatePurchase.findMany).mockResolvedValue([])
   })
 
   it("only returns published templates for a regular tenant", async () => {
@@ -43,5 +46,33 @@ describe("GET /api/tenant/[tenant]/website-templates", () => {
     expect(db.websiteTemplate.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { published: true } }),
     )
+  })
+})
+
+describe("GET /api/tenant/[tenant]/website-templates — per-template access", () => {
+  const catalog = [{ id: "bought", price: 150_000 }, { id: "for-sale", price: 99_000 }, { id: "not-for-sale", price: null }]
+  const accessFor = async (plan: string, ownedIds: string[]) => {
+    mockSession.mockResolvedValue({ user: { id: "user1" } } as any)
+    mockAccess.mockResolvedValue({ ...regularAccess, tenant: { ...regularAccess.tenant, plan } } as any)
+    vi.mocked(db.websiteTemplate.findMany).mockResolvedValue(catalog as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findMany).mockResolvedValue(ownedIds.map((websiteTemplateId) => ({ websiteTemplateId })))
+    const body = await (await listGET(getReq(), ctx({ tenant: "tenant1" }))).json()
+    return Object.fromEntries(body.templates.map((t: any) => [t.id, t.access]))
+  }
+
+  it("Business uses every template free", async () => {
+    expect(await accessFor("business", [])).toEqual({ bought: "free", "for-sale": "free", "not-for-sale": "free" })
+  })
+
+  it("Pro and Starter own what they bought and can buy what is for sale", async () => {
+    for (const plan of ["pro", "starter"]) {
+      expect(await accessFor(plan, ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "unavailable" })
+    }
+  })
+
+  it("every other plan is locked out", async () => {
+    for (const plan of ["free", "enterprise", "custom"]) {
+      expect(await accessFor(plan, [])).toEqual({ bought: "locked", "for-sale": "locked", "not-for-sale": "locked" })
+    }
   })
 })

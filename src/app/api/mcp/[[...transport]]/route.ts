@@ -2878,18 +2878,22 @@ Default stack (standard baseline for every frontend built here, not optional unl
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        const { canUseWebsiteTemplates, WEBSITE_TEMPLATE_PLAN_MESSAGE } = await import("@/lib/infrastructure/hosting-plan")
-        if (!canUseWebsiteTemplates(auth.plan)) {
-          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${WEBSITE_TEMPLATE_PLAN_MESSAGE} Upgrade di /dashboard/${auth.tenantSlug}/subscriptions.` }
-          return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
-        }
-
         const websiteTemplate = await db.websiteTemplate.findFirst({
           where: { OR: [{ id: templateId }, { slug: templateId }], published: true },
           include: { schemaTemplate: { select: { schema: true } } },
         })
         if (!websiteTemplate) {
           const structured = { ok: false as const, code: "NOT_FOUND" as const, message: `Website Template '${templateId}' tidak ditemukan atau belum dipublikasikan.` }
+          return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
+        }
+
+        // Free on Business; Starter/Pro must have bought this template. Buying
+        // happens in the dashboard (Website Template tab), never through MCP.
+        const { canApplyWithAccess, resolveWebsiteTemplateAccess, WEBSITE_TEMPLATE_ACCESS_MESSAGE } = await import("@/lib/billing/website-template-access")
+        const templateAccess = await resolveWebsiteTemplateAccess(auth.tenantId, auth.plan, websiteTemplate)
+        if (!canApplyWithAccess(templateAccess)) {
+          const reason = WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess as keyof typeof WEBSITE_TEMPLATE_ACCESS_MESSAGE]
+          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${reason} Beli atau upgrade di /dashboard/${auth.tenantSlug}/developer/schema.` }
           return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
         }
 

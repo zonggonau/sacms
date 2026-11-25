@@ -14,13 +14,13 @@ export const GET = withAdminAuth(async () => {
     select: {
       id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
       description: true, published: true, createdAt: true, updatedAt: true,
-      demoUrl: true,
+      demoUrl: true, price: true,
       schemaTemplate: { select: { id: true, name: true, slug: true, icon: true } },
-      _count: { select: { deployedTenants: true } },
+      _count: { select: { deployedTenants: true, purchases: true } },
     },
   })
 
   return NextResponse.json({
-    templates: templates.map((t) => ({ ...t, deployedCount: t._count.deployedTenants, _count: undefined })),
+    templates: templates.map((t) => ({ ...t, deployedCount: t._count.deployedTenants, soldCount: t._count.purchases, _count: undefined })),
   })
 })
