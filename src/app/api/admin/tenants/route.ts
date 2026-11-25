@@ -4,6 +4,7 @@ import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { randomBytes } from "crypto"
 import { slugify } from "@/lib/slug"
+import { isReservedWorkspaceSlug } from "@/lib/reserved-workspace-slugs"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { assertPublicHost, SsrfError } from "@/lib/safe-url"
@@ -30,7 +31,7 @@ async function generateUniqueSlug(name: string): Promise<string> {
   
   for (let attempt = 0; attempt < 10; attempt++) {
     const existing = await db.tenant.findUnique({ where: { slug } })
-    if (!existing) return slug
+    if (!existing && !(await isReservedWorkspaceSlug(slug))) return slug
     
     const suffix = randomBytes(3).toString("hex")
     slug = `${baseSlug}-${suffix}`

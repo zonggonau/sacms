@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Loader2, Save, Server, RefreshCw, Copy, Database, Check,
+  Loader2, Save, Server, RefreshCw, Database,
   Shield, Image as ImageIcon,
   AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive,
   Cpu, Zap, Globe, Layers, Key, CheckCircle2, Sliders, Terminal, ExternalLink
@@ -42,7 +42,6 @@ export default function AdminSettingsPage() {
   const [testingProvider, setTestingProvider] = useState<string | null>(null)
   const [testEmailLoading, setTestEmailLoading] = useState(false)
   const [testEmailRecipient, setTestEmailRecipient] = useState("")
-  const [copied, setCopied] = useState(false)
   const [showMasks, setShowMasks] = useState<Record<string, boolean>>({})
   const [envStatus, setEnvStatus] = useState<{
     databaseConfigured: boolean
@@ -999,47 +998,6 @@ export default function AdminSettingsPage() {
             <TabsContent value="workspaces" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
-                {/* Global Master Tenant */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Database className="h-4 w-4 text-primary" />
-                      ID Workspace Induk (System Master)
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Tenant global untuk data publik platform. Hanya bisa disalin: mengganti ID ini memutus semua fitur khusus SaCMS Global.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="global-tenant-id" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">ID Tenant Aktif</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input 
-                            id="global-tenant-id" 
-                            value={settings.globalTenantId} 
-                            readOnly 
-                            className="pr-9 font-mono text-xs bg-muted/20 border-border/80 rounded-xl h-9 text-foreground" 
-                          />
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-foreground rounded-xl"
-                            onClick={() => {
-                              copyToClipboard(settings.globalTenantId)
-                              setCopied(true)
-                              setTimeout(() => setCopied(false), 1500)
-                              toast({ title: "Tersalin", description: "ID Workspace berhasil disalin" })
-                            }}
-                          >
-                            {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 {/* User Registration & Plan */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">

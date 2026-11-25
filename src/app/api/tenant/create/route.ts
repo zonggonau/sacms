@@ -11,13 +11,14 @@ import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
 import { seedDefaultTenantSchema } from "@/lib/infrastructure/default-tenant-schema"
 import { ensurePublicSubdomainToken } from "@/lib/infrastructure/public-subdomain"
 import { withWorkspaceCreation } from "@/lib/workspace-creation-limit"
+import { isReservedWorkspaceSlug } from "@/lib/reserved-workspace-slugs"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   let slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
   if (!slug) slug = "workspace"
 
   let counter = 0
-  while (await db.tenant.findUnique({ where: { slug } })) {
+  while ((await isReservedWorkspaceSlug(slug)) || (await db.tenant.findUnique({ where: { slug } }))) {
     counter++
     slug = `${slug}-${counter}`
   }
