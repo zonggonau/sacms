@@ -27,8 +27,8 @@ function normalizePlan(plan: string | null | undefined): string {
   return (plan || "free").trim().toLowerCase()
 }
 
-/** Plans allowed to apply a catalog Website Template: Pro and Business, plus the higher Enterprise/Custom tiers. */
-const WEBSITE_TEMPLATE_PLANS = new Set(["pro", "professional", "profesional", "business", "bisnis", "enterprise", "custom", "unlimited"])
+/** The only plans that may apply a catalog Website Template: Pro and Business (and their legacy aliases). No other plan or role is exempt. */
+const WEBSITE_TEMPLATE_PLANS = new Set(["pro", "professional", "profesional", "business", "bisnis"])
 
 export const WEBSITE_TEMPLATE_PLAN_MESSAGE = "Website Template hanya tersedia untuk plan Pro dan Business. Upgrade plan workspace untuk menerapkannya."
 

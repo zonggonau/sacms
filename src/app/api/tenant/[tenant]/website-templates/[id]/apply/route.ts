@@ -15,7 +15,7 @@ import { applyWebsiteTemplateToTenant } from "@/lib/infrastructure/apply-website
  * actual apply, not the preview (see GET .../website-templates/[id] for that).
  */
 export const POST = withStaffAuth(
-  async (_req, context, { access, session }) => {
+  async (_req, context, { access }) => {
     const { id } = await context.params
     const tenant = access.tenant
 
@@ -29,7 +29,7 @@ export const POST = withStaffAuth(
     }
 
     // Website Templates are a Pro/Business feature (see canUseWebsiteTemplates).
-    if (!canUseWebsiteTemplates(tenant.plan) && session.user.role !== "super_admin") {
+    if (!canUseWebsiteTemplates(tenant.plan)) {
       return apiError("plan_limit", {
         message: WEBSITE_TEMPLATE_PLAN_MESSAGE,
         details: { redirectTo: `/dashboard/${tenant.slug}/subscriptions`, plan: tenant.plan },

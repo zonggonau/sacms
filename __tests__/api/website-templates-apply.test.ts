@@ -116,7 +116,7 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
   })
 
-  it.each(["free", "starter"])("blocks a %s-plan workspace with a plan_limit error, before touching the workspace schema", async (plan) => {
+  it.each(["free", "starter", "enterprise", "custom"])("blocks a %s-plan workspace with a plan_limit error, before touching the workspace schema", async (plan) => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
     mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
@@ -196,17 +196,14 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(body.envVarsApplied).toEqual(["NEXT_PUBLIC_API_URL"])
   })
 
-  it("lets a super_admin apply even on a free plan", async () => {
+  it("gives a super_admin no exemption: a Starter workspace stays blocked", async () => {
     mockSession.mockResolvedValue({ user: { id: "user1", role: "super_admin" } } as any)
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "free" } } as any)
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "starter" } } as any)
 
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
-    expect(res.status).toBe(200)
-    expect(materializeSchemaIntoTenant).toHaveBeenCalled()
-    expect(db.tenant.update).toHaveBeenCalledWith({
-      where: { id: "tenant1" },
-      data: { sourceWebsiteTemplateId: "wt1" },
-    })
+    expect(res.status).toBe(403)
+    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
+    expect(db.tenant.update).not.toHaveBeenCalled()
   })
 })

@@ -54,7 +54,7 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
         existingSchemaSummary={existingSchemaSummary}
         initialFinalized={finalized}
         currentRole={access.role}
-        canUseTemplates={canUseWebsiteTemplates(tenant.plan) || session.user.role === "super_admin"}
+        canUseTemplates={canUseWebsiteTemplates(tenant.plan)}
       />
     </div>
   )
