@@ -3,6 +3,7 @@ import { registerUser, forgotPassword, resetPassword } from "@/actions/auth"
 import { db } from "@/lib/database"
 import { sendPasswordResetEmail } from "@/lib/mail"
 import { captureException } from "@sentry/nextjs"
+import { registrationBlockReason } from "@/lib/registration-policy"
 
 vi.mock("@/lib/database", () => ({
   db: {
@@ -40,6 +41,8 @@ vi.mock("@/lib/rate-limit", () => ({
   checkActionRateLimit: vi.fn().mockResolvedValue(null),
 }))
 
+vi.mock("@/lib/registration-policy", () => ({ registrationBlockReason: vi.fn().mockResolvedValue(null) }))
+
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }))
 
 describe("Auth Server Actions", () => {
@@ -60,6 +63,14 @@ describe("Auth Server Actions", () => {
         password: "123",
       })
       expect(result.error).toBe("Kata sandi terlalu lemah. Pastikan minimal berstatus 'Kuat'.")
+    })
+
+    it("refuses to create an account when the platform closed registration", async () => {
+      vi.mocked(registrationBlockReason).mockResolvedValueOnce("Pendaftaran akun baru sedang ditutup oleh admin platform.")
+      const result = await registerUser({ name: "Budi", email: "budi@example.test", password: "StrongPassword123!" })
+      expect(result.error).toBe("Pendaftaran akun baru sedang ditutup oleh admin platform.")
+      expect(registrationBlockReason).toHaveBeenCalledWith("budi@example.test")
+      expect(db.user.create).not.toHaveBeenCalled()
     })
 
     it("should successfully register first user as super_admin", async () => {

@@ -12,7 +12,6 @@ export interface PlatformSettings {
   defaultUserPlan: string
   maxWorkspacesPerUser: string
   autoProvisionSeedData: string
-  customDomainPolicy: "paid_only" | "all_plans" | "disabled"
   defaultStorageLimitMb: string
   maintenanceMode: string
   maintenanceMessage: string
@@ -65,7 +64,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   defaultUserPlan: "free",
   maxWorkspacesPerUser: "1",
   autoProvisionSeedData: "true",
-  customDomainPolicy: "paid_only",
   defaultStorageLimitMb: "500",
   maintenanceMode: "false",
   maintenanceMessage: "Platform SaCMS sedang dalam pemeliharaan terjadwal. Silakan coba kembali beberapa saat lagi.",

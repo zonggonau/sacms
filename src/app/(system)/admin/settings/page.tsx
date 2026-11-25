@@ -28,7 +28,6 @@ import { useToast } from "@/hooks/use-toast"
 import { copyToClipboard } from "@/lib/clipboard"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
-import { v4 as uuidv4 } from "uuid"
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
@@ -95,7 +94,6 @@ export default function AdminSettingsPage() {
     defaultUserPlan: "free",
     maxWorkspacesPerUser: "1",
     autoProvisionSeedData: "true",
-    customDomainPolicy: "paid_only",
     defaultStorageLimitMb: "500",
 
     // Tab 2: Security & Gateway
@@ -139,27 +137,6 @@ export default function AdminSettingsPage() {
     auditLogRetentionDays: "90",
     apiLogRetentionDays: "14",
   })
-
-  const generateTenantId = async () => {
-    // This has a real history of causing an orphaned duplicate "SaCMS
-    // Global" tenant: regenerating the id after a global tenant already
-    // exists leaves the real one behind under its old id and points the
-    // setting at an id nothing exists under yet, until "Setup Global
-    // Tenant" is clicked again. Confirm before overwriting it.
-    if (
-      !(await confirm({
-        title: "Buat ID workspace global baru?",
-        description:
-          "Hanya lakukan ini untuk setup pertama kali. Jika workspace global sudah ada, ini akan membuat ID baru yang kosong — klik 'Setup Global Tenant' lagi setelahnya akan otomatis mengarah balik ke workspace global yang asli, bukan membuat duplikat baru.",
-        confirmLabel: "Buat ID baru",
-        variant: "destructive",
-      }))
-    )
-      return
-    const newId = "wks_" + uuidv4().replace(/-/g, '').substring(0, 24)
-    setSettings((prev) => ({ ...prev, globalTenantId: newId }))
-    toast({ title: "ID Workspace Baru Dibuat", description: "Klik 'Simpan Perubahan' untuk menerapkan pengaturan." })
-  }
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -1030,7 +1007,7 @@ export default function AdminSettingsPage() {
                       ID Workspace Induk (System Master)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Tenant global untuk data publik platform.
+                      Tenant global untuk data publik platform. Hanya bisa disalin: mengganti ID ini memutus semua fitur khusus SaCMS Global.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1058,14 +1035,6 @@ export default function AdminSettingsPage() {
                             {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
                           </Button>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          onClick={generateTenantId}
-                          className="text-xs font-bold rounded-xl border-border/80 h-9 shrink-0"
-                        >
-                          <RefreshCw className="mr-1.5 h-3 w-3 text-muted-foreground" />
-                          Acak Baru
-                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -1074,9 +1043,9 @@ export default function AdminSettingsPage() {
                 {/* User Registration & Plan */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold text-foreground">Registrasi & Kebijakan Domain</CardTitle>
+                    <CardTitle className="text-sm font-bold text-foreground">Registrasi Akun</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Batasan hak akses saat registrasi akun baru.
+                      Berlaku untuk formulir daftar dan login Google/GitHub pertama kali. Invite Only: hanya email yang sudah ditambahkan admin workspace lewat Tambah Anggota. Super admin pertama selalu bisa dibuat.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1095,20 +1064,6 @@ export default function AdminSettingsPage() {
                       </Select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kebijakan Custom Domain</Label>
-                      <Select 
-                        value={settings.customDomainPolicy} 
-                        onValueChange={v => setSettings(prev => ({ ...prev, customDomainPolicy: v as any }))}
-                      >
-                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-border bg-card">
-                          <SelectItem value="paid_only" className="text-xs rounded-lg">Hanya Tenant Berlangganan Berbayar (Pro/Enterprise)</SelectItem>
-                          <SelectItem value="all_plans" className="text-xs rounded-lg">Semua Paket Termasuk Free Plan</SelectItem>
-                          <SelectItem value="disabled" className="text-xs rounded-lg">Nonaktifkan Custom Domain</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </CardContent>
                 </Card>
 

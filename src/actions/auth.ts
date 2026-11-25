@@ -39,6 +39,10 @@ export async function registerUser(formData: any) {
       return { error: "Kata sandi terlalu lemah. Pastikan minimal berstatus 'Kuat'." }
     }
 
+    const { registrationBlockReason } = await import("@/lib/registration-policy")
+    const blocked = await registrationBlockReason(email)
+    if (blocked) return { error: blocked }
+
     const existingUser = await db.user.findUnique({
       where: { email: email.toLowerCase() },
     })

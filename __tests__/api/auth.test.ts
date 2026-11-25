@@ -120,3 +120,31 @@ describe("JWT account state", () => {
     expect(result).toEqual(activeToken)
   })
 })
+
+describe("OAuth sign-in and the platform registration mode", () => {
+  const signIn = async (args: Record<string, unknown>) => {
+    const { authOptions } = await import("@/lib/auth")
+    return authOptions.callbacks!.signIn!(args as never)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("lets an existing account sign in with Google even when registration is closed", async () => {
+    vi.mocked(db.user.findFirst).mockResolvedValueOnce({ id: "user-1" } as never)
+    expect(await signIn({ user: { email: "member@example.test" }, account: { type: "oauth", provider: "google" } })).toBe(true)
+  })
+
+  it("redirects a brand-new OAuth email when the registration policy blocks it", async () => {
+    vi.mocked(db.user.findFirst).mockResolvedValueOnce(null)
+    const policy = await import("@/lib/registration-policy")
+    vi.spyOn(policy, "registrationBlockReason").mockResolvedValueOnce("closed")
+    expect(await signIn({ user: { email: "new@example.test" }, account: { type: "oauth", provider: "github" } })).toBe("/login?error=RegistrationClosed")
+  })
+
+  it("never applies the policy to password sign-in", async () => {
+    expect(await signIn({ user: { email: "member@example.test" }, account: { type: "credentials", provider: "credentials" } })).toBe(true)
+    expect(db.user.findFirst).not.toHaveBeenCalled()
+  })
+})

@@ -136,6 +136,9 @@ export default function LoginPage() {
     if (errorParam === "MissingToken" || errorParam === "InvalidToken") {
       toast({ variant: "destructive", title: "Verifikasi Gagal", description: "Tautan verifikasi tidak valid atau tidak ditemukan." })
       router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")
+    } else if (errorParam === "RegistrationClosed") {
+      toast({ variant: "destructive", title: "Pendaftaran Dibatasi", description: "Akun baru tidak dapat dibuat saat ini. Pendaftaran ditutup atau hanya melalui undangan admin workspace." })
+      router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")
     } else if (errorParam === "TokenExpired") {
       toast({ variant: "destructive", title: "Tautan Kadaluarsa", description: "Tautan verifikasi telah kadaluarsa. Silakan daftar kembali atau minta tautan baru." })
       router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")

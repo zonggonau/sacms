@@ -290,6 +290,18 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    // OAuth accounts are created by the adapter on first sign-in, so the
+    // platform registrationMode has to be enforced here for new emails.
+    async signIn({ user, account }) {
+      if (!account || account.type === "credentials" || !user.email) return true
+      const existing = await db.user.findFirst({
+        where: { email: { equals: user.email, mode: "insensitive" } },
+        select: { id: true },
+      })
+      if (existing) return true
+      const { registrationBlockReason } = await import("@/lib/registration-policy")
+      return (await registrationBlockReason(user.email)) ? "/login?error=RegistrationClosed" : true
+    },
     async jwt({ token, user, account }) {
       if (!user) {
         if (typeof token.id !== "string") {

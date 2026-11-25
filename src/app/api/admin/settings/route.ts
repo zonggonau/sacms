@@ -19,7 +19,6 @@ const NUMERIC_SETTINGS = new Set<keyof PlatformSettings>([
 ])
 const ENUM_SETTINGS: Partial<Record<keyof PlatformSettings, readonly string[]>> = {
   registrationMode: ["open", "invite_only", "closed"],
-  customDomainPolicy: ["paid_only", "all_plans", "disabled"],
   midtransMode: ["sandbox", "production"],
 }
 
@@ -84,6 +83,13 @@ export const PUT = withAdminAuth(async (request, _context, { session }) => {
   // Fetched before the write so the audit entry below can record what each
   // non-secret value actually changed from, not just which keys were touched.
   const previousSettings = await getPlatformSettings()
+
+  // Re-pointing the Global workspace id at an id nothing exists under
+  // silently breaks every Global-only feature, so it is copy-only.
+  const globalTenantEntry = entries.find(([key]) => key === "globalTenantId")
+  if (globalTenantEntry && String(globalTenantEntry[1] ?? "") !== previousSettings.globalTenantId) {
+    return apiError("validation", { message: "ID Workspace Induk tidak bisa diubah dari pengaturan." })
+  }
 
   await Promise.all(
     entries.map(([key, value]) =>
