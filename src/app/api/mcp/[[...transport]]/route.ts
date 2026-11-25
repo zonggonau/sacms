@@ -2885,8 +2885,9 @@ Default stack (standard baseline for every frontend built here, not optional unl
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
-        if (!auth.isHostingPlanPaid) {
-          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `Menerapkan Website Template memerlukan workspace berstatus PAID. Selesaikan pembayaran di /dashboard/${auth.tenantSlug}/subscriptions.` }
+        const { canUseWebsiteTemplates, WEBSITE_TEMPLATE_PLAN_MESSAGE } = await import("@/lib/infrastructure/hosting-plan")
+        if (!canUseWebsiteTemplates(auth.plan)) {
+          const structured = { ok: false as const, code: "PAYMENT_REQUIRED" as const, message: `${WEBSITE_TEMPLATE_PLAN_MESSAGE} Upgrade di /dashboard/${auth.tenantSlug}/subscriptions.` }
           return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
         }
 

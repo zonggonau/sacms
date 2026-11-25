@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
-import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
+import { canUseWebsiteTemplates, WEBSITE_TEMPLATE_PLAN_MESSAGE } from "@/lib/infrastructure/hosting-plan"
 import { applyWebsiteTemplateToTenant } from "@/lib/infrastructure/apply-website-template"
 
 /**
@@ -28,12 +28,10 @@ export const POST = withStaffAuth(
       return apiError("not_found", { message: "Website Template tidak ditemukan" })
     }
 
-    // Billing gate — this ends in a real hosting deploy, same gate as
-    // ai-builder/deploy's own `action === "deploy"`.
-    const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
-    if (!isPaid) {
+    // Website Templates are a Pro/Business feature (see canUseWebsiteTemplates).
+    if (!canUseWebsiteTemplates(tenant.plan) && session.user.role !== "super_admin") {
       return apiError("plan_limit", {
-        message: "Menerapkan Website Template memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
+        message: WEBSITE_TEMPLATE_PLAN_MESSAGE,
         details: { redirectTo: `/dashboard/${tenant.slug}/subscriptions`, plan: tenant.plan },
       })
     }

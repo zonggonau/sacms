@@ -31,10 +31,6 @@ vi.mock("@/lib/database", () => ({
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
 
-vi.mock("@/lib/infrastructure/hosting-plan", () => ({
-  isTenantPlanPaid: vi.fn(),
-}))
-
 vi.mock("@/lib/schema-template-sync", () => ({
   materializeSchemaIntoTenant: vi.fn().mockResolvedValue({ imported: 3 }),
 }))
@@ -53,7 +49,6 @@ vi.mock("@/lib/infrastructure/frontend-env", () => ({
 import { getServerSession } from "next-auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { db } from "@/lib/database"
-import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import {
@@ -121,18 +116,25 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
   })
 
-  it("blocks a free-plan workspace with a plan_limit error, before touching the workspace schema", async () => {
+  it.each(["free", "starter"])("blocks a %s-plan workspace with a plan_limit error, before touching the workspace schema", async (plan) => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(false)
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan } } as any)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(403)
+    expect(JSON.stringify(await res.json())).toMatch(/Pro dan Business/)
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
     expect(deployTenantFrontend).not.toHaveBeenCalled()
   })
 
+  it("lets a Pro-plan workspace apply a template", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "pro" } } as any)
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(res.status).toBe(200)
+  })
+
   it("rejects when the workspace already has a Content Type (not empty)", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
     fakeTenantDb.contentType.findFirst.mockResolvedValue({ id: "ct1" })
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(400)
@@ -142,7 +144,6 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
 
   it("materializes the linked schema and deploys the bundled files on the happy path", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
 
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     const body = await res.json()
@@ -168,7 +169,6 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
 
   it("resumes deployment after a failed attempt without reimporting the schema", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
     vi.mocked(db.mcpDeploymentSource.create).mockRejectedValueOnce(new Error("hosting temporarily unavailable"))
 
     const first = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
@@ -182,7 +182,6 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
 
   it("merges the template's resolved env vars into the Environment tab BEFORE deploying", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(true)
     vi.mocked(resolveWebsiteTemplateEnvVars).mockResolvedValue([{ key: "NEXT_PUBLIC_API_URL", value: "https://sacms.cloud" }])
     vi.mocked(getTenantCustomEnvVarList).mockResolvedValue([{ key: "SOME_EXISTING_VAR", value: "keep-me" }])
 
@@ -200,7 +199,7 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
   it("lets a super_admin apply even on a free plan", async () => {
     mockSession.mockResolvedValue({ user: { id: "user1", role: "super_admin" } } as any)
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
-    vi.mocked(isTenantPlanPaid).mockReturnValue(false)
+    mockAccess.mockResolvedValue({ ...paidAccess, tenant: { ...paidAccess.tenant, plan: "free" } } as any)
 
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
     expect(res.status).toBe(200)

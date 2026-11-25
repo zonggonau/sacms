@@ -5,6 +5,7 @@ import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isSchemaFinalized } from "@/lib/schema-lock"
 import { SchemaGeneratorClient } from "./schema-generator-client"
+import { canUseWebsiteTemplates } from "@/lib/infrastructure/hosting-plan"
 
 export default async function SchemaGeneratorPage({ params }: { params: Promise<{ tenant: string }> }) {
   const session = await getServerSession(authOptions)
@@ -54,6 +55,7 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
         isGlobal={access.isGlobal}
         initialFinalized={finalized}
         currentRole={access.role}
+        canUseTemplates={canUseWebsiteTemplates(tenant.plan) || session.user.role === "super_admin"}
       />
     </div>
   )

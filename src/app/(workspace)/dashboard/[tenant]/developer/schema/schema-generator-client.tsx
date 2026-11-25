@@ -29,6 +29,8 @@ interface SchemaGeneratorClientProps {
   initialFinalized: boolean
   /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
   currentRole: string
+  /** Whether this workspace's plan may apply a Website Template (Pro/Business). */
+  canUseTemplates: boolean
 }
 
 const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
@@ -40,6 +42,7 @@ export function SchemaGeneratorClient({
   isGlobal,
   initialFinalized,
   currentRole,
+  canUseTemplates,
 }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -187,6 +190,7 @@ export function SchemaGeneratorClient({
                 tenantSlug={tenantSlug}
                 isGlobal={isGlobal}
                 currentRole={currentRole}
+                canUseTemplates={canUseTemplates}
                 isWorkspaceEmpty={
                   schema.contentTypes.length === 0 && schema.components.length === 0 &&
                   schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)

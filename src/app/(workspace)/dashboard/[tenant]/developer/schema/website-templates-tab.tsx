@@ -41,6 +41,8 @@ interface WebsiteTemplatesTabProps {
    *  same empty-workspace check the apply route itself gates on. When false, a regular tenant needs to
    *  reset before a NEW template can be applied. */
   isWorkspaceEmpty: boolean
+  /** Whether this workspace's plan may apply a Website Template (Pro/Business, see canUseWebsiteTemplates). */
+  canUseTemplates: boolean
   /** Called after a successful "Terapkan" — parent switches to Diagram Schema and refreshes live schema. */
   onApplied?: () => void
   /** Called after a successful reset — parent just refreshes live schema; does NOT switch tabs, since the
@@ -50,7 +52,7 @@ interface WebsiteTemplatesTabProps {
 
 const ALL_SCHEMAS = "__all__"
 
-export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorkspaceEmpty, onApplied, onReset }: WebsiteTemplatesTabProps) {
+export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorkspaceEmpty, canUseTemplates, onApplied, onReset }: WebsiteTemplatesTabProps) {
   const { toast } = useToast()
   const [templates, setTemplates] = useState<WebsiteTemplateItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -424,7 +426,7 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
   // which owner also satisfies) — disabling it here too for anyone below
   // that is just a clearer failure mode than letting them click it and
   // get a 403 back.
-  const canApply = currentRole === "owner" || currentRole === "admin"
+  const canApply = canUseTemplates && (currentRole === "owner" || currentRole === "admin")
   const canApplyTemplate = (id: string) =>
     canApply && !isResetting && applyingId === null &&
     (pendingTemplateId ? pendingTemplateId === id : isWorkspaceEmpty)
@@ -518,7 +520,18 @@ export function WebsiteTemplatesTab({ tenantSlug, isGlobal, currentRole, isWorks
 
   return (
     <div className="space-y-3">
-      {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
+      {!canUseTemplates && (
+        <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertTriangle className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-muted-foreground">
+              Website Template hanya tersedia untuk plan <strong className="text-foreground">Pro</strong> dan <strong className="text-foreground">Business</strong>. Demo tetap bisa dilihat;{" "}
+              <a href={`/dashboard/${tenantSlug}/subscriptions`} className="font-semibold text-primary hover:underline">upgrade plan</a> untuk menerapkannya.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+      {canUseTemplates && !isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-bold text-foreground">Galeri Website Template ({visibleTemplates.length})</p>
