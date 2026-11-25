@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { registerUser, forgotPassword, resetPassword } from "@/actions/auth"
 import { db } from "@/lib/database"
-import { sendPasswordResetEmail } from "@/lib/mail"
+import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/mail"
 import { captureException } from "@sentry/nextjs"
 import { registrationBlockReason } from "@/lib/registration-policy"
 
@@ -71,6 +71,19 @@ describe("Auth Server Actions", () => {
       expect(result.error).toBe("Pendaftaran akun baru sedang ditutup oleh admin platform.")
       expect(registrationBlockReason).toHaveBeenCalledWith("budi@example.test")
       expect(db.user.create).not.toHaveBeenCalled()
+    })
+
+    it("never lets the register form claim a pending invited account (no password yet)", async () => {
+      vi.mocked(db.user.findUnique).mockResolvedValueOnce({
+        id: "invited-1", email: "invited@example.test", name: null, password: null, emailVerified: null,
+      } as never)
+
+      const result = await registerUser({ name: "Siapa Saja", email: "invited@example.test", password: "StrongPassword123!" })
+
+      expect(result.error).toMatch(/Lupa Kata Sandi/)
+      expect(db.user.update).not.toHaveBeenCalled()
+      expect(db.verificationToken.create).not.toHaveBeenCalled()
+      expect(sendVerificationEmail).not.toHaveBeenCalled()
     })
 
     it("should successfully register first user as super_admin", async () => {

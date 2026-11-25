@@ -5,7 +5,7 @@ export type RegistrationMode = "open" | "invite_only" | "closed"
 
 export const REGISTRATION_CLOSED_MESSAGE = "Pendaftaran akun baru sedang ditutup oleh admin platform."
 export const REGISTRATION_INVITE_ONLY_MESSAGE =
-  "Pendaftaran hanya melalui undangan. Minta admin workspace menambahkan email Anda sebagai anggota tim, lalu aktifkan akun dari email undangan."
+  "Pendaftaran hanya melalui undangan. Minta admin workspace menambahkan email Anda sebagai anggota tim, lalu aktifkan akun lewat Lupa Kata Sandi di halaman masuk."
 
 /**
  * The registrationMode (/admin/settings) that applies right now. A fresh

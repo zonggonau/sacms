@@ -13,7 +13,7 @@ const NOTICE = {
   invite_only: {
     icon: MailCheck,
     title: "Pendaftaran Sementara Melalui Undangan",
-    body: "Untuk sementara, akun baru hanya bisa dibuat lewat undangan. Minta admin workspace Anda menambahkan email Anda sebagai anggota tim, lalu aktifkan akun dari email undangan yang Anda terima.",
+    body: "Untuk sementara, akun baru hanya bisa dibuat lewat undangan. Minta admin workspace Anda menambahkan email Anda sebagai anggota tim, lalu aktifkan akun lewat Lupa Kata Sandi di halaman masuk. Tautan yang dikirim ke email Anda akan mengatur kata sandi sekaligus mengaktifkan akun.",
   },
   closed: {
     icon: Lock,

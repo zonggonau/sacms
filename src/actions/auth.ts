@@ -9,6 +9,9 @@ import { checkActionRateLimit } from "@/lib/rate-limit"
 
 type ForgotPasswordResult = { success?: true; message?: string; error?: string }
 
+const INVITED_ACCOUNT_MESSAGE =
+  "Email ini sudah diundang ke sebuah workspace. Aktifkan akun lewat Lupa Kata Sandi di halaman masuk: tautan yang dikirim ke email Anda akan mengatur kata sandi sekaligus mengaktifkan akun."
+
 const FORGOT_PASSWORD_RESPONSE: ForgotPasswordResult = {
   success: true,
   message:
@@ -53,6 +56,12 @@ export async function registerUser(formData: any) {
     if (existingUser) {
       if (existingUser.emailVerified) {
         return { error: "Akun dengan email ini sudah terdaftar dan terverifikasi. Silakan masuk." }
+      } else if (!existingUser.password) {
+        // A passwordless pending account was created by a workspace invite
+        // (Tambah Anggota). It is claimed through Lupa Kata Sandi, whose link
+        // proves inbox ownership; setting a password from this unauthenticated
+        // form would let anyone take over someone else's invite.
+        return { error: INVITED_ACCOUNT_MESSAGE }
       } else {
         if (!hasMailService) {
           // Auto-verify existing unverified user if mail service is not active
