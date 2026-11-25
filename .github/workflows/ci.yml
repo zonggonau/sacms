@@ -182,7 +182,6 @@ jobs:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 30m
