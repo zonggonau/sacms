@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MCP workspace release path**: website changes are built and released through one path only: `start_preview` → `apply_preview_changes` → `save_preview_changes`, then an administrator releases from Infrastructure → Hosting. `deploy_to_sacms` is now documented as a one-shot staging build, not the normal release path. The playbook, `instructions`, and tool descriptions all say the same thing (workspace MCP 4.8.0).
 - **MCP guidance in one place**: the workspace `instructions` and playbook moved to `src/lib/mcp/workspace-guidance.ts`, and the global `instructions` moved to `src/lib/mcp/global-guidance.ts`. Their version numbers are set there too (global MCP 1.21.0).
 - **MCP documentation**: `docs/mcp/` covers both servers, the release path, auth and token scopes, and maintenance. `docs/mcp/tool-manifest.json` lists every tool and is checked by a test.
+- **MCP route split**: the tool bodies moved out of the two route files into per-domain modules (`src/lib/mcp/workspace/*-tools.ts`, `src/lib/mcp/global/*-tools.ts`) with shared helpers in each `context.ts`. The routes now only build the server and register those modules. Tool names, schemas, and behavior are unchanged.
 
 ### Deprecated
 - **`get_operation_status` on the global MCP server**: renamed to `get_global_operation_status`. The old name still works as an alias and will be removed in the next major release. The workspace server's `get_operation_status` is unchanged.

@@ -6,8 +6,12 @@ Written for: engineer yang mengubah tool, guidance, atau auth MCP.
 
 | Yang diubah | Lokasi |
 |---|---|
-| Tool workspace | `src/app/api/mcp/[[...transport]]/route.ts` |
-| Tool global | `src/app/api/mcp/global-schema/[[...transport]]/route.ts` |
+| Registrasi tool workspace (urutan modul) | `src/app/api/mcp/[[...transport]]/route.ts` |
+| Isi tool workspace, per domain | `src/lib/mcp/workspace/*-tools.ts` |
+| Helper bersama workspace (auth, scope, output shape) | `src/lib/mcp/workspace/context.ts` |
+| Registrasi tool global (urutan modul) | `src/app/api/mcp/global-schema/[[...transport]]/route.ts` |
+| Isi tool global, per domain | `src/lib/mcp/global/*-tools.ts` |
+| Helper bersama global | `src/lib/mcp/global/context.ts` |
 | Preview (keduanya) | `src/lib/infrastructure/mcp-preview.ts` |
 | Instruksi dan playbook workspace | `src/lib/mcp/workspace-guidance.ts` |
 | Instruksi dan guide global | `src/lib/mcp/global-guidance.ts` |
@@ -18,7 +22,7 @@ Jangan menulis ulang aturan rilis di tempat lain. Playbook, instruksi, deskripsi
 
 ## Menambah atau mengubah tool
 
-1. Tambahkan tool dengan `server.registerTool("nama_tool", …)`.
+1. Tambahkan tool dengan `server.registerTool("nama_tool", …)` di modul domain yang paling sesuai (lihat tabel di atas). Kalau belum ada modul yang cocok, buat file baru dengan fungsi `registerXxxTools(server: McpServer)`, lalu panggil fungsi itu dari route.
 2. Kalau tool baru di server Global: masukkan namanya ke `READ_TOOLS` atau `DEMO_TOOLS` di `mcp-global-scopes.ts`. Kalau tidak, tool itu butuh `write`.
 3. Jalankan `node scripts/mcp-manifest.cjs`. Commit juga `docs/mcp/tool-manifest.json`.
 4. Kalau aturan atau alur berubah, perbarui guidance module dan docs terkait.
@@ -42,9 +46,14 @@ Versi hanya disimpan di `WORKSPACE_MCP_VERSION` atau `GLOBAL_MCP_VERSION`. `serv
 | `mcp-route-auth.test.ts`, `mcp-global-schema-auth.test.ts` | Auth dan token |
 | `mcp-route-tools-contract.test.ts`, `mcp-global-schema-tools-contract.test.ts` | Perilaku tool tertentu |
 
-## Yang belum dipecah
+## Susunan file
 
-`route.ts` workspace (sekitar 4.800 baris) dan global (sekitar 2.900 baris) masih berisi semua tool inline. Memecahnya per domain perlu tes perilaku per tool, karena tool bergantung pada helper di file yang sama. Itu pekerjaan berikutnya, dan belum dikerjakan di sini.
+Route hanya membuat server, mendaftarkan modul, dan menangani HTTP. Isi tool ada di modul domain:
+
+- Workspace: `schema-tools` (Content Type, Group, field types), `content-tools` (entri), `single-type-component-tools` (Single Type dan Component), `webhook-tools`, `platform-tools` (API info, SDK, playbook, API key, sync), `build-tools` (build dan template), `deploy-tools` (staging, rilis, domain, env).
+- Global: `guide-tools` (builder guide dan schema template), `website-template-tools` (demo dan operasi background), `global-component-tools`.
+
+Helper yang dipakai bersama ada di `context.ts`. Jangan menyalin helper ke modul lain.
 
 ## Keputusan yang belum diambil
 
