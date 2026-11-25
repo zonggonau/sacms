@@ -6,6 +6,8 @@ import { enforcePlanLimit } from "@/lib/plan-enforcement"
 import { getSingleTypesAction } from "@/actions/single-types"
 import { redirect } from "next/navigation"
 import TenantDashboardClient from "./client-page"
+import { userApiKeyWhere } from "@/lib/api-token-registry"
+import { listWorkspacePreviews } from "@/lib/infrastructure/workspace-previews"
 
 export default async function TenantDashboardPage({
   params,
@@ -92,7 +94,8 @@ export default async function TenantDashboardPage({
       where: { tenantId, deletedAt: null },
       _count: { _all: true },
     }).catch(() => []),
-    tenantDb.apiToken.count({ where: { tenantId } }).catch(() => 0),
+    // Hand-managed keys only — not MCP, hosting deploy, or Sandbox preview tokens.
+    tenantDb.apiToken.count({ where: userApiKeyWhere(tenantId) }).catch(() => 0),
     tenantDb.webhook.count({ where: { tenantId } }).catch(() => 0),
     tenantDb.contentEntry.findMany({
       where: { tenantId, deletedAt: null },
@@ -213,9 +216,14 @@ export default async function TenantDashboardPage({
     user: "Pengguna",
   }))
 
+  const { isDemoWorkspace, previews } = await listWorkspacePreviews(tenantId, access.tenant.slug)
+    .catch(() => ({ isDemoWorkspace: false, previews: [] }))
+
   return (
     <TenantDashboardClient
       tenantId={tenantId}
+      isDemoWorkspace={isDemoWorkspace}
+      previews={previews}
       stats={stats}
       contentTypes={contentTypes}
       singleTypes={singleTypes}

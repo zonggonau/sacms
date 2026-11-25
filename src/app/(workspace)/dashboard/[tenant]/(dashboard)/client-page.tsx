@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
+import { PreviewSessionsCard, type PreviewEntry } from "./infrastructure/preview-sessions-card"
 
 interface AssignedContentType {
   id: string
@@ -95,6 +96,8 @@ interface TenantDashboardClientProps {
   usage: any[]
   activities?: any[]
   session?: any
+  isDemoWorkspace?: boolean
+  previews?: PreviewEntry[]
 }
 
 export default function TenantDashboardClient({
@@ -104,6 +107,8 @@ export default function TenantDashboardClient({
   stats: initialStats,
   usage: initialUsage,
   session: initialSession,
+  isDemoWorkspace = false,
+  previews = [],
 }: TenantDashboardClientProps) {
   const { data: sessionData } = useSession()
   const session = sessionData || initialSession
@@ -243,7 +248,26 @@ export default function TenantDashboardClient({
           no confirmed-live Vercel deployment (either it was never deployed,
           or the project was deleted directly on vercel.com and the backend
           detected that and cleared the stale record). */}
-      {!currentTenant?.vercelDeploymentUrl && (
+      {/* A demo workspace only backs catalog Website Templates: it is never
+          deployed to production, so show its preview/demo URLs instead. */}
+      {isDemoWorkspace && (
+        <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-4 space-y-3">
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+              <Eye className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5 min-w-0">
+              <span className="text-xs font-bold text-foreground">Workspace Demo Website Template</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Workspace internal untuk demo katalog. Tidak di-deploy ke production; preview dan demo dikelola lewat MCP Global.
+              </p>
+            </div>
+          </div>
+          <PreviewSessionsCard previews={previews} />
+        </Card>
+      )}
+
+      {!currentTenant?.vercelDeploymentUrl && !isDemoWorkspace && (
         <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
@@ -253,7 +277,7 @@ export default function TenantDashboardClient({
               <div className="space-y-0.5 min-w-0">
                 <span className="text-xs font-bold text-foreground">Website Frontend Belum Di-deploy</span>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Belum ada situs live di SaCMS Cloud Hosting untuk workspace ini. Kembangkan frontend-nya di IDE lalu deploy lewat tool MCP <code className="font-mono text-primary">deploy_to_sacms</code>.
+                  Belum ada situs live di SaCMS Cloud Hosting untuk workspace ini. Bangun website lewat MCP dengan preview langsung di Sandbox, lalu rilis dengan <strong className="text-foreground">Deploy Production</strong> di Hosting.
                 </p>
               </div>
             </div>
@@ -261,12 +285,12 @@ export default function TenantDashboardClient({
               <Button asChild size="sm" className="rounded-xl h-8 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs">
                 <Link href={`/dashboard/${tenantId}/developer/mcp`}>
                   <Plug className="h-3.5 w-3.5 mr-1.5" />
-                  Hubungkan MCP & Deploy
+                  Hubungkan MCP
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" asChild className="rounded-xl h-8 px-3 text-xs text-muted-foreground hover:text-foreground">
                 <Link href={`/dashboard/${tenantId}/infrastructure?tab=hosting`}>
-                  Detail Hosting
+                  Deploy di Hosting
                   <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
               </Button>
@@ -281,7 +305,7 @@ export default function TenantDashboardClient({
           <div className="space-y-1.5 max-w-xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold">
               <Sparkles className="h-3 w-3" />
-              <span>AI Schema Generator & MCP</span>
+              <span>Website Template & MCP</span>
             </div>
             <h2 className="text-lg md:text-xl font-black tracking-tight text-foreground">
               Rancang Skema CMS Berbasis Prompt
@@ -295,7 +319,7 @@ export default function TenantDashboardClient({
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
               <Link href={`/dashboard/${tenantId}/developer/schema`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                Buka AI Schema Generator
+                Buka Website Template
               </Link>
             </Button>
             <Button variant="outline" asChild className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 bg-card hover:bg-muted/60 cursor-pointer">

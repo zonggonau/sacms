@@ -700,7 +700,7 @@ export function HostingDeploymentsView({
               >
                 <Link href={`/dashboard/${tenantSlug}/developer/schema`}>
                   <Bot className="h-3.5 w-3.5 mr-1.5" />
-                  AI Schema Generator
+                  Website Template
                 </Link>
               </Button>
             </div>
