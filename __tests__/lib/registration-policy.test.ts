@@ -7,7 +7,7 @@ const { db, settings } = vi.hoisted(() => ({
 vi.mock("@/lib/database", () => ({ db }))
 vi.mock("@/lib/settings", () => ({ getPlatformSettings: vi.fn(async () => settings) }))
 
-import { registrationBlockReason, REGISTRATION_CLOSED_MESSAGE, REGISTRATION_INVITE_ONLY_MESSAGE } from "@/lib/registration-policy"
+import { getEffectiveRegistrationMode, registrationBlockReason, REGISTRATION_CLOSED_MESSAGE, REGISTRATION_INVITE_ONLY_MESSAGE } from "@/lib/registration-policy"
 
 describe("registrationBlockReason", () => {
   beforeEach(() => {
@@ -44,5 +44,21 @@ describe("registrationBlockReason", () => {
 
     db.user.findFirst.mockResolvedValueOnce({ id: "admin" }).mockResolvedValueOnce(null)
     expect(await registrationBlockReason("stranger@example.test")).toBe(REGISTRATION_INVITE_ONLY_MESSAGE)
+  })
+})
+
+describe("getEffectiveRegistrationMode", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("reports the stored mode once a super admin exists", async () => {
+    settings.registrationMode = "invite_only"
+    db.user.findFirst.mockResolvedValueOnce({ id: "admin" })
+    expect(await getEffectiveRegistrationMode()).toBe("invite_only")
+  })
+
+  it("reports open on a fresh install so /register can create the first super admin", async () => {
+    settings.registrationMode = "closed"
+    db.user.findFirst.mockResolvedValueOnce(null)
+    expect(await getEffectiveRegistrationMode()).toBe("open")
   })
 })

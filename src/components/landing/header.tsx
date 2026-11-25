@@ -11,7 +11,7 @@ import { Logo } from "@/components/ui/logo"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 
-export function LandingHeader({ brandName }: { brandName?: string }) {
+export function LandingHeader({ brandName, registrationOpen = true }: { brandName?: string; registrationOpen?: boolean }) {
   const { data: session, status } = useSession()
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -122,11 +122,13 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                     Masuk
                   </Button>
                 </Link>
-                <Link href="/register">
-                  <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-5 shadow-sm hover:scale-[1.02] transition-all text-xs h-8">
-                    Mulai Gratis
-                  </Button>
-                </Link>
+                {registrationOpen && (
+                  <Link href="/register">
+                    <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-5 shadow-sm hover:scale-[1.02] transition-all text-xs h-8">
+                      Mulai Gratis
+                    </Button>
+                  </Link>
+                )}
               </>
             )}
           </div>
@@ -194,11 +196,13 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                       Masuk
                     </Button>
                   </Link>
-                  <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-sm text-xs">
-                      Mulai Gratis
-                    </Button>
-                  </Link>
+                  {registrationOpen && (
+                    <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                      <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-sm text-xs">
+                        Mulai Gratis
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               )}
             </nav>

@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
+  const [registrationOpen, setRegistrationOpen] = useState(true)
   const { data: session, status } = useSession()
   const [brand, setBrand] = useState<TenantBrand | null>(null)
 
@@ -112,6 +113,7 @@ export default function LoginPage() {
       try {
         const res = await fetch("/api/auth/check-first-user")
         const data = await res.json()
+        setRegistrationOpen(data.registrationOpen !== false)
         if (data.isFirstUser) {
           router.push(redirectTo ? `/register?redirect_to=${encodeURIComponent(redirectTo)}` : "/register")
         }
@@ -358,12 +360,14 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="mt-8 text-center text-xs font-medium text-muted-foreground">
-            Belum punya akun?{" "}
-            <Link href={registerHref} className="text-primary font-bold hover:underline">
-              Daftar sekarang
-            </Link>
-          </div>
+          {registrationOpen && (
+            <div className="mt-8 text-center text-xs font-medium text-muted-foreground">
+              Belum punya akun?{" "}
+              <Link href={registerHref} className="text-primary font-bold hover:underline">
+                Daftar sekarang
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </div>
