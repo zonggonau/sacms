@@ -12,7 +12,7 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
     const planConfig = await getTenantPlanConfig(tenantId)
 
     // Resolve dynamic overrides/custom limits
-    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const { enforcePlanLimit, UNLIMITED_STORAGE_BYTES } = await import("@/lib/plan-enforcement")
     const [ctLimit, storageLimit, apiLimit] = await Promise.all([
       enforcePlanLimit(tenantId, "content_types"),
       enforcePlanLimit(tenantId, "storage"),
@@ -22,7 +22,9 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
     const effectivePlanConfig = {
       ...planConfig,
       max_content_types: ctLimit.max,
-      max_storage: storageLimit.max,
+      // Quota is returned in bytes; the usage tab reads max_storage in MB.
+      // Unlimited (no cap) maps to a sentinel the tab renders as "Unlimited".
+      max_storage: storageLimit.max >= UNLIMITED_STORAGE_BYTES ? 999999999 : Math.round(storageLimit.max / (1024 * 1024)),
       max_api_calls: apiLimit.max,
     }
 
