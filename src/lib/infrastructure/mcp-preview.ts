@@ -156,7 +156,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
       if (install.exitCode !== 0) throw Error("Preview dependency install failed:\n" + (await tailLog(box, INSTALL_LOG, 4_000)).log)
       const demoKey = "sacms_live_" + randomBytes(24).toString("hex")
       await db.apiToken.create({ data: { name: "Template preview " + id, tenantId: demo.id,
-        type: "read-only", permissions: ["read"], token: createHash("sha256").update(demoKey).digest("hex"), expiresAt: s.expiresAt } })
+        type: "preview", permissions: ["read"], token: createHash("sha256").update(demoKey).digest("hex"), expiresAt: s.expiresAt } })
       await box.runCommand({ cmd: "sh", args: ["-c", `npm run dev -- --hostname 127.0.0.1 --port 3000 > ${DEV_LOG} 2>&1`], detached: true,
         env: { NEXT_PUBLIC_SACMS_TENANT: demo.slug, NEXT_PUBLIC_SACMS_API_URL: resolveApiOrigin(), SACMS_API_KEY: demoKey } })
       const probe = await box.runCommand("node", ["-e", "async function ready(){for(let i=0;i<60;i++){try{if((await fetch('http://localhost:3000')).ok)return}catch{}await new Promise(r=>setTimeout(r,1000))}process.exit(1)}ready()"])

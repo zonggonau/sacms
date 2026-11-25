@@ -40,12 +40,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Plus, Key, Copy, Check, Trash2, Loader2, ShieldCheck,
   Save, Terminal, Settings2, Sliders,
-  AlertTriangle, Pencil, RefreshCw, Plug
+  AlertTriangle, Pencil, Plug
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction, regenerateApiTokenAction } from "@/actions/api-keys"
+import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction } from "@/actions/api-keys"
 import { rememberApiTokenPlain, forgetApiTokenPlain } from "@/lib/api-token-storage"
 
 interface ApiToken {
@@ -106,12 +106,11 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
   // Which token row `createdPlainToken` belongs to — the secret is only ever
   // held in this browser session's React state (the DB only has its hash),
   // so a row-level Copy button can only work for the one token just
-  // created/regenerated in this session, not for rows loaded from the server.
+  // created in this session, not for rows loaded from the server.
   const [revealedTokenId, setRevealedTokenId] = useState<string | null>(null)
 
-  // Edit-permissions dialog — a tenant may only ever have one API key, so
-  // instead of deleting + recreating to change its scope, permissions can be
-  // adjusted in place at any time.
+  // Edit-permissions dialog — a key's scope can be adjusted in place without
+  // rotating its secret.
   const [editingToken, setEditingToken] = useState<ApiToken | null>(null)
   const [editPermissions, setEditPermissions] = useState<string[]>([])
   const [showEditDialog, setShowEditDialog] = useState(false)
@@ -252,41 +251,6 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
     })
   }
 
-  const handleRegenerateToken = async (token: ApiToken) => {
-    if (
-      !(await confirm({
-        title: "Generate ulang API key ini?",
-        description: `Key lama untuk "${token.name}" langsung berhenti berfungsi — aplikasi yang masih memakainya akan kehilangan akses sampai Anda pasang key baru.`,
-        confirmLabel: "Generate Ulang",
-        variant: "destructive",
-      }))
-    )
-      return
-
-    startTransition(async () => {
-      const res = await regenerateApiTokenAction(tenantSlug, token.id)
-      if (res.error) {
-        toast({
-          variant: "destructive",
-          title: "Terjadi Kesalahan",
-          description: res.error,
-        })
-      } else {
-        setCreatedPlainToken(res.plainToken || null)
-        if (res.token) {
-          setTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
-        }
-        setRevealedTokenId(token.id)
-        if (res.plainToken) rememberApiTokenPlain(tenantId, token.id, res.plainToken)
-        setShowTokenDialog(true)
-        toast({
-          title: "Berhasil",
-          description: "API Key berhasil di-generate ulang",
-        })
-      }
-    })
-  }
-
   const handleOpenEditPermissions = (token: ApiToken) => {
     setEditingToken(token)
     setEditPermissions(Array.isArray(token.permissions) ? token.permissions : [])
@@ -392,13 +356,11 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
               </Button>
 
               <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                {tokensList.length === 0 && (
-                  <DialogTrigger asChild>
-                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
-                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat API Key Baru
-                    </Button>
-                  </DialogTrigger>
-                )}
+                <DialogTrigger asChild>
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat API Key Baru
+                  </Button>
+                </DialogTrigger>
                 <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
                   <DialogHeader>
                     <DialogTitle className="text-base font-bold text-foreground">Buat API Key Baru</DialogTitle>
@@ -580,7 +542,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
                       Gunakan pada header <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code>.
-                      Setiap workspace hanya boleh punya satu API Key aktif — dibuat sekali, izinnya bisa diubah kapan saja lewat tombol Edit.
+                      Buat key terpisah untuk setiap aplikasi atau integrasi, supaya satu key bisa dihapus tanpa memutus yang lain. Nilai key hanya ditampilkan sekali saat dibuat.
                       {" "}Ini <strong>terpisah</strong> dari token MCP (dipakai AI agent seperti Claude/ChatGPT/Codex) — kelola token MCP di{" "}
                       <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">Developer &gt; MCP</a>.
                     </CardDescription>
@@ -675,7 +637,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                                           </Button>
                                         </span>
                                       </TooltipTrigger>
-                                      <TooltipContent>{canCopy ? "Salin API Key" : "Token hanya ditampilkan sekali saat dibuat/di-generate ulang. Klik Generate Ulang untuk mendapat salinan baru."}</TooltipContent>
+                                      <TooltipContent>{canCopy ? "Salin API Key" : "Token hanya ditampilkan sekali saat dibuat. Buat key baru jika salinannya hilang, lalu hapus key ini."}</TooltipContent>
                                     </Tooltip>
                                   )
                                 })()}
@@ -688,16 +650,6 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                                   title="Edit Izin Hak Akses"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRegenerateToken(apiKey)}
-                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                                  disabled={isPending}
-                                  title="Generate Ulang API Key"
-                                >
-                                  <RefreshCw className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   variant="ghost"

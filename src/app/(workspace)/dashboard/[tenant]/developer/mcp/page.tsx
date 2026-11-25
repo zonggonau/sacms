@@ -15,13 +15,10 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   const tenantSummary = access.tenant
 
-  // MCP token creation/regeneration/deletion happens inline on this page's
-  // client component now — the server-rendered query here only needs to
-  // know whether one already exists (its id/name), plus tenant/subscription
-  // status to render the config/setup guides. The plaintext itself is never
-  // stored server-side (only its SHA-256 hash), so it can't be fetched here;
-  // it's only ever known client-side right after a create/regenerate call.
-  const [tenant, subscription, mcpToken] = await Promise.all([
+  // MCP tokens are created and deleted inline on this page's client
+  // component. Only metadata is loaded here: the plaintext is never stored
+  // (only its SHA-256 hash), so it is known client-side right after creation.
+  const [tenant, subscription, mcpTokens] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
@@ -30,10 +27,10 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       where: { tenantId: tenantSummary.id },
       orderBy: { createdAt: "desc" },
     }),
-    db.apiToken.findFirst({
+    db.apiToken.findMany({
       where: { tenantId: tenantSummary.id, type: "mcp" },
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, createdAt: true, lastUsedAt: true, expiresAt: true },
+      orderBy: { createdAt: "desc" },
     }),
   ])
 
@@ -51,7 +48,13 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       plan={currentPlan}
       isPaid={isPaid}
       subscriptionStatus={subscription?.status || "inactive"}
-      activeMcpToken={mcpToken ? { id: mcpToken.id, name: mcpToken.name } : null}
+      mcpTokens={mcpTokens.map((t) => ({
+        id: t.id,
+        name: t.name,
+        createdAt: t.createdAt.toISOString(),
+        lastUsedAt: t.lastUsedAt?.toISOString() ?? null,
+        expiresAt: t.expiresAt?.toISOString() ?? null,
+      }))}
     />
   )
 }

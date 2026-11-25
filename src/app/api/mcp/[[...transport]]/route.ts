@@ -2756,7 +2756,7 @@ Default stack (standard baseline for every frontend built here, not optional unl
                 name: existing.name,
                 permissions: existing.permissions,
                 createdAt: existing.createdAt,
-                note: "This key already existed. Its secret was shown only once at creation and cannot be recovered here — ask the workspace owner, or revoke it from Developer & API → API Keys and call this tool again to mint a fresh one.",
+                note: "This key already existed. Its secret was shown only once at creation and cannot be recovered here — ask the workspace owner for it, or ask them to create an additional key in Developer & API → API Keys (a workspace can hold several, one per app).",
               }, null, 2)
             }]
           }

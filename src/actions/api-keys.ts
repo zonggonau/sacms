@@ -8,7 +8,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
 import { createHash } from "crypto"
-import { findPrimaryApiToken, updateApiTokenPermissions, regenerateApiToken } from "@/lib/api-token-registry"
+import { updateApiTokenPermissions, userApiKeyWhere } from "@/lib/api-token-registry"
 
 function generateToken(): string {
   return `cf_${randomBytes(32).toString("hex")}`
@@ -31,10 +31,7 @@ export async function getApiTokensAction(tenantSlug: string) {
     if (!access) return { error: "Forbidden or Tenant not found" }
 
     const tokens = await db.apiToken.findMany({
-      where: {
-        tenantId: access.tenantId,
-        type: { not: "mcp" }
-      },
+      where: userApiKeyWhere(access.tenantId),
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -83,14 +80,6 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
 
     if (access.role !== "admin" && access.role !== "owner") {
       return { error: "Only tenant admins and owners can create API tokens" }
-    }
-
-    // Only one primary (non-MCP) API key is allowed per tenant — create once,
-    // then adjust its permissions with updateApiTokenPermissionsAction instead
-    // of minting another one.
-    const existing = await findPrimaryApiToken(access.tenantId)
-    if (existing) {
-      return { error: "Workspace ini sudah memiliki API Key aktif. Edit izin key yang ada, atau hapus dulu sebelum membuat yang baru." }
     }
 
     const parsed = createApiTokenSchema.safeParse(data)
@@ -172,36 +161,6 @@ export async function updateApiTokenPermissionsAction(tenantSlug: string, tokenI
   }
 }
 
-export async function regenerateApiTokenAction(tenantSlug: string, tokenId: string) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return { error: "Unauthorized" }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return { error: "Forbidden or Tenant not found" }
-
-    if (access.role !== "admin" && access.role !== "owner") {
-      return { error: "Only tenant admins and owners can regenerate API keys" }
-    }
-
-    const result = await regenerateApiToken(access.tenantId, tokenId)
-    if ("error" in result) return { error: result.error }
-
-    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
-
-    return {
-      token: {
-        ...result.apiToken,
-        permissions: Array.isArray(result.apiToken.permissions) ? result.apiToken.permissions : [],
-      },
-      plainToken: result.plainToken,
-    }
-  } catch (error) {
-    console.error("Error regenerating API token:", error)
-    return { error: "Internal server error" }
-  }
-}
-
 export async function deleteApiTokenAction(tenantSlug: string, tokenId: string) {
   try {
     const session = await getServerSession(authOptions)
@@ -214,11 +173,10 @@ export async function deleteApiTokenAction(tenantSlug: string, tokenId: string) 
       return { error: "Only tenant admins and owners can delete API tokens" }
     }
 
+    // Only hand-managed keys: the hosting deploy token and Sandbox preview
+    // tokens back live sites and must not be deletable from here.
     const token = await db.apiToken.findFirst({
-      where: {
-        id: tokenId,
-        tenantId: access.tenantId,
-      },
+      where: { id: tokenId, ...userApiKeyWhere(access.tenantId) },
     })
 
     if (!token) return { error: "API token not found" }

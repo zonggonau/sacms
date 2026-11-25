@@ -589,8 +589,8 @@ function ApiExplorerContent() {
                     {!primaryToken
                       ? "Belum ada API Key di workspace ini."
                       : selectedToken
-                      ? "Otomatis terisi dari key yang baru dibuat/di-generate ulang."
-                      : `Key "${primaryToken.name}" sudah ada, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — salin dari halaman API Keys atau generate ulang.`}
+                      ? "Otomatis terisi dari key yang baru dibuat."
+                      : `Key "${primaryToken.name}" sudah ada, tapi nilai aslinya hanya ditampilkan sekali saat dibuat — salin dari tempat Anda menyimpannya, atau buat key baru di halaman API Keys.`}
                   </p>
                 </div>
               </div>

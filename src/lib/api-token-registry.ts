@@ -1,11 +1,11 @@
 /**
  * Shared "primary API key" logic for a tenant's REST/GraphQL credential.
  *
- * A tenant may have at most one primary ApiToken (any `type` other than
- * "mcp" — MCP tokens are a separate credential managed from the MCP page).
- * Both the dashboard's Developer & API → API Keys page and the MCP server's
- * `get_or_create_api_key` tool key off this same query so they agree on
- * what "the" key is, instead of each minting their own. (A sibling
+ * A tenant can hold several user-managed API keys (`read-only` / `full-access`),
+ * created and deleted from Developer & API → API Keys. The oldest one is the
+ * "primary" key the MCP server's `get_or_create_api_key` tool reports, so an
+ * agent never mints duplicates. Internal tokens are excluded everywhere here:
+ * the hosting deploy token (`service`), Sandbox preview tokens, and MCP tokens. (A sibling
  * `update_api_key_permissions` tool existed briefly but was removed — see
  * api/mcp/[[...transport]]/route.ts — since rotating/reconfiguring a
  * tenant's live production credential has no legitimate MCP use case.)
@@ -30,9 +30,17 @@ export function generateApiKeyToken(): string {
   return `cf_${randomBytes(32).toString("hex")}`
 }
 
+export const USER_API_KEY_TYPES = ["read-only", "full-access"]
+
+/** Prisma filter for the API keys a workspace admin manages by hand. */
+export function userApiKeyWhere(tenantId: string) {
+  // Sandbox preview tokens created before they got their own type are read-only rows named "Template preview …".
+  return { tenantId, type: { in: USER_API_KEY_TYPES }, NOT: { name: { startsWith: "Template preview " } } }
+}
+
 export async function findPrimaryApiToken(tenantId: string) {
   return db.apiToken.findFirst({
-    where: { tenantId, type: { not: "mcp" } },
+    where: userApiKeyWhere(tenantId),
     orderBy: { createdAt: "asc" },
   })
 }
@@ -71,9 +79,8 @@ export async function updateApiTokenPermissions(
   tokenId: string,
   permissions: unknown
 ): Promise<{ error: string } | { apiToken: Awaited<ReturnType<typeof db.apiToken.update>> }> {
-  const token = await db.apiToken.findFirst({ where: { id: tokenId, tenantId } })
+  const token = await db.apiToken.findFirst({ where: { id: tokenId, ...userApiKeyWhere(tenantId) } })
   if (!token) return { error: "API key not found" }
-  if (token.type === "mcp") return { error: "MCP tokens are managed from the MCP page, not here" }
 
   const perms = sanitizePermissions(permissions)
   if (perms.length === 0) return { error: "Select at least one permission" }
@@ -87,29 +94,4 @@ export async function updateApiTokenPermissions(
   })
 
   return { apiToken }
-}
-
-/**
- * Rotates the secret of the tenant's primary API key in place — same row,
- * same id/name/permissions, new `token` value. This is the only way to
- * change the key's value: a tenant may have at most one, so "I want a
- * different key" means regenerate, never create a second row.
- */
-export async function regenerateApiToken(
-  tenantId: string,
-  tokenId: string
-): Promise<{ error: string } | { apiToken: Awaited<ReturnType<typeof db.apiToken.update>>; plainToken: string }> {
-  const token = await db.apiToken.findFirst({ where: { id: tokenId, tenantId } })
-  if (!token) return { error: "API key not found" }
-  if (token.type === "mcp") return { error: "MCP tokens are regenerated from the MCP page, not here" }
-
-  const plainToken = generateApiKeyToken()
-  const hashedToken = createHash("sha256").update(plainToken).digest("hex")
-
-  const apiToken = await db.apiToken.update({
-    where: { id: tokenId },
-    data: { token: hashedToken },
-  })
-
-  return { apiToken, plainToken }
 }
