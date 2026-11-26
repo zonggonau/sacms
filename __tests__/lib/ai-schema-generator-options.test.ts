@@ -60,3 +60,13 @@ describe("system prompt reflects the audited field guide", () => {
     expect(SYSTEM_PROMPT).not.toMatch(/Rp, USD/)
   })
 })
+
+describe("a component field keeps its componentSlug and its options", () => {
+  it("merges a top-level componentSlug with repeatable", async () => {
+    const { fieldsToCreateInput } = await import("@/lib/schema-template-sync")
+    const [out] = fieldsToCreateInput([
+      { name: "Kartu", slug: "kartu", type: "component", componentSlug: "feature-card", options: { repeatable: true } },
+    ] as any)
+    expect(out.options).toEqual({ repeatable: true, componentSlug: "feature-card" })
+  })
+})

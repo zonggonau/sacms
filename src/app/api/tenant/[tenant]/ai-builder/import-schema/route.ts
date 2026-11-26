@@ -3,6 +3,7 @@ import { z } from "zod/v4"
 import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
+import { validateBundleReferences, splitIssuesBySeverity, type SchemaBundleRef } from "@/lib/schema-template-validation"
 import { VALID_FIELD_TYPES } from "@/lib/field-types"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 import { schemaTemplateGroupSchema } from "@/lib/validations/schema-template"
@@ -102,9 +103,37 @@ export const POST = withStaffAuth(
       }
     }
 
+    // Same reference checks the MCP and template paths already run: a
+    // relation or component pointing at nothing, a select with no choices,
+    // duplicate slugs. Models already in this workspace count as valid
+    // targets, since this save adds to what is there. Blocking issues stop
+    // the save; advisory ones come back as warnings.
+    const [existingCts, existingSts, existingComps] = await Promise.all([
+      tenantDb.contentType.findMany({ where: { tenantId: tenant.id }, select: { slug: true } }),
+      tenantDb.singleType.findMany({ where: { tenantId: tenant.id }, select: { slug: true } }),
+      tenantDb.component.findMany({ where: { tenantId: tenant.id }, select: { slug: true } }),
+    ])
+    const stubsNotIncoming = (rows: { slug: string }[], incoming: { slug: string }[]) => {
+      const incomingSlugs = new Set(incoming.map((m) => m.slug))
+      return rows.filter((r) => !incomingSlugs.has(r.slug)).map((r) => ({ name: r.slug, slug: r.slug, fields: [] }))
+    }
+    const bundle = {
+      groups: schema.groups,
+      contentTypes: [...stubsNotIncoming(existingCts, schema.contentTypes), ...schema.contentTypes],
+      singleTypes: [...stubsNotIncoming(existingSts, schema.singleTypes), ...schema.singleTypes],
+      components: [...stubsNotIncoming(existingComps, schema.components), ...schema.components],
+    } as SchemaBundleRef
+    const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(bundle))
+    if (blocking.length > 0) {
+      return apiError("validation", {
+        message: "Schema belum bisa disimpan. Ada relasi, komponen, atau pilihan yang belum lengkap. Perbaiki lalu coba lagi.",
+        details: { issues: blocking, warnings },
+      })
+    }
+
     const { imported } = await materializeSchemaIntoTenant(tenantDb, tenant.id, schema)
 
-    return NextResponse.json({ success: true, imported })
+    return NextResponse.json({ success: true, imported, warnings })
   },
   { minRole: "admin" },
 )

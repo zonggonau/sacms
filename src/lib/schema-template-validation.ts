@@ -80,6 +80,7 @@ export interface BundleFieldRef {
   name?: string
   required?: boolean
   relationSlug?: string
+  componentSlug?: string
   options?: { targetModel?: string; componentSlug?: string; allowedComponents?: string[]; componentSlugs?: unknown; choices?: unknown[]; sourceField?: string } | null
 }
 export interface BundleModelRef {
@@ -207,7 +208,9 @@ export function validateBundleReferences(bundle: SchemaBundleRef): ValidationIss
         }
       }
       if (f.type === "component") {
-        const slug = f.options?.componentSlug
+        // The top-level componentSlug is what the AI and the dashboard send;
+        // options.componentSlug is the older spelling. Check whichever is set.
+        const slug = f.componentSlug ?? f.options?.componentSlug
         if (slug && !componentSlugs.has(slug)) {
           issues.push({ path: `${fieldPath}.options.componentSlug`, message: `options.componentSlug '${slug}' does not match any components[] slug in this bundle.` })
         }

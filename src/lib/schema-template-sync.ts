@@ -54,8 +54,13 @@ export interface SchemaBlob {
 
 export function fieldsToCreateInput(fields: SchemaFieldInput[] | undefined) {
   return (fields || []).map((f, i) => {
+    // A component field's componentSlug may arrive at the top level while
+    // options carries only per-field flags such as repeatable. Merge the two
+    // so neither one drops the other.
     const options: Record<string, unknown> | undefined =
-      f.options ?? (f.type === "component" && f.componentSlug ? { componentSlug: f.componentSlug } : undefined)
+      f.type === "component" && f.componentSlug
+        ? { ...(f.options ?? {}), componentSlug: f.componentSlug }
+        : f.options ?? undefined
     return {
       name: f.name,
       slug: f.slug,
