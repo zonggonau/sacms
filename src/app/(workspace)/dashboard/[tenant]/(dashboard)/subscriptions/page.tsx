@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface Subscription {
   id: string
@@ -38,8 +39,32 @@ interface Invoice {
   createdAt: string
   midtransInvoiceId: string | null
   isTransaction?: boolean
+  orderId?: string | null
+  itemType?: "plan" | "addon" | "ai_credits" | "template"
+  payUrl?: string | null
   plan?: string
   planLabel?: string
+}
+
+const BILLING_ITEM_LABEL: Record<string, string> = {
+  plan: "Langganan",
+  addon: "Add-on",
+  ai_credits: "AI Credits",
+  template: "Website Template",
+}
+
+const BILLING_STATUS_LABEL: Record<string, string> = {
+  paid: "Lunas",
+  pending: "Menunggu pembayaran",
+  cancelled: "Dibatalkan",
+  failed: "Gagal",
+}
+
+const BILLING_STATUS_STYLE: Record<string, string> = {
+  paid: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+  pending: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400",
+  cancelled: "bg-muted border-border text-muted-foreground",
+  failed: "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400",
 }
 
 /** Full, static Tailwind class strings per count (Tailwind's JIT scanner
@@ -141,6 +166,21 @@ export default function TenantSubscriptionsPage() {
     combinedTenants.find(t => t.slug === tenantSlug || t.id === tenantSlug), 
     [combinedTenants, tenantSlug]
   )
+
+  const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null)
+
+  const handleCancelTransaction = async () => {
+    if (!cancelTarget?.orderId) return
+    const res = await fetch(`/api/tenant/${tenantSlug}/transactions/${encodeURIComponent(cancelTarget.orderId)}/cancel`, { method: "POST" })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      toast({ variant: "destructive", title: "Gagal membatalkan", description: data?.error || "Coba lagi sebentar." })
+      return
+    }
+    toast({ title: "Pembayaran dibatalkan", description: "Order ini tidak akan diproses lagi." })
+    setCancelTarget(null)
+    await fetchBillingData()
+  }
 
   const fetchBillingData = async () => {
     if (!tenantSlug) return
@@ -684,6 +724,9 @@ export default function TenantSubscriptionsPage() {
                   </div>
                   <Badge variant="secondary" className="font-bold text-[10px] rounded-full">Faktur Terakhir</Badge>
                 </div>
+                <CardDescription className="text-[11px] mt-1">
+                  Lunas berarti sudah dibayar. Menunggu pembayaran berarti belum dibayar: lanjutkan pembayarannya, atau batalkan kalau tidak jadi.
+                </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 {invoices.length === 0 ? (
@@ -694,61 +737,108 @@ export default function TenantSubscriptionsPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-border/60">
-                    {invoices.map((inv) => (
-                      <div key={inv.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl border border-border/80 bg-muted/40 flex items-center justify-center text-primary">
-                            <FileText className="h-4 w-4" />
+                    {invoices.map((inv) => {
+                      const isPending = inv.isTransaction && inv.status === 'pending'
+                      const isPaid = inv.status === 'paid'
+                      const title = inv.planLabel || inv.plan || 'Pembayaran'
+                      const typeLabel = BILLING_ITEM_LABEL[inv.itemType || 'plan'] || 'Pembayaran'
+                      return (
+                        <div key={inv.id} className="p-4 px-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between hover:bg-muted/30 transition-colors">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="w-9 h-9 shrink-0 rounded-xl border border-border/80 bg-muted/40 flex items-center justify-center text-primary">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-foreground break-words">{title}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                {typeLabel} &middot; {new Date(inv.createdAt).toLocaleDateString('id-ID')}
+                                {inv.orderId && <> &middot; <span className="font-mono" title={inv.orderId}>{inv.orderId}</span></>}
+                              </p>
+                              {isPending && (
+                                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+                                  {inv.payUrl || inv.itemType !== 'template'
+                                    ? 'Belum dibayar. Selesaikan pembayaran di halaman Midtrans, atau batalkan kalau tidak jadi.'
+                                    : 'Belum dibayar dan link pembayarannya tidak tersimpan. Batalkan, lalu beli ulang.'}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs font-bold text-foreground">{inv.isTransaction ? 'Transaksi' : 'Faktur'} #{inv.id.substring(0, 8).toUpperCase()}</p>
-                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                              {new Date(inv.createdAt).toLocaleDateString('id-ID')} &middot; IDR {inv.amount.toLocaleString('id-ID')}
-                            </p>
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+                            <span className="text-xs font-bold tabular-nums text-foreground mr-1">IDR {inv.amount.toLocaleString('id-ID')}</span>
+                            <Badge className={cn(
+                              "text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-none",
+                              BILLING_STATUS_STYLE[inv.status] || 'bg-muted border-border text-muted-foreground'
+                            )}>
+                              {BILLING_STATUS_LABEL[inv.status] || inv.status}
+                            </Badge>
+                            {isPending && inv.payUrl && (
+                              <Button
+                                size="sm"
+                                className="rounded-xl h-8 px-3 text-xs font-bold shadow-xs"
+                                onClick={() => window.open(inv.payUrl as string, '_blank', 'noopener,noreferrer')}
+                              >
+                                Lanjutkan Pembayaran
+                              </Button>
+                            )}
+                            {isPending && !inv.payUrl && inv.itemType !== 'template' && (
+                              <Button
+                                size="sm"
+                                className="rounded-xl h-8 px-3 text-xs font-bold shadow-xs"
+                                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${inv.plan}&interval=year`)}
+                              >
+                                Lanjutkan Pembayaran
+                              </Button>
+                            )}
+                            {isPending && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-xl h-8 px-3 text-xs font-bold"
+                                onClick={() => setCancelTarget(inv)}
+                              >
+                                Batalkan
+                              </Button>
+                            )}
+                            {isPaid && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground"
+                                title="Unduh PDF Faktur"
+                                onClick={() => generateInvoicePDF({
+                                  orderId: inv.midtransInvoiceId || inv.id,
+                                  amount: inv.amount,
+                                  status: inv.status,
+                                  date: new Date(inv.createdAt).toLocaleDateString('id-ID'),
+                                  customerName: currentTenant?.name || "Workspace",
+                                  planName: inv.planLabel || inv.plan || "SaCMS Cloud Pro",
+                                  description: currentTenant?.name ? `Workspace ${currentTenant.name}` : undefined
+                                })}
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Badge className={cn(
-                            "text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-none",
-                            inv.status === 'paid' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
-                          )}>
-                            {inv.status === 'paid' ? 'Lunas' : inv.status}
-                          </Badge>
-                          {inv.isTransaction && inv.status === 'pending' ? (
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-xs font-bold shadow-xs"
-                              onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${inv.plan}&interval=year`)}
-                            >
-                              Bayar Sekarang
-                            </Button>
-                          ) : (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground"
-                              title="Unduh PDF Faktur"
-                              onClick={() => generateInvoicePDF({
-                                orderId: inv.midtransInvoiceId || inv.id,
-                                amount: inv.amount,
-                                status: inv.status,
-                                date: new Date(inv.createdAt).toLocaleDateString('id-ID'),
-                                customerName: currentTenant?.name || "Workspace",
-                                planName: inv.planLabel || inv.plan || "SaCMS Cloud Pro",
-                                description: currentTenant?.name ? `Workspace ${currentTenant.name}` : undefined
-                              })}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </CardContent>
             </Card>
+
+            <ConfirmDialog
+              open={cancelTarget !== null}
+              onOpenChange={(open) => { if (!open) setCancelTarget(null) }}
+              title="Batalkan pembayaran ini?"
+              description={cancelTarget
+                ? `Order ${cancelTarget.orderId ?? ''} untuk "${cancelTarget.planLabel || cancelTarget.plan || 'pembayaran ini'}" akan dibatalkan. Kalau Anda sudah membayarnya, pembayaran tetap diproses dan tidak bisa dibatalkan.`
+                : undefined}
+              confirmLabel="Ya, Batalkan"
+              cancelLabel="Tidak"
+              variant="destructive"
+              onConfirm={handleCancelTransaction}
+            />
 
             </>
           )}

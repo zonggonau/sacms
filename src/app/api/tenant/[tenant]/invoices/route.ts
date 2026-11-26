@@ -3,20 +3,35 @@ import { db } from "@/lib/database"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 import { resolvePurchaseLabel } from "@/lib/billing/purchase-label"
 
+export type BillingItemType = "plan" | "addon" | "ai_credits" | "template"
+
+// What a transaction is for, so the history can say it plainly.
+function itemTypeOf(orderId: string, raw: any): BillingItemType {
+  if (raw?.type === "WEBSITE_TEMPLATE_PURCHASE" || orderId.startsWith("TPL-")) return "template"
+  if (raw?.type === "ai_credits" || orderId.startsWith("AIC-")) return "ai_credits"
+  if (raw?.isAddon) return "addon"
+  return "plan"
+}
+
 export const GET = withStaffAuth(async (_request, _context, { access }) => {
   const subscriptions = await db.subscription.findMany({ where: { tenantId: access.tenantId } })
-  if (subscriptions.length === 0) return NextResponse.json({ invoices: [] })
-
   const subscriptionIds = subscriptions.map((s) => s.id)
   const currentPlanFor = (id?: string | null) => subscriptions.find((s) => s.id === id)?.plan || "unknown"
 
-  const [invoices, pendingTransactions] = await Promise.all([
-    db.invoice.findMany({
-      where: { subscriptionId: { in: subscriptionIds } },
-      orderBy: { createdAt: "desc" },
-    }),
+  // Transactions are matched by tenant too: a template purchase has no subscription
+  // link, so a subscription-only filter would hide its pending and cancelled orders.
+  const [invoices, transactions] = await Promise.all([
+    subscriptionIds.length > 0
+      ? db.invoice.findMany({ where: { subscriptionId: { in: subscriptionIds } }, orderBy: { createdAt: "desc" } })
+      : Promise.resolve([]),
     db.paymentTransaction.findMany({
-      where: { subscriptionId: { in: subscriptionIds }, status: "pending" },
+      where: {
+        status: { in: ["pending", "cancelled", "failed"] },
+        OR: [
+          { subscriptionId: { in: subscriptionIds } },
+          { rawResponse: { path: ["tenantId"], equals: access.tenantId } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
     }),
   ])
@@ -41,16 +56,19 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
   // for any pending addon (resumed as if buying the base plan) and for a
   // pending plan upgrade (resumed at the OLD plan instead of the new one).
   // `planLabel`: human-readable name for display.
+  // `payUrl`: the Midtrans payment page, when the order stored one (template purchases).
   const combinedHistory = await Promise.all([
     ...invoices.map(async (inv) => {
       const orderId = inv.midtransInvoiceId || ""
+      const raw = orderId ? rawResponseByOrderId.get(orderId) : null
       const { purchasedId, purchasedLabel } = await resolvePurchaseLabel({
         orderId,
-        rawResponse: orderId ? rawResponseByOrderId.get(orderId) : null,
+        rawResponse: raw,
         fallbackPlanSlug: currentPlanFor(inv.subscriptionId),
       })
       return {
         id: inv.id,
+        orderId: orderId || null,
         amount: inv.amount,
         currency: inv.currency,
         status: inv.status,
@@ -58,11 +76,14 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
         paidAt: inv.paidAt,
         createdAt: inv.createdAt,
         isTransaction: false,
+        itemType: itemTypeOf(orderId, raw),
+        payUrl: null,
         plan: purchasedId,
         planLabel: purchasedLabel,
       }
     }),
-    ...pendingTransactions.map(async (t) => {
+    ...transactions.map(async (t) => {
+      const raw = t.rawResponse as any
       const { purchasedId, purchasedLabel } = await resolvePurchaseLabel({
         orderId: t.orderId,
         rawResponse: t.rawResponse,
@@ -70,6 +91,7 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
       })
       return {
         id: t.id,
+        orderId: t.orderId,
         amount: t.amount,
         currency: "IDR",
         status: t.status,
@@ -77,6 +99,8 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
         paidAt: null,
         createdAt: t.createdAt,
         isTransaction: true,
+        itemType: itemTypeOf(t.orderId, raw),
+        payUrl: t.status === "pending" && typeof raw?.redirectUrl === "string" ? raw.redirectUrl : null,
         plan: purchasedId,
         planLabel: purchasedLabel,
       }
