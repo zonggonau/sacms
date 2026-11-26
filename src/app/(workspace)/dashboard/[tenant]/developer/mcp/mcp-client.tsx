@@ -407,10 +407,11 @@ export function MCPDashboardClient({
 
   // Protocol MCP Base URL
   const [mcpUrl, setMcpUrl] = useState("")
+  // The URL names this workspace, so a connected client can only reach it.
   useEffect(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
-    setMcpUrl(`${origin}/api/mcp`)
-  }, [])
+    setMcpUrl(`${origin}/api/mcp/w/${tenantSlug}`)
+  }, [tenantSlug])
 
   // A workspace can hold several MCP tokens (one per agent/editor), so each
   // can be revoked without cutting off the others. The server only stores a
@@ -923,7 +924,7 @@ export function MCPDashboardClient({
                   /* Plain URL + Token fields for web-UI-based connectors */
                   <div className="space-y-3">
                     <p className="text-[11px] text-muted-foreground">
-                      Cara termudah: masukkan <strong className="text-foreground">Server URL</strong> saja. Aplikasi akan membuka halaman persetujuan SaCMS, dan Anda memilih workspace yang boleh diakses. Tidak perlu menyalin token. Jika aplikasi meminta token secara langsung, gunakan URL + Token di bawah.
+                      Cara termudah: masukkan <strong className="text-foreground">Server URL</strong> saja. Server URL ini khusus untuk workspace ini. Aplikasi akan membuka halaman persetujuan SaCMS yang hanya menawarkan workspace ini, jadi tidak ada risiko salah pilih workspace. Tidak perlu menyalin token. Jika aplikasi meminta token secara langsung, gunakan URL + Token di bawah.
                     </p>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-bold text-foreground">Server URL</Label>

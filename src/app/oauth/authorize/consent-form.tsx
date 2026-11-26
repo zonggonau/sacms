@@ -7,6 +7,8 @@ interface ConsentFormProps {
   clientName: string
   redirectHost: string
   workspaces: { slug: string; name: string }[]
+  /** True when the client connected through one workspace's own URL: no choice is offered. */
+  locked?: boolean
   request: {
     client_id: string
     redirect_uri: string
@@ -17,7 +19,7 @@ interface ConsentFormProps {
   }
 }
 
-export function ConsentForm({ clientName, redirectHost, workspaces, request }: ConsentFormProps) {
+export function ConsentForm({ clientName, redirectHost, workspaces, locked = false, request }: ConsentFormProps) {
   const [tenantSlug, setTenantSlug] = useState(workspaces[0]?.slug ?? "")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,26 +60,39 @@ export function ConsentForm({ clientName, redirectHost, workspaces, request }: C
   return (
     <div className="max-w-md w-full rounded-2xl border border-border/80 bg-card p-6 shadow-xs space-y-5">
       <div className="space-y-1">
-        <h1 className="text-base font-bold text-foreground">Izinkan {clientName} mengakses workspace SaCMS?</h1>
+        <h1 className="text-base font-bold text-foreground">
+          {locked && workspaces[0] ? `Izinkan ${clientName} mengakses workspace ${workspaces[0].name}?` : `Izinkan ${clientName} mengakses workspace SaCMS?`}
+        </h1>
         <p className="text-xs text-muted-foreground">
           Aplikasi ini akan dapat membaca dan mengubah schema, konten, dan website workspace yang Anda pilih. Akses bisa dicabut kapan saja di <strong>Developer → MCP</strong>.
         </p>
         <p className="text-[11px] text-muted-foreground">Setelah disetujui, browser akan dikirim ke <span className="font-mono">{redirectHost}</span>.</p>
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="workspace" className="text-xs font-bold text-foreground">Workspace</label>
-        <select
-          id="workspace"
-          value={tenantSlug}
-          onChange={(e) => setTenantSlug(e.target.value)}
-          className="w-full h-9 rounded-xl border border-border/80 bg-background px-3 text-xs"
-        >
-          {workspaces.map((w) => (
-            <option key={w.slug} value={w.slug}>{w.name} ({w.slug})</option>
-          ))}
-        </select>
-      </div>
+      {locked && workspaces[0] ? (
+        <div className="space-y-1.5">
+          <p className="text-xs font-bold text-foreground">Workspace</p>
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-3 py-2">
+            <p className="text-xs font-bold text-foreground">{workspaces[0].name}</p>
+            <p className="text-[11px] font-mono text-muted-foreground">{workspaces[0].slug}</p>
+          </div>
+          <p className="text-[11px] text-muted-foreground">Koneksi ini hanya untuk workspace di atas. Tidak bisa dialihkan ke workspace lain.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <label htmlFor="workspace" className="text-xs font-bold text-foreground">Workspace</label>
+          <select
+            id="workspace"
+            value={tenantSlug}
+            onChange={(e) => setTenantSlug(e.target.value)}
+            className="w-full h-9 rounded-xl border border-border/80 bg-background px-3 text-xs"
+          >
+            {workspaces.map((w) => (
+              <option key={w.slug} value={w.slug}>{w.name} ({w.slug})</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 

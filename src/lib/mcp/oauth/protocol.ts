@@ -23,18 +23,35 @@ export function publicOrigin(requestOrigin?: string): string {
   return origin.replace(/\/+$/, "")
 }
 
-/** The protected resource: the per-workspace MCP endpoint itself. */
-export function mcpResource(origin: string): string {
-  return `${origin}/api/mcp`
+export const WORKSPACE_SLUG_PATTERN = /^[A-Za-z0-9_-]{1,80}$/
+
+/**
+ * The protected resource. Without a slug it is the shared endpoint, where the
+ * owner picks a workspace on the consent page. With a slug it is that workspace's
+ * own endpoint (`/api/mcp/w/<slug>`), so the consent page has nothing to choose.
+ */
+export function mcpResource(origin: string, workspaceSlug?: string): string {
+  return workspaceSlug ? `${origin}/api/mcp/w/${workspaceSlug}` : `${origin}/api/mcp`
 }
 
-export function protectedResourceMetadata(origin: string) {
+/** Which MCP endpoint a resource URL names: shared (`workspaceSlug: null`), one workspace, or neither (`null`). */
+export function parseMcpResource(origin: string, resource: string): { workspaceSlug: string | null } | null {
+  if (resource === mcpResource(origin)) return { workspaceSlug: null }
+  const prefix = `${origin}/api/mcp/w/`
+  if (resource.startsWith(prefix)) {
+    const slug = resource.slice(prefix.length)
+    if (WORKSPACE_SLUG_PATTERN.test(slug)) return { workspaceSlug: slug }
+  }
+  return null
+}
+
+export function protectedResourceMetadata(origin: string, workspaceSlug?: string) {
   return {
-    resource: mcpResource(origin),
+    resource: mcpResource(origin, workspaceSlug),
     authorization_servers: [origin],
     bearer_methods_supported: ["header"],
     scopes_supported: [MCP_OAUTH_SCOPE],
-    resource_name: "SaCMS Workspace MCP",
+    resource_name: workspaceSlug ? `SaCMS MCP: ${workspaceSlug}` : "SaCMS Workspace MCP",
   }
 }
 

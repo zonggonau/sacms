@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **OAuth 2.1 for the workspace MCP server** (`/api/mcp`): ChatGPT, Grok, and Claude.ai can connect by Server URL alone. The client opens a SaCMS consent page, and the owner or admin picks the workspace. Discovery (RFC 9728, RFC 8414), dynamic client registration (RFC 7591), PKCE S256, single-use codes, and rotating refresh tokens. Access tokens are one-hour `mcp` tokens. Details in `docs/mcp/oauth.md`. Not yet verified against the live ChatGPT, Grok, and Claude.ai clients.
+- **Per-workspace MCP URL** `/api/mcp/w/<slug>`: the dashboard shows this as the Server URL. OAuth consent is locked to that workspace (no picker), and a token from another workspace gets `403`. The shared `/api/mcp` still works for existing connections.
 - **Rotate a workspace MCP token** from `/developer/mcp` ("Putar"). The old token and any OAuth connection that used it are revoked.
 
 ### Changed

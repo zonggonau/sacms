@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { findClient } from "@/lib/mcp/oauth/service"
-import { isValidCodeChallenge, mcpResource, publicOrigin } from "@/lib/mcp/oauth/protocol"
+import { isValidCodeChallenge, mcpResource, parseMcpResource, publicOrigin } from "@/lib/mcp/oauth/protocol"
 import { ConsentForm } from "./consent-form"
 
 export const dynamic = "force-dynamic"
@@ -49,10 +49,12 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
   }
 
   const origin = publicOrigin()
+  const named = resource ? parseMcpResource(origin, resource) : { workspaceSlug: null }
+  const lockedSlug = named?.workspaceSlug ?? null
   const problem =
     responseType !== "code" ? "Permintaan harus memakai response_type=code."
     : codeChallengeMethod !== "S256" || !isValidCodeChallenge(codeChallenge) ? "Permintaan harus memakai PKCE dengan S256."
-    : resource && resource !== mcpResource(origin) ? "Permintaan menunjuk server lain selain MCP SaCMS ini."
+    : resource && !named ? "Permintaan menunjuk server lain selain MCP SaCMS ini."
     : null
   if (problem) {
     const url = new URL(redirectUri)
@@ -75,10 +77,17 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
     select: { tenant: { select: { slug: true, name: true, status: true } } },
     orderBy: { joinedAt: "asc" },
   })
-  const workspaces = memberships
+  const allWorkspaces = memberships
     .map((m) => m.tenant)
     .filter((t) => t.status !== "deleting")
     .map((t) => ({ slug: t.slug, name: t.name }))
+
+  // Connecting through a workspace's own URL: show only that workspace. If the
+  // user is not its owner or admin, say so here instead of offering a choice.
+  const workspaces = lockedSlug ? allWorkspaces.filter((w) => w.slug === lockedSlug) : allWorkspaces
+  if (lockedSlug && workspaces.length === 0) {
+    return <ErrorCard title="Anda tidak bisa menyambungkan workspace ini" message={`Workspace "${lockedSlug}" tidak ditemukan untuk akun Anda, atau Anda bukan owner atau admin-nya. Minta owner workspace menyambungkan aplikasinya.`} />
+  }
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -86,13 +95,14 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
         clientName={client.name}
         redirectHost={new URL(redirectUri).host}
         workspaces={workspaces}
+        locked={lockedSlug !== null}
         request={{
           client_id: clientId,
           redirect_uri: redirectUri,
           state,
           code_challenge: codeChallenge,
           code_challenge_method: "S256",
-          resource: mcpResource(origin),
+          resource: mcpResource(origin, lockedSlug ?? undefined),
         }}
       />
     </main>

@@ -12,6 +12,7 @@ import { registerPlatformTools } from "@/lib/mcp/workspace/platform-tools"
 import { registerBuildTools } from "@/lib/mcp/workspace/build-tools"
 import { registerDeployTools } from "@/lib/mcp/workspace/deploy-tools"
 import { publicOrigin } from "@/lib/mcp/oauth/protocol"
+import { workspaceScopeError } from "@/lib/mcp/workspace-scope"
 
 const handler = createMcpHandler(
   async (server) => {
@@ -105,7 +106,7 @@ function patchRequestUrl(req: Request): Request {
  *     valid token can't hammer expensive tools (deploy_to_sacms) or the DB
  *     without bound.
  */
-async function handleMcpRequest(req: Request): Promise<Response> {
+export async function handleMcpRequest(req: Request, opts: { workspaceSlug?: string } = {}): Promise<Response> {
   try {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
@@ -126,10 +127,14 @@ async function handleMcpRequest(req: Request): Promise<Response> {
         {
           status: 401,
           headers: {
-            "WWW-Authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/api/mcp"`,
+            "WWW-Authenticate": `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource${opts.workspaceSlug ? `/api/mcp/w/${opts.workspaceSlug}` : "/api/mcp"}"`,
           },
         },
       )
+    }
+    const scopeError = workspaceScopeError(auth.tenantSlug, opts.workspaceSlug)
+    if (scopeError) {
+      return NextResponse.json({ error: scopeError, code: "WRONG_WORKSPACE" }, { status: 403 })
     }
     if (auth.paymentError) {
       return NextResponse.json({

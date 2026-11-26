@@ -2,7 +2,11 @@
 
 Written for: pemelihara server MCP dan pengguna yang menyambungkan ChatGPT, Grok, atau Claude.ai ke workspace SaCMS.
 
-Dengan OAuth, klien tidak perlu token di URL. Pengguna memasukkan Server URL, lalu menyetujui akses di halaman SaCMS dan memilih workspace. Token dibuat dan diperbarui otomatis oleh klien.
+Dengan OAuth, klien tidak perlu token di URL. Pengguna memasukkan Server URL dari dashboard workspace, lalu menyetujui akses di halaman SaCMS. Token dibuat dan diperbarui otomatis oleh klien.
+
+**Server URL per workspace** (yang ditampilkan di `/developer/mcp`): `https://<origin>/api/mcp/w/<slug>`. URL ini mengunci koneksi ke satu workspace. Halaman persetujuan hanya menawarkan workspace itu, dan token dari workspace lain ditolak dengan `403`. Ini mencegah salah pilih workspace, misalnya ketika satu akun menjadi owner atau admin di beberapa workspace.
+
+`https://<origin>/api/mcp` (tanpa slug) masih berfungsi untuk koneksi lama. Di sini halaman persetujuan menampilkan daftar workspace yang boleh dipilih.
 
 ## Alur
 
