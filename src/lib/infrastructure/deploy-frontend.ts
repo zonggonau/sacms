@@ -3,6 +3,8 @@ import "server-only"
 import { db } from "@/lib/database"
 import { deployToVercel, redeployLatest } from "@/lib/vercel-client"
 import { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } from "./frontend-env"
+import { frontendWarningsFor } from "./frontend-content-check-server"
+import type { FrontendWarning } from "./frontend-content-check"
 
 export interface DeployFile {
   name: string
@@ -18,6 +20,8 @@ export interface DeployFrontendResult {
   vercelProjectId?: string
   apiKeyName: string
   simulated: boolean
+  /** Advisory source checks (never block the deploy). */
+  sourceWarnings?: FrontendWarning[]
 }
 
 /**
@@ -60,9 +64,11 @@ export async function deployTenantFrontend(
   // and AI Site's Publish action, where a human clicking the button
   // expects it to go live immediately, unlike the MCP deploy tools (which
   // default to a staging candidate an agent must explicitly promote).
+  const sourceWarnings = await frontendWarningsFor(tenantId, tenantSlug, files)
   const deployResult = await deployToVercel(projectName, files, envVars, subdomainLabel, "production")
 
-  return persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
+  const saved = await persistDeployResult(tenantId, tenantSlug, deployResult, envVars)
+  return { ...saved, sourceWarnings }
 }
 
 /**

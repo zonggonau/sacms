@@ -1,4 +1,5 @@
 // registerDeployTools — Workspace MCP tools (split out of route.ts; see context.ts).
+import { frontendWarningsFor } from "@/lib/infrastructure/frontend-content-check-server"
 import { z } from "zod"
 import { activeSchema, compareSchema } from "@/lib/infrastructure/site-schema-contract"
 import { previewRoutePaths } from "@/lib/infrastructure/preview-route-paths"
@@ -196,6 +197,7 @@ export function registerDeployTools(server: McpServer) {
           // promoteDeployment's doc comment for why. Nothing a visitor
           // sees changes until promote_deployment is called.
           const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
+          const sourceWarnings = await frontendWarningsFor(auth.tenantId, auth.tenantSlug, normalizedFiles)
           const result = await deployToVercel(lockedProjectName, normalizedFiles, mergedEnv, subdomainLabel, "staging")
 
           if (result.projectId && !result.simulated) {
@@ -264,6 +266,8 @@ export function registerDeployTools(server: McpServer) {
             structuredContent: {
               ok: true,
               code: "AWAITING_PROMOTION",
+              // Advisory only: content-usage checks on the source (see frontend-content-check.ts).
+              warnings: sourceWarnings,
               deploymentId: result.id,
               sourceRevision,
               // Deliberately NOT the live production domain — see this
@@ -470,6 +474,7 @@ export function registerDeployTools(server: McpServer) {
           // Staging candidate, same reasoning as deploy_to_sacms — nothing
           // a visitor sees changes until promote_deployment is called.
           const subdomainLabel = await resolveSubdomainLabel(auth.tenantId, auth.tenantSlug)
+          const sourceWarnings = await frontendWarningsFor(auth.tenantId, auth.tenantSlug, mergedFiles)
           const result = await deployToVercel(lockedProjectName, mergedFiles, mergedEnv, subdomainLabel, "staging")
 
           if (result.projectId && !result.simulated) {
@@ -516,6 +521,7 @@ export function registerDeployTools(server: McpServer) {
           const structured = {
             ok: true,
             code: concurrentChangeDetected ? "CONCURRENT_CHANGE_DURING_DEPLOY" : "AWAITING_PROMOTION",
+            warnings: sourceWarnings,
             deploymentId: result.id,
             sourceRevision,
             // Deliberately the candidate's own URL, not the live domain —
