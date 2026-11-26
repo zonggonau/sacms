@@ -46,6 +46,13 @@ export const DELETE = withStaffAuth(
     if (!role) return apiError("not_found", { message: "Role not found" })
     if (role.isSystem) return apiError("forbidden", { message: "System roles cannot be deleted" })
 
+    // Member.role is a plain slug with no foreign key, so deleting a role in use
+    // would silently move those members to the Authenticated defaults.
+    const inUse = await tenantDb.member.count({ where: { tenantId: access.tenantId, role: role.slug } })
+    if (inUse > 0) {
+      return apiError("conflict", { message: `Role ini masih dipakai ${inUse} anggota. Pindahkan anggota itu ke role lain dulu, lalu hapus.` })
+    }
+
     await tenantDb.memberRole.delete({ where: { id: roleId } })
     await invalidatePermissionCache(access.tenantId, role.slug)
     return NextResponse.json({ ok: true })

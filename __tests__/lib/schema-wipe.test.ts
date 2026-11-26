@@ -13,7 +13,9 @@ const singleTypeDeleteMany = vi.fn()
 const componentDeleteMany = vi.fn()
 
 const fakeTenantDb = {
-  contentType: { deleteMany: contentTypeDeleteMany },
+  contentType: { deleteMany: contentTypeDeleteMany, findMany: vi.fn().mockResolvedValue([{ slug: "posts" }]) },
+  memberRole: { findMany: vi.fn().mockResolvedValue([]) },
+  memberRolePermission: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   singleType: { deleteMany: singleTypeDeleteMany },
   component: { deleteMany: componentDeleteMany },
 } as any

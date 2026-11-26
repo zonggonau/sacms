@@ -10,6 +10,7 @@ import { createContentTypeSchema, updateContentTypeSchema } from "@/lib/validati
 import { revalidatePath } from "next/cache"
 import { parseSchemaFieldOptions } from "./content-pipeline"
 import { assertSchemaEditable } from "@/lib/schema-lock"
+import { removeMemberGrantsForContentTypes } from "@/lib/member-permission-cleanup"
 
 export async function getContentTypesAction(tenantSlug: string) {
   try {
@@ -408,6 +409,7 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
     }
 
     await tenantDb.contentType.delete({ where: { id } })
+    await removeMemberGrantsForContentTypes(tenantDb, access.tenantId, [existingContentType.slug])
 
     revalidatePath(`/dashboard/${tenantSlug}/developer/content-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)

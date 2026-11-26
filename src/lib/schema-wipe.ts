@@ -1,5 +1,6 @@
 import "server-only"
 import { getTenantDb } from "@/lib/database"
+import { removeMemberGrantsForContentTypes } from "@/lib/member-permission-cleanup"
 
 /**
  * Deletes every tenant-owned ContentType/SingleType/Component row —
@@ -12,6 +13,10 @@ export async function wipeTenantSchema(
   tenantDb: Awaited<ReturnType<typeof getTenantDb>>,
   tenantId: string,
 ) {
+  // Member grants for these Content Types go too, so a future type with the same slug starts clean.
+  const types = await tenantDb.contentType.findMany({ where: { tenantId }, select: { slug: true } })
+  await removeMemberGrantsForContentTypes(tenantDb, tenantId, types.map((t) => t.slug))
+
   const [contentTypes, singleTypes, components] = await Promise.all([
     tenantDb.contentType.deleteMany({ where: { tenantId } }),
     tenantDb.singleType.deleteMany({ where: { tenantId } }),

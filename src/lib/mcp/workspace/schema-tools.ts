@@ -6,6 +6,7 @@ import { FIELD_TYPES, FIELD_CATEGORIES, VALID_FIELD_TYPES } from "@/lib/field-ty
 import { FIELD_TYPE_GUIDE } from "@/lib/field-type-guide"
 import { getFullSchemaForTenant, listContentTypesForTenant, getContentTypeForTenant } from "@/lib/cms-introspection"
 import { buildGroupTree } from "@/lib/content-type-groups"
+import { removeMemberGrantsForContentTypes } from "@/lib/member-permission-cleanup"
 import { listContentTypeGroups, createContentTypeGroup, renameContentTypeGroup, reparentContentTypeGroup, reorderContentTypeGroups, deleteContentTypeGroup, assignContentTypeToGroup } from "@/lib/content-type-group-service"
 import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied, toSafeSlug, checkRelationDependents } from "./context"
 
@@ -392,6 +393,7 @@ export function registerSchemaTools(server: McpServer) {
         await tenantDb.contentType.delete({
           where: { id: ct.id }
         })
+        await removeMemberGrantsForContentTypes(tenantDb, auth.tenantId, [ct.slug])
 
         return {
           content: [{

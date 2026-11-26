@@ -12,7 +12,9 @@ vi.mock("@/lib/tenant-access", () => ({ getTenantAccess: vi.fn() }))
 
 const { fakeTenantDb, findSetting } = vi.hoisted(() => ({
   fakeTenantDb: {
-    contentType: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    contentType: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }), findMany: vi.fn().mockResolvedValue([]) },
+    memberRole: { findMany: vi.fn().mockResolvedValue([]) },
+    memberRolePermission: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     singleType: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     component: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
   },
