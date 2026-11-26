@@ -136,8 +136,8 @@ describe("listDeploymentSources", () => {
 
     const rows = await listDeploymentSources("t1", 5)
     expect(rows).toEqual([
-      { sourceRevision: "src_2", deploymentId: "dpl_2", fileCount: 2, createdAt },
-      { sourceRevision: "src_1", deploymentId: "dpl_1", fileCount: 1, createdAt },
+      { sourceRevision: "src_2", deploymentId: "dpl_2", kind: "deployed", fileCount: 2, createdAt },
+      { sourceRevision: "src_1", deploymentId: "dpl_1", kind: "deployed", fileCount: 1, createdAt },
     ])
     expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId: "t1" }, take: 5 }))
   })

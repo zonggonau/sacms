@@ -102,7 +102,7 @@ export async function createMcpTokenAction(
         description: description?.trim() || "MCP Server Integration Token",
         token: hashedToken,
         type: "mcp",
-        permissions: ["read", "write", "delete", "schema", "webhooks", "mcp"],
+        permissions: ["read", "write", "delete", "schema", "webhooks", "env", "mcp"],
         createdBy: session.user.id,
         expiresAt,
       },

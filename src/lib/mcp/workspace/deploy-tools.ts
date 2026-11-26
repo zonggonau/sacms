@@ -641,7 +641,7 @@ export function registerDeployTools(server: McpServer) {
       "list_website_versions",
       {
         title: "List Recent Deployed Source Versions",
-        description: "List this workspace's recent deploy_to_sacms/deploy_website_patch/rollback_website snapshots (most recent first) — each sourceRevision can be passed to get_deployment_source (as deploymentId won't work for this) or rollback_website. Only a rolling window of recent revisions is kept, not a permanent history.",
+        description: "List this workspace's saved source snapshots, most recent first. Each row's sourceRevision is one id with three names across tools: pass it as baseSourceRevision to deploy_website_patch, as sourceRevision to rollback_website, and as sourceVersion to the tool that reads a saved snapshot. It is not a Vercel deployment id (do not pass it as deploymentId). kind \"deployed\" rows were published by deploy_to_sacms, deploy_website_patch, or rollback_website. kind \"draft\" rows come from apply_website_template, have no Vercel deployment yet, and their deploymentId starts with draft:. Only a rolling window of recent revisions is kept, not a permanent history.",
         inputSchema: {
           limit: z.number().int().min(1).max(20).optional().describe("Max versions to return, default 10."),
         },
@@ -649,6 +649,7 @@ export function registerDeployTools(server: McpServer) {
           versions: z.array(z.object({
             sourceRevision: z.string(),
             deploymentId: z.string(),
+            kind: z.enum(["deployed", "draft"]),
             fileCount: z.number(),
             createdAt: z.string(),
           })),
@@ -821,7 +822,7 @@ export function registerDeployTools(server: McpServer) {
       "get_deployment_status",
       {
         title: "Get Deployment Status",
-        description: "Check the build progress and ready state of a SaCMS Cloud Hosting deployment. Returns two DISTINCT urls — productionUrl (the project's real public domain: custom domain or *.vercel.app alias; this is the one safe to hand a visitor) and deploymentUrl (this specific build's own immutable hostname, which Vercel's deployment protection gates by default and a real visitor usually can't open). Omit deploymentId to automatically check the latest production deployment for this workspace — use that whenever you don't have a specific id handy (e.g. a previous deploy_to_sacms response never arrived), instead of re-deploying just to get a fresh id.",
+        description: "Check the build progress and ready state of a SaCMS Cloud Hosting deployment. READY only means the build finished; it does not prove the release is live. Confirm a release with verify_deployment_url, which fetches the production URL and checks the expected content. Returns two DISTINCT urls — productionUrl (the project's real public domain: custom domain or *.vercel.app alias; this is the one safe to hand a visitor) and deploymentUrl (this specific build's own immutable hostname, which Vercel's deployment protection gates by default and a real visitor usually can't open). Omit deploymentId to automatically check the latest production deployment for this workspace — use that whenever you don't have a specific id handy (e.g. a previous deploy_to_sacms response never arrived), instead of re-deploying just to get a fresh id.",
         inputSchema: {
           deploymentId: z.string().optional().describe("Specific Deployment ID (e.g. 'dpl_xxx'). Omit to auto-resolve this workspace's latest production deployment."),
         },
@@ -929,7 +930,7 @@ export function registerDeployTools(server: McpServer) {
       "get_deployment_source",
       {
         title: "Get Current Deployed Source Files",
-        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API — but a persisted snapshot is re-validated every time (wrapper-directory paths, corrupted binary assets) before being trusted; a snapshot that fails falls through to a fresh live re-import automatically (the old one is kept for history, not deleted) and the result comes back with `code: \"SOURCE_REPAIRED\"`. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete AND validated read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned; if it came back complete but a binary asset failed its own format's signature check, no import happens and `code: \"SOURCE_INVALID\"` is returned with the bad paths in `invalidAssets` — in either case raise maxFiles, ask about the skipped paths, or regenerate the broken asset before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import/repair, since it's a deliberately partial read; if the persisted snapshot needed repair, this returns `code: \"SOURCE_NEEDS_REIMPORT\"` instead of silently serving known-bad paths), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Omit deploymentId to read the latest production deployment.",
+        description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API — but a persisted snapshot is re-validated every time (wrapper-directory paths, corrupted binary assets) before being trusted; a snapshot that fails falls through to a fresh live re-import automatically (the old one is kept for history, not deleted) and the result comes back with `code: \"SOURCE_REPAIRED\"`. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete AND validated read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned; if it came back complete but a binary asset failed its own format's signature check, no import happens and `code: \"SOURCE_INVALID\"` is returned with the bad paths in `invalidAssets` — in either case raise maxFiles, ask about the skipped paths, or regenerate the broken asset before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import/repair, since it's a deliberately partial read; if the persisted snapshot needed repair, this returns `code: \"SOURCE_NEEDS_REIMPORT\"` instead of silently serving known-bad paths), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Source: \"persisted\" means the saved snapshot was served as stored. \"vercel-live\" means it was read from Vercel; a full-project read with no usable snapshot then imports it as a new sourceRevision (imported: true), and a snapshot that failed validation is repaired the same way (code SOURCE_REPAIRED). A paths-scoped read never imports or repairs. Omit deploymentId to read the latest production deployment.",
         inputSchema: {
           deploymentId: z.string().optional().describe("Specific deployment to read from. Omit to use the latest production deployment for this workspace."),
           maxFiles: z.number().int().min(1).max(200).optional().describe("Safety cap on how many files to return (default 100) when reading the full set. Ignored when paths is given."),
@@ -941,6 +942,8 @@ export function registerDeployTools(server: McpServer) {
           deploymentId: z.string(),
           sourceRevision: z.string().optional(),
           source: z.enum(["persisted", "vercel-live"]),
+          // true when this call created a new snapshot row (sourceRevision) from the live deployment.
+          imported: z.boolean().optional(),
           files: z.array(z.object({ name: z.string(), content: z.string(), encoding: z.enum(["utf-8", "base64"]), size: z.number(), checksum: z.string() })),
           skipped: z.array(z.string()),
           truncated: z.boolean(),
@@ -1040,7 +1043,8 @@ export function registerDeployTools(server: McpServer) {
           }
 
           const missingPaths = paths ? paths.filter((p) => !files.some((f) => f.name === p)) : []
-          const structured = { deploymentId: resolved.id, sourceRevision, source, files, skipped, truncated, invalidAssets, missingPaths, code }
+          const imported = source === "vercel-live" && !!sourceRevision
+          const structured = { deploymentId: resolved.id, sourceRevision, source, imported, files, skipped, truncated, invalidAssets, missingPaths, code }
 
           return {
             content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
@@ -1121,6 +1125,7 @@ export function registerDeployTools(server: McpServer) {
           ok: z.boolean(),
           code: z.string().optional(),
           verifiedDeploymentId: z.string().optional(),
+          servedDeploymentId: z.string().nullable().optional(),
           checks: z.array(z.object({
             deploymentId: z.string().nullable(),
             sourceVersion: z.string().nullable(),
@@ -1151,7 +1156,10 @@ export function registerDeployTools(server: McpServer) {
 
         try {
           const tenant = await db.tenant.findUnique({ where: { id: auth.tenantId }, select: { vercelDeploymentUrl: true, vercelProjectId: true } })
-          if (!tenant?.vercelDeploymentUrl) {
+          // A project without a promoted domain is still a deployment to
+          // verify (get_deployment_status resolves it by project), so only
+          // refuse when there is neither a project nor a live domain.
+          if (!tenant?.vercelDeploymentUrl && !tenant?.vercelProjectId) {
             return {
               content: [{ type: "text" as const, text: "❌ Belum ada deployment untuk workspace ini. Deploy dulu dengan deploy_to_sacms sebelum verifikasi URL." }],
               structuredContent: { ok: false, code: "NOT_FOUND", checks: [], url: "", status: 0, htmlLength: 0, looksLikeErrorPage: false, message: "No deployment yet." },
@@ -1174,10 +1182,22 @@ export function registerDeployTools(server: McpServer) {
           const latest = tenant.vercelProjectId ? await getLatestDeployment(tenant.vercelProjectId) : null
           const servedId = latest?.state === "READY" ? latest.id : null
           productionVersionMismatch = Boolean(targetDeploymentId && servedId !== targetDeploymentId)
+          // Same identity get_deployment_status uses: the project's latest
+          // production deployment. Until promote_deployment has set
+          // vercelDeploymentUrl, the checks run against that deployment's own
+          // production URL instead of reporting "no deployment".
+          const liveBase = tenant.vercelDeploymentUrl || latest?.productionUrl || latest?.deploymentUrl || ""
+          if (!liveBase) {
+            return {
+              content: [{ type: "text" as const, text: "❌ Belum ada URL produksi untuk workspace ini. Promote deployment dulu, lalu verifikasi ulang." }],
+              structuredContent: { ok: false, code: "NOT_FOUND", checks: [], url: "", status: 0, htmlLength: 0, looksLikeErrorPage: false, message: "No live URL yet." },
+              isError: true,
+            }
+          }
           const released = servedId ? await db.setting.findUnique({ where: { key: auth.tenantId + "_productionSource_" + servedId }, select: { value: true } }) : null
           const source = servedId && !released ? await getDeploymentSourceByDeploymentId(auth.tenantId, servedId) : null
           const effectiveChecks = checks && checks.length > 0 ? checks : paths ? paths.map(path => ({ path })) : [{ path, expectedText }]
-          const results = (await runHttpChecks(tenant.vercelDeploymentUrl, effectiveChecks))
+          const results = (await runHttpChecks(liveBase, effectiveChecks))
             .map(check => ({ ...check, deploymentId: servedId, sourceVersion: released?.value ?? source?.id ?? null }))
 
           const allChecksOk = results.every((r) => r.ok)
@@ -1204,6 +1224,9 @@ export function registerDeployTools(server: McpServer) {
             ok: allOk,
             code: productionVersionMismatch ? "PRODUCTION_VERSION_MISMATCH" : undefined,
             verifiedDeploymentId: targetDeploymentId,
+            // The deployment production actually serves right now, whichever
+            // one the caller asked about. READY alone never proves a release.
+            servedDeploymentId: servedId,
             checks: results,
             url: results[0].url,
             status: results[0].status,
@@ -1520,6 +1543,22 @@ export function registerDeployTools(server: McpServer) {
               text: `❌ Env var tidak ditemukan: ${[...missing].join(", ")}. Panggil list_deployment_env untuk cek nama yang tersedia, atau simpan dulu lewat add_deployment_env / tab Environment di dashboard.`,
             }],
             isError: true,
+          }
+        }
+
+        // A secret is about to leave this workspace. safeFetch already allows only
+        // public HTTPS hosts. When the workspace has set an allowlist of hosts for
+        // secrets (Setting "<tenantId>_secretHostAllowlist", comma-separated), the
+        // destination must be on it too.
+        if (secretsUsed.size > 0) {
+          const row = await db.setting.findUnique({ where: { key: auth.tenantId + "_secretHostAllowlist" }, select: { value: true } })
+          const allowed = row?.value.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean) ?? []
+          if (allowed.length > 0 && !allowed.includes(targetUrl.hostname.toLowerCase())) {
+            return {
+              content: [{ type: "text" as const, text: `❌ Secret tidak dikirim ke ${targetUrl.hostname}: host ini tidak ada di daftar host yang diizinkan untuk secret workspace ini.` }],
+              structuredContent: { ok: false, code: "DESTINATION_NOT_ALLOWED", host: targetUrl.hostname },
+              isError: true,
+            }
           }
         }
 

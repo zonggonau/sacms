@@ -158,7 +158,7 @@ export async function resolveSubdomainLabel(tenantId: string, tenantSlug: string
  * `full_access` or `isSuperAdmin` bypasses all scopes, matching the
  * `can*` booleans already computed in `inspect_api_capabilities`.
  */
-export type Scope = "read" | "write" | "delete" | "schema" | "webhooks"
+export type Scope = "read" | "write" | "delete" | "schema" | "webhooks" | "env"
 
 export function hasScope(auth: AuthContext, scope: Scope): boolean {
   if (auth.isSuperAdmin) return true

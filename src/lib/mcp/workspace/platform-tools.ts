@@ -394,8 +394,9 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
       async ({ format = "env" }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
-        // SACMS_API_KEY can write content over REST, so a read-only MCP token must not obtain it.
-        if (!hasScope(auth, "write")) return permissionDenied("write")
+        // SACMS_API_KEY can write content over REST and the env file carries every
+        // custom secret, so this needs its own "env" scope, not just "write".
+        if (!hasScope(auth, "env")) return permissionDenied("env")
 
         const { resolveFrontendEnv, renderDotEnv, resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
         const env = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, resolveApiOrigin())

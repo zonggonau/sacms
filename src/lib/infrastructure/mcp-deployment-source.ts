@@ -132,6 +132,8 @@ export async function getDeploymentSourceByRevision(
 export interface DeploymentSourceSummary {
   sourceRevision: string
   deploymentId: string
+  /** "draft" rows come from apply_website_template and have no Vercel deployment yet (deploymentId starts with "draft:"). */
+  kind: "deployed" | "draft"
   fileCount: number
   createdAt: Date
 }
@@ -146,6 +148,7 @@ export async function listDeploymentSources(tenantId: string, limit = 10): Promi
   return rows.map((r) => ({
     sourceRevision: r.id,
     deploymentId: r.deploymentId,
+    kind: r.deploymentId.startsWith("draft:") ? "draft" : "deployed",
     fileCount: Array.isArray(r.manifest) ? r.manifest.length : 0,
     createdAt: r.createdAt,
   }))

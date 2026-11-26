@@ -509,9 +509,9 @@ describe("sync_dev_env — local .env for a downloaded project", () => {
     expect(block).not.toMatch(/sacms\.cloud\/api/)
   })
 
-  it("requires write scope, since the returned SACMS_API_KEY can write over REST", () => {
+  it("requires its own env scope, since the returned SACMS_API_KEY can write over REST and the file carries every secret", () => {
     const block = toolBlockOf("sync_dev_env")
-    expect(block).toMatch(/if \(!hasScope\(auth, "write"\)\) return permissionDenied\("write"\)/)
-    expect(block.indexOf('hasScope(auth, "write")')).toBeLessThan(block.indexOf("resolveFrontendEnv("))
+    expect(block).toMatch(/if \(!hasScope\(auth, "env"\)\) return permissionDenied\("env"\)/)
+    expect(block.indexOf('hasScope(auth, "env")')).toBeLessThan(block.indexOf("resolveFrontendEnv("))
   })
 })
