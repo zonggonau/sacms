@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
+import { describeReviewField, type KnownSlugs, type ReviewFieldOptions } from "@/lib/schema-field-describe"
 import { SCHEMA_MODEL_OPTIONS } from "@/lib/ai/schema-models"
 import type { ExtractedPlaceholder } from "@/lib/docx-template-parser"
 
@@ -257,6 +258,7 @@ interface SchemaField {
   unique?: boolean
   relationSlug?: string
   componentSlug?: string
+  options?: ReviewFieldOptions | null
 }
 
 interface SchemaModel {
@@ -286,19 +288,27 @@ interface SchemaStepProps {
   onSchemaReady: () => void
 }
 
-function FieldBadge({ field }: { field: SchemaField }) {
+function FieldBadge({ field, known }: { field: SchemaField; known: KnownSlugs }) {
   const meta = FIELD_TYPES.find((f) => f.type === field.type)
   const Icon = meta?.icon || Database
+  const review = describeReviewField(field, known)
   return (
-    <Badge variant="outline" className="text-[10px] font-medium gap-1 bg-muted/40 border-border/70">
+    <Badge
+      variant="outline"
+      className={`text-[10px] font-medium gap-1 border-border/70 ${review.warning ? "bg-destructive/10 border-destructive/40" : "bg-muted/40"}`}
+      title={review.warning ?? undefined}
+    >
       <Icon className="h-3 w-3 text-muted-foreground" />
-      {field.name}
+      <span>{field.name}</span>
       {field.required && <span className="text-primary">*</span>}
+      <span className="text-muted-foreground font-normal">· {review.typeLabel}</span>
+      {review.detail && <span className="text-muted-foreground font-normal">{review.detail}</span>}
+      {review.warning && <span className="text-destructive font-semibold">⚠</span>}
     </Badge>
   )
 }
 
-function SchemaModelCard({ model, typeLabel }: { model: SchemaModel; typeLabel: string }) {
+function SchemaModelCard({ model, typeLabel, known }: { model: SchemaModel; typeLabel: string; known: KnownSlugs }) {
   return (
     <Card className="border-border/70">
       <CardHeader className="pb-2">
@@ -313,7 +323,7 @@ function SchemaModelCard({ model, typeLabel }: { model: SchemaModel; typeLabel: 
       <CardContent className="pt-0">
         <div className="flex flex-wrap gap-1.5">
           {(model.fields || []).map((f) => (
-            <FieldBadge key={f.slug || f.name} field={f} />
+            <FieldBadge key={f.slug || f.name} field={f} known={known} />
           ))}
         </div>
       </CardContent>
@@ -501,7 +511,13 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Gagal menyimpan skema")
+      if (!res.ok) {
+        // Save-time reference problems come back as details.issues; show the first few.
+        const issues: Array<{ message: string }> = data?.details?.issues ?? []
+        throw new Error(
+          [data?.error || "Gagal menyimpan skema", ...issues.slice(0, 3).map((i) => `• ${i.message}`)].join("\n"),
+        )
+      }
       toast({ title: "Schema Tersimpan", description: `${data.imported} struktur berhasil dibuat. Lihat diagram di bawah.` })
       setPlan(null)
       setPrompt("")
@@ -521,6 +537,16 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
       ...plan.singleTypes.map((m) => ({ model: m, typeLabel: "Single Type" })),
       ...plan.components.map((m) => ({ model: m, typeLabel: "Komponen" })),
     ]
+    const known: KnownSlugs = {
+      models: new Set(
+        [...plan.contentTypes, ...plan.singleTypes, ...existingSchemaSummary.contentTypes, ...existingSchemaSummary.singleTypes].map((m) => m.slug),
+      ),
+      components: new Set(plan.components.map((c) => c.slug)),
+    }
+    const warningCount = allModels.reduce(
+      (n, { model }) => n + (model.fields || []).filter((f) => describeReviewField(f, known).warning).length,
+      0,
+    )
     return (
       <div className="flex flex-1 flex-col py-10">
         <div className="w-full max-w-2xl mx-auto px-4 space-y-5">
@@ -544,11 +570,16 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
           <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
             {allModels.map(({ model, typeLabel }) => (
-              <SchemaModelCard key={model.slug || model.name} model={model} typeLabel={typeLabel} />
+              <SchemaModelCard key={model.slug || model.name} model={model} typeLabel={typeLabel} known={known} />
             ))}
           </div>
 
           <div className="flex flex-col items-center gap-1.5 pt-1">
+            {warningCount > 0 && (
+              <p className="text-[11px] text-destructive text-center">
+                {warningCount} field perlu diperbaiki (ditandai ⚠). Penyimpanan akan ditolak sampai diperbaiki. Ubah prompt lalu buat ulang.
+              </p>
+            )}
             <Button
               onClick={handleConfirmSchema}
               disabled={isImporting || allModels.length === 0}
