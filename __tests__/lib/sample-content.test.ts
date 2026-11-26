@@ -145,6 +145,7 @@ describe("runSamplePlan", () => {
     const create = vi.fn(async (slug: string, _data: Record<string, unknown>) => ({ ok: true as const, id: `${slug}-${++n}` }))
     const w: EntryWriter = {
       create,
+      upsertSingle: async (slug) => ({ ok: true as const, id: `single-${slug}` }),
       existingIds: async () => [],
       ...overrides,
     }
@@ -207,5 +208,40 @@ describe("runSamplePlan", () => {
     const result = await runSamplePlan({ schema: s, plan, writer: w, ledger: memoryLedger(), ledgerKey: "k" })
     expect(result.ok).toBe(true)
     expect(create.mock.calls[0][1].penulis).toBe("existing-a1")
+  })
+})
+
+describe("Single Types", () => {
+  const home = { name: "Beranda", slug: "homepage", fields: [f("judul", "text", { required: true }), f("hero", "text")] }
+  const settings = { name: "Pengaturan", slug: "site-settings", fields: [f("nama-situs", "text", { required: true })] }
+
+  it("plans single types after the Content Types they depend on, one entry each", () => {
+    const profile = { name: "Profil", slug: "profiles", fields: [f("nama", "text")] }
+    const single = { name: "Tentang", slug: "about", fields: [f("pemilik", "relation", { relationSlug: "profiles" })] }
+    const plan = buildSamplePlan(schema({ contentTypes: [profile], singleTypes: [single] }), { locale: "id", perType: 5 })
+    const order = plan.steps.map((s) => `${s.kind}:${s.contentType}`)
+    expect(order.indexOf("collection:profiles")).toBeLessThan(order.indexOf("single:about"))
+    expect(plan.steps.find((s) => s.kind === "single")!.count).toBe(1)
+  })
+
+  it("skips a single type that already has content in this locale", () => {
+    const plan = buildSamplePlan(schema({ singleTypes: [home] }), { locale: "id", existingCounts: { "single:homepage": 1 } })
+    expect(plan.steps).toHaveLength(0)
+    expect(plan.skipped[0].reason).toContain("locale ini")
+  })
+
+  it("writes a single type through upsertSingle under a single: ledger key", async () => {
+    const s = schema({ singleTypes: [settings, home] })
+    const plan = buildSamplePlan(s, { locale: "id" })
+    const create = vi.fn(async () => ({ ok: true as const, id: "never" }))
+    const upsertSingle = vi.fn(async (slug: string) => ({ ok: true as const, id: `assign-${slug}` }))
+    const store = new Map<string, SeedRecord>()
+    const ledger: SeedLedger = { load: async (k) => store.get(k) ?? null, save: async (k, r) => { store.set(k, r) } }
+    const result = await runSamplePlan({ schema: s, plan, writer: { create, upsertSingle, existingIds: async () => [] }, ledger, ledgerKey: "k" })
+
+    expect(result.ok).toBe(true)
+    expect(create).not.toHaveBeenCalled()
+    expect(upsertSingle.mock.calls.map((c) => c[0]).sort()).toEqual(["homepage", "site-settings"])
+    expect(result.ids["single:homepage"]).toEqual(["assign-homepage"])
   })
 })

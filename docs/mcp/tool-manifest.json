@@ -1,6 +1,7 @@
 {
   "global": [
     "apply_preview_changes",
+    "clear_demo_sample_batch",
     "create_global_component",
     "create_schema_template",
     "create_website_template",
@@ -24,6 +25,7 @@
     "get_website_template_demo_status",
     "get_website_template_preview",
     "list_demo_content_entries",
+    "list_demo_sample_batches",
     "list_field_types",
     "list_global_components",
     "list_schema_templates",
@@ -45,6 +47,7 @@
     "update_schema_template",
     "update_website_template",
     "upload_demo_media",
+    "verify_demo_sample_batch",
     "whoami"
   ],
   "workspace": [
@@ -54,6 +57,7 @@
     "assign_content_type_to_group",
     "call_external_api",
     "check_sdk_availability",
+    "clear_sample_batch",
     "configure_deployment_domain",
     "create_component",
     "create_content_entry",
@@ -101,6 +105,7 @@
     "list_deployment_env",
     "list_field_types",
     "list_global_components",
+    "list_sample_batches",
     "list_single_types",
     "list_webhooks",
     "list_website_versions",
@@ -128,7 +133,8 @@
     "update_single_type",
     "update_single_type_content",
     "update_webhook",
-    "verify_deployment_url"
+    "verify_deployment_url",
+    "verify_sample_batch"
   ],
   "sharedPreview": [
     "apply_preview_changes",

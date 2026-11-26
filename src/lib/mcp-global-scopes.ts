@@ -55,6 +55,9 @@ const READ_TOOLS = [
   "whoami",
   "get_demo_single_type_entry",
   "list_demo_content_entries",
+  "plan_demo_sample_content",
+  "list_demo_sample_batches",
+  "verify_demo_sample_batch",
 ]
 
 const DEMO_TOOLS = [
@@ -62,6 +65,8 @@ const DEMO_TOOLS = [
   "save_demo_content_entry",
   "upload_demo_media",
   "reset_demo_content",
+  "seed_demo_sample_content",
+  "clear_demo_sample_batch",
 ]
 
 /** Any tool not listed here requires `write` — fails closed, so a new

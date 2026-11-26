@@ -7,9 +7,11 @@ import { db, getTenantDb } from "@/lib/database"
 import { createContentEntry, contentRevalidatePaths } from "@/lib/content/entry-service"
 import { serializeTenantSchema } from "@/lib/schema-template-sync"
 import { isGlobalWorkspace } from "@/lib/global-workspace"
+import { singleTypeContentWrite, invalidateSingleTypePublication } from "@/lib/single-type-publication"
 import { buildSamplePlan, MAX_PER_TYPE, type SampleSchema, type PlanOptions } from "@/lib/sample-content/plan"
 import { runSamplePlan, type EntryWriter, type SeedLedger, type SeedRecord } from "@/lib/sample-content/run"
 import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied, mcpEntryContext } from "./context"
+import { registerSampleBatchTools } from "./sample-batch-tools"
 
 const sampleInputShape = {
   locale: z.string().default("id").describe("Locale the entries are written in (e.g. 'id', 'en'). Use the locale the website shows."),
@@ -17,7 +19,7 @@ const sampleInputShape = {
   contentTypes: z.array(z.string()).optional().describe("Only these Content Type slugs. Omit for all."),
 }
 
-async function loadWorkspaceSample(tenantId: string, tenantSlug: string) {
+async function loadWorkspaceSample(tenantId: string, tenantSlug: string, locale: string) {
   const tenantDb = await getTenantDb(tenantSlug)
   const bundle = await serializeTenantSchema(tenantDb, { tenantId, draftTemplateId: null } as any)
   const schema: SampleSchema = {
@@ -34,6 +36,14 @@ async function loadWorkspaceSample(tenantId: string, tenantSlug: string) {
   for (const row of grouped) {
     const slug = slugById.get(row.contentTypeId)
     if (slug) existingCounts[slug] = row._count._all
+  }
+  // A Single Type counts as populated when this locale already has content.
+  const assigned = await tenantDb.tenantSingleTypeAssignment.findMany({
+    where: { tenantId: tenantId, locale, singleType: { draftTemplateId: null } },
+    select: { data: true, draftData: true, singleType: { select: { slug: true } } },
+  })
+  for (const a of assigned) {
+    if (a.data != null || a.draftData != null) existingCounts[`single:${a.singleType.slug}`] = 1
   }
   return { tenantDb, schema, existingCounts }
 }
@@ -57,7 +67,7 @@ export function registerSampleContentTools(server: McpServer) {
       if (!auth) return UNAUTHORIZED
       if (!hasScope(auth, "read")) return permissionDenied("read")
 
-      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug)
+      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug, locale)
       const options: PlanOptions = { locale, perType, contentTypes, existingCounts }
       return textResult(buildSamplePlan(schema, options))
     },
@@ -83,7 +93,7 @@ export function registerSampleContentTools(server: McpServer) {
       }
 
       const tenantDb = await getTenantDb(auth.tenantSlug)
-      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug)
+      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug, locale)
       const plan = buildSamplePlan(schema, { locale, perType, contentTypes, existingCounts })
       const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
 
@@ -91,6 +101,22 @@ export function registerSampleContentTools(server: McpServer) {
         create: async (slug, data, entryLocale) => {
           const result = await createContentEntry(ctx, actor, { contentTypeSlug: slug, data, status, locale: entryLocale })
           return result.ok ? { ok: true, id: result.data.id } : { ok: false, message: result.message }
+        },
+        upsertSingle: async (slug, data, entryLocale) => {
+          const st = await tenantDb.singleType.findFirst({
+            where: { tenantId: auth.tenantId, slug, draftTemplateId: null },
+            select: { id: true },
+          })
+          if (!st) return { ok: false as const, message: `Single Type "${slug}" tidak ditemukan.` }
+          const publish = status === "PUBLISHED"
+          const content = singleTypeContentWrite(data, publish)
+          const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
+            where: { tenantId_singleTypeId_locale: { tenantId: auth.tenantId, singleTypeId: st.id, locale: entryLocale } },
+            update: content,
+            create: { tenantId: auth.tenantId, singleTypeId: st.id, locale: entryLocale, ...content },
+          })
+          if (publish) await invalidateSingleTypePublication(auth.tenantId, slug, entryLocale)
+          return { ok: true as const, id: assignment.id }
         },
         existingIds: async (slug, entryLocale) => {
           const rows = await tenantDb.contentEntry.findMany({
@@ -137,4 +163,5 @@ export function registerSampleContentTools(server: McpServer) {
       }, !result.ok)
     },
   )
+  registerSampleBatchTools(server)
 }

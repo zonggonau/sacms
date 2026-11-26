@@ -3,7 +3,7 @@
 // docs/mcp/workspace.md, so the three cannot drift apart. Bump
 // WORKSPACE_MCP_VERSION whenever a tool or a rule here changes.
 
-export const WORKSPACE_MCP_VERSION = "4.9.0"
+export const WORKSPACE_MCP_VERSION = "4.10.0"
 
 export const WORKSPACE_MCP_INSTRUCTIONS =
       "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. If a page errors or renders blank, read get_preview_logs. Call extend_preview before expiresAt during long sessions; an expired session with unsaved edits can still be saved, and start_preview resumes it. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK."

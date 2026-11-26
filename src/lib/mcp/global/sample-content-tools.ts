@@ -4,11 +4,12 @@
 // a test fixture, so publishing here is direct and needs no approval.
 import { z } from "zod"
 import { db, getTenantDb } from "@/lib/database"
-import { requireDemoWorkspace, saveDemoContentEntry, DemoContentError } from "@/lib/infrastructure/demo-content"
+import { requireDemoWorkspace, saveDemoContentEntry, updateDemoSingleTypeEntry, DemoContentError } from "@/lib/infrastructure/demo-content"
 import { serializeTenantSchema } from "@/lib/schema-template-sync"
 import { buildSamplePlan, MAX_PER_TYPE, type SampleSchema, type PlanOptions } from "@/lib/sample-content/plan"
 import { runSamplePlan, type EntryWriter, type SeedLedger, type SeedRecord } from "@/lib/sample-content/run"
 import { McpServer, authContext, UNAUTHORIZED, runDemoOperation, scopeDenied } from "./context"
+import { registerDemoSampleBatchTools } from "./sample-batch-tools"
 
 const demoSampleShape = {
   schemaTemplateId: z.string().trim().min(1).max(150).describe("Schema Template ID or slug. Its demo workspace receives the sample entries."),
@@ -17,7 +18,7 @@ const demoSampleShape = {
   contentTypes: z.array(z.string()).optional().describe("Only these Content Type slugs. Omit for all."),
 }
 
-async function loadDemoSample(templateId: string) {
+async function loadDemoSample(templateId: string, locale: string) {
   const demo = await requireDemoWorkspace(templateId)
   const tenantDb = await getTenantDb(demo.slug)
   const bundle = await serializeTenantSchema(tenantDb, { tenantId: demo.id, draftTemplateId: null } as any)
@@ -36,10 +37,19 @@ async function loadDemoSample(templateId: string) {
     const slug = slugById.get(row.contentTypeId)
     if (slug) existingCounts[slug] = row._count._all
   }
+  // A Single Type counts as populated when this locale already has content.
+  const assigned = await tenantDb.tenantSingleTypeAssignment.findMany({
+    where: { tenantId: demo.id, locale, singleType: { draftTemplateId: null } },
+    select: { data: true, draftData: true, singleType: { select: { slug: true } } },
+  })
+  for (const a of assigned) {
+    if (a.data != null || a.draftData != null) existingCounts[`single:${a.singleType.slug}`] = 1
+  }
   return { demo, tenantDb, schema, existingCounts }
 }
 
 export function registerSampleContentTools(server: McpServer) {
+  registerDemoSampleBatchTools(server)
   // ── plan_demo_sample_content ─────────────────────────────────────────────
   server.registerTool(
       "plan_demo_sample_content",
@@ -52,10 +62,10 @@ export function registerSampleContentTools(server: McpServer) {
     async ({ schemaTemplateId, locale, perType, contentTypes }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
-      if (!auth.scopes.includes("demo")) return scopeDenied("plan_demo_sample_content", "demo")
+      if (!auth.scopes.includes("read")) return scopeDenied("plan_demo_sample_content", "read")
 
       return runDemoOperation(async () => {
-        const { schema, existingCounts } = await loadDemoSample(schemaTemplateId)
+        const { schema, existingCounts } = await loadDemoSample(schemaTemplateId, locale)
         const options: PlanOptions = { locale, perType, contentTypes, existingCounts }
         return buildSamplePlan(schema, options) as unknown as Record<string, unknown>
       })
@@ -80,7 +90,7 @@ export function registerSampleContentTools(server: McpServer) {
       if (!auth.scopes.includes("demo")) return scopeDenied("seed_demo_sample_content", "demo")
 
       return runDemoOperation(async () => {
-        const { demo, schema, existingCounts } = await loadDemoSample(schemaTemplateId)
+        const { demo, schema, existingCounts } = await loadDemoSample(schemaTemplateId, locale)
         const plan = buildSamplePlan(schema, { locale, perType, contentTypes, existingCounts })
 
         const writer: EntryWriter = {
@@ -93,6 +103,24 @@ export function registerSampleContentTools(server: McpServer) {
                 status,
               })
               return { ok: true, id: saved.entry.id }
+            } catch (error) {
+              if (error instanceof DemoContentError) return { ok: false, message: error.message }
+              throw error
+            }
+          },
+          upsertSingle: async (slug, data, entryLocale) => {
+            try {
+              await updateDemoSingleTypeEntry(schemaTemplateId, {
+                singleTypeSlug: slug,
+                locale: entryLocale,
+                data: data as any,
+                publish: status === "PUBLISHED",
+              })
+              const assignment = await db.tenantSingleTypeAssignment.findFirst({
+                where: { tenantId: demo.id, locale: entryLocale, singleType: { slug } },
+                select: { id: true },
+              })
+              return assignment ? { ok: true, id: assignment.id } : { ok: false, message: "Assignment tidak ditemukan setelah penulisan." }
             } catch (error) {
               if (error instanceof DemoContentError) return { ok: false, message: error.message }
               throw error
