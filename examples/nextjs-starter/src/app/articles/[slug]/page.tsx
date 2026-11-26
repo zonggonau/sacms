@@ -1,54 +1,42 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import { sacms } from "@/lib/sacms";
+import { notFound } from "next/navigation"
+import type { Metadata } from "next"
+import { getArticle, fieldText, mediaUrl } from "@/lib/content"
+import { CONTENT } from "@/lib/config"
+import { ErrorState } from "@/components/sacms/state"
+import { RichText } from "@/components/sacms/rich-text"
+import { MediaImage } from "@/components/sacms/media"
 
-export async function generateStaticParams() {
-  const { data: articles } = await sacms
-    .collection("articles")
-    .findMany({ fields: ["slug"] })
-    .catch(() => ({ data: [] }));
+export const dynamic = "force-dynamic"
 
-  return articles.map((a: any) => ({ slug: a.slug }));
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const result = await getArticle(slug)
+  if (result.status !== "ok") return { title: "Artikel" }
+  return { title: fieldText(result.data, CONTENT.articles.titleField) || "Artikel" }
 }
 
-export default async function ArticleDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
-  const { slug } = await params;
+export default async function ArticleDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const result = await getArticle(slug)
 
-  const { data: articles } = await sacms
-    .collection("articles")
-    .query()
-    .where("slug", "eq", slug)
-    .limit(1)
-    .fetch()
-    .catch(() => ({ data: [] }));
+  // An error is not a missing page: show the message so the outage is visible.
+  if (result.status === "error") return <ErrorState message={result.message} />
+  if (result.status === "empty") notFound()
 
-  if (!articles || articles.length === 0) {
-    notFound();
-  }
-
-  const article = articles[0] as any;
+  const item = result.data
+  const cover = mediaUrl(item[CONTENT.articles.coverField])
+  const body = fieldText(item, CONTENT.articles.bodyField)
 
   return (
-    <main style={{ maxWidth: "760px", margin: "0 auto", padding: "40px 20px", fontFamily: "system-ui, sans-serif" }}>
-      <Link href="/" style={{ color: "#2563eb", textDecoration: "none", fontSize: "14px", fontWeight: "bold" }}>
-        &larr; Kembali ke Beranda
-      </Link>
-      
-      <article style={{ marginTop: "24px" }}>
-        <h1 style={{ fontSize: "36px", fontWeight: "900", lineHeight: 1.2 }}>{article.title}</h1>
-        <p style={{ color: "#6b7280", fontSize: "14px", marginTop: "8px" }}>
-          Dipublikasikan: {new Date(article.createdAt).toLocaleDateString("id-ID", { dateStyle: "long" })}
-        </p>
-
-        <div
-          style={{ marginTop: "32px", fontSize: "16px", lineHeight: 1.8, color: "#1f2937" }}
-          dangerouslySetInnerHTML={{ __html: article.content || article.body || article.summary || "" }}
-        />
-      </article>
-    </main>
-  );
+    <article className="mx-auto max-w-2xl space-y-6">
+      <header className="space-y-3">
+        <h1 className="text-4xl font-bold tracking-tight">{fieldText(item, CONTENT.articles.titleField)}</h1>
+        {fieldText(item, CONTENT.articles.summaryField) && (
+          <p className="text-lg text-muted-foreground">{fieldText(item, CONTENT.articles.summaryField)}</p>
+        )}
+      </header>
+      {cover && <MediaImage url={cover} alt={fieldText(item, CONTENT.articles.titleField)} />}
+      {body ? <RichText html={body} /> : <p className="text-muted-foreground">Isi artikel belum tersedia.</p>}
+    </article>
+  )
 }
