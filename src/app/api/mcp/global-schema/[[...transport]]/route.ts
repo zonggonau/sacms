@@ -9,6 +9,7 @@ import { authContext, resolveGlobalSchemaToken, scopeDenied, UNAUTHORIZED, GLOBA
 import { registerGuideTools } from "@/lib/mcp/global/guide-tools"
 import { registerWebsiteTemplateTools } from "@/lib/mcp/global/website-template-tools"
 import { registerGlobalComponentTools } from "@/lib/mcp/global/global-component-tools"
+import { registerSampleContentTools as registerGlobalSampleContentTools } from "@/lib/mcp/global/sample-content-tools"
 
 const handler = createMcpHandler(
   async (server) => {
@@ -30,6 +31,7 @@ const handler = createMcpHandler(
     registerGuideTools(server)
     registerWebsiteTemplateTools(server)
     registerGlobalComponentTools(server)
+    registerGlobalSampleContentTools(server)
     // ── Resources ───────────────────────────────────────────────────────
     // Audit recommendation: expose the reference material as resources too.
     // Every token has `read`, so a valid token is all a read needs.

@@ -6,6 +6,7 @@ import { rateLimit, getTenantRateLimit } from "@/lib/rate-limit"
 import { authContext, resolveToken, hasScope } from "@/lib/mcp/workspace/context"
 import { registerSchemaTools } from "@/lib/mcp/workspace/schema-tools"
 import { registerContentTools } from "@/lib/mcp/workspace/content-tools"
+import { registerSampleContentTools } from "@/lib/mcp/workspace/sample-content-tools"
 import { registerSingleTypeAndComponentTools } from "@/lib/mcp/workspace/single-type-component-tools"
 import { registerWebhookTools } from "@/lib/mcp/workspace/webhook-tools"
 import { registerPlatformTools } from "@/lib/mcp/workspace/platform-tools"
@@ -27,6 +28,7 @@ const handler = createMcpHandler(
 
     registerSchemaTools(server)
     registerContentTools(server)
+    registerSampleContentTools(server)
     registerSingleTypeAndComponentTools(server)
     registerWebhookTools(server)
     registerPlatformTools(server)
