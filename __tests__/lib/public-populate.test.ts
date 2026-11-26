@@ -9,7 +9,7 @@ import { applyPopulate, resolvePopulate, populateTargetOf } from "@/lib/public-p
 const publicActor = { kind: "public", tenantId: "t1", tenantSlug: "acme" } as never
 const tokenActor = { kind: "api-token", accessLevel: "full-access", tenantId: "t1", tenantSlug: "acme", tokenId: "tok", isApiKey: false } as never
 
-function fakeDb() {
+function fakeDb(): any {
   return {
     contentEntry: {
       findMany: vi.fn(async ({ where }: any) => {
