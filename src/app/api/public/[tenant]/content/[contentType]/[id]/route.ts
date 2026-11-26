@@ -16,6 +16,7 @@ import {
   serviceErrorStatus,
   type PublicApiActor,
 } from "@/lib/public-api-actor"
+import { resolvePopulate, applyPopulate } from "@/lib/public-populate"
 import {
   updateContentEntry,
   deleteContentEntry,
@@ -382,12 +383,11 @@ export async function GET(
     const populateParam = parsePopulate(searchParams)
     const relationFields = contentType.schemaFields.filter(f => f.type === "relation")
 
-    let fieldsToPopulate: string[] = []
-    if (populateParam === "*") {
-      fieldsToPopulate = relationFields.map(f => f.slug)
-    } else if (Array.isArray(populateParam)) {
-      fieldsToPopulate = populateParam.filter(p => relationFields.some(rf => rf.slug === p))
-    }
+    const requestedPopulate = populateParam === "*"
+      ? relationFields
+      : Array.isArray(populateParam)
+        ? relationFields.filter(f => populateParam.includes(f.slug))
+        : []
 
     let parsedData: Record<string, unknown> = {}
     try {
@@ -396,68 +396,11 @@ export async function GET(
       parsedData = {}
     }
 
-    const populatedData = { ...parsedData }
-
-    if (fieldsToPopulate.length > 0) {
-      const relatedIds = new Set<string>()
-      for (const fieldSlug of fieldsToPopulate) {
-        const val = parsedData[fieldSlug]
-        if (typeof val === "string" && val.length > 10) {
-          relatedIds.add(val)
-        } else if (Array.isArray(val)) {
-          val.forEach(id => { if (typeof id === "string") relatedIds.add(id) })
-        }
-      }
-
-      if (relatedIds.size > 0) {
-        const relatedEntries = await tenantDb.contentEntry.findMany({
-          where: {
-            id: { in: Array.from(relatedIds) },
-            tenantId: tenantId,
-            deletedAt: null,
-            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-          },
-          select: { id: true, data: true, locale: true, status: true },
-        })
-
-        const relatedEntriesMap = new Map<string, any>()
-        relatedEntries.forEach(re => {
-          let rd: any = {}
-          try {
-            rd = typeof re.data === "string" ? JSON.parse(re.data) : re.data
-          } catch { rd = {} }
-
-          relatedEntriesMap.set(re.id, {
-            id: re.id,
-            ...rd,
-            locale: re.locale,
-            status: re.status,
-          })
-        })
-
-        // Relation fields targeting Member resolve from a different table —
-        // see the matching fallback in the list route's GET handler.
-        const stillMissing = Array.from(relatedIds).filter(id => !relatedEntriesMap.has(id))
-        if (stillMissing.length > 0) {
-          const relatedMembers = await tenantDb.member.findMany({
-            where: { id: { in: stillMissing }, tenantId },
-            select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
-          })
-          relatedMembers.forEach(m => relatedEntriesMap.set(m.id, m))
-        }
-
-        for (const fieldSlug of fieldsToPopulate) {
-          const val = parsedData[fieldSlug]
-          if (typeof val === "string") {
-            populatedData[fieldSlug] = relatedEntriesMap.get(val) || val
-          } else if (Array.isArray(val)) {
-            populatedData[fieldSlug] = val.map(id =>
-              typeof id === "string" ? (relatedEntriesMap.get(id) || id) : id
-            )
-          }
-        }
-      }
-    }
+    const populated = await resolvePopulate({
+      tenantDb, tenantId, actor, fields: requestedPopulate, rows: [parsedData],
+      publishedOnly: apiTokenType !== "full-access",
+    })
+    const populatedData = applyPopulate(parsedData, populated.expanded, populated.byId)
 
     const shapedData = applyFieldSelection(populatedData, selectedFields)
     // Only rewrite embedded media URLs to the public, unauthenticated form

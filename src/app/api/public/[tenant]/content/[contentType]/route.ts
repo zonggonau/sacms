@@ -12,6 +12,7 @@ import {
   toContentActor,
   serviceErrorStatus,
 } from "@/lib/public-api-actor"
+import { resolvePopulate, applyPopulate } from "@/lib/public-populate"
 import { createContentEntry } from "@/lib/content/entry-service"
 import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 import {
@@ -344,80 +345,14 @@ export async function GET(
       total = count
     }
 
-    // --- Optimized Relation Population (Fix N+1) ---
+    // --- Relation population (permission-checked, see src/lib/public-populate.ts) ---
     const populateParam = parsePopulate(searchParams)
     const relationFields = contentType.schemaFields.filter(f => f.type === "relation")
-    
-    // Determine which fields to populate (defaults to NONE if not specified, follows Strapi)
-    let fieldsToPopulate: string[] = []
-    if (populateParam === "*") {
-      fieldsToPopulate = relationFields.map(f => f.slug)
-    } else if (Array.isArray(populateParam)) {
-      fieldsToPopulate = populateParam.filter(p => relationFields.some(rf => rf.slug === p))
-    }
-
-    // 1. Collect all unique relation IDs from all entries
-    const allRelatedIds = new Set<string>()
-    if (fieldsToPopulate.length > 0) {
-      entries.forEach((entry: any) => {
-        let parsedData: Record<string, unknown> = {}
-        try {
-          parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
-        } catch { return }
-
-        for (const fieldSlug of fieldsToPopulate) {
-          const val = parsedData[fieldSlug]
-          if (typeof val === 'string' && val.length > 10) {
-            allRelatedIds.add(val)
-          } else if (Array.isArray(val)) {
-            val.forEach(id => {
-              if (typeof id === 'string') allRelatedIds.add(id)
-            })
-          }
-        }
-      })
-    }
-
-    // 2. Batch fetch all related entries in ONE query
-    const relatedEntriesMap = new Map<string, any>()
-    if (allRelatedIds.size > 0) {
-      const relatedEntries = await tenantDb.contentEntry.findMany({
-        where: {
-          id: { in: Array.from(allRelatedIds) },
-          tenantId: tenantId,
-          deletedAt: null,
-          ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-        },
-        select: { id: true, data: true, locale: true, status: true }
-      })
-      
-      relatedEntries.forEach(re => {
-        let rd: any = {}
-        try {
-          rd = typeof re.data === 'string' ? JSON.parse(re.data as string) : re.data
-        } catch { rd = {} }
-
-        relatedEntriesMap.set(re.id, {
-          id: re.id,
-          ...rd,
-          locale: re.locale,
-          status: re.status
-        })
-      })
-
-      // Relation fields targeting Member (end-user accounts, e.g. an
-      // "author"/"owner" field) resolve from a different table — batch
-      // fetch whatever the contentEntry pass above didn't find. Only the
-      // public-safe subset of columns is ever returned (no passwordHash).
-      const stillMissing = Array.from(allRelatedIds).filter(id => !relatedEntriesMap.has(id))
-      if (stillMissing.length > 0) {
-        const relatedMembers = await tenantDb.member.findMany({
-          where: { id: { in: stillMissing }, tenantId },
-          select: { id: true, name: true, email: true, avatar: true, role: true, status: true, createdAt: true },
-        })
-        relatedMembers.forEach(m => relatedEntriesMap.set(m.id, m))
-      }
-    }
+    const requestedPopulate = populateParam === "*"
+      ? relationFields
+      : Array.isArray(populateParam)
+        ? relationFields.filter(f => populateParam.includes(f.slug))
+        : []
 
     // 3. Map relations back to entries + availableLocales (Synchronously)
     // Collect documentIds to batch-fetch available locales
@@ -489,25 +424,20 @@ export async function GET(
       finalEntries = entries
     }
 
-    const parsedEntries = finalEntries.map((entry: any) => {
-      let parsedData: Record<string, unknown>
+    const rowsParsed: Record<string, unknown>[] = finalEntries.map((entry: any) => {
       try {
-        parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
+        return typeof entry.data === "string" ? JSON.parse(entry.data) : (entry.data ?? {})
       } catch {
-        parsedData = {}
+        return {}
       }
+    })
+    const populated = await resolvePopulate({
+      tenantDb, tenantId, actor, fields: requestedPopulate, rows: rowsParsed,
+      publishedOnly: apiTokenType !== "full-access",
+    })
 
-      const populatedData = { ...parsedData }
-      for (const fieldSlug of fieldsToPopulate) {
-        const val = parsedData[fieldSlug]
-        if (typeof val === 'string') {
-          populatedData[fieldSlug] = relatedEntriesMap.get(val) || val
-        } else if (Array.isArray(val)) {
-          populatedData[fieldSlug] = val.map(id => 
-            typeof id === 'string' ? (relatedEntriesMap.get(id) || id) : id
-          )
-        }
-      }
+    const parsedEntries = finalEntries.map((entry: any, i: number) => {
+      const populatedData = applyPopulate(rowsParsed[i], populated.expanded, populated.byId)
 
       const shaped = applyFieldSelection(populatedData, selectedFields)
       // Media URLs embedded in this entry's data are only ever safe to
