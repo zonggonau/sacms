@@ -32,7 +32,8 @@ export const POST = withStaffAuth(
     if (!belongsToTenant) return apiError("not_found", { message: "Transaksi tidak ditemukan." })
 
     if (transaction.status !== "pending") {
-      return apiError("conflict", { message: `Transaksi ini sudah ${transaction.status === "success" ? "dibayar" : "tidak aktif"}, tidak bisa dibatalkan.` })
+      const reason: Record<string, string> = { success: "dibayar", cancelled: "dibatalkan", expired: "kedaluwarsa", failed: "gagal" }
+      return apiError("conflict", { message: `Transaksi ini sudah ${reason[transaction.status] ?? "tidak aktif"}, tidak bisa dibatalkan.` })
     }
 
     // Money may already be on its way. If Midtrans says it is paid, do not cancel.

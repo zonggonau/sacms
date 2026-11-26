@@ -2,6 +2,7 @@ import Midtrans from 'midtrans-client'
 import crypto from 'crypto'
 import { isMockAllowed, requireCredentialOutsideMock } from './dev-mode'
 import { resolveRecurringCharge, resolveYearlyPrice, type BillingInterval } from './billing/plan-price'
+import { SNAP_EXPIRY } from './billing/payment-window'
 
 interface CustomerDetails {
   email: string
@@ -91,6 +92,7 @@ export async function createSnapPayment(
         price: item.price,
         quantity: item.quantity,
       })),
+      expiry: SNAP_EXPIRY,
       enabled_payments: [
         'credit_card',
         'gopay',

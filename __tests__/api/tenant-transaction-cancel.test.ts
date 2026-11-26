@@ -78,6 +78,14 @@ describe("POST /api/tenant/[tenant]/transactions/[orderId]/cancel", () => {
     expect(db.paymentTransaction.updateMany).not.toHaveBeenCalled()
   })
 
+  it("says an expired order is expired, not paid", async () => {
+    db.paymentTransaction.findUnique.mockResolvedValue(pendingTemplateOrder({ status: "expired" }))
+    const res = await call()
+    expect(res.status).toBe(409)
+    const body = await res.json()
+    expect(body.error).toMatch(/kedaluwarsa/)
+  })
+
   it("404s for an order that belongs to another workspace", async () => {
     db.paymentTransaction.findUnique.mockResolvedValue(pendingTemplateOrder({ rawResponse: { tenantId: "tenant-other" } }))
     expect((await call()).status).toBe(404)

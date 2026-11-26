@@ -114,6 +114,9 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
 
     const skip = (page - 1) * limit
 
+    // Unpaid orders past the payment window are expired before they are listed.
+    await expireStalePendingPayments(where)
+
     const [transactions, total] = await Promise.all([
       db.paymentTransaction.findMany({
         where,
@@ -155,7 +158,15 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
           rawResponse: t.rawResponse,
           fallbackPlanSlug: t.subscription?.plan || "unknown",
         })
-        return { ...t, purchasedId, purchasedLabel }
+        const raw = t.rawResponse as { redirectUrl?: unknown } | null
+        return {
+          ...t,
+          purchasedId,
+          purchasedLabel,
+          // Midtrans payment page, for pending template orders (see the purchase route).
+          payUrl: t.status === "pending" && typeof raw?.redirectUrl === "string" ? raw.redirectUrl : null,
+          expiresAt: t.status === "pending" ? paymentDeadline(t.createdAt) : null,
+        }
       })
     )
 
@@ -167,6 +178,8 @@ export async function getTransactionHistoryAction(page: number = 1, limit: numbe
 }
 
 import { getPaymentProvider } from "@/lib/payment"
+import { expireStalePendingPayments } from "@/lib/billing/payment-expiry"
+import { paymentDeadline } from "@/lib/billing/payment-window"
 import { applyPaymentOutcome, isPaymentAwaitingFulfillment, paymentStatusForCheckout } from "@/lib/billing/payment-success"
 
 export async function checkTransactionStatusAction(orderId: string) {
@@ -227,7 +240,8 @@ export async function checkTransactionStatusAction(orderId: string) {
         // Still pending on the provider's side — just mirror the raw status,
         // no fulfillment side effects yet.
         await db.paymentTransaction.updateMany({
-          where: { id: transaction.id, status: { notIn: ["success", "failed"] } },
+          // A cancelled or expired order must not flip back to pending just because the gateway still shows pending.
+          where: { id: transaction.id, status: { notIn: ["success", "failed", "cancelled", "expired"] } },
           data: { status: result.status, paymentType: result.paymentType, transactionId: result.transactionId },
         })
       }

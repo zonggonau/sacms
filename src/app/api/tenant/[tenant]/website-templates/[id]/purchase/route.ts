@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { createSnapPayment } from "@/lib/midtrans"
+import { PAYMENT_WINDOW_MS } from "@/lib/billing/payment-window"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { WEBSITE_TEMPLATE_ACCESS_MESSAGE, WEBSITE_TEMPLATE_ORDER_PREFIX, isEnterpriseWorkspace, websiteTemplateAccess } from "@/lib/billing/website-template-access"
 const MIDTRANS_TEXT_MAX = 50
-// Snap payment pages stay payable for a while; reuse an unpaid order within this window.
-const PENDING_ORDER_WINDOW_MS = 30 * 60 * 1000
+// An unpaid order is reused only while it is still payable (see payment-window.ts).
+const PENDING_ORDER_WINDOW_MS = PAYMENT_WINDOW_MS
 const clip = (text: string) => (text.length <= MIDTRANS_TEXT_MAX ? text : `${text.slice(0, MIDTRANS_TEXT_MAX - 1)}…`)
 
 /**

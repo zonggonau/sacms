@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 import { resolvePurchaseLabel } from "@/lib/billing/purchase-label"
+import { expireStalePendingPayments } from "@/lib/billing/payment-expiry"
+import { paymentDeadline } from "@/lib/billing/payment-window"
 
 export type BillingItemType = "plan" | "addon" | "ai_credits" | "template"
 
@@ -20,18 +22,21 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
 
   // Transactions are matched by tenant too: a template purchase has no subscription
   // link, so a subscription-only filter would hide its pending and cancelled orders.
+  const ownTransactions = {
+    OR: [
+      { subscriptionId: { in: subscriptionIds } },
+      { rawResponse: { path: ["tenantId"], equals: access.tenantId } },
+    ],
+  }
+  // Unpaid orders past the payment window are expired before they are listed.
+  await expireStalePendingPayments(ownTransactions)
+
   const [invoices, transactions] = await Promise.all([
     subscriptionIds.length > 0
       ? db.invoice.findMany({ where: { subscriptionId: { in: subscriptionIds } }, orderBy: { createdAt: "desc" } })
       : Promise.resolve([]),
     db.paymentTransaction.findMany({
-      where: {
-        status: { in: ["pending", "cancelled", "failed"] },
-        OR: [
-          { subscriptionId: { in: subscriptionIds } },
-          { rawResponse: { path: ["tenantId"], equals: access.tenantId } },
-        ],
-      },
+      where: { status: { in: ["pending", "cancelled", "expired", "failed"] }, ...ownTransactions },
       orderBy: { createdAt: "desc" },
     }),
   ])
@@ -101,6 +106,7 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
         isTransaction: true,
         itemType: itemTypeOf(t.orderId, raw),
         payUrl: t.status === "pending" && typeof raw?.redirectUrl === "string" ? raw.redirectUrl : null,
+        expiresAt: t.status === "pending" ? paymentDeadline(t.createdAt) : null,
         plan: purchasedId,
         planLabel: purchasedLabel,
       }

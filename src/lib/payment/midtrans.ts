@@ -10,6 +10,7 @@ import type {
   TransactionStatusResult,
 } from "./provider"
 import { isNonProduction } from "../dev-mode"
+import { SNAP_EXPIRY } from "./../billing/payment-window"
 
 /** A network-level failure reaching Midtrans (DNS, timeout, refused) — as
  *  opposed to a 4xx/5xx the API actually returned, which signals a real
@@ -113,6 +114,7 @@ export class MidtransProvider implements PaymentProvider {
         price: item.price,
         quantity: item.quantity,
       })),
+      expiry: SNAP_EXPIRY,
       enabled_payments: [
         "credit_card",
         "gopay",

@@ -137,6 +137,11 @@ export default function BillingClient({
   }, [transactions, historyStatusFilter, debouncedHistorySearch])
 
   const handlePayNow = (tx: any) => {
+    // Template orders keep their Midtrans page; open it directly.
+    if (tx.payUrl) {
+      window.open(tx.payUrl, "_blank", "noopener,noreferrer")
+      return
+    }
     // `purchasedId` (resolved server-side from rawResponse — see
     // resolvePurchaseLabel) is the real item this pending order was for: an
     // addon id, or the plan slug being bought. Using subscription.plan here
@@ -714,14 +719,21 @@ export default function BillingClient({
                                     Lunas
                                   </Badge>
                                 ) : isPending ? (
+                                  <>
                                   <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-none gap-1">
                                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                                     Menunggu Pembayaran
                                   </Badge>
+                                  {tx.expiresAt && (
+                                    <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-1">
+                                      Bayar sebelum {new Date(tx.expiresAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}, lewat itu otomatis dibatalkan.
+                                    </p>
+                                  )}
+                                  </>
                                 ) : (
                                   <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-none gap-1">
                                     <XCircle className="h-3 w-3" />
-                                    Dibatalkan
+                                    {tx.status === "expired" ? "Kedaluwarsa" : tx.status === "failed" || tx.status === "deny" ? "Gagal" : "Dibatalkan"}
                                   </Badge>
                                 )}
                               </div>

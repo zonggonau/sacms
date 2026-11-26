@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
+import { PAYMENT_WINDOW_HOURS } from "@/lib/billing/payment-window"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface Subscription {
@@ -42,9 +43,12 @@ interface Invoice {
   orderId?: string | null
   itemType?: "plan" | "addon" | "ai_credits" | "template"
   payUrl?: string | null
+  expiresAt?: string | null
   plan?: string
   planLabel?: string
 }
+
+const formatDeadline = (iso: string) => new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
 
 const BILLING_ITEM_LABEL: Record<string, string> = {
   plan: "Langganan",
@@ -58,6 +62,7 @@ const BILLING_STATUS_LABEL: Record<string, string> = {
   pending: "Menunggu pembayaran",
   cancelled: "Dibatalkan",
   failed: "Gagal",
+  expired: "Kedaluwarsa",
 }
 
 const BILLING_STATUS_STYLE: Record<string, string> = {
@@ -65,6 +70,7 @@ const BILLING_STATUS_STYLE: Record<string, string> = {
   pending: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400",
   cancelled: "bg-muted border-border text-muted-foreground",
   failed: "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400",
+  expired: "bg-muted border-border text-muted-foreground",
 }
 
 /** Full, static Tailwind class strings per count (Tailwind's JIT scanner
@@ -725,7 +731,7 @@ export default function TenantSubscriptionsPage() {
                   <Badge variant="secondary" className="font-bold text-[10px] rounded-full">Faktur Terakhir</Badge>
                 </div>
                 <CardDescription className="text-[11px] mt-1">
-                  Lunas berarti sudah dibayar. Menunggu pembayaran berarti belum dibayar: lanjutkan pembayarannya, atau batalkan kalau tidak jadi.
+                  Lunas: sudah dibayar. Menunggu pembayaran: belum dibayar, harus dibayar dalam {PAYMENT_WINDOW_HOURS} jam sejak order dibuat. Lewat itu, order otomatis kedaluwarsa dan dibatalkan.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -754,10 +760,13 @@ export default function TenantSubscriptionsPage() {
                                 {typeLabel} &middot; {new Date(inv.createdAt).toLocaleDateString('id-ID')}
                                 {inv.orderId && <> &middot; <span className="font-mono" title={inv.orderId}>{inv.orderId}</span></>}
                               </p>
+                              {inv.isTransaction && inv.status === 'expired' && (
+                                <p className="text-[11px] text-muted-foreground mt-1">Lewat batas waktu pembayaran. Order ini otomatis dibatalkan, tidak perlu tindakan.</p>
+                              )}
                               {isPending && (
                                 <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
                                   {inv.payUrl || inv.itemType !== 'template'
-                                    ? 'Belum dibayar. Selesaikan pembayaran di halaman Midtrans, atau batalkan kalau tidak jadi.'
+                                    ? (inv.expiresAt ? `Belum dibayar. Bayar sebelum ${formatDeadline(inv.expiresAt)}, lewat itu otomatis dibatalkan.` : 'Belum dibayar.')
                                     : 'Belum dibayar dan link pembayarannya tidak tersimpan. Batalkan, lalu beli ulang.'}
                                 </p>
                               )}
