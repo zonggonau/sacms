@@ -1,9 +1,40 @@
 import { z } from "zod"
 import { generateObject } from "ai"
 import { VALID_FIELD_TYPES, type FieldTypeValue, FIELD_TYPES } from "./field-types"
+import { FIELD_TYPE_GUIDE } from "./field-type-guide"
 
 // Re-export for backwards compatibility
 export { VALID_FIELD_TYPES, type FieldTypeValue }
+
+// Per-type options the model must be able to set. Before this, the AI could
+// only name a field's type, never its details, so a select came out with no
+// choices, a repeatable component with no repeat flag, and every relation
+// with the default relationType. Keys match what the field renderer and the
+// content-pipeline actually read (see field-type-guide.ts).
+const fieldOptionsSchema = z
+  .object({
+    choices: z
+      .array(z.object({ label: z.string(), value: z.string() }))
+      .optional()
+      .describe("select / multiselect only: the fixed list of choices. Required for those two types."),
+    relationType: z
+      .enum(["oneToOne", "oneToMany", "manyToOne", "manyToMany"])
+      .optional()
+      .describe("relation only. manyToOne = pick one related record; oneToMany / manyToMany = a list."),
+    targetModel: z
+      .enum(["content-type", "single-type", "member"])
+      .optional()
+      .describe("relation only. Use 'member' ONLY for the tenant's own registered end-user accounts (people who log in or use the API). Authors, team, staff, customers in a directory, and any other data are content-type."),
+    repeatable: z
+      .boolean()
+      .optional()
+      .describe("component only. true = a list of this one component (e.g. feature cards, nav links)."),
+    allowedComponents: z
+      .array(z.string())
+      .optional()
+      .describe("repeater only. Kebab-case slugs of the components allowed inside it."),
+  })
+  .optional()
 
 const fieldSchema = z.object({
   name: z.string(),
@@ -13,6 +44,7 @@ const fieldSchema = z.object({
   unique: z.boolean().optional().default(false),
   relationSlug: z.string().optional().describe("If type is relation, the slug of the target ContentType"),
   componentSlug: z.string().optional().describe("If type is component, the slug of the target Component"),
+  options: fieldOptionsSchema,
 })
 
 const modelSchema = z.object({
@@ -46,17 +78,25 @@ const aiModelSchema = z.object({
   fields: z.array(fieldSchema),
 })
 
-const aiSystemSchema = z.object({
+export const aiSystemSchema = z.object({
   contentTypes: z.array(aiModelSchema).describe("Collection types (e.g., Rooms, Products, Facilities, Articles)"),
   singleTypes: z.array(aiModelSchema).describe("Single types (e.g., HotelSettings, StoreConfig, SiteProfile)"),
   components: z.array(aiModelSchema).describe("Reusable components (e.g., SEO, Contact, Badge)"),
 })
 
-const FIELD_TYPE_DOCS = FIELD_TYPES.map(
-  (f) => `- ${f.type} (${f.category} - ${f.label}): ${f.description}`
-).join("\n")
+// Built from field-type-guide.ts (the audited ground truth) rather than from
+// FIELD_TYPES' own descriptions alone. Several of those descriptions were
+// wrong (currency "Rp, USD", location "dan alamat"), and the guide's
+// options/note lines are what say which keys each type really reads.
+const FIELD_TYPE_DOCS = FIELD_TYPES.map((f) => {
+  const guide = FIELD_TYPE_GUIDE[f.type]
+  const lines = [`- ${f.type} (${f.category} - ${f.label}): ${f.description}`]
+  if (guide?.options) lines.push(`  options: ${guide.options}`)
+  if (guide?.note) lines.push(`  note: ${guide.note}`)
+  return lines.join("\n")
+}).join("\n")
 
-const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS, designing the schema for a website's ENTIRE frontend — not just its main business data. A frontend built against your schema must never fall back to hardcoded placeholder text anywhere, from the header to the footer.
+export const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS, designing the schema for a website's ENTIRE frontend — not just its main business data. A frontend built against your schema must never fall back to hardcoded placeholder text anywhere, from the header to the footer.
 
 Work through the whole page structure methodically, header to footer, before generating anything:
 
@@ -64,7 +104,7 @@ Work through the whole page structure methodically, header to footer, before gen
 
 2. **Each distinct, one-off page (one Single Type per page)** — the homepage (slug exactly 'homepage', not 'home-page' or 'landing-page'), About, Contact, or any other page that exists exactly once. Each gets its own hero heading/subheading/image, its own body sections, and its own 'seo' field (meta tags specific to that page override the site default). Think about what's actually ON that page section by section — a homepage hero, an about page's story + team intro, a contact page's form intro + map — model each distinct section as real fields or embedded components, not one giant 'richText' blob standing in for the whole page.
 
-3. **Repeatable business content (one Content Type per kind of thing that repeats)** — products, rooms, services, articles, team members, testimonials, FAQ entries, bookings, whatever the user's domain actually needs multiple of. This is the "2 to 4 rich Content Types" the user is really asking to manage day-to-day. Each public-facing one also gets its own 'seo' field. Wire real relations between them with 'relation' (e.g. an article 'relation'-s to its author in Team, a product 'relation'-s to its Category) instead of duplicating data.
+3. **Repeatable business content (one Content Type per kind of thing that repeats)** — products, rooms, services, articles, team members, testimonials, FAQ entries, bookings, whatever the user's domain actually needs multiple of. This is the "2 to 4 rich Content Types" the user is really asking to manage day-to-day. Each public-facing one also gets its own 'seo' field. Wire real relations between them with 'relation' (e.g. an article 'relation'-s to its author, a Content Type named 'authors', and a product 'relation'-s to its Category) instead of duplicating data.
 
 4. **Reusable embedded groups (Components)** — anything whose *shape* repeats *inside* another type rather than needing its own list/URL: a CTA block (heading + button text + link), a feature/benefit card, a social-links group, a testimonial-quote block embedded directly in the Homepage Single Type instead of justifying its own Content Type. Use 'component' with 'componentSlug' for these. A Component is the right call when the content is always edited alongside its parent and never needs its own detail page; a Content Type is the right call when it needs its own list, its own URL, or there could be many unbounded over time.
 
@@ -76,14 +116,16 @@ Field Selection Rules:
 - Discounts, taxes, & percentage values MUST use 'percent'.
 - Star reviews (1-5) MUST use 'rating'.
 - Single cover/avatar image MUST use 'media'; photo galleries MUST use 'mediaMultiple'; documents/PDFs MUST use 'file'.
-- Multi-item badges/sizes/amenities MUST use 'tags' or 'multiselect'.
-- Dropdown options MUST use 'select'.
+- Multi-item badges/sizes/amenities: 'tags' for free-typed values, or 'multiselect' with options.choices for a fixed list.
+- Dropdown options MUST use 'select' WITH options.choices = [{ label, value }, ...] (at least 2 choices). A select or multiselect without choices is broken — never emit one.
 - Comprehensive descriptions & body text MUST use 'richText' (HTML) or 'markdown'.
-- Geolocation coordinates & address MUST use 'location'.
+- Geolocation coordinates MUST use 'location' (it stores lat/lng only). A postal/street address written as text MUST use 'text' or 'textarea', never 'location'.
+- Currency is always IDR; 'currency' has no currency option, so never ask for a different one.
 - Brand/theme colors MUST use 'color', never free-text ('tipe warna website' always gets a real color field, not a text description of a color).
 - Search engine optimization MUST use 'seo' — every public-facing Single Type and Content Type gets one, not just the homepage.
-- Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
-- Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
+- Related collections MUST use 'relation' with 'relationSlug' matching target ContentType, and options.relationType: 'manyToOne' to pick one record, 'oneToMany' or 'manyToMany' for a list (e.g. a product that relates to several related products).
+- Authors, team members, staff, instructors, customers listed in a directory, and every other kind of data about people or things are ordinary Content Types, even when a person is involved. Relate to them with a content-type relation. Do NOT use options.targetModel 'member' for these. Use targetModel 'member' ONLY when the user explicitly asks to link to the tenant's registered end-user accounts (people who log in or use the API).
+- Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component. When the zone holds a LIST of that one component (feature cards, nav links, social links, FAQ items), set options.repeatable: true. A zone that mixes several different component types uses 'repeater' with options.allowedComponents listing their component slugs.
 - 'document_template' is ONLY for a Content Type that represents a fillable letter/official document (surat), and only add it when the user's prompt or attached reference material actually describes one. Never add it to ordinary business content (products, articles, bookings, etc.).
 
 If the user's reference material includes a block labeled "Variabel Placeholder Dokumen" listing exact field keys (e.g. from an uploaded .docx letter template), you MUST: create one Content Type representing that document, give it fields whose slugs are EXACTLY those keys verbatim — including underscores, NOT converted to kebab-case, this is the one exception to the kebab-case rule below — using the suggested types, and add exactly one additional field of type 'document_template' to that same Content Type. This lets the uploaded document later be attached as that type's fill-in letter template with the field slugs already matching.
@@ -160,6 +202,9 @@ function normalizeSchemaSlugs(schema: GeneratedSystemSchema): GeneratedSystemSch
       slug: toKebabSlug(field.slug),
       ...(field.relationSlug ? { relationSlug: toKebabSlug(field.relationSlug) } : {}),
       ...(field.componentSlug ? { componentSlug: toKebabSlug(field.componentSlug) } : {}),
+      ...(field.options?.allowedComponents
+        ? { options: { ...field.options, allowedComponents: field.options.allowedComponents.map(toKebabSlug) } }
+        : {}),
     })),
   })
 

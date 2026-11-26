@@ -46,7 +46,7 @@ export const FIELD_TYPES = [
 
   // Number Types
   { type: "number", label: "Number", icon: Hash, description: "Integer or decimal values", category: "Number" },
-  { type: "currency", label: "Currency", icon: Banknote, description: "Nilai uang (contoh: Rp, USD)", category: "Number" },
+  { type: "currency", label: "Currency", icon: Banknote, description: "Nilai uang dalam Rupiah (IDR)", category: "Number" },
   { type: "percent", label: "Percentage / Progress", icon: Percent, description: "Nilai persentase 0-100% atau progres bar", category: "Number" },
 
   // Date & Time
@@ -82,7 +82,7 @@ export const FIELD_TYPES = [
   { type: "repeater", label: "Dynamic Zone / Repeater", icon: Layers, description: "Array of multiple components (Polymorphic)", category: "Relations" },
 
   // Advanced & Composite
-  { type: "location", label: "Location / Map", icon: MapPin, description: "Koordinat peta (Latitude, Longitude) dan alamat", category: "Advanced" },
+  { type: "location", label: "Location / Map", icon: MapPin, description: "Koordinat peta (latitude, longitude) saja, bukan alamat", category: "Advanced" },
   { type: "seo", label: "SEO Metadata", icon: SearchCheck, description: "Meta title, description, keywords, & OG image", category: "Advanced" },
   { type: "code", label: "Code Snippet", icon: Code2, description: "Editor potongan kode pemrograman multi-bahasa", category: "Advanced" },
   { type: "json", label: "JSON", icon: Code, description: "Custom JSON structure", category: "Advanced" },
