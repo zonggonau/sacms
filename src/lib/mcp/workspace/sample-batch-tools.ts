@@ -18,7 +18,7 @@ const textResult = (value: unknown, isError = false) => ({
 })
 
 // Loaded lazily: the Prisma runtime is only needed when a batch is cleared.
-const DbNull = () => require("@prisma/client").Prisma.DbNull
+const DbNull = async () => (await import("@prisma/client")).Prisma.DbNull
 
 async function loadRecord(tenantId: string, batchId: string): Promise<SeedRecord | null> {
   const row = await db.setting.findUnique({ where: { key: ledgerKeyFor(tenantId, batchId) } })
@@ -140,7 +140,7 @@ export function registerSampleBatchTools(server: McpServer) {
         clearSingle: async (singleType, entryLocale) => {
           const result = await tenantDb.tenantSingleTypeAssignment.updateMany({
             where: { tenantId: auth.tenantId, locale: entryLocale, singleType: { slug: singleType } },
-            data: { data: DbNull(), draftData: DbNull(), publishedAt: null },
+            data: { data: await DbNull(), draftData: await DbNull(), publishedAt: null },
           })
           await invalidateSingleTypePublication(auth.tenantId, singleType, entryLocale)
           return result.count > 0

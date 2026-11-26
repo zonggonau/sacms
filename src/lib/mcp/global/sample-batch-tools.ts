@@ -12,7 +12,7 @@ import { McpServer, authContext, UNAUTHORIZED, runDemoOperation, scopeDenied } f
 const schemaTemplateIdInput = z.string().trim().min(1).max(150).describe("Schema Template ID or slug whose demo workspace holds the batch.")
 
 // Loaded lazily: the Prisma runtime is only needed when a batch is cleared.
-const DbNull = () => require("@prisma/client").Prisma.DbNull
+const DbNull = async () => (await import("@prisma/client")).Prisma.DbNull
 
 // Demo ledgers are scoped as `demo:<demoWorkspaceId>`, matching seed_demo_sample_content.
 const demoScope = (demoId: string) => `demo:${demoId}`
@@ -132,7 +132,7 @@ export function registerDemoSampleBatchTools(server: McpServer) {
           clearSingle: async (singleType, locale) => {
             const result = await db.tenantSingleTypeAssignment.updateMany({
               where: { tenantId: demo.id, locale, singleType: { slug: singleType } },
-              data: { data: DbNull(), draftData: DbNull(), publishedAt: null },
+              data: { data: await DbNull(), draftData: await DbNull(), publishedAt: null },
             })
             await invalidateSingleTypePublication(demo.id, singleType, locale)
             return result.count > 0
