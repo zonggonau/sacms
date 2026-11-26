@@ -100,7 +100,7 @@ export const SYSTEM_PROMPT = `You are an expert Headless CMS database architect 
 
 Work through the whole page structure methodically, header to footer, before generating anything:
 
-1. **Global site settings (always exactly one Single Type, e.g. 'site-settings')** — whatever the generated frontend needs on every page: site name/logo/favicon ('media'), primary/secondary/accent brand color ('color' — this covers "tipe warna website"), typography choice ('select' listing a few font pairings), header nav links, footer columns/links, footer copyright text, social media links, contact info (email/phone/address — 'location' if a real address matters), and ONE 'seo' field for the site-wide default meta title/description/OG image that other pages fall back to. This Single Type is what the header and footer actually render from — never leave header/footer content hardcoded in the frontend with nothing behind it.
+1. **Global site settings (always exactly one Single Type, e.g. 'site-settings')** — whatever the generated frontend needs on every page: site name/logo/favicon ('media'), primary/secondary/accent brand color ('color' — this covers "tipe warna website"), typography choice ('select' listing a few font pairings), header nav links, footer columns/links, footer copyright text, social media links (nav links and social links are each a repeatable 'component' with options.repeatable: true, one component per link holding a label and a url — never 'tags', which cannot hold a label and a URL together), contact info (email/phone/address — 'location' if a real address matters), and ONE 'seo' field for the site-wide default meta title/description/OG image that other pages fall back to. This Single Type is what the header and footer actually render from — never leave header/footer content hardcoded in the frontend with nothing behind it.
 
 2. **Each distinct, one-off page (one Single Type per page)** — the homepage (slug exactly 'homepage', not 'home-page' or 'landing-page'), About, Contact, or any other page that exists exactly once. Each gets its own hero heading/subheading/image, its own body sections, and its own 'seo' field (meta tags specific to that page override the site default). Think about what's actually ON that page section by section — a homepage hero, an about page's story + team intro, a contact page's form intro + map — model each distinct section as real fields or embedded components, not one giant 'richText' blob standing in for the whole page.
 
@@ -232,12 +232,38 @@ function normalizeSchemaSlugs(schema: GeneratedSystemSchema): GeneratedSystemSch
 const HOMEPAGE_SLUG_ALIASES = ["homepage", "home-page", "home", "landing-page", "landing"]
 const SITE_SETTINGS_SLUG_ALIASES = ["site-settings", "global-settings", "settings", "site-config"]
 
-function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSchema {
+// Navigation and social links need a label AND a URL per entry. `tags` holds
+// only one string, so the blueprint uses small repeatable components instead.
+type SchemaComponent = GeneratedSystemSchema["components"][number]
+
+const NAV_LINK_COMPONENT: SchemaComponent = {
+  name: "Link Navigasi",
+  slug: "nav-link",
+  description: "Satu tautan navigasi: teks yang tampil dan alamat tujuannya.",
+  fields: [
+    { name: "Label", slug: "label", type: "text" },
+    { name: "URL", slug: "url", type: "url" },
+  ],
+}
+
+const SOCIAL_LINK_COMPONENT: SchemaComponent = {
+  name: "Link Sosial Media",
+  slug: "social-link",
+  description: "Satu akun sosial media: nama platform dan alamat profilnya.",
+  fields: [
+    { name: "Platform", slug: "platform", type: "text" },
+    { name: "URL", slug: "url", type: "url" },
+  ],
+}
+
+export function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSchema {
   const singleTypes = schema.singleTypes || []
   const hasAnySlug = (aliases: string[]) => singleTypes.some((st) => aliases.includes(st.slug))
   const additions: typeof singleTypes = []
+  let neededComponents: SchemaComponent[] = []
 
   if (!hasAnySlug(SITE_SETTINGS_SLUG_ALIASES)) {
+    neededComponents = [NAV_LINK_COMPONENT, SOCIAL_LINK_COMPONENT]
     additions.push({
       name: "Site Settings",
       slug: "site-settings",
@@ -246,9 +272,9 @@ function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSc
         { name: "Logo", slug: "logo", type: "media" },
         { name: "Warna Utama", slug: "warna-utama", type: "color" },
         { name: "Warna Sekunder", slug: "warna-sekunder", type: "color" },
-        { name: "Link Navigasi", slug: "link-navigasi", type: "tags" },
+        { name: "Link Navigasi", slug: "link-navigasi", type: "component", componentSlug: "nav-link", options: { repeatable: true } },
         { name: "Teks Footer", slug: "teks-footer", type: "text" },
-        { name: "Link Sosial Media", slug: "link-sosial-media", type: "tags" },
+        { name: "Link Sosial Media", slug: "link-sosial-media", type: "component", componentSlug: "social-link", options: { repeatable: true } },
         { name: "Email Kontak", slug: "email-kontak", type: "text" },
         { name: "Telepon Kontak", slug: "telepon-kontak", type: "text" },
         { name: "SEO Default", slug: "seo-default", type: "seo" },
@@ -271,7 +297,16 @@ function ensureCoreSingleTypes(schema: GeneratedSystemSchema): GeneratedSystemSc
   }
 
   if (additions.length === 0) return schema
-  return { ...schema, singleTypes: [...singleTypes, ...additions] }
+  // Add the link components the new Site Settings points at, unless the
+  // model already defined a component with that slug.
+  const existingComponents = schema.components || []
+  const componentSlugs = new Set(existingComponents.map((c) => c.slug))
+  const missingComponents = neededComponents.filter((c) => !componentSlugs.has(c.slug))
+  return {
+    ...schema,
+    singleTypes: [...singleTypes, ...additions],
+    components: [...existingComponents, ...missingComponents],
+  }
 }
 
 /** Applied once at every return point in generateSystemSchema — the one pipeline every generation path (real AI, blueprint match, heuristic) goes through before the client ever sees it. */

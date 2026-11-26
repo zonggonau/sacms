@@ -70,3 +70,44 @@ describe("a component field keeps its componentSlug and its options", () => {
     expect(out.options).toEqual({ repeatable: true, componentSlug: "feature-card" })
   })
 })
+
+describe("core blueprint links are repeatable components", () => {
+  it("adds nav and social link components and points Site Settings at them", async () => {
+    const { ensureCoreSingleTypes } = await import("@/lib/ai-schema-generator")
+    const out = ensureCoreSingleTypes({ contentTypes: [], singleTypes: [], components: [] })
+    const settings = out.singleTypes.find((s) => s.slug === "site-settings")!
+    expect(settings.fields.find((f) => f.slug === "link-navigasi")).toMatchObject({
+      type: "component", componentSlug: "nav-link", options: { repeatable: true },
+    })
+    expect(settings.fields.find((f) => f.slug === "link-sosial-media")).toMatchObject({
+      type: "component", componentSlug: "social-link", options: { repeatable: true },
+    })
+    expect(out.components.map((c) => c.slug)).toEqual(expect.arrayContaining(["nav-link", "social-link"]))
+  })
+
+  it("the core blueprint passes the save-time reference check", async () => {
+    const { ensureCoreSingleTypes } = await import("@/lib/ai-schema-generator")
+    const { validateBundleReferences, splitIssuesBySeverity } = await import("@/lib/schema-template-validation")
+    const out = ensureCoreSingleTypes({ contentTypes: [], singleTypes: [], components: [] })
+    const { blocking } = splitIssuesBySeverity(validateBundleReferences(out as any))
+    expect(blocking).toEqual([])
+  })
+
+  it("does not duplicate a nav-link component the model already defined", async () => {
+    const { ensureCoreSingleTypes } = await import("@/lib/ai-schema-generator")
+    const out = ensureCoreSingleTypes({
+      contentTypes: [], singleTypes: [],
+      components: [{ name: "Menu", slug: "nav-link", fields: [] }],
+    })
+    expect(out.components.filter((c) => c.slug === "nav-link")).toHaveLength(1)
+  })
+
+  it("leaves a model that already has Site Settings alone", async () => {
+    const { ensureCoreSingleTypes } = await import("@/lib/ai-schema-generator")
+    const input = {
+      contentTypes: [], components: [],
+      singleTypes: [{ name: "Site", slug: "site-settings", fields: [] }, { name: "Home", slug: "homepage", fields: [] }],
+    }
+    expect(ensureCoreSingleTypes(input)).toEqual(input)
+  })
+})

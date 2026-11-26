@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rotate a workspace MCP token** from `/developer/mcp` ("Putar"). The old token and any OAuth connection that used it are revoked.
 
 ### Changed
+- **Navigation and social links are components**: the AI Schema Generator's Site Settings uses a repeatable `nav-link` (label + URL) and `social-link` component instead of `tags`, which could not hold a label and a URL together. Both components are created with the Site Settings.
 - **AI schema review shows each field's type**: every field card shows its type name, its relation target or component, the number of select choices, and a ⚠ on anything that would block the save. The save error lists the first problems.
 - **Schema save checks references**: saving an AI-generated schema now runs the same checks as the MCP and template paths. A relation or component pointing at nothing, or a select with no choices, blocks the save with a list of what to fix. Models already in the workspace count as valid targets. A component's `componentSlug` is no longer dropped when the field also has options.
 - **AI Schema Generator knows field options**: the model can now set `select`/`multiselect` choices, relation `relationType` and `targetModel`, repeatable components, and repeater `allowedComponents`. Its prompt uses the audited field guide. Authors, team, and staff are Content Types, not Members. `location` holds lat/lng only, and currency is always IDR.
