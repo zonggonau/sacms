@@ -265,6 +265,19 @@ jobs:
             echo "==> [3/7] Authenticating to GHCR..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+            # Free disk before pulling. Every deploy leaves an untagged
+            # (dangling) ~3.4 GB app image behind, and the old cleanup below
+            # only runs after a successful deploy, so a failed deploy never
+            # reclaimed anything. The pull then hit "no space left on device"
+            # (2026-11-26). Only dangling images and unused build cache are
+            # removed; running containers and tagged images are untouched.
+            echo "==> Disk before cleanup:"
+            df -h / | tail -1
+            docker image prune -f >/dev/null 2>&1 || true
+            docker builder prune -f >/dev/null 2>&1 || true
+            echo "==> Disk after cleanup:"
+            df -h / | tail -1
+
             echo "==> [4/7] Pulling this run's SaCMS image (with auto-retry)..."
             PULL_SUCCESS=0
             for attempt in 1 2 3 4 5; do
