@@ -23,7 +23,10 @@ CREATE TABLE "oauth_tokens" (
     CONSTRAINT "oauth_tokens_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "oauth_tokens_refreshTokenHash_key" ON "oauth_tokens"("refreshTokenHash");
+-- Not unique: a unique constraint makes `prisma db push` stop on production with a
+-- data-loss warning. Refresh tokens are 256-bit random, so collisions are not a
+-- real risk; rotation's compare-and-swap is keyed on id + hash.
+CREATE INDEX "oauth_tokens_refreshTokenHash_idx" ON "oauth_tokens"("refreshTokenHash");
 CREATE INDEX "oauth_tokens_tenantId_idx" ON "oauth_tokens"("tenantId");
 
 ALTER TABLE "oauth_tokens" ADD CONSTRAINT "oauth_tokens_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;

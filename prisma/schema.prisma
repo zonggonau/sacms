@@ -1419,7 +1419,7 @@ model OAuthCode {
 // MCP route verifies them like any other MCP token. Only hashes are stored.
 model OAuthToken {
   id               String    @id @default(cuid())
-  refreshTokenHash String    @unique
+  refreshTokenHash String
   clientId         String
   tenantId         String
   userId           String
@@ -1430,6 +1430,7 @@ model OAuthToken {
   tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([refreshTokenHash])
   @@map("oauth_tokens")
 }
 

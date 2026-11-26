@@ -170,7 +170,7 @@ async function createConnection(input: { clientId: string; clientName: string; u
  */
 export async function refreshConnection(input: { refreshToken: string; clientId: string }): Promise<OAuthResult<ReturnType<typeof tokenResponse>>> {
   const presentedHash = sha256Hex(input.refreshToken)
-  const row = await db.oAuthToken.findUnique({ where: { refreshTokenHash: presentedHash } })
+  const row = await db.oAuthToken.findFirst({ where: { refreshTokenHash: presentedHash } })
   if (!row || row.clientId !== input.clientId) {
     return fail("invalid_grant", "The refresh token is invalid.")
   }

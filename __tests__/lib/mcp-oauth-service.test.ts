@@ -5,7 +5,7 @@ const { db } = vi.hoisted(() => ({
   db: {
     oAuthClient: { create: vi.fn(), findUnique: vi.fn() },
     oAuthCode: { create: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
-    oAuthToken: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+    oAuthToken: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     apiToken: { create: vi.fn(), deleteMany: vi.fn() },
     tenantMember: { findFirst: vi.fn() },
     user: { findUnique: vi.fn() },
@@ -153,7 +153,7 @@ describe("refresh token rotation", () => {
   })
 
   it("rotates: swaps the refresh hash atomically and removes the old access token", async () => {
-    db.oAuthToken.findUnique.mockResolvedValue(refreshRow())
+    db.oAuthToken.findFirst.mockResolvedValue(refreshRow())
     db.oAuthToken.updateMany.mockResolvedValue({ count: 1 })
     const res = await refreshConnection({ refreshToken: "old-refresh", clientId: "mcpc_client" })
     expect(res.ok).toBe(true)
@@ -164,7 +164,7 @@ describe("refresh token rotation", () => {
   })
 
   it("treats a lost swap as reuse: the connection is revoked and the request fails", async () => {
-    db.oAuthToken.findUnique.mockResolvedValue(refreshRow())
+    db.oAuthToken.findFirst.mockResolvedValue(refreshRow())
     db.oAuthToken.updateMany.mockResolvedValue({ count: 0 })
     const res = await refreshConnection({ refreshToken: "old-refresh", clientId: "mcpc_client" })
     expect(res).toMatchObject({ ok: false, error: "invalid_grant", description: expect.stringMatching(/already used/) })
@@ -172,18 +172,18 @@ describe("refresh token rotation", () => {
   })
 
   it("refuses an unknown refresh token", async () => {
-    db.oAuthToken.findUnique.mockResolvedValue(null)
+    db.oAuthToken.findFirst.mockResolvedValue(null)
     expect(await refreshConnection({ refreshToken: "nope", clientId: "mcpc_client" })).toMatchObject({ ok: false, error: "invalid_grant" })
   })
 
   it("refuses a refresh token presented by a different client", async () => {
-    db.oAuthToken.findUnique.mockResolvedValue(refreshRow({ clientId: "mcpc_other" }))
+    db.oAuthToken.findFirst.mockResolvedValue(refreshRow({ clientId: "mcpc_other" }))
     expect(await refreshConnection({ refreshToken: "old-refresh", clientId: "mcpc_client" })).toMatchObject({ ok: false })
     expect(db.oAuthToken.updateMany).not.toHaveBeenCalled()
   })
 
   it("revokes an expired connection instead of renewing it", async () => {
-    db.oAuthToken.findUnique.mockResolvedValue(refreshRow({ expiresAt: new Date(Date.now() - 1000) }))
+    db.oAuthToken.findFirst.mockResolvedValue(refreshRow({ expiresAt: new Date(Date.now() - 1000) }))
     expect(await refreshConnection({ refreshToken: "old-refresh", clientId: "mcpc_client" })).toMatchObject({ ok: false })
     expect(db.oAuthToken.deleteMany).toHaveBeenCalledWith({ where: { id: "conn-1" } })
     expect(db.oAuthToken.updateMany).not.toHaveBeenCalled()

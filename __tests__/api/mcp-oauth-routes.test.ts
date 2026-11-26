@@ -9,7 +9,7 @@ const { db } = vi.hoisted(() => ({
   db: {
     oAuthClient: { create: vi.fn(), findUnique: vi.fn() },
     oAuthCode: { create: vi.fn(), findUnique: vi.fn(), deleteMany: vi.fn() },
-    oAuthToken: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+    oAuthToken: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     apiToken: { create: vi.fn(), deleteMany: vi.fn() },
     tenantMember: { findFirst: vi.fn() },
     user: { findUnique: vi.fn() },
