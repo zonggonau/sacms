@@ -51,7 +51,12 @@ export async function createSnapPayment(
   // fallback — without one, every caller (e.g. domain checkout) would throw
   // on any environment lacking a real MIDTRANS_SERVER_KEY, including local
   // dev/test. Mirrors the same NODE_ENV-gated rule as lib/payment/index.ts.
-  const hasMidtransCredential = Boolean(process.env.MIDTRANS_SERVER_KEY?.trim())
+  // The key may come from Platform Settings or the environment, the same order
+  // getMidtransClient() uses. Checking only the env here wrongly reported "no
+  // credential" on production instances that keep the key in Platform Settings.
+  const { getResolvedMidtransConfig } = await import('./settings')
+  const resolved = await getResolvedMidtransConfig()
+  const hasMidtransCredential = Boolean(resolved.serverKey?.trim() || process.env.MIDTRANS_SERVER_KEY?.trim())
   if (!hasMidtransCredential) {
     if (!isMockAllowed('midtrans', hasMidtransCredential)) {
       requireCredentialOutsideMock('midtrans', 'MIDTRANS_SERVER_KEY')

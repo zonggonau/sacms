@@ -92,13 +92,23 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
 
   const handlePurchase = async (template: WebsiteTemplateItem) => {
     setPurchasingId(template.id)
+    // Open the tab now, while the click still counts as a user gesture. Opening it
+    // after the fetch lets browsers block it as a pop-up, so nothing visible happens.
+    const payTab = window.open("about:blank", "_blank")
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/website-templates/${template.id}/purchase`, { method: "POST" })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data?.redirectUrl) throw new Error(data?.error?.message || data?.error || "Gagal memulai pembayaran")
-      window.open(data.redirectUrl, "_blank", "noopener,noreferrer")
+      if (payTab) {
+        payTab.location.href = data.redirectUrl
+      } else {
+        // Pop-up blocked: continue in this tab instead.
+        window.location.assign(data.redirectUrl)
+        return
+      }
       toast({ title: "Selesaikan pembayaran", description: `Halaman pembayaran "${template.name}" dibuka di tab baru. Template bisa diterapkan setelah pembayaran terkonfirmasi.` })
     } catch (err: any) {
+      payTab?.close()
       toast({ variant: "destructive", title: "Gagal", description: err.message })
     } finally {
       setPurchasingId(null)

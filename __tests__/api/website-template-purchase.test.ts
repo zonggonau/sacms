@@ -10,7 +10,7 @@ const { db } = vi.hoisted(() => ({
     websiteTemplate: { findFirst: vi.fn() },
     websiteTemplatePurchase: { findUnique: vi.fn() },
     subscription: { findFirst: vi.fn() },
-    paymentTransaction: { create: vi.fn() },
+    paymentTransaction: { create: vi.fn(), findFirst: vi.fn() },
     tenant: { findUnique: vi.fn() },
   },
 }))
@@ -36,6 +36,33 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
     db.websiteTemplatePurchase.findUnique.mockResolvedValue(null)
     db.subscription.findFirst.mockResolvedValue({ id: "sub-1" })
     db.paymentTransaction.create.mockResolvedValue({})
+    db.paymentTransaction.findFirst.mockResolvedValue(null)
+  })
+
+  it("reuses the pending order on a second click instead of creating another", async () => {
+    asPlan("pro")
+    db.paymentTransaction.findFirst.mockResolvedValue({
+      orderId: "TPL-existing", amount: 150_000, rawResponse: { token: "tok-1", redirectUrl: "https://pay.example/first" },
+    })
+    const body = await (await buy()).json()
+    expect(body).toMatchObject({ orderId: "TPL-existing", redirectUrl: "https://pay.example/first", reused: true })
+    expect(createSnapPayment).not.toHaveBeenCalled()
+    expect(db.paymentTransaction.create).not.toHaveBeenCalled()
+  })
+
+  it("does not reuse a pending order when the template price has changed", async () => {
+    asPlan("pro")
+    db.paymentTransaction.findFirst.mockResolvedValue(null)
+    expect((await buy()).status).toBe(200)
+    expect(db.paymentTransaction.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ amount: 150_000 }) }))
+    expect(createSnapPayment).toHaveBeenCalled()
+  })
+
+  it("leaves no pending order behind when Midtrans refuses the payment", async () => {
+    asPlan("pro")
+    vi.mocked(createSnapPayment).mockRejectedValueOnce(new Error("no credential"))
+    expect((await buy()).status).toBe(500)
+    expect(db.paymentTransaction.create).not.toHaveBeenCalled()
   })
 
   it("starts a TPL- checkout for a Pro workspace and records the order as pending", async () => {
