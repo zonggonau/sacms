@@ -77,9 +77,9 @@ export function deriveNextStep(facts: WorkspaceFacts, tenantSlug: string): NextS
         {
           id: "add-entries",
           label: "Tambah entri konten",
-          description: "Buka halaman Konten dan tulis entri pertama.",
+          description: "Buka CMS Studio, pilih koleksi, lalu tulis entri pertama.",
           via: "dashboard",
-          href: dash("cms/content"),
+          href: dash("cms"),
         },
         {
           id: "sample-content",

@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest"
+import { readdirSync } from "fs"
+import { join } from "path"
 import { deriveNextStep, NEXT_STEP_STAGE_COUNT, type WorkspaceFacts } from "@/lib/workspace-next-step"
 
 const empty: WorkspaceFacts = { contentTypeCount: 0, singleTypeCount: 0, componentCount: 0, entryCount: 0, hasSite: false }
@@ -59,5 +61,43 @@ describe("deriveNextStep", () => {
       { ...empty, contentTypeCount: 1, entryCount: 1, hasSite: true },
     ]
     for (const facts of stages) expect(deriveNextStep(facts, slug).actions.length).toBeGreaterThan(0)
+  })
+})
+
+// Every dashboard link must point at a page that exists. A link to a missing
+// route (cms/content had no page.tsx) shipped once and 404'd for users.
+describe("dashboard links resolve to real pages", () => {
+  const appRoot = join(__dirname, "../../src/app/(workspace)/dashboard/[tenant]")
+
+  function routesUnder(dir: string, prefix = ""): string[] {
+    const out: string[] = []
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) {
+        // Route groups like (cms) do not appear in the URL.
+        const seg = /^\(.*\)$/.test(entry.name) ? "" : `/${entry.name}`
+        out.push(...routesUnder(full, prefix + seg))
+      } else if (entry.name === "page.tsx") {
+        out.push(prefix || "/")
+      }
+    }
+    return out
+  }
+
+  it("every dashboard href from every stage has a matching page", () => {
+    const pages = new Set(routesUnder(appRoot))
+    const stages: WorkspaceFacts[] = [
+      empty,
+      { ...empty, contentTypeCount: 1 },
+      { ...empty, contentTypeCount: 1, entryCount: 1 },
+      { ...empty, contentTypeCount: 1, entryCount: 1, hasSite: true },
+    ]
+    for (const facts of stages) {
+      for (const action of deriveNextStep(facts, slug).actions) {
+        if (action.via !== "dashboard") continue
+        const route = action.href.replace(`/dashboard/${slug}`, "") || "/"
+        expect(pages.has(route), `${action.href} has no page.tsx`).toBe(true)
+      }
+    }
   })
 })
