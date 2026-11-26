@@ -23,8 +23,8 @@ interface WebsiteTemplateItem {
   createdAt?: string
   demoUrl?: string | null
   price?: number | null
-  /** free: Business plan; owned: bought; purchasable/unavailable: Starter/Pro; locked: plan cannot use templates */
-  access?: "free" | "owned" | "purchasable" | "unavailable" | "locked"
+  /** included: Enterprise gets unpriced templates free; owned: bought; purchasable: priced, not yet bought; unavailable: not for sale to this plan */
+  access?: "included" | "owned" | "purchasable" | "unavailable"
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
 
@@ -42,7 +42,7 @@ interface WebsiteTemplatesTabProps {
    *  same empty-workspace check the apply route itself gates on. When false, a regular tenant needs to
    *  reset before a NEW template can be applied. */
   isWorkspaceEmpty: boolean
-  /** free: Business (every template free); purchase: Starter/Pro buy each template; locked: plan cannot use templates. */
+  /** free: every template free for this plan; purchase: Standar/Pro/Bisnis buy each template; locked: plan cannot use templates. */
   planAccess: "free" | "purchase" | "locked"
   /** Called after a successful "Terapkan" — parent switches to Diagram Schema and refreshes live schema. */
   onApplied?: () => void
@@ -211,7 +211,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   // get a 403 back.
   const canApply = currentRole === "owner" || currentRole === "admin"
   const canApplyTemplate = (t: WebsiteTemplateItem) =>
-    canApply && t.access === "owned" && !isResetting && applyingId === null &&
+    canApply && (t.access === "owned" || t.access === "included") && !isResetting && applyingId === null &&
     (pendingTemplateId ? pendingTemplateId === t.id : isWorkspaceEmpty)
 
   // One action per template, shared by the card and table layouts.
@@ -255,6 +255,8 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   const priceBadge = (t: WebsiteTemplateItem) =>
     t.access === "owned" ? (
       <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Dimiliki</Badge>
+    ) : t.access === "included" ? (
+      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Gratis (Enterprise)</Badge>
     ) : t.access === "purchasable" && t.price ? (
       <Badge variant="outline" className="text-[10px] font-bold">{formatRupiah(t.price)}</Badge>
     ) : null
@@ -350,7 +352,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
     <div className="space-y-3">
       {planAccess === "purchase" && (
         <p className="text-[11px] text-muted-foreground">
-          Setiap template dibeli satuan di semua plan (sekali bayar, berlaku permanen untuk workspace ini).
+          Plan Standar, Pro, dan Bisnis membeli setiap template satuan (sekali bayar, berlaku seumur hidup untuk workspace ini). Plan Enterprise mendapat template tanpa harga secara gratis; template berbayar tetap dibeli.
         </p>
       )}
       {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}

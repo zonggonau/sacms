@@ -25,7 +25,7 @@ vi.mock("@/lib/database", () => ({
     mcpDeploymentSource: { create: vi.fn().mockResolvedValue({ id: "rev-1" }) },
     websiteTemplate: { findUnique: vi.fn() },
     websiteTemplatePurchase: { findUnique: vi.fn().mockResolvedValue({ id: "purchase-1" }) },
-    tenant: { update: vi.fn().mockResolvedValue({}) },
+    tenant: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue({ plan: "business", ownerId: null }) },
     setting: fakeSetting,
     $transaction: vi.fn(),
   },
@@ -124,6 +124,24 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(res.status).toBe(403)
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
     expect(deployTenantFrontend).not.toHaveBeenCalled()
+  })
+
+  it("lets an Enterprise workspace apply an unpriced template without buying it", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: null } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
+    vi.mocked(db.tenant.findUnique).mockResolvedValueOnce({ plan: "enterprise", ownerId: null } as any)
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(res.status).not.toBe(403)
+    expect(materializeSchemaIntoTenant).toHaveBeenCalled()
+  })
+
+  it("still blocks an Enterprise workspace from applying a priced template it has not bought", async () => {
+    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: 150_000 } as any)
+    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
+    vi.mocked(db.tenant.findUnique).mockResolvedValueOnce({ plan: "enterprise", ownerId: null } as any)
+    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
+    expect(res.status).toBe(403)
+    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
   })
 
   it.each(["business", "pro", "starter"])("blocks a %s workspace that has not bought the template", async (plan) => {

@@ -20,7 +20,8 @@ export default async function WebsiteTemplatesPage({ params }: { params: Promise
   const isWorkspaceEmpty = !!schema && schema.contentTypes.length === 0 && schema.components.length === 0 &&
     schema.singleTypes.every(({ slug }) => slug === SITE_SETTINGS_SLUG)
 
-  // Every plan buys templates one at a time, so the gallery always shows the purchase flow.
+  // Standar, Pro, and Bisnis buy templates one at a time; Enterprise gets unpriced ones free.
+  // The gallery always shows the purchase flow, and each card's access says which applies.
   const planAccess = "purchase" as const
 
   return (

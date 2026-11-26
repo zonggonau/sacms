@@ -8,6 +8,7 @@ vi.mock("@/lib/database", () => ({
     websiteTemplate: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     websiteTemplatePurchase: { findMany: vi.fn() },
     setting: { findUnique: vi.fn().mockResolvedValue(null) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ plan: "business", ownerId: null }) },
   },
 }))
 
@@ -54,25 +55,21 @@ describe("GET /api/tenant/[tenant]/website-templates — per-template access", (
   const accessFor = async (plan: string, ownedIds: string[]) => {
     mockSession.mockResolvedValue({ user: { id: "user1" } } as any)
     mockAccess.mockResolvedValue({ ...regularAccess, tenant: { ...regularAccess.tenant, plan } } as any)
+    vi.mocked(db.tenant.findUnique).mockResolvedValue({ plan, ownerId: null } as any)
     vi.mocked(db.websiteTemplate.findMany).mockResolvedValue(catalog as any)
     vi.mocked((db as any).websiteTemplatePurchase.findMany).mockResolvedValue(ownedIds.map((websiteTemplateId) => ({ websiteTemplateId })))
     const body = await (await listGET(getReq(), ctx({ tenant: "tenant1" }))).json()
     return Object.fromEntries(body.templates.map((t: any) => [t.id, t.access]))
   }
 
-  it("Business pays for templates like every other plan", async () => {
-    expect(await accessFor("business", ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "unavailable" })
-  })
-
-  it("Pro and Starter own what they bought and can buy what is for sale", async () => {
-    for (const plan of ["pro", "starter"]) {
+  it("Standard, Pro, and Business buy every priced template, and unpriced ones are not for sale", async () => {
+    for (const plan of ["free", "starter", "pro", "business", "custom"]) {
       expect(await accessFor(plan, ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "unavailable" })
     }
   })
 
-  it("free, enterprise and custom buy templates like every other plan", async () => {
-    for (const plan of ["free", "enterprise", "custom"]) {
-      expect(await accessFor(plan, ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "unavailable" })
-    }
+  it("Enterprise gets unpriced templates free and still buys priced ones", async () => {
+    expect(await accessFor("enterprise", ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "included" })
+    expect(await accessFor("enterprise", [])).toEqual({ bought: "purchasable", "for-sale": "purchasable", "not-for-sale": "included" })
   })
 })

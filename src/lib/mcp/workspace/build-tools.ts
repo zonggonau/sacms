@@ -57,7 +57,7 @@ export function registerBuildTools(server: McpServer) {
           return { content: [{ type: "text" as const, text: `❌ ${structured.message}` }], structuredContent: structured, isError: true }
         }
 
-        // Free on Business; Starter/Pro must have bought this template. Buying
+        // Free for Enterprise when unpriced; every other plan must have bought this template. Buying
         // happens in the dashboard (Website Template tab), never through MCP.
         const { canApplyWithAccess, resolveWebsiteTemplateAccess, WEBSITE_TEMPLATE_ACCESS_MESSAGE } = await import("@/lib/billing/website-template-access")
         const templateAccess = await resolveWebsiteTemplateAccess(auth.tenantId, websiteTemplate)

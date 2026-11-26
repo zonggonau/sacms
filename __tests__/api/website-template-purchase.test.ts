@@ -11,6 +11,7 @@ const { db } = vi.hoisted(() => ({
     websiteTemplatePurchase: { findUnique: vi.fn() },
     subscription: { findFirst: vi.fn() },
     paymentTransaction: { create: vi.fn() },
+    tenant: { findUnique: vi.fn() },
   },
 }))
 vi.mock("@/lib/database", () => ({ db }))
@@ -22,8 +23,10 @@ import { POST } from "@/app/api/tenant/[tenant]/website-templates/[id]/purchase/
 
 const longName = "Ruang Bingkai — Studio Fotografi Profesional Nabire Papua Tengah"
 const buy = () => POST(new Request("https://app.test/x", { method: "POST" }) as never, { params: Promise.resolve({ tenant: "acme", id: "wt-1" }) } as never)
-const asPlan = (plan: string) =>
+const asPlan = (plan: string) => {
   vi.mocked(getTenantAccess).mockResolvedValue({ role: "owner", tenantId: "tenant-1", userId: "user-1", tenant: { id: "tenant-1", slug: "acme", name: "Acme", plan } } as never)
+  db.tenant.findUnique.mockResolvedValue({ plan, ownerId: null })
+}
 
 describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
   beforeEach(() => {
@@ -67,10 +70,17 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
     expect(createSnapPayment).not.toHaveBeenCalled()
   })
 
-  it("refuses a template that is not for sale", async () => {
+  it("refuses a template that is not for sale to a Pro workspace", async () => {
     asPlan("pro")
     db.websiteTemplate.findFirst.mockResolvedValue({ id: "wt-1", name: "Gratis", price: null })
     expect((await buy()).status).toBe(403)
+    expect(db.paymentTransaction.create).not.toHaveBeenCalled()
+  })
+
+  it("refuses to sell an unpriced template to an Enterprise workspace, since it is free there", async () => {
+    asPlan("enterprise")
+    db.websiteTemplate.findFirst.mockResolvedValue({ id: "wt-1", name: "Gratis", price: null })
+    expect((await buy()).status).toBe(409)
     expect(db.paymentTransaction.create).not.toHaveBeenCalled()
   })
 

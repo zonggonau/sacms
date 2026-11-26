@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rotate a workspace MCP token** from `/developer/mcp` ("Putar"). The old token and any OAuth connection that used it are revoked.
 
 ### Changed
+- **Website Template pricing**: Standar, Pro, and Bisnis workspaces buy each priced template once (lifetime). Enterprise workspaces get unpriced templates free; a priced template is prepaid and Enterprise buys it too. Applies to the dashboard gallery, the purchase route, and the MCP apply tool.
 - **MCP workspace release path**: website changes are built and released through one path only: `start_preview` → `apply_preview_changes` → `save_preview_changes`, then an administrator releases from Infrastructure → Hosting. `deploy_to_sacms` is now documented as a one-shot staging build, not the normal release path. The playbook, `instructions`, and tool descriptions all say the same thing (workspace MCP 4.8.0).
 - **MCP guidance in one place**: the workspace `instructions` and playbook moved to `src/lib/mcp/workspace-guidance.ts`, and the global `instructions` moved to `src/lib/mcp/global-guidance.ts`. Their version numbers are set there too (global MCP 1.21.0).
 - **MCP documentation**: `docs/mcp/` covers both servers, the release path, auth and token scopes, and maintenance. `docs/mcp/tool-manifest.json` lists every tool and is checked by a test.

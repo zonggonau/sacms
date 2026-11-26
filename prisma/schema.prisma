@@ -1029,8 +1029,9 @@ model WebsiteTemplate {
   // immediately. When deleted, related demo/deployment records are cleaned up,
   // but the backing SchemaTemplate may persist (for audit + restore capability).
   deletedAt           DateTime?
-  // One-time price in IDR for workspaces that must buy templates (Starter and
-  // Pro); null means not for sale. Business workspaces use every template free.
+  // One-time, lifetime price in IDR. Standard, Pro, and Business workspaces buy
+  // each priced template. Enterprise workspaces get unpriced templates free and
+  // buy priced ones (prepaid). Null price = not for sale to non-Enterprise plans.
   price               Int?
   purchases           WebsiteTemplatePurchase[]
 
