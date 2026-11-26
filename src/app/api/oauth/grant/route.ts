@@ -53,9 +53,6 @@ export async function POST(req: Request) {
   }
   // A per-workspace resource fixes the workspace. The request body may not pick another one.
   const lockedSlug = named?.workspaceSlug ?? null
-  if (lockedSlug && tenantSlug !== lockedSlug) {
-    return NextResponse.json({ error: `This connection is for workspace "${lockedSlug}" only.` }, { status: 400 })
-  }
   const workspaceSlug = lockedSlug ?? tenantSlug
   if (method !== "S256" || !isValidCodeChallenge(codeChallenge)) {
     return NextResponse.json({ redirect: withParams(redirectUri, { error: "invalid_request", error_description: "PKCE with S256 is required.", state }) })
@@ -68,6 +65,11 @@ export async function POST(req: Request) {
   const access = await getTenantAccess(session as any, workspaceSlug)
   if (!access || (access.role !== "owner" && access.role !== "admin" && session.user.role !== "super_admin")) {
     return NextResponse.json({ error: "Only an owner or admin of this workspace can connect it." }, { status: 403 })
+  }
+  // With a locked URL, the body may name the same workspace by slug or id, never another one.
+  const bodyNames = tenantSlug && tenantSlug !== access.tenant?.slug && tenantSlug !== access.tenant?.id
+  if (lockedSlug && bodyNames) {
+    return NextResponse.json({ error: `This connection is for workspace "${lockedSlug}" only.` }, { status: 400 })
   }
 
   const code = await createAuthorizationCode({

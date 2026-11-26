@@ -74,17 +74,20 @@ export default async function OAuthAuthorizePage({ searchParams }: { searchParam
 
   const memberships = await db.tenantMember.findMany({
     where: { userId: session.user.id, role: { in: ["owner", "admin"] } },
-    select: { tenant: { select: { slug: true, name: true, status: true } } },
+    select: { tenant: { select: { id: true, slug: true, name: true, status: true } } },
     orderBy: { joinedAt: "asc" },
   })
   const allWorkspaces = memberships
     .map((m) => m.tenant)
     .filter((t) => t.status !== "deleting")
-    .map((t) => ({ slug: t.slug, name: t.name }))
+    .map((t) => ({ id: t.id, slug: t.slug, name: t.name }))
 
   // Connecting through a workspace's own URL: show only that workspace. If the
   // user is not its owner or admin, say so here instead of offering a choice.
-  const workspaces = lockedSlug ? allWorkspaces.filter((w) => w.slug === lockedSlug) : allWorkspaces
+  // The URL segment is a slug or an id (the dashboard opens workspaces by either).
+  const workspaces = lockedSlug
+    ? allWorkspaces.filter((w) => w.slug === lockedSlug || w.id === lockedSlug).map(({ slug, name }) => ({ slug, name }))
+    : allWorkspaces.map(({ slug, name }) => ({ slug, name }))
   if (lockedSlug && workspaces.length === 0) {
     return <ErrorCard title="Anda tidak bisa menyambungkan workspace ini" message={`Workspace "${lockedSlug}" tidak ditemukan untuk akun Anda, atau Anda bukan owner atau admin-nya. Minta owner workspace menyambungkan aplikasinya.`} />
   }

@@ -32,7 +32,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   process.env.NEXTAUTH_URL = ORIGIN
   vi.mocked(getServerSession).mockResolvedValue({ user: { id: "user-1", role: "user" } } as any)
-  vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-acme", role: "owner" } as any)
+  vi.mocked(getTenantAccess).mockResolvedValue({ tenantId: "tenant-acme", role: "owner", tenant: { id: "tenant-acme", slug: "acme" } } as any)
 })
 
 describe("per-workspace resource helpers", () => {
@@ -56,22 +56,34 @@ describe("per-workspace resource helpers", () => {
 })
 
 describe("workspace scope on the MCP endpoint", () => {
+  const tokenFor = (slug: string, id: string) => ({ tenantId: id, tenantSlug: slug })
+
   it("refuses a token from another workspace", () => {
-    expect(workspaceScopeError("beta", "acme")).toMatch(/belongs to workspace "beta"/)
+    expect(workspaceScopeError(tokenFor("beta", "tenant-beta"), "acme")).toMatch(/belongs to workspace "beta"/)
   })
 
-  it("allows the matching workspace, and the shared endpoint has no scope", () => {
-    expect(workspaceScopeError("acme", "acme")).toBeNull()
-    expect(workspaceScopeError("beta", undefined)).toBeNull()
+  it("accepts the workspace by slug or by id, since the dashboard uses either", () => {
+    expect(workspaceScopeError(tokenFor("acme", "tenant-acme"), "acme")).toBeNull()
+    expect(workspaceScopeError(tokenFor("acme", "tenant-acme"), "tenant-acme")).toBeNull()
+    expect(workspaceScopeError(tokenFor("beta", "tenant-beta"), "tenant-acme")).not.toBeNull()
+  })
+
+  it("the shared endpoint has no scope", () => {
+    expect(workspaceScopeError(tokenFor("beta", "tenant-beta"), undefined)).toBeNull()
   })
 })
 
 describe("consent for a per-workspace resource", () => {
-  it("binds the code to the workspace named by the URL, ignoring any other slug in the body", async () => {
+  it("refuses a body that names a different workspace than the URL", async () => {
     const res = await grant(grantReq(grantBody({ tenant_slug: "beta" })))
     expect(res.status).toBe(400)
     expect(await res.json()).toMatchObject({ error: expect.stringContaining("acme") })
     expect(createAuthorizationCode).not.toHaveBeenCalled()
+  })
+
+  it("accepts the same workspace named by its id in the body", async () => {
+    const res = await grant(grantReq(grantBody({ tenant_slug: "tenant-acme" })))
+    expect(res.status).toBe(200)
   })
 
   it("approves for the URL's workspace and never looks up any other", async () => {

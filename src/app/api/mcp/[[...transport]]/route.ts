@@ -132,7 +132,7 @@ export async function handleMcpRequest(req: Request, opts: { workspaceSlug?: str
         },
       )
     }
-    const scopeError = workspaceScopeError(auth.tenantSlug, opts.workspaceSlug)
+    const scopeError = workspaceScopeError(auth, opts.workspaceSlug)
     if (scopeError) {
       return NextResponse.json({ error: scopeError, code: "WRONG_WORKSPACE" }, { status: 403 })
     }
