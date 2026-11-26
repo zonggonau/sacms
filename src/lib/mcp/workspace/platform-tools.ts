@@ -3,6 +3,8 @@ import { createMcpHandler } from "mcp-handler"
 import { z } from "zod"
 import { buildWorkspacePlaybook } from "@/lib/mcp/workspace-guidance"
 import { getTenantDb } from "@/lib/database"
+import { deriveNextStep } from "@/lib/workspace-next-step"
+import { loadWorkspaceFacts } from "@/lib/workspace-next-step-facts"
 import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied } from "./context"
 
 export function registerPlatformTools(server: McpServer) {
@@ -226,6 +228,31 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
         return {
           content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
           structuredContent: structured,
+        }
+      }
+    )
+
+    // ── get_next_step ────────────────────────────────────────────────────────
+    // Where this workspace is on the planning → live path, and the next actions.
+    // Same derivation as the dashboard's "Langkah berikutnya" card.
+    server.registerTool(
+      "get_next_step",
+      {
+        title: "Get Next Step",
+        description: "Tells you where this workspace is on the path from planning to a live site (plan schema → add content → deploy frontend → live) and which tools or dashboard pages to use next. Call it when you are not sure what to do next, or after finishing a step. Read-only, no arguments.",
+        inputSchema: {},
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "read")) return permissionDenied("read")
+
+        const facts = await loadWorkspaceFacts(auth.tenantId, auth.tenantSlug)
+        const next = deriveNextStep(facts, auth.tenantSlug)
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(next, null, 2) }],
+          structuredContent: next,
         }
       }
     )

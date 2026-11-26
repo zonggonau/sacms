@@ -88,6 +88,7 @@
     "get_deployment_status",
     "get_full_schema",
     "get_global_component",
+    "get_next_step",
     "get_openapi_spec",
     "get_operation_status",
     "get_or_create_api_key",

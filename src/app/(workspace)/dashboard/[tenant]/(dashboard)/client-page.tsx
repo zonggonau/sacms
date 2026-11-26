@@ -4,6 +4,8 @@ import { useState, useMemo } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { copyToClipboard } from "@/lib/clipboard"
+import type { NextStep } from "@/lib/workspace-next-step"
+import { NextStepCard } from "./next-step-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -98,6 +100,7 @@ interface TenantDashboardClientProps {
   session?: any
   isDemoWorkspace?: boolean
   previews?: PreviewEntry[]
+  nextStep?: NextStep
 }
 
 export default function TenantDashboardClient({
@@ -109,6 +112,7 @@ export default function TenantDashboardClient({
   session: initialSession,
   isDemoWorkspace = false,
   previews = [],
+  nextStep,
 }: TenantDashboardClientProps) {
   const { data: sessionData } = useSession()
   const session = sessionData || initialSession
@@ -181,6 +185,8 @@ export default function TenantDashboardClient({
           </Button>
         </div>
       </div>
+
+      {nextStep && <NextStepCard nextStep={nextStep} />}
 
       {/* Live Vercel Production Website Banner */}
       {currentTenant?.vercelDeploymentUrl && (

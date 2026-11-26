@@ -8,6 +8,8 @@ import { redirect } from "next/navigation"
 import TenantDashboardClient from "./client-page"
 import { userApiKeyWhere } from "@/lib/api-token-registry"
 import { listWorkspacePreviews } from "@/lib/infrastructure/workspace-previews"
+import { deriveNextStep } from "@/lib/workspace-next-step"
+import { loadWorkspaceFacts } from "@/lib/workspace-next-step-facts"
 
 export default async function TenantDashboardPage({
   params,
@@ -219,6 +221,15 @@ export default async function TenantDashboardPage({
   const { isDemoWorkspace, previews } = await listWorkspacePreviews(tenantId, access.tenant.slug)
     .catch(() => ({ isDemoWorkspace: false, previews: [] }))
 
+  // Same derivation the get_next_step MCP tool uses. hasSite comes from the
+  // hosting check above, which already clears a Vercel project deleted outside
+  // SaCMS, so the card does not claim a live site that is gone.
+  const nextStepFacts = await loadWorkspaceFacts(tenantId, access.tenant.slug)
+  const nextStep = deriveNextStep(
+    { ...nextStepFacts, hasSite: Boolean(hostingStatus.url || hostingStatus.projectId) },
+    access.tenant.slug,
+  )
+
   return (
     <TenantDashboardClient
       tenantId={tenantId}
@@ -229,6 +240,7 @@ export default async function TenantDashboardPage({
       singleTypes={singleTypes}
       usage={usage}
       activities={activities}
+      nextStep={nextStep}
     />
   )
 }

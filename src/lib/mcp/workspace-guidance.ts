@@ -3,7 +3,7 @@
 // docs/mcp/workspace.md, so the three cannot drift apart. Bump
 // WORKSPACE_MCP_VERSION whenever a tool or a rule here changes.
 
-export const WORKSPACE_MCP_VERSION = "4.11.0"
+export const WORKSPACE_MCP_VERSION = "4.12.0"
 
 export const WORKSPACE_MCP_INSTRUCTIONS =
       "Workspace MCP builds a website from scratch or applies a published Website Template. Read get_agent_playbook, inspect the tenant schema and content, then use start_preview, read_preview_file and apply_preview_changes in the same Sandbox. Show the preview link. If a page errors or renders blank, read get_preview_logs. Call extend_preview before expiresAt during long sessions; an expired session with unsaved edits can still be saved, and start_preview resumes it. Save the approved revision with save_preview_changes. Only a workspace administrator releases it from Infrastructure → Hosting using Deploy Production or Redeploy Production. A richText field's value is raw HTML; follow _renderHints and sanitize before rendering. Call check_sdk_availability before recommending the SDK."
@@ -17,6 +17,8 @@ You are connected to a live, real headless CMS workspace via MCP. Follow these p
 
 ## Phase 0 — Build/revise requests only
 0. If the user asks you to build, create, or revise this workspace's website/app, call \`start_website_build\` first. It registers a resumable \`runId\` so the build can be resumed later with \`get_build_run\`. If the user wants to start from an existing catalog Website Template (a pre-built schema+frontend bundle), call \`apply_website_template\` with its id/slug instead. It only works on an empty workspace (no existing Content Types/Single Types/Components); once it succeeds, the schema AND the frontend are done. Continue at Phase 4 to review and release.
+
+Not sure what comes next, or finished a step and want to know the next one? Call \`get_next_step\`. It reports where the workspace stands (plan schema → add content → deploy frontend → live) and the tools or dashboard pages for that stage.
 
 ## Phase 1 — Discover the real schema
 1. Call \`get_full_schema\` (or \`get_openapi_spec\` if you want it as an OpenAPI document) to get every Content Type, Single Type, and Component with their exact fields and types.
