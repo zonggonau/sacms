@@ -25,7 +25,7 @@ describe("websiteTemplateAccess", () => {
     expect(websiteTemplateAccess(false, 0, true)).toBe("included")
   })
 
-  it("a priced template is still bought by Enterprise (prepaid)", () => {
+  it("a priced template is still bought once, for life, by Enterprise", () => {
     expect(websiteTemplateAccess(false, 150_000, true)).toBe("purchasable")
   })
 

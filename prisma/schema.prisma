@@ -1031,7 +1031,7 @@ model WebsiteTemplate {
   deletedAt           DateTime?
   // One-time, lifetime price in IDR. Standard, Pro, and Business workspaces buy
   // each priced template. Enterprise workspaces get unpriced templates free and
-  // buy priced ones (prepaid). Null price = not for sale to non-Enterprise plans.
+  // buy priced ones (one-time, lifetime). Null price = not for sale to non-Enterprise plans.
   price               Int?
   purchases           WebsiteTemplatePurchase[]
 

@@ -4,7 +4,7 @@ import { db } from "@/lib/database"
 // - Standard, Pro, and Business workspaces buy each template once (lifetime).
 //   A template without a price is not for sale to them.
 // - Enterprise workspaces get every unpriced template free ("included").
-//   A priced template is a prepaid template, so Enterprise buys it like everyone else.
+//   A priced template is a one-time, lifetime purchase, so Enterprise buys it like everyone else.
 export type WebsiteTemplateAccess =
   | "owned" // bought by this workspace
   | "included" // free for this Enterprise workspace (template has no price)
