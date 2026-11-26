@@ -2,6 +2,11 @@ import { z } from "zod"
 import { generateObject } from "ai"
 import { VALID_FIELD_TYPES, type FieldTypeValue, FIELD_TYPES } from "./field-types"
 import { FIELD_TYPE_GUIDE } from "./field-type-guide"
+import {
+  attachGlobalReferences,
+  summarizeGlobalCatalog,
+  type GlobalSchemaCatalog,
+} from "./ai/global-schema-reuse"
 
 // Re-export for backwards compatibility
 export { VALID_FIELD_TYPES, type FieldTypeValue }
@@ -131,6 +136,8 @@ Field Selection Rules:
 If the user's reference material includes a block labeled "Variabel Placeholder Dokumen" listing exact field keys (e.g. from an uploaded .docx letter template), you MUST: create one Content Type representing that document, give it fields whose slugs are EXACTLY those keys verbatim — including underscores, NOT converted to kebab-case, this is the one exception to the kebab-case rule below — using the suggested types, and add exactly one additional field of type 'document_template' to that same Content Type. This lets the uploaded document later be attached as that type's fill-in letter template with the field slugs already matching.
 
 Do not skip step 1 or step 2 even if the user's prompt only describes the business content from step 3 — a real frontend always has a header, a footer, and at least a homepage, so the schema must cover them whether or not the user mentioned them explicitly.
+
+Reuse the SaCMS Global schema when the request lists it. A Component, Single Type, or Content Type that the Global list already defines must be referenced by its slug (componentSlug, options.allowedComponents, relationSlug) and NOT redefined in your output. Define a model only when the Global list lacks it. This is how one shared definition (e.g. nav-link, site-settings) serves every page instead of being copied under a new name.
 
 All slugs must be kebab-case lowercase (letters, digits, hyphens only — never underscores), e.g. 'cover-image', 'is-available'.`
 
@@ -335,10 +342,24 @@ export interface GenerateSystemSchemaResult {
  * generateWithAi already refunds any reserved credits on failure regardless
  * of which of these it is, so neither path costs the user anything.
  */
-async function generateSystemSchemaCore(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GenerateSystemSchemaResult> {
+async function generateSystemSchemaCore(
+  prompt: string,
+  tenantId?: string,
+  userId?: string,
+  model?: string,
+  skipQuotaCheck?: boolean,
+  globalCatalog?: GlobalSchemaCatalog,
+): Promise<GenerateSystemSchemaResult> {
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
-    const schema = await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
+    // The Global catalog is context only: the model reuses what it lists, and
+    // attachGlobalReferences copies in anything it still references.
+    const catalogText = globalCatalog ? summarizeGlobalCatalog(globalCatalog) : ""
+    const fullPrompt = catalogText
+      ? `${prompt}\n\n---\nSchema Global yang sudah tersedia di SaCMS (pakai ulang lewat slug-nya, jangan didefinisikan ulang):\n${catalogText}`
+      : prompt
+    const generated = await generateWithAi(fullPrompt, tenantId, userId, model, skipQuotaCheck)
+    const schema = globalCatalog ? attachGlobalReferences(generated, globalCatalog) : generated
     return { schema: finalizeGeneratedSchema(schema) }
   } catch (error: any) {
     if (error?.status === 429) throw error
@@ -372,8 +393,9 @@ export async function generateSystemSchema(
   model?: string,
   skipQuotaCheck?: boolean,
   placeholderKeys?: string[],
+  globalCatalog?: GlobalSchemaCatalog,
 ): Promise<GenerateSystemSchemaResult> {
-  const result = await generateSystemSchemaCore(prompt, tenantId, userId, model, skipQuotaCheck)
+  const result = await generateSystemSchemaCore(prompt, tenantId, userId, model, skipQuotaCheck, globalCatalog)
   if (!placeholderKeys || placeholderKeys.length === 0) return result
   return { ...result, schema: restoreVerbatimPlaceholderSlugs(result.schema, placeholderKeys) }
 }

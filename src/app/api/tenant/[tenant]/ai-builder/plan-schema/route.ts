@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { generateSystemSchema } from "@/lib/ai-schema-generator"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isAllowedSchemaModel, DEFAULT_SCHEMA_MODEL } from "@/lib/ai/schema-models"
+import { loadGlobalSchemaCatalog } from "@/lib/ai/global-schema-catalog"
 
 export const POST = withStaffAuth(async (req, _context, { access, session }) => {
     const { prompt, model, documentPlaceholders } = await req.json()
@@ -29,6 +30,14 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
       return apiError("validation", { message: "Model AI tidak dikenal. Pilih salah satu dari daftar yang tersedia." })
     }
 
+    // The SaCMS Global workspace's default Components and Single Types. The
+    // generator reuses them instead of inventing duplicates. If Global cannot
+    // be read, generation still runs without that context and the log says why.
+    const globalCatalog = await loadGlobalSchemaCatalog().catch((err) => {
+      console.warn("[AI Schema] Could not read the SaCMS Global schema for reuse:", err?.message)
+      return undefined
+    })
+
     const { schema } = await generateSystemSchema(
       prompt,
       tenant.id,
@@ -36,6 +45,7 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
       model || DEFAULT_SCHEMA_MODEL,
       undefined,
       placeholderKeys,
+      globalCatalog,
     )
 
     const totalFields = schema.contentTypes.reduce((acc, ct) => acc + (ct.fields?.length || 0), 0) +
