@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isSchemaFinalized } from "@/lib/schema-lock"
+import { isGlobalWorkspace } from "@/lib/global-workspace"
 import { SchemaGeneratorClient } from "./schema-generator-client"
 
 export default async function SchemaGeneratorPage({ params }: { params: Promise<{ tenant: string }> }) {
@@ -53,6 +54,7 @@ export default async function SchemaGeneratorPage({ params }: { params: Promise<
         existingSchemaSummary={existingSchemaSummary}
         initialFinalized={finalized}
         currentRole={access.role}
+        isGlobal={await isGlobalWorkspace(tenant)}
       />
     </div>
   )

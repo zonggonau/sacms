@@ -10,10 +10,11 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { useToast } from "@/hooks/use-toast"
 import {
   Sparkles, Maximize2, Plug, Database, Loader2, X,
-  Lock, LockOpen,
+  Lock, LockOpen, RotateCcw,
 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram, type SchemaExport } from "@/components/ai-builder/schema-diagram"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface SchemaGeneratorClientProps {
   tenantSlug: string
@@ -25,6 +26,8 @@ interface SchemaGeneratorClientProps {
   initialFinalized: boolean
   /** This workspace's own staff role for the signed-in user (owner/admin/editor/...) — gates the "Reset & Pilih Template Lain" banner to owner only. */
   currentRole: string
+  /** The SaCMS Global workspace: its schema is shared platform structure, so reset is not offered. */
+  isGlobal?: boolean
 }
 
 const EMPTY_SCHEMA: SchemaExport = { contentTypes: [], singleTypes: [], components: [] }
@@ -35,6 +38,7 @@ export function SchemaGeneratorClient({
   existingSchemaSummary,
   initialFinalized,
   currentRole,
+  isGlobal = false,
 }: SchemaGeneratorClientProps) {
   const router = useRouter()
   const { toast } = useToast()
@@ -49,6 +53,27 @@ export function SchemaGeneratorClient({
   // src/lib/schema-lock.ts) since it never calls those same actions.
   const [finalized, setFinalized] = useState(initialFinalized)
   const [isTogglingLock, setIsTogglingLock] = useState(false)
+
+  const [confirmResetOpen, setConfirmResetOpen] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+
+  // Reset = delete every Content Type, Single Type and Component this
+  // workspace owns (the delete-schema route; fields and entries cascade).
+  const handleResetSchema = async () => {
+    setIsResetting(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/delete-schema`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal mereset schema")
+      toast({ title: "Schema Direset", description: "Semua Content Type, Single Type, dan Component dihapus. Buat schema baru dari prompt." })
+      setConfirmResetOpen(false)
+      setRefreshKey((k) => k + 1)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mereset Schema", description: err.message })
+    } finally {
+      setIsResetting(false)
+    }
+  }
 
   useEffect(() => {
     // The Website Template gallery moved to its own page in the workspace sidebar.
@@ -122,16 +147,28 @@ export function SchemaGeneratorClient({
               {finalized ? <Lock className="h-3 w-3" /> : <LockOpen className="h-3 w-3" />}
               {finalized ? "Final" : "Draft"}
             </Badge>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleToggleLock}
-              disabled={isTogglingLock}
-              className="h-8 gap-1.5 text-xs font-bold"
-            >
-              {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : finalized ? <LockOpen className="size-3.5" /> : <Lock className="size-3.5" />}
-              {finalized ? "Kembalikan ke Draft" : "Publish Schema"}
-            </Button>
+            {finalized ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleToggleLock}
+                disabled={isTogglingLock}
+                className="h-8 gap-1.5 text-xs font-bold"
+              >
+                {isTogglingLock ? <Loader2 className="size-3.5 animate-spin" /> : <LockOpen className="size-3.5" />}
+                Kembalikan ke Draft
+              </Button>
+            ) : !isGlobal ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmResetOpen(true)}
+                className="h-8 gap-1.5 text-xs font-bold text-destructive border-destructive/40 hover:bg-destructive/10"
+              >
+                <RotateCcw className="size-3.5" />
+                Reset Schema
+              </Button>
+            ) : null}
         </>
         <Button
           size="sm"
@@ -157,6 +194,16 @@ export function SchemaGeneratorClient({
           {finalized && <TooltipContent>Kembalikan schema ke Draft dulu untuk pakai AI Schema Generator</TooltipContent>}
         </Tooltip>
       </header>
+
+      <ConfirmDialog
+        open={confirmResetOpen}
+        onOpenChange={setConfirmResetOpen}
+        title="Reset schema workspace ini?"
+        description="Semua Content Type, Single Type, dan Component beserta isinya (fields dan content entries) akan dihapus permanen. Tidak bisa dibatalkan."
+        confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
+        variant="destructive"
+        onConfirm={handleResetSchema}
+      />
 
       {/* ── Full-width tabbed workspace ── */}
       <div className="flex min-h-0 flex-1 flex-col p-4 md:p-5">

@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 import { wipeTenantSchema } from "@/lib/schema-wipe"
+import { isGlobalWorkspace } from "@/lib/global-workspace"
 
 /**
  * Nuclear option: wipes every Content Type, Single Type, and Component this
@@ -20,6 +21,11 @@ import { wipeTenantSchema } from "@/lib/schema-wipe"
  */
 export const POST = withStaffAuth(
   async (_req, _context, { access }) => {
+    // Server-side backstop for the Global block (the comment above always
+    // promised this; the check was missing).
+    if (await isGlobalWorkspace(access.tenant)) {
+      return apiError("forbidden", { message: "Reset schema tidak tersedia untuk workspace SaCMS Global." })
+    }
     const lockError = await assertSchemaEditable(access.tenantId)
     if (lockError) return apiError("forbidden", { message: lockError.error })
 
