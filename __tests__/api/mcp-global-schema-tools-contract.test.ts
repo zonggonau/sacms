@@ -21,7 +21,7 @@ const routeSourceDir = join(__dirname, "../../src/lib/mcp/global")
 const routeSource = [
   join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"),
   ...readdirSync(routeSourceDir).map((file) => join(routeSourceDir, file)),
-].map((file) => readFileSync(file, "utf-8")).join("\n")
+].map((file) => readFileSync(file, "utf-8").replace(/\r\n/g, "\n")).join("\n")
 
 function toolBlockOf(tool: string): string {
   const anchor = `server.registerTool(\n      "${tool}",`
@@ -336,7 +336,7 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(routeSource).toMatch(/"get_builder_guide"/)
     // The route registers the guide module first; that module's first tool must be the guide.
     expect(routeSource.indexOf("registerGuideTools(server)")).toBeLessThan(routeSource.indexOf("registerWebsiteTemplateTools(server)"))
-    const guideSource = readFileSync(join(__dirname, "../../src/lib/mcp/global/guide-tools.ts"), "utf-8")
+    const guideSource = readFileSync(join(__dirname, "../../src/lib/mcp/global/guide-tools.ts"), "utf-8").replace(/\r\n/g, "\n")
     const firstToolIdx = guideSource.indexOf('server.registerTool(\n      "')
     const firstToolName = guideSource.slice(firstToolIdx).match(/"([a-z_]+)"/)?.[1]
     expect(firstToolName).toBe("get_builder_guide")
@@ -516,9 +516,10 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     expect(toolBlockOf('get_website_template')).toMatch(/allFiles\.map\(describeFileSize\)/)
   })
 
-  it('registers a read-only get_global_operation_status tool, with get_operation_status kept as an alias', () => {
+  it('registers a read-only get_global_operation_status tool, and no longer the removed get_operation_status alias', () => {
     expect(routeSource).toMatch(/registerOperationStatus = [\s\S]*readOnlyHint: true[\s\S]*getOperation\(operationId\)/)
-    expect(routeSource).toMatch(/registerOperationStatus\("get_operation_status"/)
+    expect(routeSource).toMatch(/registerOperationStatus\("get_global_operation_status"/)
+    expect(routeSource).not.toMatch(/registerOperationStatus\("get_operation_status"/)
   })
 
   // ── Audit follow-up round ──────────────────────────────────────────────────

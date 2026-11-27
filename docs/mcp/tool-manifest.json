@@ -14,7 +14,6 @@
     "get_demo_single_type_entry",
     "get_global_component",
     "get_global_operation_status",
-    "get_operation_status",
     "get_preview_logs",
     "get_preview_url",
     "get_schema_template",

@@ -14,9 +14,9 @@ describe("MCP tool manifest", () => {
     expect(current).toEqual(committed)
   })
 
-  it("keeps the deprecated get_operation_status alias on the global server", () => {
-    expect(current.global).toContain("get_operation_status")
+  it("the global server exposes get_global_operation_status and no longer the removed get_operation_status alias", () => {
     expect(current.global).toContain("get_global_operation_status")
+    expect(current.global).not.toContain("get_operation_status")
   })
 
   it("the canonical workspace release tools are all registered", () => {

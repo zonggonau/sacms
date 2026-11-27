@@ -100,7 +100,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 
 ## Global MCP (`/api/mcp/global-schema`)
 
-49 tools.
+48 tools.
 
 | Tool | Hints | Description |
 | --- | --- | --- |
@@ -118,7 +118,6 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `get_demo_single_type_entry` | read-only | Read actual demo Single Type values. Returns editor data, public data, publication status, pending draft, and the write version. |
 | `get_global_component` | read-only | Get one reusable Component's full detail, including its complete `fields` array — the exact shape a per-workspace MCP server's get_global_component also hands back, ready to pass straight into that workspace's own create_component to materialize it. |
 | `get_global_operation_status` | not annotated | Poll a background operation started by create_website_template/update_website_template/redeploy_website_template_demo with background: true, or by a dryRun with verifyBuild: true. Keep polling (every ~10-20s) while status is \"running\". When it finishes, `result` carries the same structuredContent the synchronous call would have returned; on \"failed\", `error` says why. |
-| `get_operation_status` | not annotated | Deprecated alias of get_global_operation_status (same behavior). Use get_global_operation_status. |
 | `get_preview_logs` | not annotated | Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes. |
 | `get_preview_url` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
 | `get_schema_template` | read-only | Get one Schema Template's full detail, including its complete schema (contentTypes/singleTypes/components, each with their exact fields) — the same shape the per-workspace MCP server's get_full_schema returns for a real workspace. |

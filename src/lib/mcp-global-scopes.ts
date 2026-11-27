@@ -48,7 +48,7 @@ const READ_TOOLS = [
   "get_preview_logs",
   "list_global_components",
   "get_global_component",
-  "get_operation_status",
+  "get_global_operation_status",
   "list_template_versions",
   "get_template_version",
   "get_approval_status",

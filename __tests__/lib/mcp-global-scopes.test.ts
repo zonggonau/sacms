@@ -22,7 +22,7 @@ describe("resolveGlobalMcpScopes", () => {
 
 describe("requiredScopeForTool", () => {
   it("maps read-only tools to read", () => {
-    for (const tool of ["whoami", "get_approval_status", "list_schema_templates", "get_operation_status", "list_template_versions"]) {
+    for (const tool of ["whoami", "get_approval_status", "list_schema_templates", "get_global_operation_status", "list_template_versions"]) {
       expect(requiredScopeForTool(tool), tool).toBe("read")
     }
   })

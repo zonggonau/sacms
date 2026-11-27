@@ -880,9 +880,6 @@ export function registerWebsiteTemplateTools(server: McpServer) {
       },
     )
     registerOperationStatus("get_global_operation_status", "Poll a background operation started by create_website_template/update_website_template/redeploy_website_template_demo with background: true, or by a dryRun with verifyBuild: true. Keep polling (every ~10-20s) while status is \"running\". When it finishes, `result` carries the same structuredContent the synchronous call would have returned; on \"failed\", `error` says why.")
-    // Deprecated alias: same tool under the name it had before, so existing
-    // clients keep working. Remove after the next major release.
-    registerOperationStatus("get_operation_status", "Deprecated alias of get_global_operation_status (same behavior). Use get_global_operation_status.")
 
     server.registerTool(
       "list_template_versions",
