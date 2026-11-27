@@ -12,7 +12,8 @@ import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied, toSaf
 
 export function registerSchemaTools(server: McpServer) {
     // ── get_full_schema ──────────────────────────────────────────────────────
-    server.registerTool("get_operation_status", { description: "Poll an apply or deploy operation in the active workspace.", inputSchema: { operationId: z.string() } }, async ({ operationId }) => {
+    server.registerTool("get_operation_status", {
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, description: "Poll an apply or deploy operation in the active workspace.", inputSchema: { operationId: z.string() } }, async ({ operationId }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
       if (!hasScope(auth, "read")) return permissionDenied("read")
@@ -25,6 +26,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "get_full_schema",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Full Schema",
         description: "Get the complete database schema of the workspace — all Content Types (collections), Single Types (one-off pages), and Components (reusable blocks) with their fields and configurations. This is Phase 1, step 1 of the agent playbook — call get_agent_playbook first if you haven't connected before.",
         inputSchema: {},
@@ -58,6 +60,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "list_field_types",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Supported Field Types",
         description: "List all 36 supported field types in SaCMS (text, textarea, richText, markdown, slug, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating, button, document_template). Call this BEFORE creating or modifying any field — it tells you exactly which `options`/`relationSlug` a type actually needs (several documented-sounding options are silently ignored at render time; this flags those explicitly) and what value shape a content entry must use for that field once created.",
         inputSchema: {
@@ -144,6 +147,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "list_content_types",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Content Types",
         description: "List all Content Types (collections like articles, products, categories, authors) with their field schemas and total entry counts.",
         inputSchema: {},
@@ -164,6 +168,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "get_content_type",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Content Type Schema",
         description: "Get detailed field schema and metadata for a specific Content Type by its slug or ID.",
         inputSchema: {
@@ -188,6 +193,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "create_content_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Content Type",
         description: "Create a new Content Type collection schema with fields. Call 'list_field_types' FIRST to discover all 36 supported field types and — critically — each one's real `options`/`relationSlug` shape and entry-value shape; several options look plausible but are silently ignored at render time (e.g. currency's currencyCode, media's allowedTypes), and guessing them wastes a turn instead of erroring.",
         inputSchema: {
@@ -270,6 +276,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "update_content_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Content Type",
         description: "Update an existing Content Type's name, description, or add/replace its schema fields.",
         inputSchema: {
@@ -356,6 +363,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "delete_content_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Content Type",
         description: "Permanently delete a Content Type collection, its schema fields, and all its stored content entries.",
         inputSchema: {
@@ -415,6 +423,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "list_content_type_groups",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Content Type Groups",
         description: "List this workspace's Content Type groups (sidebar folders) as a nested tree, up to 3 levels deep. Groups organize Content Types only — Single Types have no grouping concept in SaCMS.",
         inputSchema: {},
@@ -434,6 +443,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "create_content_type_group",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Content Type Group",
         description: "Create a new Content Type group (sidebar folder). Omit parentId for a top-level group, or pass an existing group's id to nest it — nesting is capped at 3 levels total.",
         inputSchema: {
@@ -456,6 +466,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "rename_content_type_group",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Rename Content Type Group",
         description: "Rename an existing Content Type group.",
         inputSchema: {
@@ -478,6 +489,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "reparent_content_type_group",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Move Content Type Group",
         description: "Move a group under a different parent (or to top-level by omitting newParentId). Rejected if it would exceed the 3-level cap, move a group into its own descendant, or into itself.",
         inputSchema: {
@@ -500,6 +512,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "reorder_content_type_groups",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Reorder Content Type Groups",
         description: "Set the display order of sibling groups (groups sharing the same parent). Pass EVERY sibling's id in orderedIds, in the desired order — a partial list is rejected.",
         inputSchema: {
@@ -522,6 +535,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "delete_content_type_group",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Content Type Group",
         description: "Permanently delete a group AND all its descendant subgroups. Content Types inside the deleted subtree are NOT deleted — they just lose their group assignment (groupId set to null) and fall back to the ungrouped section.",
         inputSchema: {
@@ -548,6 +562,7 @@ export function registerSchemaTools(server: McpServer) {
     server.registerTool(
       "assign_content_type_to_group",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Assign Content Type to Group",
         description: "Put a Content Type into a group, move it to a different group, or ungroup it (omit groupId / pass null).",
         inputSchema: {

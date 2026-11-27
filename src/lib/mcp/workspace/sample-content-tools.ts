@@ -57,6 +57,7 @@ export function registerSampleContentTools(server: McpServer) {
   server.registerTool(
     "plan_sample_content",
     {
+      annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       title: "Plan Sample Content",
       description: "Read-only. Analyzes this workspace's schema and returns the sample entries that would be created: order (relation targets first), entries per Content Type, Content Types left out and why, and optional fields that cannot be filled automatically (media, Member relations). Writes nothing. Call before seed_sample_content.",
       inputSchema: sampleInputShape,
@@ -76,6 +77,7 @@ export function registerSampleContentTools(server: McpServer) {
   server.registerTool(
     "seed_sample_content",
     {
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
       title: "Seed Sample Content",
       description: "Creates sample entries from the workspace schema, in dependency order, so relations point at real entries. Content Types that already have entries are skipped, so running it again does not duplicate data. Returns batchId (the plan's batchKey) and every created id by Content Type, for cleanup. Entries are DRAFT unless status says otherwise. Not available on the SaCMS Global workspace.",
       inputSchema: {

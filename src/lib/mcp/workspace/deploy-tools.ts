@@ -17,6 +17,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "deploy_to_sacms",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Deploy Website / App to SaCMS Cloud Hosting (Staging — Does NOT Go Live)",
         description: "One-shot STAGING build from the supplied source. This is NOT the normal release path: for building or editing use start_preview → apply_preview_changes → save_preview_changes, then an administrator releases from Infrastructure → Hosting. Use this only when the user explicitly asks for a one-shot staging deploy.",
         inputSchema: {
@@ -304,6 +305,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "deploy_site_version",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Deploy a Saved Workspace Source Version",
         description: "Deploy a specific saved sourceVersion to staging. Release from Infrastructure → Hosting.",
         inputSchema: { background: z.boolean().optional(), sourceVersion: z.string().min(1), siteId: z.string().optional(), idempotencyKey: z.string().optional() },
@@ -329,6 +331,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "deploy_website_patch",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Deploy a Targeted Revision (Changed Files Only, Staging — Does NOT Go Live)",
         description: "Build a staging candidate by patching a saved sourceRevision. Deploy Production is available in Infrastructure → Hosting.",
         inputSchema: {
@@ -558,6 +561,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "promote_deployment",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
         title: "Open Production Hosting",
         description: "Production release requires an administrator to click Deploy Production in Infrastructure → Hosting.",
         inputSchema: { deploymentId: z.string().optional() },
@@ -574,6 +578,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_deployment_runtime_logs",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Get Deployment Runtime Logs (Request/Response Activity)",
         description: "Read a deployment's RUNTIME logs — actual request/response activity from serving traffic — to diagnose an HTTP 500 (or any other bad status) a real request hit. This is a DIFFERENT API from get_deployment_build_logs: a build reporting READY says nothing about runtime behavior (that's exactly how a rich-text patch once reached HTTP 500 in production despite a READY build). Call this on a CANDIDATE's deploymentId right after promote_deployment reports CHECKS_FAILED, or on a live deploymentId if something's wrong in production. Reads for a few seconds and returns whatever arrived — `truncated: true` means there may be more than what's shown; narrow with errorLines first.",
         inputSchema: {
@@ -640,6 +645,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "list_website_versions",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "List Recent Deployed Source Versions",
         description: "List this workspace's saved source snapshots, most recent first. Each row's sourceRevision is one id with three names across tools: pass it as baseSourceRevision to deploy_website_patch, as sourceRevision to rollback_website, and as sourceVersion to the tool that reads a saved snapshot. It is not a Vercel deployment id (do not pass it as deploymentId). kind \"deployed\" rows were published by deploy_to_sacms, deploy_website_patch, or rollback_website. kind \"draft\" rows come from apply_website_template, have no Vercel deployment yet, and their deploymentId starts with draft:. Only a rolling window of recent revisions is kept, not a permanent history.",
         inputSchema: {
@@ -675,6 +681,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "rollback_website",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
         title: "Rollback to a Previous Deployed Version",
         description: "Redeploy a previous sourceRevision's exact files (from list_website_versions) — use this when a revision broke something and the user wants to go back, instead of trying to manually reconstruct the old state. This creates a NEW deployment (and a new sourceRevision) with the old content, it does not delete what's live now.",
         inputSchema: {
@@ -821,6 +828,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_deployment_status",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Get Deployment Status",
         description: "Check the build progress and ready state of a SaCMS Cloud Hosting deployment. READY only means the build finished; it does not prove the release is live. Confirm a release with verify_deployment_url, which fetches the production URL and checks the expected content. Returns two DISTINCT urls — productionUrl (the project's real public domain: custom domain or *.vercel.app alias; this is the one safe to hand a visitor) and deploymentUrl (this specific build's own immutable hostname, which Vercel's deployment protection gates by default and a real visitor usually can't open). Omit deploymentId to automatically check the latest production deployment for this workspace — use that whenever you don't have a specific id handy (e.g. a previous deploy_to_sacms response never arrived), instead of re-deploying just to get a fresh id.",
         inputSchema: {
@@ -877,6 +885,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_content_preview_url",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Preview Saved CMS Content",
         description: "Open the current saved CMS fields, including drafts, in the authenticated workspace dashboard. For an entry, pass its ID. For a single type, pass its slug.",
         inputSchema: { kind: z.enum(["entry", "single"]), id: z.string().min(1) },
@@ -900,6 +909,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_site_source",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Saved Workspace Site Source",
         description: "Read the latest saved source snapshot or a specific sourceVersion. The workspace is selected by the MCP token. For a deployment without a snapshot, call get_deployment_source to import it.",
         inputSchema: {
@@ -928,6 +938,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_deployment_source",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Get Current Deployed Source Files",
         description: "Read back the actual files from this workspace's SaCMS Cloud Hosting deployment — call this BEFORE making a targeted revision (\"ubah warna header\", \"kecilkan logo\") whenever you don't already have the current source in this conversation, instead of regenerating the whole frontend from scratch or guessing what's there. Returns files in the same {name, content, encoding} shape deploy_to_sacms expects (encoding \"base64\" for binary assets like PNG icons — pass it straight back when redeploying), plus a sha256 checksum per file (of its real bytes, not of base64 text) and a sourceRevision you can pass to deploy_website_patch as baseSourceRevision. Prefers SaCMS's own persisted snapshot of the deploy (exact byte-for-byte, lockfiles included) over re-reading Vercel's files API — but a persisted snapshot is re-validated every time (wrapper-directory paths, corrupted binary assets) before being trusted; a snapshot that fails falls through to a fresh live re-import automatically (the old one is kept for history, not deleted) and the result comes back with `code: \"SOURCE_REPAIRED\"`. If no persisted snapshot exists yet (a deployment made before this feature existed, or outside deploy_to_sacms entirely) and you asked for the FULL project (no `paths`), a complete AND validated read is automatically imported into SaCMS's own history so you get back a real sourceRevision usable with deploy_website_patch immediately — a second import of the same deployment reuses that same sourceRevision rather than creating a duplicate. If the read came back incomplete (truncated, or files skipped), no import happens and `code: \"SOURCE_INCOMPLETE\"` is returned; if it came back complete but a binary asset failed its own format's signature check, no import happens and `code: \"SOURCE_INVALID\"` is returned with the bad paths in `invalidAssets` — in either case raise maxFiles, ask about the skipped paths, or regenerate the broken asset before relying on this as a patch base. Pass paths to fetch only specific files (cheaper than the full set when you already know what you need — never triggers an import/repair, since it's a deliberately partial read; if the persisted snapshot needed repair, this returns `code: \"SOURCE_NEEDS_REIMPORT\"` instead of silently serving known-bad paths), or manifestOnly: true to see just the file list/sizes/checksums with no content at all. Any path you asked for that doesn't exist comes back in `missingPaths`. Source: \"persisted\" means the saved snapshot was served as stored. \"vercel-live\" means it was read from Vercel; a full-project read with no usable snapshot then imports it as a new sourceRevision (imported: true), and a snapshot that failed validation is repaired the same way (code SOURCE_REPAIRED). A paths-scoped read never imports or repairs. Omit deploymentId to read the latest production deployment.",
         inputSchema: {
@@ -1063,6 +1074,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "get_deployment_build_logs",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Get Deployment Build Logs",
         description: "Read the build log output of a SaCMS Cloud Hosting deployment — call this when get_deployment_status reports an errored/failed build, to see WHY it failed (compiler error, missing dependency, etc.) before fixing the source and calling deploy_to_sacms again. Omit deploymentId to read the latest production deployment's logs.",
         inputSchema: {
@@ -1104,6 +1116,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "verify_deployment_url",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Verify the Live Deployment Actually Works",
         description: "Fetch this workspace's live deployed site over HTTP to confirm it actually opens and renders real content — call this AFTER get_deployment_status reports READY, before telling the user the website is done. Never report success just because deploy_to_sacms was accepted or Vercel says the build is ready — a ready build can still serve a login wall, an error page, or empty/fallback content instead of real data, AND the production domain can still be serving an OLDER deployment if Vercel hasn't finished promoting the new one. Pass deploymentId (or a runId that has one recorded) to bind this check to that SPECIFIC build — if the production domain isn't actually serving it yet, this returns PRODUCTION_VERSION_MISMATCH instead of a false pass. For a multi-page build (home + detail + feed + a PWA manifest, etc.), pass multiple checks and ALL of them must pass before this marks the runId done — a homepage-only check must not report the whole build verified. Pass expectedText per check (e.g. a real article title you already got from query_content) to confirm specific content rendered, not just that the page returned 200. For a binary asset (a PWA icon, a favicon) a plain HTTP 200 can still be a corrupted file — pass expectedSignature (\"png\"/\"jpeg\"/\"gif\"/\"ico\") to confirm its bytes match that format's own magic number, expectedChecksum (sha256 hex of the real bytes you deployed, from deploy_to_sacms/get_deployment_source) for an exact match, and/or expectedContentType to check the response header. KNOWN LIMITATION: only HTTP-level checks are performed here (status + HTML substring + binary signature/checksum) — this cannot render in a real browser or confirm a PWA actually installs on a device; say so explicitly if the user asked for either of those rather than claiming they were checked.",
         inputSchema: {
@@ -1260,6 +1273,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "configure_deployment_domain",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Configure Custom Domain on a Deployment Project",
         description: "Attach and verify a custom apex domain or subdomain to a SaCMS Cloud Hosting deployment project, with DNS diagnostics.",
         inputSchema: {
@@ -1339,6 +1353,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "add_deployment_env",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Add / Update Deployment Environment Variable",
         description:
           "Create or update an environment variable on this workspace's SaCMS Cloud Hosting deployment project (upsert). " +
@@ -1440,6 +1455,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "list_deployment_env",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Deployment Environment Variables",
         description:
           "List the environment variable KEY NAMES already configured for this workspace's deployment — " +
@@ -1480,6 +1496,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "call_external_api",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Call a Third-Party API Using a Stored Env Var",
         description:
           "Call ANY third-party API (Printful, a payment gateway, a maps provider, etc.) using a secret " +
@@ -1607,6 +1624,7 @@ export function registerDeployTools(server: McpServer) {
     server.registerTool(
       "make_deployment_public",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
         title: "Make Deployment Publicly Viewable",
         description:
           "Turn off deployment protection on this workspace's SaCMS Cloud Hosting project, so " +

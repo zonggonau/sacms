@@ -11,6 +11,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "list_single_types",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Single Types",
         description: "List all Single Types (one-off page schemas like Homepage, About Page, Global Site Settings).",
         inputSchema: {},
@@ -53,6 +54,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "get_single_type",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Single Type Content & Schema",
         description: "Fetch the schema fields and actual saved content data for a specific Single Type.",
         inputSchema: {
@@ -109,6 +111,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "create_single_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Single Type",
         description: "Create a new Single Type (singleton page schema e.g. 'Homepage', 'Contact Page') with fields and optional initial content data.",
         inputSchema: {
@@ -184,6 +187,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "update_single_type_content",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Single Type Content",
         description: "Save or update the singleton content values stored in a Single Type (e.g. hero banner title, footer links).",
         inputSchema: {
@@ -238,6 +242,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "update_single_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Single Type Schema",
         description: "Update an existing Single Type's name, description, or add/replace its schema fields.",
         inputSchema: {
@@ -317,6 +322,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "delete_single_type",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Single Type",
         description: "Permanently delete a Single Type, its schema fields, and its stored content data.",
         inputSchema: {
@@ -370,6 +376,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "list_components",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Components",
         description: "List all reusable Components (e.g. Hero Section, Feature Card, FAQ Item, SEO Meta block) with their field schemas.",
         inputSchema: {},
@@ -397,6 +404,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "list_global_components",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Global Components (Read-Only)",
         description: "List every PUBLISHED reusable Component field-definition from SaCMS's platform-wide catalog — a ready-made field shape (e.g. 'Testimonial', 'Pricing Tier') you can adapt instead of designing a Component from scratch. Call this before create_component when the user's ask sounds like something generic/common (a testimonial block, a team member card, a pricing tier) rather than specific to this workspace's own data.",
         inputSchema: {
@@ -420,6 +428,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "get_global_component",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Global Component (Read-Only)",
         description: "Get one PUBLISHED Global Component's full `fields` array, ready to pass straight into this server's own create_component to materialize it into this workspace's schema.",
         inputSchema: {
@@ -452,6 +461,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "create_component",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Component",
         description: "Create a new reusable Component schema definition that can be embedded inside Content Types and Single Types.",
         inputSchema: {
@@ -524,6 +534,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "get_component",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Component",
         description: "Fetch schema fields and metadata for a specific Component.",
         inputSchema: {
@@ -572,6 +583,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "update_component",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Component",
         description: "Update an existing Component's name, category, description, or add/replace its schema fields.",
         inputSchema: {
@@ -652,6 +664,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
     server.registerTool(
       "delete_component",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Component",
         description: "Permanently delete a Component and its schema fields.",
         inputSchema: {

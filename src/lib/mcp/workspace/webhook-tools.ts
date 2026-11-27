@@ -9,6 +9,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "list_webhooks",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "List Webhooks",
         description: "List all configured webhooks, their subscribed events, URLs, and status.",
         inputSchema: {},
@@ -33,6 +34,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "get_webhook",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Webhook",
         description: "Fetch details, subscribed events, endpoint URL, and status of a specific webhook by ID.",
         inputSchema: {
@@ -68,6 +70,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "create_webhook",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Webhook",
         description: "Register a new webhook endpoint to receive notifications on CMS events (e.g. 'content.created', 'content.published', 'content.updated', 'content.deleted', 'media.uploaded').",
         inputSchema: {
@@ -124,6 +127,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "update_webhook",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Webhook",
         description: "Update an existing webhook configuration (name, URL, subscribed events, active state).",
         inputSchema: {
@@ -178,6 +182,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "delete_webhook",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Webhook",
         description: "Permanently delete a webhook configuration and its log history.",
         inputSchema: {
@@ -209,6 +214,7 @@ export function registerWebhookTools(server: McpServer) {
     server.registerTool(
       "test_webhook",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Test Webhook",
         description: "Dispatch a mock test event to a webhook endpoint to verify its connectivity and response status. Check `delivered` (true only for an HTTP 2xx response), not just that this tool call itself succeeded — a real, confirmed bug: an endpoint that rejected the test with HTTP 405 used to come back looking like a success (no isError, a ✅ message) with no structured field distinguishing \"the endpoint responded\" from \"the endpoint actually accepted it\".",
         inputSchema: {

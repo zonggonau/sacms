@@ -12,6 +12,7 @@ export function registerPlatformTools(server: McpServer) {
     server.registerTool(
       "inspect_api_capabilities",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Inspect API Capabilities & Permissions",
         description: "Inspect active API key permissions (read, write, delete) to determine whether to build read-only or interactive dynamic components.",
         inputSchema: {},
@@ -60,6 +61,7 @@ export function registerPlatformTools(server: McpServer) {
     server.registerTool(
       "get_api_info",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get API Information",
         description: "Get the full REST API documentation, endpoints, filtering syntax, and sample integration code for this workspace. The base URL is resolved automatically — only pass baseUrl to override it (e.g. a custom domain this isn't aware of).",
         inputSchema: {
@@ -152,6 +154,7 @@ export default async function NewsPage() {
     server.registerTool(
       "check_sdk_availability",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true },
         title: "Check @sacms/sdk Availability (Typed Client SDK)",
         description: "Live-checks whether the official @sacms/sdk npm package is currently published, and returns a ready-to-use init snippet pre-filled with THIS workspace's real base URL and tenant slug — call this before hand-writing fetch()/GraphQL boilerplate if you'd rather use a typed client with retries, pagination, and the filter DSL built in. Never assume the package is or isn't published without calling this first. If it comes back unavailable, fall back to the REST/GraphQL tools (query_content, get_content_entry, create_content_entry, ...) or get_api_info's raw fetch() sample instead of telling the user to npm install something unconfirmed.",
         inputSchema: {},
@@ -268,6 +271,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
     server.registerTool(
       "get_agent_playbook",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Agent Playbook (Start Here)",
         description: "Read this FIRST when you connect to this MCP server. Returns the recommended, ordered workflow for building or updating a frontend against this SaCMS workspace — which tools to call, in what order, and how schema, content, and deployment fit together. Call with no arguments.",
         inputSchema: {},
@@ -286,6 +290,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
     server.registerTool(
       "get_openapi_spec",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get OpenAPI Specification",
         description:
           "Get a real OpenAPI 3.0 document generated live from this workspace's actual CMS schema — every Content Type and Single Type as a JSON Schema model, with its list/get/create/update/delete paths. Hand this straight to any OpenAPI-aware tool or codegen step instead of re-deriving the API shape from get_full_schema by hand. The exact same document (same generator) is also served at GET /api/public/{tenant}/openapi.json for non-MCP tools (e.g. v0.app), and powers the dashboard's own Swagger tab.",
@@ -333,6 +338,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
     server.registerTool(
       "get_or_create_api_key",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get or Create Workspace API Key",
         description: "Get this workspace's primary REST/GraphQL API key (used as `Authorization: Bearer <key>` by frontends built against this workspace), creating it once if it doesn't exist yet. Safe to call repeatedly — an existing key is always reused, never duplicated. The plaintext secret is only returned the first time it is created; calling this again later returns metadata only (id, name, permissions), since the secret cannot be recovered after creation.",
         inputSchema: {},

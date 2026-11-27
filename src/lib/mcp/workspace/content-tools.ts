@@ -11,6 +11,7 @@ export function registerContentTools(server: McpServer) {
     server.registerTool(
       "query_content",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Query Content Entries",
         description: "Fetch published or draft content entries from a Content Type collection with pagination, search, and sorting.",
         inputSchema: {
@@ -41,6 +42,7 @@ export function registerContentTools(server: McpServer) {
     server.registerTool(
       "get_content_entry",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Content Entry",
         description: "Fetch a specific content entry record by its unique ID, including all JSON fields, status, and metadata.",
         inputSchema: {
@@ -90,6 +92,7 @@ export function registerContentTools(server: McpServer) {
     server.registerTool(
       "create_content_entry",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Create Content Entry",
         description: "Insert a new content entry record into a Content Type collection with JSON payload data. Several field types need a composite value shape (e.g. dateRange, phone, seo, code, button, location, rating) rather than a plain string/number — call list_field_types once and check each field's `entryValueShape` instead of guessing one.",
         inputSchema: {
@@ -130,6 +133,7 @@ export function registerContentTools(server: McpServer) {
     server.registerTool(
       "update_content_entry",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
         title: "Update Content Entry",
         description: "Update an existing content entry record by its ID.",
         inputSchema: {
@@ -176,6 +180,7 @@ export function registerContentTools(server: McpServer) {
     server.registerTool(
       "delete_content_entry",
       {
+        annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false },
         title: "Delete Content Entry",
         description: "Delete a specific content entry by its ID.",
         inputSchema: {

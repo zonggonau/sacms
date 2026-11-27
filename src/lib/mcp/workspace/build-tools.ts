@@ -19,6 +19,7 @@ export function registerBuildTools(server: McpServer) {
     server.registerTool(
       "apply_website_template",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Apply a Catalog Website Template to This Workspace",
         description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and saves its bundled frontend for Sandbox editing — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Only works on a workspace with NO existing Content Types/Single Types/Components (call get_full_schema first to confirm it's actually empty) — applying on top of unrelated existing structures would silently skip slug-conflicting models and leave a confusing mix behind. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
         inputSchema: {
@@ -126,6 +127,7 @@ export function registerBuildTools(server: McpServer) {
     server.registerTool(
       "start_website_build",
       {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Start or Resume a Website Build",
         description: "The entry point for any build, create, or revise request against this workspace's website/app — call it before get_full_schema whenever the ask is build-shaped, not just schema/content browsing. Example intents this covers: \"buatkan portal berita untuk workspace ini dan deploy ke SaCMS\", \"ubah warna header website saya\", \"ganti logo di website yang sudah ada\", \"lanjutkan build kemarin\" / \"build a responsive news site and deploy it to SaCMS\", \"change the header color on my site\", \"continue the build from before\". Returns a runId tied to this workspace — keep it to resume this build later with get_build_run, and call get_build_run (even from a brand-new conversation) to resume exactly where a previous attempt left off if this one gets interrupted. This tool only registers intent and flags a target conflict up front if one exists — it never touches schema or deploys anything by itself. If the user only asked for a plan, design, or preview rather than an actual live deploy, stop there and show it to them — do not open start_preview or deploy just because you called this.",
         inputSchema: {
@@ -209,6 +211,7 @@ export function registerBuildTools(server: McpServer) {
     server.registerTool(
       "get_build_run",
       {
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get Build Run Status (Resume After an Interruption)",
         description: "Fetch a build run's current state — call this at the start of a new conversation when the user refers back to a build/revision you (or another session) started earlier (\"lanjutkan website kemarin\", \"continue the site we were building\"), instead of starting over from scratch. Also the recovery path when a deploy_to_sacms/deploy_website_patch response was lost: pass the SAME idempotencyKey you submitted with to find out what actually happened, instead of guessing or resubmitting blind. Omit both to get this workspace's most recent run.",
         inputSchema: {
