@@ -176,8 +176,9 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
   server.registerTool("get_preview_url", { description: getDescription, inputSchema: selector }, getPreview)
   if (workspace) {
     const site = { siteId: z.string().optional() }
-    server.registerTool("start_site_preview", { description: startDescription, inputSchema: site }, startPreview)
-    server.registerTool("get_site_preview", { description: getDescription, inputSchema: site }, getPreview)
+    // Compatibility aliases: same handlers as start_preview / get_preview_url, input limited to siteId.
+    server.registerTool("start_site_preview", { description: `${startDescription} Alias of start_preview; accepts only siteId.`, inputSchema: site }, startPreview)
+    server.registerTool("get_site_preview", { description: `${getDescription} Alias of get_preview_url; accepts only siteId.`, inputSchema: site }, getPreview)
   } else {
     const target = { websiteTemplateId: z.string().min(1) }
     server.registerTool("start_website_template_preview", { description: startDescription, inputSchema: target },

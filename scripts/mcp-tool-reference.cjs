@@ -32,10 +32,22 @@ function blockFor(source, name) {
   return next === -1 ? rest : rest.slice(0, next)
 }
 
-// Joins the string literals in an expression ("a" + "b", template strings).
-function stringsOf(expr) {
+// Value of a `const name = ...` declared in the sources, or "" when there is none.
+function constantValue(name, source) {
+  const c = new RegExp(`const ${name}\\s*=\\s*([\\s\\S]*?)(?:;|\\n)`).exec(source)
+  return c ? stringsOf(c[1], source) : ""
+}
+
+// Joins the string literals in an expression ("a" + "b", template strings); ${name} resolves to a constant.
+function stringsOf(expr, source = "") {
   const parts = [...expr.matchAll(/"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)].map((x) => x[1] ?? x[2])
-  return parts.join("").replace(/\\"/g, '"').replace(/\\`/g, "`").replace(/\s+/g, " ").trim()
+  return parts
+    .join("")
+    .replace(/\$\{(\w+)\}/g, (_, n) => constantValue(n, source))
+    .replace(/\\"/g, '"')
+    .replace(/\\`/g, "`")
+    .replace(/\s+/g, " ")
+    .trim()
 }
 
 // Description of a registration: an inline string (possibly concatenated), or a named constant
@@ -44,14 +56,10 @@ function descriptionOf(block, source) {
   const m = /description:\s*([\s\S]*?)(?=,\s*(?:inputSchema|outputSchema|annotations|title|_meta)\s*:|\n\s*\})/.exec(block)
   if (!m) return ""
   const expr = m[1]
-  const literal = stringsOf(expr)
+  const literal = stringsOf(expr, source)
   if (literal) return literal
   const ident = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*$/.exec(expr.split(",")[0])
-  if (ident) {
-    const c = new RegExp(`const ${ident[1]}\\s*=\\s*([\\s\\S]*?)(?:;|\\n)`).exec(source)
-    if (c) return stringsOf(c[1])
-  }
-  return ""
+  return ident ? constantValue(ident[1], source) : ""
 }
 
 // Tools registered through the shared alias helper: registerOperationStatus("name", "description", ...).

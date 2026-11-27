@@ -56,7 +56,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `get_preview_logs` | not annotated | Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes. |
 | `get_preview_url` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
 | `get_single_type` | read-only | Fetch the schema fields and actual saved content data for a specific Single Type. |
-| `get_site_preview` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
+| `get_site_preview` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. Alias of get_preview_url; accepts only siteId. |
 | `get_site_source` | read-only | Read the latest saved source snapshot or a specific sourceVersion. The workspace is selected by the MCP token. For a deployment without a snapshot, call get_deployment_source to import it. |
 | `get_webhook` | read-only | Fetch details, subscribed events, endpoint URL, and status of a specific webhook by ID. |
 | `get_website_template_preview` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
@@ -83,7 +83,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `save_preview_changes` | not annotated | Save the current revision to its source history. Workspace production releases are made from Infrastructure → Hosting. |
 | `seed_sample_content` | write | Creates sample entries from the workspace schema, in dependency order, so relations point at real entries. Content Types that already have entries are skipped, so running it again does not duplicate data. Returns batchId (the plan's batchKey) and every created id by Content Type, for cleanup. Entries are DRAFT unless status says otherwise. Not available on the SaCMS Global workspace. |
 | `start_preview` | not annotated | Start or reuse a code preview with published CMS content. |
-| `start_site_preview` | not annotated | Start or reuse a code preview with published CMS content. |
+| `start_site_preview` | not annotated | Start or reuse a code preview with published CMS content. Alias of start_preview; accepts only siteId. |
 | `start_website_build` | external | The entry point for any build, create, or revise request against this workspace's website/app — call it before get_full_schema whenever the ask is build-shaped, not just schema/content browsing. Example intents this covers: "buatkan portal berita untuk workspace ini dan deploy ke SaCMS", "ubah warna header website saya", "ganti logo di website yang sudah ada", "lanjutkan build kemarin" / "build a responsive news site and deploy it to SaCMS", "change the header color on my site", "continue the build from before". Returns a runId tied to this workspace — keep it to resume this build later with get_build_run, and call get_build_run (even from a brand-new conversation) to resume exactly where a previous attempt left off if this one gets interrupted. This tool only registers intent and flags a target conflict up front if one exists — it never touches schema or deploys anything by itself. If the user only asked for a plan, design, or preview rather than an actual live deploy, stop there and show it to them — do not open start_preview or deploy just because you called this. |
 | `start_website_template_preview` | not annotated | Start or reuse a code preview with published CMS content. |
 | `stop_preview` | not annotated | Stop a preview. Unsaved edits require discardChanges. |
@@ -122,7 +122,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `get_preview_logs` | not annotated | Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes. |
 | `get_preview_url` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
 | `get_schema_template` | read-only | Get one Schema Template's full detail, including its complete schema (contentTypes/singleTypes/components, each with their exact fields) — the same shape the per-workspace MCP server's get_full_schema returns for a real workspace. |
-| `get_site_preview` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. |
+| `get_site_preview` | not annotated | Read session status, sourceVersion and accessUrl without starting a Sandbox. Alias of get_preview_url; accepts only siteId. |
 | `get_template_version` | read-only | Read one history snapshot. By default returns each file's path, size and sha256 only — pass `paths` to get specific files' content, so you can diff a version against the current bundle before restoring it. |
 | `get_website_agent_workflow` | read-only | Read the website workflow from brief and task assignment through demo workspace, SaCMS schema, UI/UX, frontend, security review, and verified demo deployment. |
 | `get_website_template` | read-only | Get one Website Template's full detail, including its demo deployment state (demoUrl/demoDeploymentId). By default `files` carries the COMPLETE bundle (path + content for every source file, often ~150-200KB) — use `listPathsOnly` first to see what's there cheaply, then `paths` to pull just the handful of files you actually need to read, instead of the whole bundle every time you just want to check or patch one file. |
@@ -143,7 +143,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `save_preview_changes` | not annotated | Save the current revision to its source history. Workspace production releases are made from Infrastructure → Hosting. |
 | `seed_demo_sample_content` | write | Creates sample entries in a Schema Template's demo workspace, in dependency order so relations point at real entries. Content Types that already have entries are skipped, so a re-run does not duplicate data. Returns batchId and every created id by Content Type. Entries are PUBLISHED by default, because the demo is the test site the preview reads from. Needs the demo scope. |
 | `start_preview` | not annotated | Start or reuse a code preview with published CMS content. |
-| `start_site_preview` | not annotated | Start or reuse a code preview with published CMS content. |
+| `start_site_preview` | not annotated | Start or reuse a code preview with published CMS content. Alias of start_preview; accepts only siteId. |
 | `start_website_template_preview` | not annotated | Start or reuse a code preview with published CMS content. |
 | `stop_preview` | not annotated | Stop a preview. Unsaved edits require discardChanges. |
 | `update_demo_single_type_entry` | write | Patch an entry in the linked demo only. Top-level fields not included in the patch are preserved. A supplied Component or Repeater replaces that entire field. Use demo media IDs or returned media URLs. Saves as a draft by default. |
