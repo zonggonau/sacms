@@ -41,6 +41,7 @@ const READ_TOOLS = [
   "get_schema_template",
   "list_website_templates",
   "get_website_template",
+  "get_starter_template",
   "get_website_template_demo_status",
   "get_preview_url",
   "get_website_template_preview",

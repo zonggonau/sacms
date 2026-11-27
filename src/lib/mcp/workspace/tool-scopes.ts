@@ -10,6 +10,7 @@ export const WORKSPACE_TOOL_SCOPES: Record<string, Scope> = {
   apply_website_template: "write",
   assign_content_type_to_group: "write",
   call_external_api: "write",
+  download_starter_template: "write",
   check_sdk_availability: "read",
   clear_sample_batch: "write",
   configure_deployment_domain: "write",

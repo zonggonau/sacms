@@ -13,6 +13,7 @@ import { getOperation } from "@/lib/infrastructure/global-mcp-operations"
 import { recordTemplateVersion, type VersionFile } from "@/lib/infrastructure/template-versions"
 import { type SchemaBlob } from "@/lib/schema-template-sync"
 import { DemoContentError } from "@/lib/infrastructure/demo-content"
+import { loadStarterSnapshot, StarterUnavailableError, starterLockBreach, starterLockFor, templateLockKey, writeStarterLock, type StarterSnapshot } from "@/lib/infrastructure/starter-template"
 import { McpServer, authContext, UNAUTHORIZED, SchemaTemplateNotFoundError, notFound, APPROVAL_OUTPUT, BUNDLE_FILE_OUTPUT, FILE_SIZE_OUTPUT, describeFileSize, WEBSITE_TEMPLATE_OUTPUT_SHAPE, serializeWebsiteTemplate, serializeWebsiteTemplateSummary, demoFailure, DEMO_DEPLOYMENT_OUTPUT_SHAPE, describeDemoDeployment, DRY_RUN_OUTPUT_SHAPE, ASYNC_OPERATION_OUTPUT_SHAPE, ToolResult, runToolInBackground, requiresPublishScope, queueApprovals, approvalNote, findDemoTenantForSchemaTemplate, runVerifyBuild, invalidSchema, warningsNote, referenceIssuesResponse, dedupeSlug, WEBSITE_TEMPLATE_SUMMARY_SHAPE } from "./context"
 
 export function registerWebsiteTemplateTools(server: McpServer) {
@@ -107,6 +108,69 @@ export function registerWebsiteTemplateTools(server: McpServer) {
       },
     )
 
+    // ── get_starter_template ─────────────────────────────────────────────────
+    // The SaCMS Next.js starter, read-only: what create_website_template { starter: true } builds on.
+    server.registerTool(
+      "get_starter_template",
+      {
+        title: "Read the SaCMS Next.js Starter",
+        description:
+          "Lists the official SaCMS Next.js starter (github.com/zonggonau/sacms-nextjs-starter, current commit of its default branch): every file that create_website_template { starter: true } locks, and the default schema it brings (Single Types and Component counts). Pass `paths` to read the content of specific files, up to 40 per call. Read-only; nothing is written.",
+        inputSchema: {
+          paths: z.array(z.string().min(1).max(300)).max(40).optional().describe("Starter file paths to read, exactly as the listing shows them, e.g. ['app/page.tsx', 'src/lib/sacms/content.ts']."),
+        },
+        outputSchema: {
+          ok: z.boolean(),
+          message: z.string(),
+          repo: z.string().optional(),
+          commit: z.string().optional(),
+          files: z.array(z.object({ path: z.string(), encoding: z.string(), bytes: z.number() })).optional(),
+          schema: z.object({ singleTypes: z.array(z.string()), components: z.number() }).optional(),
+          contents: z.array(z.object({ path: z.string(), encoding: z.string(), content: z.string() })).optional(),
+        },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+      },
+      async ({ paths }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        const fail = (code: string, message: string) => ({
+          content: [{ type: "text" as const, text: `❌ ${message}` }],
+          structuredContent: { ok: false as const, code, message },
+          isError: true,
+        })
+
+        let snapshot: StarterSnapshot
+        try {
+          snapshot = await loadStarterSnapshot()
+        } catch (error) {
+          if (error instanceof StarterUnavailableError) return fail("STARTER_UNAVAILABLE", error.message)
+          throw error
+        }
+
+        const requested = paths ?? []
+        const unknown = requested.filter((p) => !snapshot.files.some((f) => f.path === p))
+        if (unknown.length) return fail("INVALID_ARGUMENT", `Bukan file starter: ${unknown.join(", ")}. Panggil tanpa paths untuk melihat daftar file.`)
+        const contents = requested.map((p) => {
+          const file = snapshot.files.find((f) => f.path === p)!
+          return { path: file.path, encoding: file.encoding, content: file.content }
+        })
+        const contentBytes = contents.reduce((sum, c) => sum + Buffer.byteLength(c.content, "utf8"), 0)
+        if (contentBytes > 300_000) return fail("INVALID_ARGUMENT", "Isi file yang diminta melebihi 300KB. Minta lebih sedikit path per panggilan.")
+
+        const message = `Starter ${snapshot.repo}@${snapshot.commit.slice(0, 7)}: ${snapshot.files.length} file, ${snapshot.schema.singleTypes.length} Single Type, ${snapshot.schema.components.length} Component.`
+        const structured = {
+          ok: true as const,
+          message,
+          repo: snapshot.repo,
+          commit: snapshot.commit,
+          files: snapshot.files.map((f) => ({ path: f.path, encoding: f.encoding, bytes: Buffer.byteLength(f.content, "utf8") })),
+          schema: { singleTypes: snapshot.schema.singleTypes.map((s) => s.slug), components: snapshot.schema.components.length },
+          ...(contents.length ? { contents } : {}),
+        }
+        return { content: [{ type: "text" as const, text: message }], structuredContent: structured }
+      },
+    )
+
     server.registerTool(
       "create_website_template",
       {
@@ -144,8 +208,11 @@ export function registerWebsiteTemplateTools(server: McpServer) {
           name: z.string().min(1).max(150).describe("Template display name, e.g. 'Company Profile — Modern Dark'"),
           icon: z.string().max(10).optional().describe("A single emoji shown on the template card, e.g. '🖥️'"),
           description: z.string().max(500).optional().describe("Short catalog-card blurb shown alongside the name/category."),
-          files: websiteTemplateFilesSchema.describe(
-            "[{ path, content, encoding? }, ...] — every source file for the frontend (package.json, app/**, " +
+          starter: z.boolean().optional().describe(
+            "Start from the official SaCMS Next.js starter (read it with get_starter_template). Its files and its default schema (site-settings, homepage, section Components) become this template's base, so pass NO schema, schemaTemplateId or starter files of your own. The starter's files are then LOCKED: update_website_template refuses to change or remove them, and `files` here may only ADD new paths on top. Binary starter files are not included (none exist today).",
+          ),
+          files: websiteTemplateFilesSchema.optional().describe(
+            "Required unless `starter` is true, where these are EXTRA files added on top of the starter's. [{ path, content, encoding? }, ...] — every source file for the frontend (package.json, app/**, " +
             "components/**, tailwind config, etc.) as plain text, PLUS a `.env.example` documenting its env " +
             "vars (see the {{SACMS_*}} placeholder convention above). Max 200 files, 200KB per text file. " +
             "Binary assets (logo, favicon, fonts — usually under public/) go in the same array with " +
@@ -168,7 +235,7 @@ export function registerWebsiteTemplateTools(server: McpServer) {
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, deployDemo, idempotencyKey, dryRun, verifyBuild, background, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
+      async function createWebsiteTemplateTool({ schemaTemplateId, schema, category, name, icon, description, files, published, deployDemo, idempotencyKey, dryRun, verifyBuild, background, starter = false, excludeDefaultContentTypes = [], includeGlobalComponents = [] }) {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (published && !dryRun) {
@@ -204,7 +271,26 @@ export function registerWebsiteTemplateTools(server: McpServer) {
           }
         }
 
-        if (!schemaTemplateId && !schema) {
+        let starterSnapshot: StarterSnapshot | null = null
+        if (starter) {
+          if (schemaTemplateId || schema) {
+            return {
+              content: [{ type: "text" as const, text: "❌ `starter` membawa schema-nya sendiri. Jangan kirim `schema` atau `schemaTemplateId` bersamaan dengan `starter`." }],
+              structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "starter and schema/schemaTemplateId are mutually exclusive." },
+              isError: true,
+            }
+          }
+          try {
+            starterSnapshot = await loadStarterSnapshot()
+          } catch (error) {
+            if (!(error instanceof StarterUnavailableError)) throw error
+            return {
+              content: [{ type: "text" as const, text: `❌ ${error.message}` }],
+              structuredContent: { ok: false, code: "STARTER_UNAVAILABLE", message: error.message },
+              isError: true,
+            }
+          }
+        } else if (!schemaTemplateId && !schema) {
           return {
             content: [{ type: "text" as const, text: "❌ Berikan salah satu: `schemaTemplateId` (pakai Schema Template yang sudah ada) ATAU `schema` (buat Schema Template baru otomatis untuk frontend ini)." }],
             structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: "Provide exactly one of schemaTemplateId or schema." },
@@ -227,7 +313,18 @@ export function registerWebsiteTemplateTools(server: McpServer) {
         // its backing Schema Template, so an invalid `files` payload left
         // that Schema Template permanently orphaned (a real, confirmed
         // bug class: schema+website creation must be all-or-nothing).
-        const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
+        if (starterSnapshot) {
+          const starterPaths = new Set(starterSnapshot.files.map((f) => f.path))
+          const clash = (files ?? []).find((f) => starterPaths.has(f.path))
+          if (clash) {
+            return {
+              content: [{ type: "text" as const, text: `❌ File starter tidak boleh ditimpa: ${clash.path}. Tambahkan path baru untuk fitur Anda.` }],
+              structuredContent: { ok: false, code: "INVALID_ARGUMENT", message: `File starter tidak boleh ditimpa: ${clash.path}.` },
+              isError: true,
+            }
+          }
+        }
+        const parsedFiles = websiteTemplateFilesSchema.safeParse(starterSnapshot ? [...starterSnapshot.files, ...(files ?? [])] : files)
         if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
 
         // Third external audit, VAL-16 (upgraded from a dry-run-only
@@ -242,7 +339,13 @@ export function registerWebsiteTemplateTools(server: McpServer) {
 
         let bundleData: z.infer<typeof schemaTemplateBundleSchema> | undefined
         let bundleWarnings: { path: string; message: string }[] = []
-        if (!schemaTemplateId) {
+        if (starterSnapshot) {
+          // The starter's own schema is used as-is: no default Content Types are composed onto it.
+          const { blocking, warnings } = splitIssuesBySeverity(validateBundleReferences(starterSnapshot.schema))
+          if (blocking.length > 0) return referenceIssuesResponse(blocking)
+          bundleWarnings = warnings
+          bundleData = starterSnapshot.schema
+        } else if (!schemaTemplateId) {
           const parsedBundle = schemaTemplateBundleSchema.safeParse(schema)
           if (!parsedBundle.success) return invalidSchema(parsedBundle.error)
           const composed = await composeTemplateStarterSchema(parsedBundle.data, excludeDefaultContentTypes, includeGlobalComponents)
@@ -335,6 +438,10 @@ export function registerWebsiteTemplateTools(server: McpServer) {
                 idempotencyKey: idempotencyKey || null,
               },
             })
+            if (starterSnapshot) {
+              // Same transaction as the template: a failed lock write rolls the template back too.
+              await writeStarterLock(tx, templateLockKey(createdTemplate.id), null, starterLockFor(starterSnapshot))
+            }
             return { schemaTemplate: resolvedSchemaTemplate, template: createdTemplate, firstWebsite }
           }, { timeout: 20000 })
           schemaTemplate = result.schemaTemplate
@@ -548,6 +655,18 @@ export function registerWebsiteTemplateTools(server: McpServer) {
           const parsedFiles = websiteTemplateFilesSchema.safeParse(merged)
           if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
           filesData = parsedFiles.data
+        }
+
+        // A template created from the starter keeps the starter's files: changing or removing one is refused.
+        if (filesData !== undefined) {
+          const starterBreach = await starterLockBreach(templateLockKey(existing.id), filesData)
+          if (starterBreach) {
+            return {
+              content: [{ type: "text" as const, text: `❌ ${starterBreach}` }],
+              structuredContent: { ok: false, code: "STARTER_LOCKED", message: starterBreach },
+              isError: true,
+            }
+          }
         }
 
         // VAL-16 parity with create_website_template: a files/changedFiles

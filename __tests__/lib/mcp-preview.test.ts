@@ -9,6 +9,7 @@ const { db, box } = vi.hoisted(() => ({
   db: { tenant: { findUniqueOrThrow: vi.fn() }, mcpDeploymentSource: { findFirst: vi.fn() }, websiteTemplate: { updateMany: vi.fn(), findFirstOrThrow: vi.fn(), update: vi.fn() },
     mcpPreviewSession: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     websiteTemplateVersion: { aggregate: vi.fn(), create: vi.fn() }, schemaTemplate: { findUniqueOrThrow: vi.fn() },
+    setting: { findUnique: vi.fn() }, // starter lock lookup: no lock → no breach
     apiToken: { create: vi.fn(), updateMany: vi.fn() }, $transaction: vi.fn() },
   box: { name: "test-box", domain: vi.fn(() => "https://upstream.example"), runCommand: vi.fn(async (..._args: unknown[]) => ({ exitCode: 0 })),
     writeFiles: vi.fn(), readFileToBuffer: vi.fn(), stop: vi.fn(), extendTimeout: vi.fn() },

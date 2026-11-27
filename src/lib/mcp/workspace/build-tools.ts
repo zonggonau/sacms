@@ -4,9 +4,86 @@ import { activeSchema, schemaRequirements } from "@/lib/infrastructure/site-sche
 import { db, getTenantDb } from "@/lib/database"
 import { startOrResumeBuildRun, getBuildRun } from "@/lib/infrastructure/mcp-build-run"
 import { getLatestDeploymentSource } from "@/lib/infrastructure/mcp-deployment-source"
+import { loadStarterSnapshot, StarterUnavailableError } from "@/lib/infrastructure/starter-template"
 import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied, trackWorkspaceOperation } from "./context"
 
 export function registerBuildTools(server: McpServer) {
+    // ── download_starter_template ────────────────────────────────────────────
+    // The SaCMS Next.js starter is the base every agent-built site starts from. It goes in through the
+    // same apply path as a catalog Website Template (same empty-workspace rule, same source revision),
+    // with its files locked afterwards: see src/lib/infrastructure/starter-template.ts.
+    server.registerTool(
+      "download_starter_template",
+      {
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+        title: "Download the SaCMS Next.js Starter into This Workspace",
+        description: "Downloads the official SaCMS Next.js starter (github.com/zonggonau/sacms-nextjs-starter, current commit of its default branch) and makes it this workspace's base. Its default schema (site-settings, homepage and every section/block Component) is created, its .env.example variables are declared, and its source becomes the workspace's first saved revision. The starter's files are then LOCKED: add new files (routes, components, lib modules) freely, but any change to or deletion of a starter file is refused with STARTER_LOCKED by deploy_to_sacms, deploy_website_patch, rollback_website, deploy_site_version, and the preview apply/save tools. Requires an empty workspace, the same rule as apply_website_template (call get_full_schema first). Run once per workspace, then build on top.",
+        inputSchema: {
+          dryRun: z.boolean().optional().describe("Fetch the starter and report what would be installed, without writing anything. The empty-workspace rule is checked on the real call."),
+        },
+        outputSchema: {
+          ok: z.boolean(),
+          code: z.string().optional(),
+          message: z.string(),
+          dryRun: z.boolean().optional(),
+          commit: z.string().optional(),
+          fileCount: z.number().optional(),
+          lockedFiles: z.array(z.string()).optional(),
+          sourceRevision: z.string().optional(),
+          imported: z.number().optional(),
+          envVarsApplied: z.array(z.string()).optional(),
+        },
+      },
+      async function downloadStarter({ dryRun }) {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const fail = (code: string, message: string) => ({
+          content: [{ type: "text" as const, text: `❌ ${message}` }],
+          structuredContent: { ok: false as const, code, message },
+          isError: true,
+        })
+
+        let snapshot: Awaited<ReturnType<typeof loadStarterSnapshot>>
+        try {
+          snapshot = await loadStarterSnapshot()
+        } catch (error) {
+          if (error instanceof StarterUnavailableError) return fail("STARTER_UNAVAILABLE", error.message)
+          throw error
+        }
+        const lockedFiles = snapshot.files.map((f) => f.path)
+
+        if (dryRun) {
+          const message = `Starter ${snapshot.repo}@${snapshot.commit.slice(0, 7)}: ${lockedFiles.length} file akan dikunci, ${snapshot.schema.singleTypes.length} Single Type dan ${snapshot.schema.components.length} Component akan dibuat.`
+          const structured = { ok: true as const, dryRun: true, message, commit: snapshot.commit, fileCount: lockedFiles.length, lockedFiles }
+          return { content: [{ type: "text" as const, text: message }], structuredContent: structured }
+        }
+
+        const { applyWebsiteTemplateToTenant } = await import("@/lib/infrastructure/apply-website-template")
+        const result = await applyWebsiteTemplateToTenant(
+          auth.tenantId,
+          auth.tenantSlug,
+          { id: `starter:${snapshot.commit}`, files: snapshot.files, schemaTemplate: { schema: snapshot.schema } },
+          { starter: snapshot },
+        )
+        if (!result.ok) return fail(result.code, result.message)
+
+        const message = `✅ Starter ${snapshot.repo}@${snapshot.commit.slice(0, 7)} terpasang — ${result.imported} model schema dibuat, ${lockedFiles.length} file dikunci. Tambahkan file baru untuk membangun situs di atasnya.`
+        const structured = {
+          ok: true as const,
+          message,
+          commit: snapshot.commit,
+          fileCount: lockedFiles.length,
+          lockedFiles,
+          sourceRevision: result.sourceRevision,
+          imported: result.imported,
+          envVarsApplied: result.envVarsApplied,
+        }
+        return { content: [{ type: "text" as const, text: message }], structuredContent: structured }
+      },
+    )
+
     // ── apply_website_template ────────────────────────────────────────────────
     // Kabar Nusa report P0: applying a catalog Website Template to a real
     // workspace was dashboard-only ("Terapkan" button) — no MCP path at

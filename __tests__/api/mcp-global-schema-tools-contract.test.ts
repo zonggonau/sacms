@@ -108,7 +108,7 @@ describe("SaCMS Global Schema Template MCP route — source contract", () => {
     const scoped = toolBlockOf("create_website_template")
     expect(scoped).toMatch(/db\.\$transaction\(async \(tx\)/)
     // Files must be validated BEFORE the transaction even starts.
-    const filesValidationIdx = scoped.indexOf("websiteTemplateFilesSchema.safeParse(files)")
+    const filesValidationIdx = scoped.indexOf("websiteTemplateFilesSchema.safeParse(starterSnapshot ? [...starterSnapshot.files, ...(files ?? [])] : files)")
     const transactionIdx = scoped.indexOf("db.$transaction(async (tx)")
     expect(filesValidationIdx).toBeGreaterThan(-1)
     expect(transactionIdx).toBeGreaterThan(filesValidationIdx)

@@ -45,6 +45,8 @@ vi.mock("@/lib/infrastructure/mcp-deployment-source", () => ({
 vi.mock("@/lib/field-types", () => ({
   FIELD_TYPES: [],
   FIELD_CATEGORIES: [],
+  // Imported by the schema validation the starter-template module pulls in.
+  VALID_FIELD_TYPES: [],
 }))
 
 vi.mock("@/lib/member-auth", () => ({

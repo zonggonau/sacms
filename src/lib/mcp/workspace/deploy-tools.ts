@@ -8,9 +8,19 @@ import { deployToVercel, getLatestDeployment, getDeploymentFiles, getDeploymentB
 import { getBuildRun, advanceBuildRun } from "@/lib/infrastructure/mcp-build-run"
 import { saveDeploymentSource, getLatestDeploymentSource, getDeploymentSourceByRevision, getDeploymentSourceByDeploymentId, listDeploymentSources, type DeploymentSourceFile } from "@/lib/infrastructure/mcp-deployment-source"
 import { findSourceIssues } from "@/lib/infrastructure/deployment-source-guard"
+import { starterLockBreach, workspaceLockKey } from "@/lib/infrastructure/starter-template"
 import { safeFetch } from "@/lib/safe-url"
 import { rateLimit } from "@/lib/rate-limit"
 import { McpServer, authContext, UNAUTHORIZED, resolveSubdomainLabel, hasScope, permissionDenied, resolveOwnProjectId, runHttpChecks, resolveDeploymentId, resolveIdempotency, trackWorkspaceOperation } from "./context"
+
+// A deploy that would change or remove a locked starter file (see starter-template.ts).
+function starterLockedResult(message: string) {
+  return {
+    content: [{ type: "text" as const, text: `❌ ${message}` }],
+    structuredContent: { ok: false as const, code: "STARTER_LOCKED", message },
+    isError: true,
+  }
+}
 
 export function registerDeployTools(server: McpServer) {
     // ── deploy_to_sacms ──────────────────────────────────────────────────────
@@ -175,6 +185,9 @@ export function registerDeployTools(server: McpServer) {
             ...f,
             encoding: f.encoding || ("utf-8" as const),
           }))
+
+          const starterBreach = await starterLockBreach(workspaceLockKey(auth.tenantId), normalizedFiles.map((f) => ({ path: f.name, content: f.content })))
+          if (starterBreach) return starterLockedResult(starterBreach)
 
           // Assemble the workspace's full frontend env (saved Environment
           // vars + fixed SACMS_* connection vars), then let the caller's
@@ -466,6 +479,8 @@ export function registerDeployTools(server: McpServer) {
             fileMap.delete(path)
           }
           const mergedFiles = Array.from(fileMap.values())
+          const starterBreach = await starterLockBreach(workspaceLockKey(auth.tenantId), mergedFiles.map((f) => ({ path: f.name, content: f.content })))
+          if (starterBreach) return starterLockedResult(starterBreach)
 
           const { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } = await import(
             "@/lib/infrastructure/frontend-env"
@@ -755,6 +770,8 @@ export function registerDeployTools(server: McpServer) {
           // — a revision persisted before that fix could still carry an
           // undefined encoding forward into this new rollback snapshot.
           const normalizedTargetFiles = target.files.map((f) => ({ ...f, encoding: f.encoding || ("utf-8" as const) }))
+          const starterBreach = await starterLockBreach(workspaceLockKey(auth.tenantId), normalizedTargetFiles.map((f) => ({ path: f.name, content: f.content })))
+          if (starterBreach) return starterLockedResult(starterBreach)
 
           const { resolveFrontendEnv, pushEnvToVercelProject, resolveApiOrigin } = await import(
             "@/lib/infrastructure/frontend-env"

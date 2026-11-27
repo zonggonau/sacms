@@ -7,6 +7,7 @@ import { db } from "@/lib/database"
 import { findSchemaDemoWorkspace } from "./demo-tenant"
 import { previewCredential, previewRelay, verifyPublicPreview } from "./preview-access"
 import { resolveApiOrigin } from "./frontend-env"
+import { starterChangeBreach, starterLockBreach, templateLockKey, workspaceLockKey } from "./starter-template"
 import { createTargetProject, getVercelTeamId, getVercelToken } from "@/lib/vercel-client"
 import { websiteTemplateFilesSchema, websiteTemplateFileSchema, type WebsiteTemplateFile } from "@/lib/validations/website-template"
 import type { McpPreviewSession } from "../../../prisma/generated-client"
@@ -89,6 +90,11 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     return { ...t, version: t.sourceVersion.toISOString(), projectId: t.demoVercelProjectId }
   }
   const lookup = (targetId: string) => db.mcpPreviewSession.findUnique({ where: { scope_targetId: { scope, targetId } } })
+  // Edits to a starter file are refused (see starter-template.ts): the starter stays the base, only additions land.
+  const guardStarter = async (targetId: string, files: { path: string; content: string }[]) => {
+    const breach = await starterLockBreach(workspace ? workspaceLockKey(targetId) : templateLockKey(targetId), files)
+    if (breach) throw Error(breach)
+  }
   async function current(input: { templateId?: string; siteId?: string }, write = false) {
     const t = await template(input, write)
     const s = await lookup(t.id)
@@ -198,10 +204,13 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
   })
   server.registerTool("apply_preview_changes", { description: "Write changed files to the same live preview.", inputSchema: { ...selector,
     expectedRevision: z.number().int(), changedFiles: z.array(websiteTemplateFileSchema).min(1).max(200) } }, async ({ expectedRevision, changedFiles, ...input }) => {
-    const { s } = await current(input, true)
+    const { t, s } = await current(input, true)
     const merged = new Map(parseFiles(s.files).map(f => [f.path, f]))
     for (const file of changedFiles) merged.set(file.path, file)
     const files = parseFiles([...merged.values()])
+    // Only the files this call writes are judged; the rest of the session is what save_preview_changes checks.
+    const breach = await starterChangeBreach(workspace ? workspaceLockKey(t.id) : templateLockKey(t.id), changedFiles)
+    if (breach) throw Error(breach)
     const batch = buffers(changedFiles)
     const box = await sessionSandbox(s)
     const lock = await db.mcpPreviewSession.updateMany({ where: { id: s.id, revision: expectedRevision, status: "ready" }, data: { status: "editing" } })
@@ -223,6 +232,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     if (expectedSourceVersion !== s.sourceVersion || expectedSourceVersion !== t.version) throw Error("CONFLICT: source version changed")
     if (!s.dirty) return result(describe(t.slug, s))
     if (workspace) {
+      await guardStarter(t.id, parseFiles(s.files))
       const files = parseFiles(s.files).map(f => ({ name: f.path, content: f.content, encoding: f.encoding ?? "utf-8" as const }))
       const { activeSchema } = await import("./site-schema-contract")
       const schemaSnapshot = await activeSchema(t.id, t.slug)
@@ -237,6 +247,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     }
     const next = new Date(Math.max(Date.now(), t.sourceVersion.getTime() + 1))
     const files = parseFiles(s.files)
+    await guardStarter(t.id, files)
     const saved = await db.$transaction(async tx => {
       const updated = await tx.mcpPreviewSession.update({ where: { id: s.id, revision: s.revision, status: "ready", dirty: true }, data: { sourceVersion: next.toISOString(), dirty: false } })
       await tx.websiteTemplate.update({ where: { id: t.id, sourceVersion: t.sourceVersion, deletedAt: null }, data: { files, sourceVersion: next } })

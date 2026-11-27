@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto"
 import { websiteTemplateRunKey, type TemplateRun } from "./website-template-run"
 import { schemaRequirements } from "./site-schema-contract"
 import { buildManifest } from "./mcp-deployment-source"
+import { starterLockFor, workspaceLockKey, writeStarterLock, type StarterSnapshot } from "./starter-template"
 import {
   resolveWebsiteTemplateEnvVars,
   getTenantCustomEnvVarList,
@@ -45,10 +46,16 @@ const APPLY_LEASE_MS = 10 * 60_000
  * isHostingPlanPaid — the two callers phrase this check slightly
  * differently), and role/scope — none of that is this function's concern.
  */
+export interface ApplyWebsiteTemplateOptions {
+  /** Set when the input is the SaCMS starter rather than a catalog Website Template. */
+  starter?: StarterSnapshot
+}
+
 export async function applyWebsiteTemplateToTenant(
   tenantId: string,
   tenantSlug: string,
   websiteTemplate: ApplyWebsiteTemplateInput,
+  options: ApplyWebsiteTemplateOptions = {},
 ): Promise<ApplyWebsiteTemplateResult> {
   const tenantDb = await getTenantDb(tenantSlug)
   const key = websiteTemplateRunKey(tenantId)
@@ -122,7 +129,15 @@ export async function applyWebsiteTemplateToTenant(
     const completed = await db.$transaction(async (tx) => {
       const removed = await tx.setting.deleteMany({ where: { key, value: claimedValue } })
       if (!removed.count) return false
-      await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: websiteTemplate.id } })
+      if (options.starter) {
+        // The starter is not a catalog template: no template link, and its files are locked from here on.
+        await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: null } })
+        await writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(options.starter))
+      } else {
+        // A catalog template replaces whatever was there, including an earlier starter lock.
+        await tx.setting.deleteMany({ where: { key: workspaceLockKey(tenantId) } })
+        await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: websiteTemplate.id } })
+      }
       return tx.mcpDeploymentSource.create({ data: { tenantId, schemaSnapshot: schemaRequirements(websiteTemplate.schemaTemplate.schema), deploymentId: "draft:" + randomUUID(), files, manifest: buildManifest(files) as unknown as object }, select: { id: true } })
     })
     return completed ? { ok: true, imported, envVarsApplied, sourceRevision: completed.id } : busy
