@@ -44,7 +44,6 @@ interface AiContentAssistantModalProps {
   currentValue?: string
   tenantSlug: string
   onApply: (newContent: string) => void
-  availableLocales?: Array<{ locale: string; name: string }>
 }
 
 export function AiContentAssistantModal({
@@ -55,19 +54,15 @@ export function AiContentAssistantModal({
   currentValue = "",
   tenantSlug,
   onApply,
-  availableLocales = [
-    { locale: "id", name: "Bahasa Indonesia" }
-  ]
 }: AiContentAssistantModalProps) {
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("generate")
   const [prompt, setPrompt] = useState("")
   const [tone, setTone] = useState("formal")
-  const [targetLang, setTargetLang] = useState(availableLocales[0]?.locale || "id")
   const [generatedResult, setGeneratedResult] = useState("")
   const [loading, setLoading] = useState(false)
 
-  const handleRunAi = async (action: "generate" | "improve" | "translate" | "seo") => {
+  const handleRunAi = async (action: "generate" | "improve" | "seo") => {
     setLoading(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
@@ -77,7 +72,6 @@ export function AiContentAssistantModal({
           action,
           prompt,
           content: currentValue || prompt,
-          targetLanguage: targetLang,
           tone,
           fieldSlug,
         })
@@ -134,9 +128,6 @@ export function AiContentAssistantModal({
               </TabsTrigger>
               <TabsTrigger value="improve" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
                 <Wand2 className="w-3 h-3" /> Rapikan
-              </TabsTrigger>
-              <TabsTrigger value="translate" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
-                <Globe className="w-3 h-3" /> Terjemahkan
               </TabsTrigger>
               <TabsTrigger value="seo" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
                 <FileSearch className="w-3 h-3" /> Auto SEO
@@ -208,36 +199,6 @@ export function AiContentAssistantModal({
                 >
                   {loading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5 mr-1.5" />}
                   Poles & Rapikan
-                </Button>
-              </div>
-            </TabsContent>
-
-            {/* TAB: TRANSLATE */}
-            <TabsContent value="translate" className="mt-3 space-y-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">Pilih Bahasa Target</Label>
-                <Select value={targetLang} onValueChange={setTargetLang}>
-                  <SelectTrigger className="h-9 text-xs rounded-xl border-border/80">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {availableLocales.map((loc) => (
-                      <SelectItem key={loc.locale} value={loc.locale} className="text-xs">
-                        {loc.name} ({loc.locale.toUpperCase()})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-end">
-                <Button
-                  size="sm"
-                  disabled={loading || !currentValue}
-                  onClick={() => handleRunAi("translate")}
-                  className="h-8 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs"
-                >
-                  {loading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Globe className="w-3.5 h-3.5 mr-1.5" />}
-                  Terjemahkan
                 </Button>
               </div>
             </TabsContent>

@@ -23,7 +23,7 @@ import { parseSchemaFieldOptions, validateScheduledPublicationDate } from "./con
  */
 export async function getAdminEntriesAction(
   contentTypeSlug: string,
-  params: { page?: number; pageSize?: number; status?: string; locale?: string; search?: string }
+  params: { page?: number; pageSize?: number; status?: string; search?: string }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -49,14 +49,13 @@ export async function getAdminEntriesAction(
 
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
-    const { status, locale, search } = params
+    const { status, search } = params
 
     const where: Record<string, unknown> = {
       contentTypeId: contentType.id,
       tenantId: null,
     }
     if (status) where.status = status
-    if (locale) where.locale = locale
 
     let entries: any[]
     let total: number
@@ -119,7 +118,7 @@ export async function getAdminEntriesAction(
 /**
  * Get a specific global entry
  */
-export async function getAdminEntryAction(contentTypeSlug: string, entryId: string, locale: string = "en") {
+export async function getAdminEntryAction(contentTypeSlug: string, entryId: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
@@ -144,7 +143,7 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
 
     if (!entryId) {
       const entry = await db.contentEntry.findFirst({
-        where: { contentTypeId: contentType.id, tenantId: null, locale },
+        where: { contentTypeId: contentType.id, tenantId: null },
       })
       return { entry, contentType }
     }
@@ -156,27 +155,7 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
 
     if (!baseEntry) return { error: "Entry not found" }
 
-    const documentId = baseEntry.documentId || baseEntry.id
-
-    let entry: typeof baseEntry | null = null
-    let isNewTranslation = false
-
-    if (baseEntry.locale === locale) {
-      entry = baseEntry
-      isNewTranslation = false
-    } else {
-      entry = await db.contentEntry.findFirst({
-        where: { documentId, locale, tenantId: null },
-        include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
-      })
-
-      if (!entry) {
-        entry = baseEntry
-        isNewTranslation = true
-      }
-    }
-
-    return { entry, isNewTranslation, documentId, contentType }
+    return { entry: baseEntry, contentType }
   } catch (error: any) {
     console.error("Error fetching admin entry:", error)
     return { error: error.message || "Internal server error" }
@@ -186,12 +165,12 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
 /**
  * Create a new global entry
  */
-export async function createAdminEntryAction(contentTypeSlug: string, payload: { data: any; status: string; locale: string; scheduledAt?: Date | null }) {
+export async function createAdminEntryAction(contentTypeSlug: string, payload: { data: any; status: string; scheduledAt?: Date | null }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
-    const { data, status, locale, scheduledAt } = payload
+    const { data, status, scheduledAt } = payload
 
     if (!data || typeof data !== "object" || Array.isArray(data)) {
       return { error: "Content data must be an object" }
@@ -199,7 +178,6 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
     if (!isWorkflowStatus(status)) return { error: "Invalid content status" }
 
     const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
-    const targetLocale = locale || "en"
 
     const scheduleError = validateScheduledPublicationDate(status, normalizedScheduledAt)
     if (scheduleError) return { error: scheduleError }
@@ -233,7 +211,6 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
         data: {
           contentTypeId: contentType.id,
           tenantId: null,
-          locale: targetLocale,
           data: data as any,
           status: status as any,
           scheduledAt: status === "SCHEDULED" ? normalizedScheduledAt : null,
@@ -280,13 +257,12 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
 /**
  * Update a global entry
  */
-export async function updateAdminEntryAction(contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; locale: string; scheduledAt?: Date | null }) {
+export async function updateAdminEntryAction(contentTypeSlug: string, entryId: string, payload: { data: any; status?: string; scheduledAt?: Date | null }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
-    const { data, status, locale, scheduledAt } = payload
-    const targetLocale = locale || "en"
+    const { data, status, scheduledAt } = payload
 
     if (data !== undefined && (!data || typeof data !== "object" || Array.isArray(data))) {
       return { error: "Content data must be an object" }
@@ -309,25 +285,18 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     })
     if (!baseEntry) return { error: "Entry not found" }
 
-    const documentId = baseEntry.documentId || baseEntry.id
-    let existingLocaleEntry: typeof baseEntry | null = null
+    const existingEntry: typeof baseEntry = baseEntry
 
-    if (baseEntry.locale === targetLocale) {
-      existingLocaleEntry = baseEntry
-    } else {
-      existingLocaleEntry = await db.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId: null } })
-    }
-
-    const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
+    const targetStatus = status || existingEntry?.status || "DRAFT"
     if (!isWorkflowStatus(targetStatus)) return { error: "Invalid content status" }
 
     const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
-    const effectiveScheduledAt = normalizedScheduledAt || existingLocaleEntry?.scheduledAt || null
+    const effectiveScheduledAt = normalizedScheduledAt || existingEntry?.scheduledAt || null
     const scheduleError = validateScheduledPublicationDate(targetStatus, effectiveScheduledAt)
     if (scheduleError) return { error: scheduleError }
 
     if (data) {
-      const existingData = existingLocaleEntry?.data && typeof existingLocaleEntry.data === "object" ? (existingLocaleEntry.data as Record<string, unknown>) : {}
+      const existingData = existingEntry?.data && typeof existingEntry.data === "object" ? (existingEntry.data as Record<string, unknown>) : {}
       const candidateData = { ...existingData, ...data }
       const validation = await validateContentEntry(
         mappedContentType.fields as any,
@@ -339,20 +308,17 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     }
 
     const entry = await db.$transaction(async (tx) => {
-      let targetEntryId = existingLocaleEntry?.id
+      const targetEntryId = existingEntry.id
 
-      if (existingLocaleEntry) {
+      {
         let finalData = data
 
         const updateData: any = { updatedBy: session.user.id }
-        if (!existingLocaleEntry.documentId) {
-          updateData.documentId = documentId
-        }
         if (finalData) updateData.data = finalData
         if (status) {
           updateData.status = status
-          if (status !== existingLocaleEntry.status) {
-            updateData.publishedAt = status === "PUBLISHED" ? new Date() : (status === "DRAFT" ? null : existingLocaleEntry.publishedAt)
+          if (status !== existingEntry.status) {
+            updateData.publishedAt = status === "PUBLISHED" ? new Date() : (status === "DRAFT" ? null : existingEntry.publishedAt)
             updateData.scheduledAt = status === "SCHEDULED" ? effectiveScheduledAt : null
             updateData.archivedAt = status === "ARCHIVED" ? new Date() : null
           } else if (status === "SCHEDULED" && normalizedScheduledAt) {
@@ -360,61 +326,18 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
           }
         }
 
-        await tx.contentEntry.update({ where: { id: existingLocaleEntry.id }, data: updateData })
-      } else {
-        if (!data) throw new Error("Data required for new translation")
-
-        if (!baseEntry.documentId) {
-          await tx.contentEntry.update({
-            where: { id: baseEntry.id },
-            data: { documentId }
-          })
-        }
-
-        const newEntry = await tx.contentEntry.create({
-          data: {
-            documentId,
-            contentTypeId: baseEntry.contentTypeId,
-            tenantId: null,
-            locale: targetLocale,
-            data: data as any,
-            status: status as any || "DRAFT",
-            publishedAt: status === "PUBLISHED" ? new Date() : null,
-            scheduledAt: status === "SCHEDULED" ? effectiveScheduledAt : null,
-            createdBy: session.user.id,
-            updatedBy: session.user.id,
-          }
-        })
-        targetEntryId = newEntry.id
+        await tx.contentEntry.update({ where: { id: existingEntry.id }, data: updateData })
       }
 
-      if (data) {
-        const sharedFields = mappedContentType.fields.filter(f => !f.localizable)
-        if (sharedFields.length > 0) {
-          const translations = await tx.contentEntry.findMany({ where: { documentId, NOT: { id: targetEntryId! } } })
-          for (const trans of translations) {
-            let transData = typeof trans.data === 'string' ? JSON.parse(trans.data) : trans.data
-            let updated = false
-            for (const field of sharedFields) {
-              if (data[field.slug] !== transData[field.slug]) {
-                transData[field.slug] = data[field.slug]
-                updated = true
-              }
-            }
-            if (updated) await tx.contentEntry.update({ where: { id: trans.id }, data: { data: transData as any } })
-          }
-        }
-      }
-
-      const updatedEntry = await tx.contentEntry.findUnique({ where: { id: targetEntryId! } })
-      const lastVersion = await tx.contentVersion.findFirst({ where: { contentEntryId: targetEntryId! }, orderBy: { version: "desc" } })
+      const updatedEntry = await tx.contentEntry.findUnique({ where: { id: targetEntryId } })
+      const lastVersion = await tx.contentVersion.findFirst({ where: { contentEntryId: targetEntryId }, orderBy: { version: "desc" } })
 
       await tx.contentVersion.create({
         data: {
-          contentEntryId: targetEntryId!,
+          contentEntryId: targetEntryId,
           version: (lastVersion?.version || 0) + 1,
           data: updatedEntry?.data as any,
-          changeType: existingLocaleEntry ? "updated" : "created",
+          changeType: "updated",
           changedBy: session.user.id,
         },
       })
@@ -425,7 +348,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:global:${contentTypeSlug}:*`)
 
-    logAudit({ tenantId: undefined, userId: session.user.id, action: existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED, entity: "content_entry", entityId: entry?.id || entryId, data: { contentType: contentTypeSlug, status: entry?.status, locale: targetLocale } })
+    logAudit({ tenantId: undefined, userId: session.user.id, action: AuditAction.CONTENT_UPDATED, entity: "content_entry", entityId: entry?.id || entryId, data: { contentType: contentTypeSlug, status: entry?.status } })
 
     revalidatePath(`/admin/content/${contentTypeSlug}`)
     revalidatePath(`/admin/single-types/${contentTypeSlug}`)
@@ -494,7 +417,6 @@ export async function updateAdminContentEntryStatusAction(contentTypeSlug: strin
     return await updateAdminEntryAction(contentTypeSlug, entryId, { 
       data: undefined, 
       status, 
-      locale: existingEntry.locale 
     })
   } catch (error: any) {
     console.error("Error updating admin entry status:", error)

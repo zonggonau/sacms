@@ -165,7 +165,6 @@ async function writeHandler(
             id: updated.id,
             documentId: updated.documentId,
             ...updatedData,
-            locale: updated.locale,
             status: updated.status,
             updatedAt: updated.updatedAt,
           },
@@ -181,14 +180,13 @@ async function writeHandler(
 }
 
 /**
- * Public API - Get single entry by ID or documentId with relation population and locale fallback.
+ * Public API - Get single entry by ID or documentId with relation population.
  *
  * Route: GET /api/public/[tenant]/content/[contentType]/[id]
  *
  * Query params:
  *   ?fields=title,slug       — Field selection
  *   ?populate=author,tags    — Relation expansion
- *   ?locale=id               — Locale request
  */
 export async function GET(
   request: NextRequest,
@@ -301,14 +299,6 @@ export async function GET(
 
     // 7. Parse parameters
     const { searchParams } = new URL(request.url)
-    const requestedLocale = searchParams.get("locale")
-
-    const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
-      where: { tenantId: tenantId, isDefault: true },
-      select: { locale: true },
-    })
-    const defaultLocale = tenantDefaultLocale?.locale ?? "id"
-    const locale = requestedLocale ?? defaultLocale
 
     // 8. Cache check — members and anonymous callers share a cache entry per
     // URL (both only ever see PUBLISHED content); full-access tokens get
@@ -333,7 +323,6 @@ export async function GET(
       where: {
         contentTypeId: contentType.id,
         tenantId: tenantId,
-        locale: locale,
         deletedAt: null,
         OR: [
           { id: entryIdOrDocId },
@@ -343,39 +332,9 @@ export async function GET(
       },
     })
 
-    // Locale fallback if requested locale is missing data for documentId
-    if (!entry && requestedLocale && requestedLocale !== defaultLocale) {
-      entry = await tenantDb.contentEntry.findFirst({
-        where: {
-          contentTypeId: contentType.id,
-          tenantId: tenantId,
-          locale: defaultLocale,
-          documentId: entryIdOrDocId,
-          deletedAt: null,
-          ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-        },
-      })
-    }
-
     if (!entry) {
       return logResponse(NextResponse.json({ error: "Entry not found" }, { status: 404 }))
     }
-
-    // 10. Available locales for documentId
-    const documentId = entry.documentId
-    const localeVariants = documentId
-      ? await tenantDb.contentEntry.findMany({
-          where: {
-            documentId: documentId,
-            contentTypeId: contentType.id,
-            tenantId: tenantId,
-            deletedAt: null,
-            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-          },
-          select: { locale: true },
-        })
-      : []
-    const availableLocales = localeVariants.map(v => v.locale)
 
     // 11. Relation population & Field selection
     const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
@@ -423,8 +382,6 @@ export async function GET(
         id: entry.id,
         documentId: entry.documentId,
         ...publicShapedData,
-        locale: entry.locale,
-        availableLocales: availableLocales.length > 0 ? availableLocales : [entry.locale],
         status: entry.status,
         publishedAt: entry.publishedAt,
         createdAt: entry.createdAt,

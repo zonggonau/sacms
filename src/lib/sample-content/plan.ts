@@ -4,7 +4,7 @@
  * written here; the runner in run.ts does that from this plan.
  *
  * Covers Content Types (many entries each) and Single Types (one entry per
- * locale). Components are not entries; they are filled inside the entry that
+ * Single Type). Components are not entries; they are filled inside the entry that
  * uses them.
  */
 import { createHash } from "crypto"
@@ -32,14 +32,13 @@ export interface SampleSchema {
 }
 
 export interface PlanOptions {
-  locale: string
   /** Entries per Content Type. Clamped to 1..MAX_PER_TYPE. Single Types always get one. */
   perType?: number
   /** Slugs to consider (Content Types or Single Types). Omit for all. */
   contentTypes?: string[]
   /**
    * Existing data per model. Keys: `<slug>` for a Content Type's entry count,
-   * `single:<slug>` for a Single Type that already has content in this locale.
+   * `single:<slug>` for a Single Type that already has content.
    */
   existingCounts?: Record<string, number>
 }
@@ -68,7 +67,6 @@ export interface PlanIssue {
 }
 
 export interface SamplePlan {
-  locale: string
   perType: number
   batchKey: string
   steps: PlanStep[]
@@ -87,10 +85,9 @@ function clampPerType(n: number | undefined): number {
   return Math.min(MAX_PER_TYPE, Math.max(1, Math.floor(n)))
 }
 
-export function batchKeyFor(schema: SampleSchema, locale: string, perType: number, selected: string[]): string {
+export function batchKeyFor(schema: SampleSchema, perType: number, selected: string[]): string {
   const material = JSON.stringify({
     v: SEED_VERSION,
-    locale,
     perType,
     selected: [...selected].sort(),
     shape: [...schema.contentTypes, ...(schema.singleTypes ?? [])].map((m) => [m.slug, m.fields.map((f) => [f.slug, f.type, f.relationSlug ?? null])]),
@@ -152,7 +149,6 @@ interface Node {
  * entry is written without them.
  */
 export function buildSamplePlan(schema: SampleSchema, options: PlanOptions): SamplePlan {
-  const locale = options.locale
   const perType = clampPerType(options.perType)
   const existingCounts = options.existingCounts ?? {}
   const wanted = options.contentTypes ? new Set(options.contentTypes) : null
@@ -169,7 +165,7 @@ export function buildSamplePlan(schema: SampleSchema, options: PlanOptions): Sam
     if (wanted && !wanted.has(model.slug)) return
     const countKey = kind === "single" ? `single:${model.slug}` : model.slug
     if ((existingCounts[countKey] ?? 0) > 0) {
-      const what = kind === "single" ? "sudah berisi data di locale ini" : `sudah berisi ${existingCounts[countKey]} entri`
+      const what = kind === "single" ? "sudah berisi data" : `sudah berisi ${existingCounts[countKey]} entri`
       skipped.push({ contentType: model.slug, reason: `${what}; tidak ditimpa` })
       return
     }
@@ -266,9 +262,8 @@ export function buildSamplePlan(schema: SampleSchema, options: PlanOptions): Sam
 
   const selected = wanted ? [...wanted] : [...allCollections, ...allSingles].map((m) => m.slug)
   return {
-    locale,
     perType,
-    batchKey: batchKeyFor(schema, locale, perType, selected),
+    batchKey: batchKeyFor(schema, perType, selected),
     steps,
     skipped,
     unfillable,

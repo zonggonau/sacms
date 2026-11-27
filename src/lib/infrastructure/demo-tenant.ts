@@ -164,7 +164,6 @@ export async function createDraftDemoWorkspace(
       slug,
       plan: "enterprise",
       status: "active",
-      locales: { create: { locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true } },
     },
     select: { id: true, slug: true },
   })
@@ -270,19 +269,7 @@ export async function ensureDemoTenantForSchemaTemplate(schemaTemplate: {
     select: { id: true, slug: true },
   })
 
-  // chatgpt.md P0: a brand-new tenant has no TenantLocale row at all — every
-  // normal onboarding flow leaves that to a staff member, but this demo
-  // tenant has none. createContentEntry's resolveWriteLocale falls back to
-  // "en" when no TenantLocale is enabled for a tenant, while every public
-  // read path (content list, single type) defaults to "id" when none is
-  // configured — so seeded entries landed in a locale NOTHING ever reads
-  // back, and the demo API reported 0 entries for every Content Type
-  // (confirmed live). Seed the one default locale every other read/write
-  // path already assumes.
   const tenantDb = await getTenantDb(tenant.slug)
-  await tenantDb.tenantLocale.create({
-    data: { tenantId: tenant.id, locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
-  })
 
   await materializeSchemaIntoTenant(tenantDb, tenant.id, schema)
 
@@ -513,14 +500,14 @@ export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getT
   for (const singleType of singleTypes) {
     const fields = singleType.schemaFields.map((f) => ({ slug: f.slug, name: f.name, type: f.type, required: f.required, options: f.options as any }))
     const singleDummyRows = findDummyData(schemaBlob.singleTypes as any, singleType.slug)
-    const key = { tenantId, singleTypeId: singleType.id, locale: "id" }
+    const key = { tenantId, singleTypeId: singleType.id }
     const built = buildEntryData(fields, 0, singleDummyRows?.[0])
     if (built.autoFilled.length) {
       warnings.push({ model: singleType.slug, message: `dummyData[0] omits required field(s) ${built.autoFilled.join(", ")} — filled with a generic placeholder.` })
     }
     const content = { enabled: true, data: built.data as any, publishedAt: new Date() }
     if (preserveExisting) {
-      const current = await tenantDb.tenantSingleTypeAssignment.findUnique({ where: { tenantId_singleTypeId_locale: key } })
+      const current = await tenantDb.tenantSingleTypeAssignment.findUnique({ where: { tenantId_singleTypeId: key } })
       if (current) {
         if (current.publishedAt || current.draftData != null || !current.enabled || Object.keys(parseSingleTypeData(current.data)).length) continue
         await tenantDb.tenantSingleTypeAssignment.updateMany({ where: { id: current.id, updatedAt: current.updatedAt }, data: content })
@@ -533,16 +520,15 @@ export async function seedSampleContent(tenantDb: Awaited<ReturnType<typeof getT
     }
     // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
     // { tenantId } }` on each SingleType ALREADY inserts a
-    // TenantSingleTypeAssignment row (empty data, publishedAt: null,
-    // locale defaulting to "id") — the exact same [tenantId, singleTypeId,
-    // locale] unique key this used to `.create()` again. That threw a
+    // TenantSingleTypeAssignment row (empty data, publishedAt: null) — the
+    // exact same [tenantId, singleTypeId] unique key this used to `.create()` again. That threw a
     // P2002 every time, silently swallowed by the catch below, so the real
     // sample data/publishedAt here never actually got applied and the
     // single type's demo API call 404'd as "not published" (confirmed
     // live). upsert instead of create, onto whichever row already exists.
     await tenantDb.tenantSingleTypeAssignment
       .upsert({
-        where: { tenantId_singleTypeId_locale: key },
+        where: { tenantId_singleTypeId: key },
         create: { ...key, ...content },
         update: content,
       })

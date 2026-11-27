@@ -89,14 +89,14 @@ export async function resolvePopulate(args: {
           contentType: { slug: target.slug },
           ...(publishedOnly ? { status: "PUBLISHED" as const } : {}),
         },
-        select: { id: true, data: true, locale: true, status: true },
+        select: { id: true, data: true, status: true },
       })
       for (const re of entries) {
         let rd: Record<string, unknown> = {}
         try {
           rd = typeof re.data === "string" ? JSON.parse(re.data as string) : ((re.data as Record<string, unknown>) || {})
         } catch { rd = {} }
-        byId.set(re.id, { id: re.id, ...rd, locale: re.locale, status: re.status })
+        byId.set(re.id, { id: re.id, ...rd, status: re.status })
       }
     } else {
       const members = await tenantDb.member.findMany({

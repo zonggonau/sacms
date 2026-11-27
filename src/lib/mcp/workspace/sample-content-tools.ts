@@ -1,6 +1,6 @@
 // registerSampleContentTools — Workspace MCP: plan and seed schema-driven sample entries.
 // The plan is read-only. The seed writes through the same createContentEntry path as
-// create_content_entry, so validation, locale and plan limits apply unchanged.
+// create_content_entry, so validation and plan limits apply unchanged.
 import { z } from "zod"
 import { revalidatePath } from "next/cache"
 import { db, getTenantDb } from "@/lib/database"
@@ -14,12 +14,11 @@ import { McpServer, authContext, UNAUTHORIZED, hasScope, permissionDenied, mcpEn
 import { registerSampleBatchTools } from "./sample-batch-tools"
 
 const sampleInputShape = {
-  locale: z.string().default("id").describe("Locale the entries are written in (e.g. 'id', 'en'). Use the locale the website shows."),
   perType: z.number().int().min(1).max(MAX_PER_TYPE).default(3).describe(`Entries per Content Type (1–${MAX_PER_TYPE}).`),
   contentTypes: z.array(z.string()).optional().describe("Only these Content Type slugs. Omit for all."),
 }
 
-async function loadWorkspaceSample(tenantId: string, tenantSlug: string, locale: string) {
+async function loadWorkspaceSample(tenantId: string, tenantSlug: string) {
   const tenantDb = await getTenantDb(tenantSlug)
   const bundle = await serializeTenantSchema(tenantDb, { tenantId, draftTemplateId: null } as any)
   const schema: SampleSchema = {
@@ -37,9 +36,9 @@ async function loadWorkspaceSample(tenantId: string, tenantSlug: string, locale:
     const slug = slugById.get(row.contentTypeId)
     if (slug) existingCounts[slug] = row._count._all
   }
-  // A Single Type counts as populated when this locale already has content.
+  // A Single Type counts as populated when it already has content.
   const assigned = await tenantDb.tenantSingleTypeAssignment.findMany({
-    where: { tenantId: tenantId, locale, singleType: { draftTemplateId: null } },
+    where: { tenantId: tenantId, singleType: { draftTemplateId: null } },
     select: { data: true, draftData: true, singleType: { select: { slug: true } } },
   })
   for (const a of assigned) {
@@ -62,13 +61,13 @@ export function registerSampleContentTools(server: McpServer) {
       description: "Read-only. Analyzes this workspace's schema and returns the sample entries that would be created: order (relation targets first), entries per Content Type, Content Types left out and why, and optional fields that cannot be filled automatically (media, Member relations). Writes nothing. Call before seed_sample_content.",
       inputSchema: sampleInputShape,
     },
-    async ({ locale, perType, contentTypes }) => {
+    async ({ perType, contentTypes }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
       if (!hasScope(auth, "read")) return permissionDenied("read")
 
-      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug, locale)
-      const options: PlanOptions = { locale, perType, contentTypes, existingCounts }
+      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug)
+      const options: PlanOptions = { perType, contentTypes, existingCounts }
       return textResult(buildSamplePlan(schema, options))
     },
   )
@@ -84,7 +83,7 @@ export function registerSampleContentTools(server: McpServer) {
         status: z.enum(["DRAFT", "PUBLISHED"]).default("DRAFT").describe("Status for created entries. Use PUBLISHED only in a demo or staging workspace whose data may be public."),
       },
     },
-    async ({ locale, perType, contentTypes, status }) => {
+    async ({ perType, contentTypes, status }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
       if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -93,16 +92,16 @@ export function registerSampleContentTools(server: McpServer) {
       }
 
       const tenantDb = await getTenantDb(auth.tenantSlug)
-      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug, locale)
-      const plan = buildSamplePlan(schema, { locale, perType, contentTypes, existingCounts })
+      const { schema, existingCounts } = await loadWorkspaceSample(auth.tenantId, auth.tenantSlug)
+      const plan = buildSamplePlan(schema, { perType, contentTypes, existingCounts })
       const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
 
       const writer: EntryWriter = {
-        create: async (slug, data, entryLocale) => {
-          const result = await createContentEntry(ctx, actor, { contentTypeSlug: slug, data, status, locale: entryLocale })
+        create: async (slug, data) => {
+          const result = await createContentEntry(ctx, actor, { contentTypeSlug: slug, data, status })
           return result.ok ? { ok: true, id: result.data.id } : { ok: false, message: result.message }
         },
-        upsertSingle: async (slug, data, entryLocale) => {
+        upsertSingle: async (slug, data) => {
           const st = await tenantDb.singleType.findFirst({
             where: { tenantId: auth.tenantId, slug, draftTemplateId: null },
             select: { id: true },
@@ -111,16 +110,16 @@ export function registerSampleContentTools(server: McpServer) {
           const publish = status === "PUBLISHED"
           const content = singleTypeContentWrite(data, publish)
           const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
-            where: { tenantId_singleTypeId_locale: { tenantId: auth.tenantId, singleTypeId: st.id, locale: entryLocale } },
+            where: { tenantId_singleTypeId: { tenantId: auth.tenantId, singleTypeId: st.id } },
             update: content,
-            create: { tenantId: auth.tenantId, singleTypeId: st.id, locale: entryLocale, ...content },
+            create: { tenantId: auth.tenantId, singleTypeId: st.id, ...content },
           })
-          if (publish) await invalidateSingleTypePublication(auth.tenantId, slug, entryLocale)
+          if (publish) await invalidateSingleTypePublication(auth.tenantId, slug)
           return { ok: true as const, id: assignment.id }
         },
-        existingIds: async (slug, entryLocale) => {
+        existingIds: async (slug) => {
           const rows = await tenantDb.contentEntry.findMany({
-            where: { tenantId: auth.tenantId, deletedAt: null, locale: entryLocale, contentType: { slug } },
+            where: { tenantId: auth.tenantId, deletedAt: null, contentType: { slug } },
             select: { id: true },
             orderBy: { createdAt: "asc" },
             take: 50,

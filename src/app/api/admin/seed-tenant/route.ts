@@ -85,7 +85,6 @@ export const POST = withAdminAuth(async (request) => {
             data: entry,
             tenantId,
             contentTypeId: ct.id,
-            locale: "id",
           },
         })
         totalEntries++

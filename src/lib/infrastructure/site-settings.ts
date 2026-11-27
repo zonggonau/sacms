@@ -100,12 +100,11 @@ export async function ensureSiteSettings(tenantId: string, tenantName: string): 
   }
 
   await tenantDb.tenantSingleTypeAssignment.upsert({
-    where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId: singleType.id, locale: "id" } },
+    where: { tenantId_singleTypeId: { tenantId, singleTypeId: singleType.id } },
     update: {},
     create: {
       tenantId,
       singleTypeId: singleType.id,
-      locale: "id",
       enabled: true,
       publishedAt: new Date(),
       data: { ...DEFAULT_SITE_SETTINGS_DATA, "brand-name": tenantName } as any,

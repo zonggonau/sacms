@@ -10,7 +10,7 @@ const MAX_IMPORT_ENTRIES = 500
  * POST /api/tenant/[tenant]/content-types/slug/[slug]/entries/import
  *
  * Imports entries from the JSON shape produced by the sibling `export`
- * route (`{ entries: [{ data, status, locale }, ...] }`). Every entry is
+ * route (`{ entries: [{ data, status }, ...] }`). Every entry is
  * created fresh via createContentEntry — the same write path every other
  * entry mutation in the app goes through — so schema validation, auto-slug,
  * webhooks, versioning, and audit logging all run exactly as they would for
@@ -50,7 +50,6 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
 
   const ctx: EntryWriteContext = {
     client: tenantDb,
-    localeClient: db,
     tenantId: access.tenantId,
     tenantSlug,
     enforcePlan: true,
@@ -59,7 +58,6 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
 
   let imported = 0
   const failures: Array<{ index: number; error: string }> = []
-  const importedDocuments = new Map<string, { id: string; locales: Set<string> }>()
 
   for (let i = 0; i < body.entries.length; i++) {
     const row = body.entries[i]
@@ -72,14 +70,6 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       continue
     }
 
-    const locale = typeof row.locale === "string" ? row.locale.trim() || undefined : undefined
-    const sourceDocumentId = locale && typeof row.documentId === "string" ? row.documentId.trim() : ""
-    const document = importedDocuments.get(sourceDocumentId)
-    if (locale && document?.locales.has(locale)) {
-      failures.push({ index: i, error: `Document contains more than one entry for locale '${locale}'` })
-      continue
-    }
-
     // Imported content always lands as DRAFT regardless of the source's
     // recorded status — an imported row hasn't been reviewed in this
     // workspace, so it shouldn't silently appear as published.
@@ -88,8 +78,6 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
         contentTypeSlug,
         data: row.data,
         status: "DRAFT",
-        locale,
-        importDocumentId: document?.id,
       })
       if (!result.ok) {
         const details = result.details ? Object.values(result.details).join(", ") : ""
@@ -98,10 +86,6 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       }
 
       imported++
-      if (sourceDocumentId) {
-        if (document) document.locales.add(result.data.locale)
-        else importedDocuments.set(sourceDocumentId, { id: result.data.id, locales: new Set([result.data.locale]) })
-      }
     } catch (error) {
       console.error("[entries import] Row creation failed:", error)
       failures.push({ index: i, error: "Could not create entry" })

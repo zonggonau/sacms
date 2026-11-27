@@ -13,7 +13,7 @@ vi.mock("@/lib/database", () => {
     contentType: { findFirst: vi.fn(), findMany: vi.fn() },
     contentEntry: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
     tenantMember: { findUnique: vi.fn() },
-    tenantLocale: { findFirst: vi.fn().mockResolvedValue({ locale: "en" }), findMany: vi.fn().mockResolvedValue([]) },
+    tenantLocale: { findFirst: vi.fn().mockResolvedValue({}), findMany: vi.fn().mockResolvedValue([]) },
     webhook: { findMany: vi.fn().mockResolvedValue([]) },
     media: { aggregate: vi.fn().mockResolvedValue({ _sum: { size: 0 } }) },
     rolePermission: { findMany: vi.fn().mockResolvedValue([]) },
@@ -165,7 +165,6 @@ describe("Tenant Content Actions", () => {
       const response = await createEntryAction("tenant-1", "articles", {
         data: { title: "New Entry" },
         status: "DRAFT",
-        locale: "en",
       })
       
       expect(response.error).toBe("Plan limit reached.")
@@ -207,7 +206,6 @@ describe("Tenant Content Actions", () => {
       const response = await createEntryAction("tenant-1", "articles", {
         data: {},
         status: "DRAFT",
-        locale: "en",
       })
       
       expect(response.error).toBe("Validation failed")
@@ -267,7 +265,6 @@ describe("Tenant Content Actions", () => {
       const response = await createEntryAction("tenant-1", "articles", {
         data: { title: "My Entry" },
         status: "DRAFT",
-        locale: "en",
       })
       
       expect(response.entry?.id).toBe("new-entry-1")

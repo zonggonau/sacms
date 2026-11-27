@@ -5,7 +5,6 @@ export interface PlanConfig {
   max_team_members: number
   max_api_calls: number
   max_storage: number // in MB
-  max_locales: number
   audit_log_retention: number // in days
   support_level: string
   max_ai_tokens: number // 0 means AI is disabled
@@ -174,7 +173,6 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_team_members: 1,
     max_api_calls: 1000,
     max_storage: 100, // MB
-    max_locales: 1,
     audit_log_retention: 0,
     support_level: "Community",
     max_ai_tokens: 50000,
@@ -187,7 +185,6 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_team_members: 3,
     max_api_calls: 10000,
     max_storage: 1024, // 1GB
-    max_locales: 2,
     audit_log_retention: 7,
     support_level: "Email Support",
     max_ai_tokens: 100000,
@@ -200,7 +197,6 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_team_members: 10,
     max_api_calls: 100000,
     max_storage: 5120, // 5GB
-    max_locales: 5,
     audit_log_retention: 30,
     support_level: "Priority Support",
     max_ai_tokens: 500000,
@@ -213,7 +209,6 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_team_members: 20,
     max_api_calls: 1000000,
     max_storage: 51200, // 50GB
-    max_locales: 20,
     audit_log_retention: 365,
     support_level: "24/7 Dedicated Support",
     max_ai_tokens: 2000000,
@@ -226,7 +221,6 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_team_members: 9999,
     max_api_calls: 99999999,
     max_storage: 102400,
-    max_locales: 99,
     audit_log_retention: 9999,
     support_level: "Custom Support",
     max_ai_tokens: 99999999,

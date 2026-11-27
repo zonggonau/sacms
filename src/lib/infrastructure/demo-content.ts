@@ -2,7 +2,7 @@ import { createHash } from "node:crypto"
 import sharp from "sharp"
 import type { Prisma } from "@prisma/client"
 import { db } from "@/lib/database"
-import { resolveWriteLocale, createContentEntry, updateContentEntry } from "@/lib/content/entry-service"
+import { createContentEntry, updateContentEntry } from "@/lib/content/entry-service"
 import { validateContentEntry } from "@/lib/content-validations"
 import { DemoContentError, findSchemaDemoWorkspace, seedSampleContent } from "./demo-tenant"
 import { invalidateSingleTypePublication, parseSingleTypeData, readSingleTypeAssignment, singleTypeContentWrite } from "@/lib/single-type-publication"
@@ -19,8 +19,8 @@ type DemoClient = typeof db | Prisma.TransactionClient
 type DemoWorkspace = { id: string; slug: string }
 type DemoField = { slug: string; name: string; type: string; required: boolean; options?: unknown; relationSlug?: string | null }
 type Values = Record<string, unknown>
-type SingleTypeInput = { singleTypeSlug: string; locale?: string }
-type CollectionInput = { contentTypeSlug: string; locale?: string }
+type SingleTypeInput = { singleTypeSlug: string }
+type CollectionInput = { contentTypeSlug: string }
 
 export const DEMO_MEDIA_MAX_BYTES = 2 * 1024 * 1024
 export const DEMO_MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const
@@ -45,26 +45,19 @@ export async function requireDemoWorkspace(templateId: string, client: DemoClien
   return demo
 }
 
-async function localeFor(client: DemoClient, demo: DemoWorkspace, locale?: string) {
-  const result = await resolveWriteLocale(client, demo.id, locale)
-  if (!result.ok) invalid(result.message)
-  return result.data
-}
-
 async function loadSingleType(client: DemoClient, demo: DemoWorkspace, input: SingleTypeInput) {
   const singleType = await client.singleType.findFirst({
     where: { tenantId: demo.id, slug: input.singleTypeSlug, draftTemplateId: null },
     include: { schemaFields: { orderBy: { order: "asc" } } },
   })
   if (!singleType) throw new DemoContentError("NOT_FOUND", "Single Type not found in this demo workspace.")
-  const locale = await localeFor(client, demo, input.locale)
   const assignment = await client.tenantSingleTypeAssignment.findUnique({
-    where: { tenantId_singleTypeId_locale: { tenantId: demo.id, singleTypeId: singleType.id, locale } },
+    where: { tenantId_singleTypeId: { tenantId: demo.id, singleTypeId: singleType.id } },
   })
-  return { singleType, locale, assignment }
+  return { singleType, assignment }
 }
 
-function singleTypeResult(demo: DemoWorkspace, { singleType, locale, assignment }: Awaited<ReturnType<typeof loadSingleType>>) {
+function singleTypeResult(demo: DemoWorkspace, { singleType, assignment }: Awaited<ReturnType<typeof loadSingleType>>) {
   const publicEntry = Boolean(singleType.isPublished && assignment?.enabled && assignment.publishedAt)
   const hasDraft = assignment?.draftData != null
   const data = assignment ? readSingleTypeAssignment(assignment, true).data : {}
@@ -74,7 +67,6 @@ function singleTypeResult(demo: DemoWorkspace, { singleType, locale, assignment 
   return {
     demo,
     singleType: { id: singleType.id, slug: singleType.slug, name: singleType.name },
-    locale,
     status,
     hasPendingDraft: hasDraft,
     version: assignment?.updatedAt.toISOString() ?? null,
@@ -274,7 +266,7 @@ export async function updateDemoSingleTypeEntry(
   const result = await db.$transaction(async (tx) => {
     const demo = await requireDemoWorkspace(templateId, tx)
     const current = await loadSingleType(tx, demo, input)
-    const { singleType, locale, assignment } = current
+    const { singleType, assignment } = current
     if (input.expectedVersion !== undefined && input.expectedVersion !== (assignment?.updatedAt.toISOString() ?? null)) {
       throw new DemoContentError("CONFLICT", "Demo entry has changed. Read it again before saving.")
     }
@@ -282,10 +274,10 @@ export async function updateDemoSingleTypeEntry(
     const content = singleTypeContentWrite(data, input.publish)
     const saved = assignment
       ? await tx.tenantSingleTypeAssignment.update({ where: { id: assignment.id, tenantId: demo.id, updatedAt: assignment.updatedAt }, data: content })
-      : await tx.tenantSingleTypeAssignment.create({ data: { tenantId: demo.id, singleTypeId: singleType.id, locale, ...content } })
+      : await tx.tenantSingleTypeAssignment.create({ data: { tenantId: demo.id, singleTypeId: singleType.id, ...content } })
     return singleTypeResult(demo, { ...current, assignment: saved })
   })
-  if (input.publish) await invalidateSingleTypePublication(result.demo.id, result.singleType.slug, result.locale)
+  if (input.publish) await invalidateSingleTypePublication(result.demo.id, result.singleType.slug)
   return result
 }
 
@@ -295,23 +287,23 @@ async function loadDemoCollection(demo: DemoWorkspace, input: CollectionInput) {
     include: { schemaFields: true },
   })
   if (!model) throw new DemoContentError("NOT_FOUND", "Content Type not found in this demo workspace.")
-  return { model, locale: await localeFor(db, demo, input.locale) }
+  return { model }
 }
 
-function collectionEntryResult(entry: { id: string; locale: string; status: string; data: unknown; updatedAt: Date; publishedAt: Date | null }) {
-  return { id: entry.id, locale: entry.locale, status: entry.status, data: parseSingleTypeData(entry.data), version: entry.updatedAt.toISOString(), publishedAt: entry.publishedAt?.toISOString() ?? null }
+function collectionEntryResult(entry: { id: string; status: string; data: unknown; updatedAt: Date; publishedAt: Date | null }) {
+  return { id: entry.id, status: entry.status, data: parseSingleTypeData(entry.data), version: entry.updatedAt.toISOString(), publishedAt: entry.publishedAt?.toISOString() ?? null }
 }
 
 export async function listDemoContentEntries(templateId: string, input: CollectionInput & { limit: number; offset: number }) {
   const demo = await requireDemoWorkspace(templateId)
-  const { model, locale } = await loadDemoCollection(demo, input)
+  const { model } = await loadDemoCollection(demo, input)
   const rows = await db.contentEntry.findMany({
-    where: { tenantId: demo.id, contentTypeId: model.id, locale, deletedAt: null },
+    where: { tenantId: demo.id, contentTypeId: model.id, deletedAt: null },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     skip: input.offset,
     take: input.limit + 1,
   })
-  return { demo, contentTypeSlug: model.slug, locale, entries: rows.slice(0, input.limit).map(collectionEntryResult), hasMore: rows.length > input.limit }
+  return { demo, contentTypeSlug: model.slug, entries: rows.slice(0, input.limit).map(collectionEntryResult), hasMore: rows.length > input.limit }
 }
 
 export async function saveDemoContentEntry(
@@ -319,11 +311,11 @@ export async function saveDemoContentEntry(
   input: CollectionInput & { data: Values; entryId?: string; status?: "DRAFT" | "PUBLISHED"; expectedVersion?: string },
 ) {
   const demo = await requireDemoWorkspace(templateId)
-  const { model, locale } = await loadDemoCollection(demo, input)
+  const { model } = await loadDemoCollection(demo, input)
   const current = input.entryId ? await db.contentEntry.findFirst({
-    where: { id: input.entryId, tenantId: demo.id, contentTypeId: model.id, locale, deletedAt: null },
+    where: { id: input.entryId, tenantId: demo.id, contentTypeId: model.id, deletedAt: null },
   }) : null
-  if (input.entryId && !current) throw new DemoContentError("NOT_FOUND", "Entry not found in the requested demo locale.")
+  if (input.entryId && !current) throw new DemoContentError("NOT_FOUND", "Entry not found in this demo workspace.")
   if (input.expectedVersion && input.expectedVersion !== current?.updatedAt.toISOString()) {
     throw new DemoContentError("CONFLICT", "Demo entry has changed. Read it again before saving.")
   }
@@ -331,7 +323,7 @@ export async function saveDemoContentEntry(
   const data = await mergeDemoData(db, demo, model.schemaFields, parseSingleTypeData(current?.data), input.data, status !== "DRAFT")
   const context = { tenantId: demo.id, tenantSlug: demo.slug, client: db }
   const values = {
-    contentTypeSlug: model.slug, locale, data, status,
+    contentTypeSlug: model.slug, data, status,
     ...(status === "SCHEDULED" ? { scheduledAt: current?.scheduledAt } : {}),
   }
   const result = current

@@ -139,7 +139,6 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       "max_content_entries": 500,
       "max_team_members": 1,
       "max_storage": 100,
-      "max_locales": 1,
       "max_api_calls": 1000,
       "features": [
         "Unlimited Content Schemas & Tipe Data",
@@ -163,7 +162,6 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       "max_content_entries": 10000,
       "max_team_members": 10,
       "max_storage": 5120,
-      "max_locales": 5,
       "max_api_calls": 100000,
       "features": [
         "10.000 Entri Konten & Unlimited Schemas",

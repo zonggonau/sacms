@@ -73,12 +73,10 @@ export default function SingleTypeDetailClient({
   tenantSlug,
   singleTypeSlug,
   initialSingleType,
-  initialLocales,
 }: {
   tenantSlug: string
   singleTypeSlug: string
   initialSingleType: SingleType | null
-  initialLocales: any[]
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -87,8 +85,6 @@ export default function SingleTypeDetailClient({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>(initialSingleType?.data || {})
-  const [locale, setLocale] = useState<string>("id")
-  const [availableLocales, setAvailableLocales] = useState<any[]>(initialLocales)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
 
@@ -107,11 +103,6 @@ export default function SingleTypeDetailClient({
         setFormData(stRes.singleType.data || {})
       }
       
-      const locRes = await fetch(`/api/tenant/${tenantSlug}/locales`)
-      if (locRes.ok) {
-        const data = await locRes.json()
-        if (data.locales?.length > 0) setAvailableLocales(data.locales)
-      }
     } catch (error) {
       console.error(error)
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat data konten" })
@@ -306,24 +297,6 @@ export default function SingleTypeDetailClient({
             </div>
 
             <div className="space-y-4">
-              <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
-                <CardHeader className="p-4 pb-2 border-b border-border/60">
-                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bahasa & Lokalisasi</CardTitle>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Bahasa Aktif</Label>
-                    <Select value={locale} onValueChange={setLocale}>
-                      <SelectTrigger className="bg-background border-border/80 rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-border bg-card">
-                        {availableLocales.map(l => (
-                          <SelectItem key={l.locale} value={l.locale} className="rounded-lg text-xs cursor-pointer">{l.name} ({l.locale})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </Card>
 
               <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
                 <CardHeader className="p-4 pb-2 border-b border-border/60">

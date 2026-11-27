@@ -37,7 +37,7 @@ function makeClient(overrides: any = {}) {
         tenants: [{ tenantId: "t1", enabled: true }],
       }),
     },
-    tenantLocale: { findMany: vi.fn().mockResolvedValue([{ locale: "en", isDefault: true }]) },
+    tenantLocale: { findMany: vi.fn().mockResolvedValue([{ isDefault: true }]) },
     contentEntry: {
       findFirst: vi.fn(),
       create: vi.fn(),
@@ -49,8 +49,8 @@ function makeClient(overrides: any = {}) {
       cb({
         contentEntry: {
           create: vi.fn().mockResolvedValue({ id: "e1", data: { title: "Hi" }, status: "DRAFT" }),
-          update: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT", locale: "en" }),
-          findUnique: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT", locale: "en" }),
+          update: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT" }),
+          findUnique: vi.fn().mockResolvedValue({ id: "e1", documentId: "e1", data: { title: "Hi" }, status: "DRAFT" }),
           findMany: vi.fn().mockResolvedValue([]),
         },
         contentVersion: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
@@ -161,7 +161,6 @@ describe("updateContentEntry — status-only transitions must still validate the
           documentId: "e1",
           contentTypeId: "ct1",
           tenantId: "t1",
-          locale: "en",
           status: "DRAFT",
           data,
           createdBy: null,
@@ -205,14 +204,13 @@ describe("updateContentEntry — status-only transitions must still validate the
   })
 })
 
-describe("Studio saves for a selected locale", () => {
+describe("Studio saves", () => {
   const updatedAt = new Date("2025-01-01T00:00:00Z")
   const savedEntry = {
     id: "entry-en",
     documentId: "entry-en",
     contentTypeId: "ct1",
     tenantId: "t1",
-    locale: "en",
     status: "PUBLISHED",
     data: { title: "Original" },
     updatedAt,
@@ -233,7 +231,6 @@ describe("Studio saves for a selected locale", () => {
     const result = await updateContentEntry(ctx(client), actor, {
       contentTypeSlug: "posts",
       entryId: savedEntry.id,
-      locale: "en",
       expectedUpdatedAt: updatedAt.toISOString(),
       data: { title: "Edited" },
     })
@@ -259,7 +256,6 @@ describe("Studio saves for a selected locale", () => {
     const result = await updateContentEntry(ctx(client), actor, {
       contentTypeSlug: "posts",
       entryId: savedEntry.id,
-      locale: "en",
       expectedUpdatedAt: updatedAt,
       data: { title: "Edited" },
     })
@@ -268,35 +264,6 @@ describe("Studio saves for a selected locale", () => {
     expect(createVersion).not.toHaveBeenCalled()
   })
 
-  it("does not overwrite a new translation created before taking the document lock", async () => {
-    const create = vi.fn()
-    const lock = vi.fn()
-    const findTranslation = vi.fn().mockResolvedValue({ id: "entry-id" })
-    const client = makeClient({
-      tenantLocale: { findMany: vi.fn().mockResolvedValue([{ locale: "en" }, { locale: "id" }]) },
-      contentEntry: { findFirst: vi.fn().mockResolvedValueOnce(savedEntry).mockResolvedValueOnce(null) },
-      $transaction: vi.fn(async (run) => run({
-        $queryRaw: lock,
-        contentEntry: { create, findFirst: findTranslation },
-      })),
-    })
-
-    const result = await updateContentEntry(ctx(client), actor, {
-      contentTypeSlug: "posts",
-      entryId: savedEntry.id,
-      locale: "id",
-      expectedLocaleMissing: true,
-      data: { title: "Terjemahan" },
-    })
-
-    expect(result).toMatchObject({ ok: false, code: "conflict" })
-    expect(lock).toHaveBeenCalledOnce()
-    expect(findTranslation).toHaveBeenCalledWith({
-      where: { documentId: savedEntry.documentId, locale: "id", contentTypeId: "ct1", tenantId: "t1", deletedAt: null },
-      select: { id: true },
-    })
-    expect(create).not.toHaveBeenCalled()
-  })
 })
 
 describe("deleteContentEntry", () => {

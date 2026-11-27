@@ -57,16 +57,14 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
         description: "Fetch the schema fields and actual saved content data for a specific Single Type.",
         inputSchema: {
           singleTypeSlug: z.string().describe("Slug or ID of the Single Type (e.g. 'homepage', 'global-settings', 'about')"),
-          locale: z.string().optional().default("id").describe("Content locale (default 'id')"),
         },
       },
-      async ({ singleTypeSlug, locale }) => {
+      async ({ singleTypeSlug }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const targetLocale = locale || "id"
         const st = await tenantDb.singleType.findFirst({
           where: {
             draftTemplateId: null,
@@ -82,7 +80,7 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
         })
         if (!st) return { content: [{ type: "text" as const, text: `❌ Single Type '${singleTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Single Type not found." }, isError: true }
 
-        const matchingAssignment = st.tenants.find(t => t.locale === targetLocale) || st.tenants[0]
+        const assignment = st.tenants[0]
         const renderHints = buildRenderHints(st.schemaFields)
 
         const result = {
@@ -99,9 +97,8 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
               options: f.options
             })),
           },
-          locale: matchingAssignment?.locale || targetLocale,
           ...(renderHints ? { _renderHints: renderHints } : {}),
-          data: matchingAssignment?.data || {}
+          data: assignment?.data || {}
         }
 
         return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] }
@@ -128,10 +125,9 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
             })
           ).optional().describe("Field definitions"),
           initialData: z.record(z.string(), z.any()).optional().describe("Initial singleton content values"),
-          locale: z.string().default("id").describe("Initial content locale (default 'id')"),
         },
       },
-      async ({ name, slug, description, fields, initialData, locale }) => {
+      async ({ name, slug, description, fields, initialData }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -144,7 +140,6 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
         })
         if (existing) return { content: [{ type: "text" as const, text: `❌ Single Type '${cleanSlug}' already exists.` }] }
 
-        const initialLocale = locale || "id"
         const created = await tenantDb.singleType.create({
           data: {
             tenantId: auth.tenantId,
@@ -165,7 +160,6 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
             tenants: {
               create: {
                 tenantId: auth.tenantId,
-                locale: initialLocale,
                 data: initialData || {},
                 publishedAt: new Date()
               }
@@ -195,16 +189,14 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
         inputSchema: {
           singleTypeSlug: z.string().describe("Slug of the Single Type (e.g. 'homepage')"),
           data: z.record(z.string(), z.any()).describe("JSON object of content values"),
-          locale: z.string().default("id").describe("Content locale (default 'id')"),
         },
       },
-      async ({ singleTypeSlug, data, locale }) => {
+      async ({ singleTypeSlug, data }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
-        const targetLocale = locale || "id"
         const st = await tenantDb.singleType.findFirst({
           where: {
             draftTemplateId: null,
@@ -219,26 +211,24 @@ export function registerSingleTypeAndComponentTools(server: McpServer) {
         const content = singleTypeContentWrite(data, true)
         const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
           where: {
-            tenantId_singleTypeId_locale: {
+            tenantId_singleTypeId: {
               tenantId: auth.tenantId,
               singleTypeId: st.id,
-              locale: targetLocale
             }
           },
           update: content,
           create: {
             tenantId: auth.tenantId,
             singleTypeId: st.id,
-            locale: targetLocale,
             ...content,
           }
         })
-        await invalidateSingleTypePublication(auth.tenantId, st.slug, targetLocale)
+        await invalidateSingleTypePublication(auth.tenantId, st.slug)
 
         return {
           content: [{
             type: "text" as const,
-            text: `✅ Single Type '${st.slug}' (${targetLocale}) content saved successfully.\n\n${JSON.stringify(assignment, null, 2)}`
+            text: `✅ Single Type '${st.slug}' content saved successfully.\n\n${JSON.stringify(assignment, null, 2)}`
           }]
         }
       }

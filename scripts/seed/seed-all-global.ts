@@ -506,7 +506,6 @@ async function main() {
         data: {
           contentTypeId: contentType.id,
           tenantId: null,
-          locale: "en",
           status: "PUBLISHED",
           publishedAt: new Date(),
           data: entry,

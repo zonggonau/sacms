@@ -227,27 +227,24 @@ export const DEMO_VALUES = z.record(z.string(), z.unknown())
 export const DEMO_SINGLE_ENTRY = {
   demo: DEMO_IDENTITY,
   singleType: z.object({ id: z.string(), slug: z.string(), name: z.string() }),
-  locale: z.string(), status: z.enum(["empty", "draft", "published", "disabled"]),
+  status: z.enum(["empty", "draft", "published", "disabled"]),
   hasPendingDraft: z.boolean(), version: z.string().nullable(), publishedAt: z.string().nullable(),
   data: DEMO_VALUES, publishedData: DEMO_VALUES.nullable(),
 }
 export const DEMO_COLLECTION_ENTRY = z.object({
-  id: z.string(), locale: z.string(), status: z.string(), data: DEMO_VALUES,
+  id: z.string(), status: z.string(), data: DEMO_VALUES,
   version: z.string(), publishedAt: z.string().nullable(),
 })
 export const DEMO_TEMPLATE_INPUT = {
   schemaTemplateId: z.string().trim().min(1).max(150).describe("Schema Template ID or slug. Uses its linked internal demo workspace."),
 }
-export const DEMO_LOCALE_INPUT = z.string().trim().min(1).max(30).optional().describe("Exact locale; defaults to the demo's default locale.")
 export const DEMO_SINGLE_INPUT = {
   ...DEMO_TEMPLATE_INPUT,
   singleTypeSlug: z.string().trim().min(1).max(128).describe("Single Type slug in the demo schema, e.g. 'site-settings' or 'homepage'."),
-  locale: DEMO_LOCALE_INPUT,
 }
 export const DEMO_COLLECTION_INPUT = {
   ...DEMO_TEMPLATE_INPUT,
   contentTypeSlug: z.string().trim().min(1).max(128).describe("Content Type slug in the demo schema, e.g. 'posts'."),
-  locale: DEMO_LOCALE_INPUT,
 }
 export const DEMO_ENTRY_DATA = z.record(z.string(), z.json()).describe(
   "Field values keyed by field slug, in the entry-value shape list_field_types documents per type. Media fields take a demo media ID (from upload_demo_media) or its returned URL.",

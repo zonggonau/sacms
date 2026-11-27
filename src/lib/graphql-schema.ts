@@ -16,12 +16,11 @@ interface CollectionArgs {
   sort?: string
   order?: string
   published?: boolean
-  locale?: string
   status?: string
 }
 
 const collectionSortFields = new Set([
-  "id", "locale", "status", "createdAt", "updatedAt", "publishedAt", "scheduledAt", "archivedAt",
+  "id", "status", "createdAt", "updatedAt", "publishedAt", "scheduledAt", "archivedAt",
 ])
 
 interface SchemaAccess {
@@ -61,14 +60,13 @@ export async function buildTenantGraphQL(tenantId: string, access: SchemaAccess,
     if (registeredTypeNames.has(typeName)) continue
     registeredTypeNames.add(typeName)
     const fields = ct.schemaFields
-      .filter((f) => !["id", "locale", "status", "publishedAt", "createdAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
+      .filter((f) => !["id", "status", "publishedAt", "createdAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
       .map((f) => `  ${sanitizeFieldName(f.slug)}: ${mapFieldTypeToGraphQL(f.type, f.required)}`)
       .join("\n")
 
     typeDefinitions.push(`
 type ${typeName} {
   id: ID!
-  locale: String
   status: String
   publishedAt: String
   createdAt: String!
@@ -82,7 +80,7 @@ type ${typeName}Collection {
 }`)
 
     queryFields.push(
-      `  ${queryName}(page: Int, limit: Int, sort: String, order: String, published: Boolean, locale: String, status: String): ${typeName}Collection`,
+      `  ${queryName}(page: Int, limit: Int, sort: String, order: String, published: Boolean, status: String): ${typeName}Collection`,
       `  ${queryName}ById(id: ID!): ${typeName}`
     )
     rootValue[queryName] = (args: CollectionArgs) =>
@@ -92,12 +90,12 @@ type ${typeName}Collection {
 
     if (includeMutations) {
       mutationFields.push(
-        `  create${typeName}(data: JSON!, locale: String, status: String): ${typeName}`,
+        `  create${typeName}(data: JSON!, status: String): ${typeName}`,
         `  update${typeName}(id: ID!, data: JSON!): ${typeName}`,
         `  delete${typeName}(id: ID!): DeleteResult!`,
         `  publish${typeName}(id: ID!): ${typeName}`
       )
-      rootValue[`create${typeName}`] = (args: { data: unknown; locale?: string; status?: string }) =>
+      rootValue[`create${typeName}`] = (args: { data: unknown; status?: string }) =>
         resolveMutationCreate(tenantId, ct, args, client, staff?.userId, staff?.role)
       rootValue[`update${typeName}`] = (args: { id: string; data: unknown }) =>
         resolveMutationUpdate(tenantId, ct, args, client, staff?.userId)
@@ -127,9 +125,9 @@ type ${typeName} {
 ${fields}
 }`)
 
-    queryFields.push(`  ${queryName}(locale: String, draft: Boolean): ${typeName}`)
-    rootValue[queryName] = ({ locale, draft }: { locale?: string; draft?: boolean }) =>
-      resolveSingleType(tenantId, st, locale, includeMutations && draft === true, client)
+    queryFields.push(`  ${queryName}(draft: Boolean): ${typeName}`)
+    rootValue[queryName] = ({ draft }: { draft?: boolean }) =>
+      resolveSingleType(tenantId, st, includeMutations && draft === true, client)
   }
 
   const typeDefs = `
@@ -183,7 +181,6 @@ async function resolveContentCollection(
     tenantId,
     deletedAt: null,
   }
-  if (args.locale) where.locale = args.locale
   if (includeUnpublished) {
     if (args.status || args.published !== false) where.status = status
   } else {
@@ -206,7 +203,6 @@ async function resolveContentCollection(
       client,
       includeUnpublished: includeUnpublished && entry.status !== "PUBLISHED",
       includeSingleTypeDraft: false,
-      locale: entry.locale,
     })
     return graphQLEntry(entry, data)
   }))
@@ -236,7 +232,6 @@ async function resolveContentEntryById(
     client,
     includeUnpublished: includeUnpublished && entry.status !== "PUBLISHED",
     includeSingleTypeDraft: false,
-    locale: entry.locale,
   })
   return graphQLEntry(entry, data)
 }
@@ -244,7 +239,7 @@ async function resolveContentEntryById(
 export async function resolveMutationCreate(
   tenantId: string,
   model: ModelReference,
-  args: { data: unknown; locale?: string; status?: string },
+  args: { data: unknown; status?: string },
   _db: PrismaClient = db,
   userId?: string,
   staffRole?: string,
@@ -259,16 +254,6 @@ export async function resolveMutationCreate(
 
   const contentType = await requireWritableModel(tenantId, model, _db)
   const { slug } = contentType
-
-  // B5 Fix: Resolve default locale from TenantLocale instead of hardcoding "en"
-  let resolvedLocale = args.locale
-  if (!resolvedLocale) {
-    const defaultLocale = await _db.tenantLocale.findFirst({
-      where: { tenantId, isDefault: true },
-      select: { locale: true },
-    })
-    resolvedLocale = defaultLocale?.locale ?? "id"
-  }
 
   // B2 Fix: Execute sync hooks (beforeCreate) before writing
   const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_CREATE, args.data)
@@ -294,7 +279,6 @@ export async function resolveMutationCreate(
         contentTypeId: contentType.id,
         tenantId,
         data: validatedData as Prisma.InputJsonObject,
-        locale: resolvedLocale,
         status,
         publishedAt: status === "PUBLISHED" ? new Date() : null,
         createdBy: userId,
@@ -330,7 +314,7 @@ export async function resolveMutationCreate(
 
   // B2 Fix: Trigger async webhooks after create
   triggerWebhooks(tenantId, WebhookEvents.CONTENT_CREATED, {
-    entry: { id: entry.id, data: entry.data, status: entry.status, locale: entry.locale },
+    entry: { id: entry.id, data: entry.data, status: entry.status },
     contentType: slug,
     source: "graphql",
   })
@@ -399,7 +383,7 @@ export async function resolveMutationUpdate(
 
   // B2 Fix: Trigger async webhooks after update
   triggerWebhooks(tenantId, WebhookEvents.CONTENT_UPDATED, {
-    entry: { id: updated.id, data: updated.data, status: updated.status, locale: updated.locale },
+    entry: { id: updated.id, data: updated.data, status: updated.status },
     contentType: slug,
     source: "graphql",
   })
@@ -513,7 +497,7 @@ async function resolveMutationPublish(
 
   // B2 Fix: Trigger async webhooks after publish
   triggerWebhooks(tenantId, WebhookEvents.CONTENT_PUBLISHED, {
-    entry: { id: updated.id, data: updated.data, status: updated.status, locale: updated.locale },
+    entry: { id: updated.id, data: updated.data, status: updated.status },
     contentType: slug,
     source: "graphql",
   })
@@ -524,28 +508,20 @@ async function resolveMutationPublish(
 async function resolveSingleType(
   tenantId: string,
   singleType: Pick<SingleType, "id"> & { schemaFields: SchemaField[] },
-  locale: string | undefined,
   includeDraft: boolean,
   client: PrismaClient,
 ) {
-  const defaultLocale = (await client.tenantLocale.findFirst({
-    where: { tenantId, isEnabled: true, isDefault: true },
-    select: { locale: true },
-  }))?.locale ?? "id"
-  const requestedLocale = locale || defaultLocale
-  const findAssignment = (locale: string) => client.tenantSingleTypeAssignment.findFirst({
+  const assignment = await client.tenantSingleTypeAssignment.findFirst({
     where: {
-      tenantId, singleTypeId: singleType.id, locale, enabled: true,
+      tenantId, singleTypeId: singleType.id, enabled: true,
       ...(!includeDraft && { publishedAt: { not: null } }),
     },
   })
-  const assignment = await findAssignment(requestedLocale) ??
-    (requestedLocale === defaultLocale ? null : await findAssignment(defaultLocale))
   if (!assignment) return null
 
   const snapshot = readSingleTypeAssignment(assignment, includeDraft)
   const data = await resolveContentData(tenantId, snapshot.data, singleType.schemaFields, {
-    client, includeUnpublished: includeDraft, includeSingleTypeDraft: includeDraft, locale: assignment.locale,
+    client, includeUnpublished: includeDraft, includeSingleTypeDraft: includeDraft,
   })
 
   return {
@@ -598,7 +574,6 @@ function graphQLEntry(entry: ContentEntry, data: Record<string, unknown>) {
   return {
     ...graphQLData(data),
     id: entry.id,
-    locale: entry.locale,
     status: entry.status,
     publishedAt: entry.publishedAt?.toISOString() ?? null,
     createdAt: entry.createdAt.toISOString(),

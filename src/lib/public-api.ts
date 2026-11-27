@@ -41,7 +41,6 @@ async function getLandingPricing() {
       max_content_entries: p.maxContentEntries,
       max_team_members: p.maxTeamMembers,
       max_storage: p.maxStorageMb,
-      max_locales: p.maxLocales,
       max_api_calls: p.maxApiCalls,
       fair_use_bandwidth_gb: p.fairUseBandwidthGb,
       description: p.description || "",

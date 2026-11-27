@@ -4,17 +4,16 @@ import { withAdminAuth } from "@/lib/api/route-helpers"
 
 /**
  * POST /api/admin/tenants/[tenantId]/single-types/[singleTypeId]
- * Enable or disable a single type for a tenant (per locale).
+ * Enable or disable a single type for a tenant.
  */
 export const POST = withAdminAuth(async (request, context) => {
   const { tenantId, singleTypeId } = await context.params
   const body = await request.json()
-  const locale = body.locale || "en"
 
   const assignment = await db.tenantSingleTypeAssignment.upsert({
-    where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale } },
+    where: { tenantId_singleTypeId: { tenantId, singleTypeId } },
     update: { enabled: body.enabled },
-    create: { tenantId, singleTypeId, locale, enabled: body.enabled },
+    create: { tenantId, singleTypeId, enabled: body.enabled },
   })
   return NextResponse.json(assignment)
 })

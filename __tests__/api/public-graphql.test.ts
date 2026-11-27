@@ -9,7 +9,6 @@ const fixtures = vi.hoisted(() => ({
     apiToken: { findUnique: vi.fn(), update: vi.fn() },
     tenantContentTypeAssignment: { findMany: vi.fn() },
     tenantSingleTypeAssignment: { findMany: vi.fn(), findFirst: vi.fn() },
-    tenantLocale: { findFirst: vi.fn() },
     contentType: { findFirst: vi.fn() },
     schemaField: { findMany: vi.fn() },
     contentEntry: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn() },
@@ -39,7 +38,6 @@ const publishedPost = {
   tenantId: "workspace",
   contentTypeId: "post-type",
   data: { "short-title": "Published title", related: "draft-post" },
-  locale: "en",
   status: "PUBLISHED",
   publishedAt: date,
   updatedAt: date,
@@ -81,7 +79,6 @@ beforeEach(() => {
   }))
   fixtures.db.tenantContentTypeAssignment.findMany.mockResolvedValue([{ contentType: postType }])
   fixtures.db.tenantSingleTypeAssignment.findMany.mockResolvedValue([{ singleType: homeType }])
-  fixtures.db.tenantLocale.findFirst.mockResolvedValue({ locale: "en" })
   fixtures.db.contentType.findFirst.mockResolvedValue(postType)
   fixtures.db.schemaField.findMany.mockResolvedValue(postType.schemaFields)
   fixtures.db.contentEntry.count.mockImplementation(async ({ where }) => where.AND?.status === "DRAFT" ? 0 : 2)
@@ -92,9 +89,8 @@ beforeEach(() => {
     return null
   })
   fixtures.db.tenantSingleTypeAssignment.findFirst.mockImplementation(async ({ where }) => ({
-    locale: where.locale,
-    data: { heading: `Published ${where.locale}` },
-    draftData: { heading: `Draft ${where.locale}` },
+    data: { heading: "Published" },
+    draftData: { heading: "Draft" },
     publishedAt: date,
     updatedAt: new Date("2026-10-02T12:00:00Z"),
   }))
@@ -103,15 +99,15 @@ beforeEach(() => {
 describe("tenant GraphQL endpoint", () => {
   it("forwards list and detail arguments and applies publication visibility to nested lookups", async () => {
     const response = await callGraphQL({
-      query: `query Posts($id: ID!, $locale: String!) {
-        blog_post(page: 2, limit: 1, locale: $locale, sort: "updatedAt", order: "asc", published: false) {
+      query: `query Posts($id: ID!) {
+        blog_post(page: 2, limit: 1, sort: "updatedAt", order: "asc", published: false) {
           data { id short_title related }
           meta { page limit total }
         }
         hidden: blog_postById(id: $id) { id short_title }
         draftStatus: blog_post(status: "DRAFT") { meta { total } }
       }`,
-      variables: { id: draftPost.id, locale: "en" },
+      variables: { id: draftPost.id },
     })
 
     expect(response.status).toBe(200)
@@ -125,7 +121,7 @@ describe("tenant GraphQL endpoint", () => {
       draftStatus: { meta: { total: 0 } },
     } })
     expect(fixtures.db.contentEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { tenantId: "workspace", contentTypeId: "post-type", locale: "en", status: "PUBLISHED", deletedAt: null },
+      where: { tenantId: "workspace", contentTypeId: "post-type", status: "PUBLISHED", deletedAt: null },
       orderBy: { updatedAt: "asc" }, skip: 1, take: 1,
     }))
     expect(fixtures.db.contentEntry.findFirst).toHaveBeenCalledWith(expect.objectContaining({
@@ -135,18 +131,18 @@ describe("tenant GraphQL endpoint", () => {
 
   it("returns a singleton's published version by default and limits draft reads to explicit full-access requests", async () => {
     const query = `{
-      current: home_page(locale: "fr") { heading updatedAt }
-      preview: home_page(locale: "fr", draft: true) { heading updatedAt }
+      current: home_page { heading updatedAt }
+      preview: home_page(draft: true) { heading updatedAt }
     }`
     const publicResponse = await callGraphQL({ query })
     expect(await publicResponse.json()).toEqual({ data: {
-      current: { heading: "Published fr", updatedAt: date.toISOString() },
-      preview: { heading: "Published fr", updatedAt: date.toISOString() },
+      current: { heading: "Published", updatedAt: date.toISOString() },
+      preview: { heading: "Published", updatedAt: date.toISOString() },
     } })
     const authenticatedResponse = await callGraphQL({ query }, "full-access")
     expect(await authenticatedResponse.json()).toEqual({ data: {
-      current: { heading: "Published fr", updatedAt: date.toISOString() },
-      preview: { heading: "Draft fr", updatedAt: "2026-10-02T12:00:00.000Z" },
+      current: { heading: "Published", updatedAt: date.toISOString() },
+      preview: { heading: "Draft", updatedAt: "2026-10-02T12:00:00.000Z" },
     } })
     expect(fixtures.cache.setCache).toHaveBeenCalledTimes(1)
   })

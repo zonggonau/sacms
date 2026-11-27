@@ -891,7 +891,6 @@ function ApiExplorerContent() {
                       {[
                         { title: "Populate Semua Relasi", code: "populate=*", desc: "Ekspansi seluruh data relasi (author, category, tags)" },
                         { title: "Populate Relasi Spesifik", code: "populate=author,category", desc: "Ekspansi relasi tertentu saja" },
-                        { title: "Locale / Bahasa", code: "locale=id", desc: "Ambil entri dalam bahasa/locale tertentu" },
                         { title: "Filter Status (Full Access)", code: "status=DRAFT", desc: "Hanya untuk token full-access untuk melihat draft" },
                       ].map((item, idx) => (
                         <div

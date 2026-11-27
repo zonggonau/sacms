@@ -25,13 +25,13 @@ async function migrateGlobalContentToPlatformLevel(tenantId: string) {
   const assignments = await db.tenantSingleTypeAssignment.findMany({ where: { tenantId } })
   for (const a of assignments) {
     const clash = await db.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId: null, singleTypeId: a.singleTypeId, locale: a.locale },
+      where: { tenantId: null, singleTypeId: a.singleTypeId },
     })
     if (clash) {
-      // A tenantId:null row already covers this Single Type/locale —
+      // A tenantId:null row already covers this Single Type —
       // keep that one (it's the one getLandingData() already reads) and
       // drop this now-redundant tenant-scoped copy instead of violating
-      // the [tenantId, singleTypeId, locale] unique constraint.
+      // the [tenantId, singleTypeId] unique constraint.
       await db.tenantSingleTypeAssignment.delete({ where: { id: a.id } })
     } else {
       await db.tenantSingleTypeAssignment.update({ where: { id: a.id }, data: { tenantId: null } })

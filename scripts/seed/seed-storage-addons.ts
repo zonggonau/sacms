@@ -120,7 +120,6 @@ async function main() {
         data: {
           tenantId: globalTenant.id,
           contentTypeId: contentType.id,
-          locale: "en",
           data: tierData as any,
           status: "PUBLISHED",
           publishedAt: new Date(),

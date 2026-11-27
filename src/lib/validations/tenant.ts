@@ -15,12 +15,6 @@ export const updateTenantSchema = z.object({
   logo: z.string().url().optional(),
 })
 
-// Add locale
-export const addLocaleSchema = z.object({
-  locale: z.string().regex(/^[a-z]{2}(-[A-Z]{2})?$/),
-  name: z.string().min(1).max(100),
-  isDefault: z.boolean().optional().default(false),
-})
 
 // Invite member
 export const inviteMemberSchema = z.object({

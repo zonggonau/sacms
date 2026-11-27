@@ -10,19 +10,17 @@ import type { SamplePlan, SampleSchema, PlanIssue, PlanStep } from "./plan"
 
 export interface EntryWriter {
   /** Create one collection entry. */
-  create(contentTypeSlug: string, data: Record<string, unknown>, locale: string): Promise<WriteResult>
-  /** Write a Single Type's content for one locale. */
-  upsertSingle(singleTypeSlug: string, data: Record<string, unknown>, locale: string): Promise<WriteResult>
+  create(contentTypeSlug: string, data: Record<string, unknown>): Promise<WriteResult>
+  /** Write a Single Type's content. */
+  upsertSingle(singleTypeSlug: string, data: Record<string, unknown>): Promise<WriteResult>
   /** Ids of entries already in this workspace or demo for a Content Type, used as relation targets. */
-  existingIds(contentTypeSlug: string, locale: string): Promise<string[]>
+  existingIds(contentTypeSlug: string): Promise<string[]>
 }
 
 export type WriteResult = { ok: true; id: string } | { ok: false; message: string }
 
 export interface SeedRecord {
   batchKey: string
-  /** Locale the batch was written in. */
-  locale?: string
   createdAt: string
   complete: boolean
   /**
@@ -74,7 +72,7 @@ export async function runSamplePlan(input: {
 
   const existingCache = new Map<string, string[]>()
   const existingFor = async (slug: string): Promise<string[]> => {
-    if (!existingCache.has(slug)) existingCache.set(slug, await writer.existingIds(slug, plan.locale))
+    if (!existingCache.has(slug)) existingCache.set(slug, await writer.existingIds(slug))
     return existingCache.get(slug)!
   }
   // Written in this batch first, then whatever the workspace already had.
@@ -105,26 +103,25 @@ export async function runSamplePlan(input: {
       const data = sampleEntryData(model, step.fields, {
         index,
         contentTypeName: model.name,
-        locale: plan.locale,
         relationIds: relationIdsFor,
         schema,
       })
       const result = step.kind === "single"
-        ? await writer.upsertSingle(step.contentType, data, plan.locale)
-        : await writer.create(step.contentType, data, plan.locale)
+        ? await writer.upsertSingle(step.contentType, data)
+        : await writer.create(step.contentType, data)
       if (!result.ok) {
         const error = { contentType: step.contentType, message: result.message }
         ids[key] = [...(ids[key] ?? []), ...stepIds]
-        await ledger.save(ledgerKey, { batchKey: plan.batchKey, locale: plan.locale, createdAt, complete: false, ids, error })
+        await ledger.save(ledgerKey, { batchKey: plan.batchKey, createdAt, complete: false, ids, error })
         return { ...base, ok: false, alreadySeeded: false, created, ids, error }
       }
       stepIds.push(result.id)
       created++
     }
     ids[key] = [...(ids[key] ?? []), ...stepIds]
-    await ledger.save(ledgerKey, { batchKey: plan.batchKey, locale: plan.locale, createdAt, complete: false, ids })
+    await ledger.save(ledgerKey, { batchKey: plan.batchKey, createdAt, complete: false, ids })
   }
 
-  await ledger.save(ledgerKey, { batchKey: plan.batchKey, locale: plan.locale, createdAt, complete: true, ids })
+  await ledger.save(ledgerKey, { batchKey: plan.batchKey, createdAt, complete: true, ids })
   return { ...base, ok: true, alreadySeeded: false, created, ids }
 }

@@ -1,16 +1,11 @@
 import { Prisma } from "@/lib/database"
 import { invalidatePattern } from "@/lib/cache"
-import { getStudioLocales } from "@/lib/content/studio-locales"
 
 type Assignment = {
   data: unknown
   draftData?: unknown
   publishedAt: Date | null
   updatedAt: Date
-}
-
-export function getSingleTypeLocales(tenantId: string) {
-  return getStudioLocales(tenantId, { locale: "id", name: "Bahasa Indonesia" })
 }
 
 export function parseSingleTypeData(value: unknown): Record<string, unknown> {
@@ -44,9 +39,9 @@ export function singleTypeContentWrite(data: Record<string, unknown>, publish: b
     : { draftData: payload }
 }
 
-export async function invalidateSingleTypePublication(tenantId: string, slug: string, locale: string) {
+export async function invalidateSingleTypePublication(tenantId: string, slug: string) {
   await Promise.all([
-    invalidatePattern(`single:${tenantId}:${slug}:${locale}:*`),
+    invalidatePattern(`single:${tenantId}:${slug}:*`),
     invalidatePattern(`graphql:${tenantId}:*`),
   ])
 }

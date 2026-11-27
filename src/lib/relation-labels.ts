@@ -60,7 +60,7 @@ export function extractEntryLabel(
   // 3. Fallback to any string property in entry.data (excluding internal metadata/URLs/dates)
   for (const k of keys) {
     const lower = k.toLowerCase()
-    if (["id", "tenantid", "createdat", "updatedat", "locale", "status", "documentid"].includes(lower)) continue
+    if (["id", "tenantid", "createdat", "updatedat", "status", "documentid"].includes(lower)) continue
     const val = d[k]
     if (typeof val === "string" && val.trim().length > 0 && val.length < 120 && !val.startsWith("http") && !val.startsWith("data:")) {
       return val.trim()

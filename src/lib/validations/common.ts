@@ -12,12 +12,6 @@ export const sortSchema = z
   .regex(/^[a-zA-Z_]+:(asc|desc)$/, "Sort format: field:asc or field:desc")
   .default("createdAt:desc")
 
-// Locale
-export const localeSchema = z
-  .string()
-  .regex(/^[a-z]{2,3}(-[A-Z]{2})?$/, "Locale format: en, id, ban, en-US")
-  .default("en")
-
 // CUID
 export const cuidSchema = z.string().min(1, "ID is required")
 

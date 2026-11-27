@@ -255,7 +255,6 @@ export function serviceErrorStatus(code: string): number {
     case "plan_limit": return 402
     case "validation":
     case "invalid_status":
-    case "locale_not_enabled":
     case "rejected_by_hook":
     default: return 400
   }

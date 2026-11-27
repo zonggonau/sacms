@@ -74,8 +74,6 @@ interface SingleType {
   fields: Field[]
   data: Record<string, unknown> | null
   publishedAt: Date | null
-  locale: string
-  locales: { locale: string; name: string }[]
   hasPendingDraft: boolean
 }
 
@@ -92,7 +90,6 @@ export default function CMSSingleTypeDetailPage() {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
-  const [targetLocale, setTargetLocale] = useState<string>()
 
   // Halaman Statis is meant to be entered by the owner/admin only — a
   // regular member reaching this URL directly gets bounced back to the CMS
@@ -118,7 +115,7 @@ export default function CMSSingleTypeDetailPage() {
       setLoading(true)
       setLoadError(false)
       try {
-        const result = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, targetLocale, "studio")
+        const result = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug, "studio")
         if (ignore) return
         if (result.singleType) {
           setSingleType(result.singleType)
@@ -139,7 +136,7 @@ export default function CMSSingleTypeDetailPage() {
 
     void loadPage()
     return () => { ignore = true }
-  }, [canManageStaticPages, session?.user?.id, singleTypeSlug, targetLocale, tenantSlug, loadAttempt])
+  }, [canManageStaticPages, session?.user?.id, singleTypeSlug, tenantSlug, loadAttempt])
 
   const handleFieldChange = (fieldSlug: string, value: unknown) => {
     setFormData(prev => ({
@@ -152,7 +149,7 @@ export default function CMSSingleTypeDetailPage() {
     if (!singleType) return
     setSaving(true)
     try {
-      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish, singleType.locale, "studio")
+      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish, "studio")
       if (res.singleType) {
         const { data, publishedAt, hasPendingDraft } = res.singleType
         setSingleType({ ...singleType, data, publishedAt, hasPendingDraft })
@@ -186,13 +183,11 @@ export default function CMSSingleTypeDetailPage() {
         </Label>
         {canEdit && !saving && singleType && (
           <AIAssistantDialog
-            key={singleType.locale}
             tenantSlug={tenantSlug}
             form={aiForm}
             field={field}
             value={value}
             context={aiContext}
-            locale={singleType.locale}
             onApply={(suggestion) => setFormData((current) => ({
               ...current, [field.slug]: applyAiFieldValue(field, current[field.slug], suggestion),
             }))}
@@ -314,7 +309,7 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-1.5">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "repeater":
-        return <DynamicZoneField allowAi={canEdit && !saving} locale={singleType?.locale} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
+        return <DynamicZoneField allowAi={canEdit && !saving} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
 
       case "document_template":
         return (
@@ -331,7 +326,7 @@ export default function CMSSingleTypeDetailPage() {
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField allowAi={canEdit && !saving} locale={singleType?.locale} label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField allowAi={canEdit && !saving} label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} className="rounded-xl h-9 text-xs" /></div>
@@ -395,9 +390,7 @@ export default function CMSSingleTypeDetailPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           {canEdit && !saving && <AISmartFill
-            key={singleType.locale}
             form={aiForm}
-            locale={singleType.locale}
             tenantSlug={tenantSlug}
             contentTypeName={singleType.name}
             schema={singleType.fields}
@@ -451,28 +444,6 @@ export default function CMSSingleTypeDetailPage() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
-            <CardHeader className="p-5 pb-2">
-              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
-                <Globe className="h-4 w-4 text-primary" /> Bahasa & Lokalisasi
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-5 pt-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground">Bahasa Target</Label>
-                <Select value={singleType.locale} onValueChange={setTargetLocale} disabled={saving}>
-                  <SelectTrigger className="bg-background border-border/80 h-9 rounded-xl font-bold text-xs text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border bg-card">
-                    {singleType.locales.map(l => (
-                      <SelectItem key={l.locale} value={l.locale} className="font-bold text-xs rounded-lg">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
 
           <div className="p-4 bg-muted/20 border border-border/80 rounded-2xl text-foreground shadow-xs relative">
             <div className="flex items-center gap-2 mb-1.5">

@@ -5,7 +5,6 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
-import { getStudioLocales } from "@/lib/content/studio-locales"
 import CMSCreateEntryClient from "./create-entry-client"
 
 export default async function CMSCreateEntryPage({
@@ -46,10 +45,7 @@ export default async function CMSCreateEntryPage({
   }
 
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-  const [availableLocales, enforcement] = await Promise.all([
-    getStudioLocales(access.tenantId),
-    enforcePlanLimit(access.tenantId, "content_entries", session.user.id),
-  ])
+  const enforcement = await enforcePlanLimit(access.tenantId, "content_entries", session.user.id)
   const isLimitReached = !enforcement.allowed
   const entriesLimit = enforcement.max
 
@@ -58,7 +54,6 @@ export default async function CMSCreateEntryPage({
       tenantSlug={tenantSlug} 
       contentTypeSlug={contentTypeSlug} 
       initialContentType={mappedContentType as any}
-      initialAvailableLocales={availableLocales}
       initialIsLimitReached={isLimitReached}
       initialEntriesLimit={entriesLimit}
       userRole={access.role}

@@ -3,7 +3,7 @@ import { z } from "zod/v4"
 import { Prisma } from "@/lib/database"
 import { CONTENT_STATUSES } from "@/lib/content-workflow-rules"
 
-export const BACKUP_VERSION = "1.1"
+export const BACKUP_VERSION = "1.2"
 export const BACKUP_UNSUPPORTED = {
   media: "Metadata hanya sebagai referensi. Berkas dan metadata Media Library tidak dipulihkan.",
   mediaFolders: "Struktur folder disimpan sebagai referensi dan tidak dipulihkan.",
@@ -26,12 +26,9 @@ const definition = z.object({
 const published = { isPublished: z.boolean().optional(), showInCms: z.boolean().optional() }
 
 export const workspaceBackupSchema = z.object({
-  version: z.enum(["1.0", BACKUP_VERSION]),
+  version: z.enum(["1.0", "1.1", BACKUP_VERSION]),
   tenant: z.object({ id: identifier }).optional(),
   data: z.object({
-    locales: z.array(z.object({
-      locale: identifier, name: z.string().min(1), isDefault: z.boolean().optional(), isEnabled: z.boolean().optional(),
-    })).default([]),
     contentTypeGroups: z.array(z.object({
       id: identifier, name: z.string().min(1), parentId: identifier.nullable().optional(), order: z.number().int().optional(),
     })).default([]),
@@ -42,21 +39,19 @@ export const workspaceBackupSchema = z.object({
     singleTypes: z.array(definition.extend(published)).default([]),
     components: z.array(definition.extend({ category: z.string().nullable().optional() })).default([]),
     contentEntries: z.array(z.object({
-      id: identifier.optional(), contentTypeId: identifier, locale: identifier.default("id"),
+      id: identifier.optional(), contentTypeId: identifier,
       documentId: identifier.nullable().optional(), data: z.json(), status: z.enum(CONTENT_STATUSES).optional(),
       publishedAt: date, scheduledAt: date, archivedAt: date, deletedAt: date, createdAt: date, updatedAt: date,
       reviewComment: z.string().nullable().optional(),
       createdBy: identifier.nullable().optional(), updatedBy: identifier.nullable().optional(),
     })).default([]),
     singleTypeData: z.array(z.object({
-      singleTypeId: identifier, locale: identifier.default("id"), enabled: z.boolean().optional(),
+      singleTypeId: identifier, enabled: z.boolean().optional(),
       data: z.json().optional(), draftData: z.json().optional(), publishedAt: date, createdAt: date, updatedAt: date,
     })).default([]),
     mediaFolders: z.array(z.unknown()).default([]),
     media: z.array(z.unknown()).default([]),
   }),
-}).refine(({ data }) => data.locales.filter(locale => locale.isDefault).length <= 1, {
-  path: ["data", "locales"], message: "Hanya satu bahasa utama yang dapat dipulihkan.",
 })
 
 type WorkspaceBackup = z.output<typeof workspaceBackupSchema>
@@ -109,18 +104,6 @@ async function restoreFields(tx: Prisma.TransactionClient, owner: FieldOwner, fi
   }
 }
 
-export async function restoreBackupLocales(tx: Prisma.TransactionClient, tenantId: string, locales: WorkspaceBackup["data"]["locales"]) {
-  const defaultLocale = locales.find(locale => locale.isDefault)
-  if (defaultLocale) {
-    await tx.tenantLocale.updateMany({ where: { tenantId, locale: { not: defaultLocale.locale }, isDefault: true }, data: { isDefault: false } })
-  }
-  for (const { locale, ...values } of locales) {
-    await tx.tenantLocale.upsert({
-      where: { tenantId_locale: { tenantId, locale } }, create: { tenantId, locale, ...values }, update: values,
-    })
-  }
-}
-
 export async function restoreBackupContent(tx: Prisma.TransactionClient, tenantId: string, backup: WorkspaceBackup, groups: Group[]) {
   const { data } = backup
   const sourceTenantId = backup.tenant?.id
@@ -128,7 +111,7 @@ export async function restoreBackupContent(tx: Prisma.TransactionClient, tenantI
   const collectionIds = new Map<string, string>()
   const singletonIds = new Map<string, string>()
   const references = new Map<string, string>()
-  const imported = { locales: 0, contentTypeGroups: 0, contentTypes: 0, singleTypes: 0, components: 0, contentEntries: 0, singleTypeData: 0 }
+  const imported = { contentTypeGroups: 0, contentTypes: 0, singleTypes: 0, components: 0, contentEntries: 0, singleTypeData: 0 }
   const skipped: Array<{ section: string; count: number; reason: string }> = []
   const reportSkipped = (section: string, count: number, reason: string) => {
     if (count > 0) skipped.push({ section, count, reason })
@@ -196,9 +179,9 @@ export async function restoreBackupContent(tx: Prisma.TransactionClient, tenantI
     if (!contentTypeId) continue
     const id = row.id
       ? copyId(tenantId, sourceTenantId, row.id)
-      : copyId(tenantId, undefined, `${sourceTenantId ?? ""}:${row.contentTypeId}:${row.documentId ?? index}:${row.locale}`)
+      : copyId(tenantId, undefined, `${sourceTenantId ?? ""}:${row.contentTypeId}:${row.documentId ?? index}`)
     const existing = row.documentId ? await tx.contentEntry.findFirst({
-      where: { tenantId, contentTypeId, documentId: row.documentId, locale: row.locale }, select: { id: true },
+      where: { tenantId, contentTypeId, documentId: row.documentId }, select: { id: true },
     }) : null
     entryPlans.push({ row, id: existing?.id ?? id, contentTypeId })
     if (row.id) references.set(row.id, existing?.id ?? id)
@@ -216,7 +199,7 @@ export async function restoreBackupContent(tx: Prisma.TransactionClient, tenantI
     imported.contentEntries++
   }
 
-  for (const { singleTypeId: sourceModelId, locale, data: value, draftData, createdAt, updatedAt, ...record } of data.singleTypeData) {
+  for (const { singleTypeId: sourceModelId, data: value, draftData, createdAt, updatedAt, ...record } of data.singleTypeData) {
     const singleTypeId = singletonIds.get(sourceModelId)
     if (!singleTypeId) continue
     const values = {
@@ -225,8 +208,8 @@ export async function restoreBackupContent(tx: Prisma.TransactionClient, tenantI
       draftData: draftData === undefined ? undefined : remapReferences(draftData, references) ?? Prisma.DbNull,
     }
     await tx.tenantSingleTypeAssignment.upsert({
-      where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale } },
-      create: { tenantId, singleTypeId, locale, ...values, createdAt: createdAt ?? undefined, updatedAt: updatedAt ?? undefined },
+      where: { tenantId_singleTypeId: { tenantId, singleTypeId } },
+      create: { tenantId, singleTypeId, ...values, createdAt: createdAt ?? undefined, updatedAt: updatedAt ?? undefined },
       update: { ...values, updatedAt: updatedAt ?? undefined },
     })
     imported.singleTypeData++

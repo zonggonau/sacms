@@ -23,7 +23,6 @@ interface TenantOverrideModalProps {
     maxContentEntries: string
     maxTeamMembers: string
     maxStorage: string
-    maxLocales: string
     maxApiCalls: string
     note: string
   }

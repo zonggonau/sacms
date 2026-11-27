@@ -24,7 +24,6 @@ async function main() {
     data: {
       contentTypeId: addonContentType.id,
       tenantId: null,
-      locale: "en",
       data: aiPackData as any,
       status: "PUBLISHED",
       publishedAt: new Date(),
@@ -50,7 +49,6 @@ async function main() {
     data: {
       contentTypeId: addonContentType.id,
       tenantId: null,
-      locale: "en",
       data: suratPackData as any,
       status: "PUBLISHED",
       publishedAt: new Date(),

@@ -308,14 +308,13 @@ const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "query_content",
     title: "Query Content Entries",
-    description: "Fetch published or draft content entries from a Content Type collection with pagination, search, status, locale filtering, and sort order.",
+    description: "Fetch published or draft content entries from a Content Type collection with pagination, search, status, and sort order.",
     inputs: [
       { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the Content Type (e.g. 'articles', 'products')" },
       { name: "limit", type: "number", required: false, default: "10", description: "Number of items to return (max 100)" },
       { name: "page", type: "number", required: false, default: "1", description: "Page number (1-indexed)" },
       { name: "status", type: "string", required: false, default: "PUBLISHED", description: "PUBLISHED | DRAFT | IN_REVIEW | ARCHIVED | ALL" },
       { name: "search", type: "string", required: false, description: "Search term" },
-      { name: "locale", type: "string", required: false, description: "Filter by locale code (e.g. 'id', 'en')" },
       { name: "sortOrder", type: "string", required: false, default: "desc", description: "asc | desc, sorted by createdAt" }
     ],
     sampleResponse: {
@@ -325,7 +324,6 @@ const MCP_TOOLS: ToolDefinition[] = [
         {
           _id: "cmt191h9s000nujikfe9o533b",
           _status: "PUBLISHED",
-          _locale: "id",
           _createdAt: "2026-08-20T08:19:09.615Z",
           _publishedAt: "2026-08-20T08:20:00.000Z",
           title: "Building Modern Web Apps with Next.js 16 and SaCMS"
@@ -336,7 +334,7 @@ const MCP_TOOLS: ToolDefinition[] = [
   {
     name: "get_content_entry",
     title: "Get Content Entry",
-    description: "Fetch a specific content entry by its unique ID, including all JSON field values, locale, status, and content type info.",
+    description: "Fetch a specific content entry by its unique ID, including all JSON field values, status, and content type info.",
     inputs: [
       { name: "id", type: "string", required: true, description: "Unique ID of the content entry (e.g. 'cmtcsh...')" }
     ],
@@ -345,7 +343,6 @@ const MCP_TOOLS: ToolDefinition[] = [
       _contentType: "articles",
       _contentTypeName: "Articles",
       _status: "PUBLISHED",
-      _locale: "id",
       title: "Building Modern Web Apps with Next.js 16 and SaCMS",
       content: "<p>Complete guide on headless CMS...</p>"
     }
@@ -358,9 +355,8 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the target Content Type (e.g. 'articles')" },
       { name: "data", type: "object", required: true, description: "JSON object with field values (e.g. { title: 'Hello', content: '...' })" },
       { name: "status", type: "string", required: false, default: "PUBLISHED", description: "PUBLISHED | DRAFT | IN_REVIEW" },
-      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
     ],
-    sampleResponse: { id: "cmt_new_entry_id", status: "PUBLISHED", locale: "id" }
+    sampleResponse: { id: "cmt_new_entry_id", status: "PUBLISHED" }
   },
   {
     name: "update_content_entry",
@@ -405,11 +401,9 @@ const MCP_TOOLS: ToolDefinition[] = [
     description: "Fetch the schema fields and the actual saved content data for a specific Single Type.",
     inputs: [
       { name: "singleTypeSlug", type: "string", required: true, description: "Slug or ID of the Single Type (e.g. 'homepage', 'global-settings')" },
-      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
     ],
     sampleResponse: {
       singleType: { id: "st_homepage", name: "Homepage Config", slug: "homepage-config", fields: [] },
-      locale: "id",
       data: { siteTitle: "My Awesome Website", heroHeading: "Welcome to our portal" }
     }
   },
@@ -423,7 +417,6 @@ const MCP_TOOLS: ToolDefinition[] = [
       { name: "description", type: "string", required: false, description: "Description of this single type" },
       { name: "fields", type: "array", required: false, description: "Field definitions: { name, slug, type, required?, options? }" },
       { name: "initialData", type: "object", required: false, description: "Initial singleton content values" },
-      { name: "locale", type: "string", required: false, default: "id", description: "Initial content locale" }
     ],
     sampleResponse: { id: "st_new", name: "Homepage", slug: "homepage" }
   },
@@ -434,9 +427,8 @@ const MCP_TOOLS: ToolDefinition[] = [
     inputs: [
       { name: "singleTypeSlug", type: "string", required: true, description: "Slug of the Single Type (e.g. 'homepage')" },
       { name: "data", type: "object", required: true, description: "JSON object of content values" },
-      { name: "locale", type: "string", required: false, default: "id", description: "Content locale" }
     ],
-    sampleResponse: { singleTypeId: "st_homepage", locale: "id", publishedAt: "2026-08-20T18:50:00.000Z" }
+    sampleResponse: { singleTypeId: "st_homepage", publishedAt: "2026-08-20T18:50:00.000Z" }
   },
   {
     name: "update_single_type",

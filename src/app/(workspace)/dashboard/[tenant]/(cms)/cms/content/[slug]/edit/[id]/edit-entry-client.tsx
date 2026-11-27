@@ -97,7 +97,6 @@ interface ContentType {
 
 interface SavedEntry {
   id: string
-  locale: string
   data: unknown
   status: string
   scheduledAt: Date | string | null
@@ -173,7 +172,6 @@ export default function CMSEditEntryClient({
   entryId,
   initialEntry,
   initialContentType: contentType,
-  initialAvailableLocales: enabledLocales,
   previewUrl,
   userRole,
   customPermissions: initialCustomPermissions,
@@ -183,7 +181,6 @@ export default function CMSEditEntryClient({
   entryId: string
   initialEntry: SavedEntry
   initialContentType: ContentType
-  initialAvailableLocales: { locale: string; name: string }[]
   previewUrl?: string
   userRole?: string
   customPermissions?: string[] | null
@@ -192,27 +189,18 @@ export default function CMSEditEntryClient({
   const router = useRouter()
   const { confirm, dialog: confirmDialog } = useConfirm()
 
-  const [loadingLocale, setLoadingLocale] = useState(false)
   const [saving, setSaving] = useState(false)
   const [savedEntry, setSavedEntry] = useState<SavedEntry | null>(initialEntry)
   const [savedData, setSavedData] = useState(() => readEntryData(initialEntry.data))
   const [formData, setFormData] = useState(savedData)
   const [entryStatus, setEntryStatus] = useState(initialEntry.status)
-  const [locale, setLocale] = useState(initialEntry.locale)
-  const activeLocale = useRef(initialEntry.locale)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(() =>
     initialEntry.scheduledAt ? new Date(initialEntry.scheduledAt) : undefined
   )
-  const [translating, setTranslating] = useState(false)
-  const [translateOpen, setTranslateOpen] = useState(false)
   const persistedStatus = savedEntry?.status ?? "DRAFT"
   const savedSchedule = savedEntry?.scheduledAt ? new Date(savedEntry.scheduledAt).getTime() : undefined
   const hasUnsavedChanges = formData !== savedData || entryStatus !== persistedStatus || scheduledAt?.getTime() !== savedSchedule
-  const availableLocales = enabledLocales.some((item) => item.locale === locale)
-    ? enabledLocales
-    : [...enabledLocales, { locale, name: locale.toUpperCase() }]
-  const translationTargets = enabledLocales.filter((item) => item.locale !== locale)
-  const busy = loadingLocale || translating || saving
+  const busy = saving
   const livePreview = previewLink(previewUrl)
 
   const applyEntry = (entry: SavedEntry | null, data: Record<string, unknown>) => {
@@ -223,37 +211,15 @@ export default function CMSEditEntryClient({
     setScheduledAt(entry?.scheduledAt ? new Date(entry.scheduledAt) : undefined)
   }
 
-  const loadLocale = async (targetLocale: string) => {
-    const result = await getEntryAction(tenantSlug, contentTypeSlug, entryId, targetLocale)
+  const loadEntry = async () => {
+    const result = await getEntryAction(tenantSlug, contentTypeSlug, entryId)
     if (result.error || !result.entry) throw new Error(result.error || "Entri tidak ditemukan.")
-    return { entry: result.entry, isNewTranslation: result.isNewTranslation === true }
-  }
-
-  const leaveCurrentLocale = () => !hasUnsavedChanges || confirm({
-    title: "Pindah bahasa?",
-    description: "Perubahan yang belum disimpan pada bahasa ini akan ditinggalkan.",
-    confirmLabel: "Pindah bahasa",
-  })
-
-  const handleLocaleChange = async (targetLocale: string) => {
-    if (busy || targetLocale === locale || !(await leaveCurrentLocale())) return
-    setLoadingLocale(true)
-    try {
-      const result = await loadLocale(targetLocale)
-      applyEntry(result.isNewTranslation ? null : result.entry, readEntryData(result.entry.data))
-      activeLocale.current = targetLocale
-      setLocale(targetLocale)
-    } catch (error) {
-      toast({ variant: "destructive", title: "Gagal Memuat Bahasa", description: error instanceof Error ? error.message : undefined })
-    } finally {
-      setLoadingLocale(false)
-    }
+    return result.entry
   }
 
   const refreshAfterReview = async () => {
     try {
-      const { entry } = await loadLocale(locale)
-      if (activeLocale.current !== locale) return
+      const entry = await loadEntry()
       const updatedData = readEntryData(entry.data)
       if (JSON.stringify(updatedData) !== JSON.stringify(savedData)) {
         toast({ title: "Entri Telah Berubah", description: "Muat ulang editor untuk melihat perubahan terbaru." })
@@ -263,59 +229,6 @@ export default function CMSEditEntryClient({
       setEntryStatus((status) => status === persistedStatus ? entry.status : status)
     } catch {
       toast({ variant: "destructive", title: "Gagal Memuat Status Peninjauan" })
-    }
-  }
-
-  const handleAiTranslate = async (targetLoc: string) => {
-    const texts: Record<string, string> = {}
-    for (const field of contentType.fields) {
-      const value = formData[field.slug]
-      if (field.localizable !== false && TRANSLATABLE_FIELDS.has(field.type) && typeof value === "string" && value.trim()) {
-        texts[field.slug] = value
-      }
-    }
-    if (!Object.keys(texts).length) {
-      toast({ variant: "destructive", title: "Konten Kosong", description: "Isi kolom teks yang dapat diterjemahkan terlebih dahulu." })
-      return
-    }
-    setTranslateOpen(false)
-    if (busy || !(await leaveCurrentLocale())) return
-
-    setTranslating(true)
-    try {
-      const target = await loadLocale(targetLoc)
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sourceLocale: locale,
-          targetLocale: targetLoc,
-          data: texts,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok || data.simulated || !data.translatedData) {
-        throw new Error(data.error || "Gagal menerjemahkan konten")
-      }
-
-      const targetData = readEntryData(target.entry.data)
-      applyEntry(target.isNewTranslation ? null : target.entry, targetData)
-      setFormData({ ...targetData, ...data.translatedData })
-      activeLocale.current = targetLoc
-      setLocale(targetLoc)
-      toast({
-        title: "Konten Berhasil Diterjemahkan",
-        description: `Periksa teks bahasa ${targetLoc.toUpperCase()} lalu simpan perubahan.`,
-      })
-    } catch (err: any) {
-      toast({
-        variant: "destructive",
-        title: "Translasi Gagal",
-        description: err.message,
-      })
-    } finally {
-      setTranslating(false)
     }
   }
 
@@ -348,10 +261,8 @@ export default function CMSEditEntryClient({
       const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
         data: formData,
         status: targetStatus,
-        locale,
         scheduledAt: targetStatus === "SCHEDULED" ? scheduledAt : undefined,
         expectedUpdatedAt: savedEntry?.updatedAt ?? null,
-        expectedLocaleMissing: !savedEntry,
       })
 
       if (res.error) {
@@ -401,13 +312,11 @@ export default function CMSEditEntryClient({
           {field.required && <span className="text-destructive">*</span>}
         </Label>
         {canUseAi && !busy && <AIAssistantDialog
-          key={locale}
           tenantSlug={tenantSlug}
           form={aiForm}
           field={field}
           value={value}
           context={aiContext}
-          locale={locale}
           onApply={(suggestion) => setFormData((current) => ({
             ...current, [field.slug]: applyAiFieldValue(field, current[field.slug], suggestion),
           }))}
@@ -510,10 +419,10 @@ export default function CMSEditEntryClient({
       }
 
       case "component":
-        return <div className="space-y-1.5"><ComponentField allowAi={canUseAi && !busy} locale={locale} label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
+        return <div className="space-y-1.5"><ComponentField allowAi={canUseAi && !busy} label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
 
       case "repeater":
-        return <div className="space-y-1.5"><DynamicZoneField allowAi={canUseAi && !busy} locale={locale} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5"><DynamicZoneField allowAi={canUseAi && !busy} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "json":
         return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} /></div>
@@ -613,9 +522,7 @@ export default function CMSEditEntryClient({
             <div className="flex items-center gap-2 flex-wrap">
               {!busy && canUseAi && (
                 <AISmartFill
-                  key={locale}
                   form={aiForm}
-                  locale={locale}
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}
@@ -671,66 +578,11 @@ export default function CMSEditEntryClient({
                       <CardDescription className="text-xs">Ubah data atribut entri sesuai kebutuhan.</CardDescription>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      {availableLocales.length > 1 && (
-                        <div className="flex items-center gap-1.5">
-                          <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                          <Select value={locale} onValueChange={handleLocaleChange} disabled={busy}>
-                            <SelectTrigger aria-label="Bahasa entri" className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
-                              {availableLocales.map((loc) => (
-                                <SelectItem key={loc.locale} value={loc.locale} className="text-xs font-medium">
-                                  {loc.name || loc.locale.toUpperCase()}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
-
-                      {/* AI Translate Dropdown Action */}
-                      {translationTargets.length > 0 && <Popover open={translateOpen} onOpenChange={setTranslateOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={busy}
-                            className="h-8 rounded-xl text-xs font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/5 hover:bg-purple-500/10 shadow-xs gap-1.5"
-                          >
-                            {translating ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <Sparkles className="h-3 w-3" />
-                            )}
-                            AI Auto-Translate
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 p-2 rounded-2xl border-border bg-card shadow-xl" align="end">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase px-2 py-1 block">
-                              Terjemahkan Ke Bahasa:
-                            </span>
-                            {translationTargets.map((target) => (
-                              <button
-                                key={target.locale}
-                                type="button"
-                                onClick={() => handleAiTranslate(target.locale)}
-                                className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-primary/10 hover:text-primary transition-colors flex items-center justify-between cursor-pointer"
-                              >
-                                <span>{target.name || target.locale.toUpperCase()}</span>
-                                <Globe className="h-3 w-3 opacity-50" />
-                              </button>
-                            ))}
-                          </div>
-                        </PopoverContent>
-                      </Popover>}
                     </div>
                   </div>
                 </CardHeader>
 
                 <CardContent className="p-6 space-y-5">
-                  {loadingLocale && <p role="status" className="text-xs text-muted-foreground">Memuat konten untuk bahasa pilihan…</p>}
                   <fieldset className="space-y-5" disabled={busy}>
                   {(() => {
                     const visibleFields = (contentType?.fields || []).filter((f: any) => {

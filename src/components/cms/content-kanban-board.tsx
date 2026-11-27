@@ -533,7 +533,6 @@ function KanbanCardItem({
   const router = useRouter()
   const title = extractCardTitle(entry)
   const imageUrl = extractCardImage(entry)
-  const locale = entry.locale || "id"
   const formattedDate = new Date(entry.updatedAt || entry.createdAt).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "short",
@@ -627,12 +626,9 @@ function KanbanCardItem({
           )}
         </div>
 
-        {/* Footer Meta: Locale, Date, Author */}
+        {/* Footer Meta: Date, Author */}
         <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[10px] text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 py-0 h-4 bg-muted/60">
-              {locale}
-            </Badge>
             <span className="truncate max-w-[80px] font-mono text-[9px]">
               #{entry.id.slice(-5)}
             </span>

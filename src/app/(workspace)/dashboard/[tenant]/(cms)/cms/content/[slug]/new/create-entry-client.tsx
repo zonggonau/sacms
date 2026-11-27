@@ -127,7 +127,6 @@ export default function CMSCreateEntryClient({
   tenantSlug,
   contentTypeSlug,
   initialContentType: contentType,
-  initialAvailableLocales: availableLocales,
   initialIsLimitReached: isLimitReached,
   initialEntriesLimit: entriesLimit,
   userRole,
@@ -136,7 +135,6 @@ export default function CMSCreateEntryClient({
   tenantSlug: string
   contentTypeSlug: string
   initialContentType: ContentType
-  initialAvailableLocales: { locale: string; name: string }[]
   initialIsLimitReached: boolean
   initialEntriesLimit: number
   userRole?: string
@@ -148,7 +146,6 @@ export default function CMSCreateEntryClient({
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [entryStatus, setEntryStatus] = useState<string>("DRAFT")
-  const [locale, setLocale] = useState(availableLocales[0].locale)
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
 
   const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
@@ -180,7 +177,6 @@ export default function CMSCreateEntryClient({
       const res = await createEntryAction(tenantSlug, contentTypeSlug, {
         data: formData,
         status: targetStatus,
-        locale,
         scheduledAt: targetStatus === "SCHEDULED" ? scheduledAt : undefined,
       })
 
@@ -231,14 +227,12 @@ export default function CMSCreateEntryClient({
           {field.required && <span className="text-destructive">*</span>}
         </Label>
         {canUseAi && !saving && <AIAssistantDialog
-          key={locale}
-          tenantSlug={tenantSlug}
+                    tenantSlug={tenantSlug}
           form={aiForm}
           field={field}
           value={value}
           context={aiContext}
-          locale={locale}
-          onApply={(suggestion) => setFormData((current) => ({
+                    onApply={(suggestion) => setFormData((current) => ({
             ...current, [field.slug]: applyAiFieldValue(field, current[field.slug], suggestion),
           }))}
         />}
@@ -340,10 +334,10 @@ export default function CMSCreateEntryClient({
       }
 
       case "component":
-        return <div className="space-y-1.5"><ComponentField allowAi={canUseAi && !saving} locale={locale} label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
+        return <div className="space-y-1.5"><ComponentField allowAi={canUseAi && !saving} label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
 
       case "repeater":
-        return <div className="space-y-1.5"><DynamicZoneField allowAi={canUseAi && !saving} locale={locale} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5"><DynamicZoneField allowAi={canUseAi && !saving} label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "json":
         return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} /></div>
@@ -441,10 +435,8 @@ export default function CMSCreateEntryClient({
             <div className="flex items-center gap-2 flex-wrap">
               {contentType && canUseAi && !saving && (
                 <AISmartFill
-                  key={locale}
-                  form={aiForm}
-                  locale={locale}
-                  tenantSlug={tenantSlug}
+                                    form={aiForm}
+                                    tenantSlug={tenantSlug}
                   contentTypeName={contentType.name}
                   schema={contentType.fields || []}
                   onApply={handleSmartFill}
@@ -499,23 +491,6 @@ export default function CMSCreateEntryClient({
                       <CardTitle className="text-base font-bold text-foreground">Data Isian Konten</CardTitle>
                       <CardDescription className="text-xs">Lengkapi seluruh kolom atribut yang diperlukan untuk entri ini.</CardDescription>
                     </div>
-                    {availableLocales.length > 1 && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-3.5 w-3.5 text-muted-foreground" />
-                        <Select value={locale} onValueChange={setLocale} disabled={saving}>
-                          <SelectTrigger aria-label="Bahasa entri" className="h-8 w-32 text-xs font-bold rounded-xl bg-background border-border/80">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            {availableLocales.map((loc) => (
-                              <SelectItem key={loc.locale} value={loc.locale} className="text-xs font-medium">
-                                {loc.name || loc.locale.toUpperCase()}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </div>
                 </CardHeader>
 

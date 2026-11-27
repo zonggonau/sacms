@@ -95,7 +95,6 @@ async function backfillWorkspacePlans() {
       maxContentEntries: cleanNum(d.max_content_entries),
       maxTeamMembers: cleanNum(d.max_team_members),
       maxStorageMb: cleanNum(d.max_storage),
-      maxLocales: cleanNum(d.max_locales),
       maxApiCalls: cleanNum(d.max_api_calls),
       fairUseBandwidthGb: cleanNumOrNull(d.fair_use_bandwidth_gb),
       features: d.features ?? undefined,

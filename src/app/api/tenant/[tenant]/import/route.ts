@@ -4,7 +4,7 @@ import { db, getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { invalidatePattern } from "@/lib/cache"
 import { assertSchemaEditable } from "@/lib/schema-lock"
-import { orderBackupGroups, restoreBackupContent, restoreBackupLocales, workspaceBackupSchema } from "@/lib/workspace-backup"
+import { orderBackupGroups, restoreBackupContent, workspaceBackupSchema } from "@/lib/workspace-backup"
 
 export const POST = withStaffAuth(
   async (request, _context, { access }) => {
@@ -40,25 +40,7 @@ export const POST = withStaffAuth(
     if (lockError) return apiError("conflict", { message: lockError.error })
 
     const tenantDb = await getTenantDb(tenantId)
-    const { locales } = parsed.data.data
-    const result = await tenantDb.$transaction(async tx => {
-      const restored = await restoreBackupContent(tx, tenantId, parsed.data, groups)
-      if (tenantDb === db) await restoreBackupLocales(tx, tenantId, locales)
-      return restored
-    }, { timeout: 30000 })
-
-    // In a dedicated workspace, content and locale settings use different
-    // databases. Restore content first so the same backup can safely retry
-    // the locale step without duplicating the data.
-    if (tenantDb !== db && locales.length > 0) {
-      try {
-        await db.$transaction(tx => restoreBackupLocales(tx, tenantId, locales), { timeout: 30000 })
-      } catch (error) {
-        console.error("Could not restore workspace backup locales:", error)
-        result.skipped.push({ section: "locales", count: locales.length, reason: "Bahasa belum dipulihkan. Coba ulang impor berkas yang sama." })
-      }
-    }
-    result.imported.locales = result.skipped.some(section => section.section === "locales") ? 0 : locales.length
+    const result = await tenantDb.$transaction(async tx => restoreBackupContent(tx, tenantId, parsed.data, groups), { timeout: 30000 })
 
     for (const key of new Set([tenantId, tenantSlug])) {
       revalidatePath(`/dashboard/${key}`, "layout")

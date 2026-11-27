@@ -18,7 +18,7 @@ describe("SaCMS client", () => {
   })
 
   function client() {
-    return new SaCMS({ baseUrl: "https://app.test", tenant: "acme", token: "svc_token", locale: "id" })
+    return new SaCMS({ baseUrl: "https://app.test", tenant: "acme", token: "svc_token" })
   }
 
   it("sends the service token as a Bearer header by default", async () => {
@@ -55,7 +55,7 @@ describe("SaCMS client", () => {
     expect(init.headers.Authorization).toBeUndefined()
   })
 
-  it("findMany builds the expected query string: fields, populate, sort, pagination, search, status, locale", async () => {
+  it("findMany builds the expected query string: fields, populate, sort, pagination, search, status", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ data: [], meta: {} }))
     await client()
       .collection("articles")
@@ -73,7 +73,6 @@ describe("SaCMS client", () => {
     expect(url).toContain("fields=title,slug")
     expect(url).toContain("populate=author")
     expect(url).toContain("sort=createdAt%3Adesc")
-    expect(url).toContain("locale=id")
     expect(url).toContain("pagination[page]=2")
     expect(url).toContain("pagination[pageSize]=10")
     expect(url).toContain("search=next%20js")
@@ -103,14 +102,14 @@ describe("SaCMS client", () => {
     expect(url).toContain("filters[$and][0][price][$gte]=100")
   })
 
-  it("create() posts data/locale/status in the body", async () => {
+  it("create() posts data/status in the body", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }, 201))
     await client().collection("posts").create({ data: { title: "Hi" }, status: "PUBLISHED" })
 
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe("https://app.test/api/public/acme/content/posts")
     expect(init.method).toBe("POST")
-    expect(JSON.parse(init.body)).toEqual({ data: { title: "Hi" }, locale: "id", status: "PUBLISHED" })
+    expect(JSON.parse(init.body)).toEqual({ data: { title: "Hi" }, status: "PUBLISHED" })
   })
 
   it("throws SaCMSError with the response status and parsed message on a non-OK response", async () => {
@@ -299,20 +298,12 @@ describe("SaCMS client", () => {
   // even though the server's own single-entry route supports both — a
   // relation always came back as a raw id no matter what findMany() itself
   // was asked for.
-  it("findOne() builds populate and locale into the query string", async () => {
+  it("findOne() builds populate into the query string", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
-    await client().collection("articles").findOne("1", { populate: ["author", "category"], locale: "en" })
+    await client().collection("articles").findOne("1", { populate: ["author", "category"] })
 
     const [url] = fetchMock.mock.calls[0]
-    expect(url).toBe("https://app.test/api/public/acme/content/articles/1?locale=en&populate=author,category")
-  })
-
-  it("findOne() defaults to the client's own locale when none is passed, same as findMany()", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ data: { id: "1" } }))
-    await client().collection("articles").findOne("1")
-
-    const [url] = fetchMock.mock.calls[0]
-    expect(url).toBe("https://app.test/api/public/acme/content/articles/1?locale=id")
+    expect(url).toBe("https://app.test/api/public/acme/content/articles/1?populate=author,category")
   })
 
   // Sixth external audit: there was no way at all to reach Next.js's own
@@ -326,12 +317,12 @@ describe("SaCMS client", () => {
     expect(init.next).toEqual({ revalidate: 60, tags: ["articles"] })
   })
 
-  it("single().find() includes the locale query param and hits the single endpoint", async () => {
-    fetchMock.mockResolvedValueOnce(jsonResponse({ data: {}, meta: { singleType: { name: "Homepage", slug: "homepage" }, locale: "id" } }))
+  it("single().find() hits the single endpoint without a locale", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: {}, meta: { singleType: { name: "Homepage", slug: "homepage" } } }))
     await client().single("homepage").find()
 
     const [url] = fetchMock.mock.calls[0]
-    expect(url).toBe("https://app.test/api/public/acme/single/homepage?locale=id")
+    expect(url).toBe("https://app.test/api/public/acme/single/homepage")
   })
 
   it("graphql() posts the query and variables to the tenant's graphql endpoint", async () => {

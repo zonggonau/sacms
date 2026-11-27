@@ -2,7 +2,7 @@
  * Clears one recorded sample batch. Only the ids the ledger recorded are
  * touched. Collection entries are soft-deleted through the caller's delete
  * (the same path as the dashboard trash, so they can be restored within the
- * trash window). Single Type content for the batch's locale is emptied. The
+ * trash window). Single Type content the batch wrote is emptied. The
  * batch is then marked cleared, so a second call does nothing.
  */
 import { clearTargets, type ClearTargets } from "./batch-ops"
@@ -11,7 +11,7 @@ import type { SeedRecord } from "./run"
 export interface ClearDeps {
   /** "deleted" when removed now, "gone" when it was already deleted. Throws on a real failure. */
   deleteEntry(contentType: string, id: string): Promise<"deleted" | "gone">
-  clearSingle(singleType: string, locale: string): Promise<boolean>
+  clearSingle(singleType: string): Promise<boolean>
   saveRecord(record: SeedRecord): Promise<void>
 }
 
@@ -29,7 +29,6 @@ export async function clearSampleBatch(record: SeedRecord, deps: ClearDeps): Pro
     return { alreadyCleared: true, deletedEntries: 0, clearedSingles: 0, failures: [], targets }
   }
 
-  const locale = record.locale ?? "id"
   const failures: ClearResult["failures"] = []
   let deletedEntries = 0
   let clearedSingles = 0
@@ -45,7 +44,7 @@ export async function clearSampleBatch(record: SeedRecord, deps: ClearDeps): Pro
   }
   for (const single of targets.singles) {
     try {
-      if (await deps.clearSingle(single.singleType, locale)) clearedSingles++
+      if (await deps.clearSingle(single.singleType)) clearedSingles++
     } catch (error) {
       failures.push({ target: single.singleType, message: error instanceof Error ? error.message : "clear failed" })
     }

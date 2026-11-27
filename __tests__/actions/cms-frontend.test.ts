@@ -4,7 +4,7 @@ import { getServerSession } from "next-auth"
 // Regression tests for two real bugs in updateCmsLandingSectionAction:
 //
 // 1. It used `upsert` with a compound-unique `where` of
-//    `tenantId_singleTypeId_locale: { tenantId: null, ... }` — Prisma's
+//    `tenantId_singleTypeId: { tenantId: null, ... }` — Prisma's
 //    generated selector for a compound unique key requires a real string
 //    for every part, and throws "Argument `tenantId` must not be null" at
 //    runtime even though the column itself is nullable and a plain
@@ -63,7 +63,7 @@ describe("updateCmsLandingSectionAction", () => {
 
     expect(result).toEqual({ success: true })
     expect(mockDb.tenantSingleTypeAssignment.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ tenantId: null, singleTypeId: "st-1", locale: "id", data: { features: [{ title: "test" }] } }),
+      data: expect.objectContaining({ tenantId: null, singleTypeId: "st-1", data: { features: [{ title: "test" }] } }),
     })
     expect(mockDb.tenantSingleTypeAssignment.update).not.toHaveBeenCalled()
   })

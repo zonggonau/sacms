@@ -38,7 +38,6 @@ export const workspacePlanSchema = z.object({
   maxContentEntries: z.coerce.number().int().min(0),
   maxTeamMembers: z.coerce.number().int().min(0),
   maxStorageMb: z.coerce.number().int().min(0),
-  maxLocales: z.coerce.number().int().min(0),
   maxApiCalls: z.coerce.number().int().min(0),
   fairUseBandwidthGb: z.coerce.number().int().min(0).optional().nullable(),
   features: featuresSchema,

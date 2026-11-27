@@ -249,7 +249,6 @@ export default async function WorkspaceSelectionPage({ searchParams }: { searchP
       max_content_entries: p.maxContentEntries,
       max_storage: p.maxStorageMb,
       max_team_members: p.maxTeamMembers,
-      max_locales: p.maxLocales,
       max_api_calls: p.maxApiCalls,
       features: Array.isArray(p.features) ? p.features.filter(value => typeof value === "string") : []
     })).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))

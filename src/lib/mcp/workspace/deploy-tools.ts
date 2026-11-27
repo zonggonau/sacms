@@ -878,23 +878,22 @@ export function registerDeployTools(server: McpServer) {
       "get_content_preview_url",
       {
         title: "Preview Saved CMS Content",
-        description: "Open the current saved CMS fields, including drafts, in the authenticated workspace dashboard. For an entry, pass its ID. For a single type, pass its slug and locale.",
-        inputSchema: { kind: z.enum(["entry", "single"]), id: z.string().min(1), locale: z.string().default("id") },
+        description: "Open the current saved CMS fields, including drafts, in the authenticated workspace dashboard. For an entry, pass its ID. For a single type, pass its slug.",
+        inputSchema: { kind: z.enum(["entry", "single"]), id: z.string().min(1) },
       },
-      async ({ kind, id, locale }) => {
+      async ({ kind, id }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const record = kind === "entry"
           ? await tenantDb.contentEntry.findFirst({ where: { id, tenantId: auth.tenantId, deletedAt: null }, select: { status: true } })
-          : await tenantDb.tenantSingleTypeAssignment.findFirst({ where: { tenantId: auth.tenantId, locale, enabled: true, singleType: { slug: id, draftTemplateId: null } }, select: { draftData: true, publishedAt: true } })
+          : await tenantDb.tenantSingleTypeAssignment.findFirst({ where: { tenantId: auth.tenantId, enabled: true, singleType: { slug: id, draftTemplateId: null } }, select: { draftData: true, publishedAt: true } })
         if (!record) return { isError: true, content: [{ type: "text" as const, text: "Content not found in this workspace" }] }
         const hasDraft = "status" in record ? record.status !== "PUBLISHED" : record.draftData != null || !record.publishedAt
         const { resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
         const url = new URL(resolveApiOrigin())
         url.pathname = "/dashboard/" + encodeURIComponent(auth.tenantSlug) + "/cms/preview/" + kind + "/" + encodeURIComponent(id)
-        url.searchParams.set("locale", locale)
         return { structuredContent: { previewUrl: url.href, previewKind: "content", contentMode: hasDraft ? "draft" : "published", access: "workspace-session" }, content: [{ type: "text" as const, text: url.href }] }
       },
     )

@@ -65,7 +65,6 @@ interface ComponentFieldProps {
   label: React.ReactNode
   repeatable?: boolean
   allowAi?: boolean
-  locale?: string
 }
 
 export function ComponentField({
@@ -76,7 +75,7 @@ export function ComponentField({
   label,
   repeatable = false,
   allowAi = false,
-  locale = "id",
+ 
 }: ComponentFieldProps) {
   const [definition, setDefinition] = useState<ComponentDefinition | null>(null)
   const [loading, setLoading] = useState(true)
@@ -184,9 +183,9 @@ export function ComponentField({
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} allowAi={allowAi} locale={locale} />
+        return <ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} allowAi={allowAi} />
       case "repeater":
-        return <DynamicZoneField label={null} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} allowAi={allowAi} locale={locale} />
+        return <DynamicZoneField label={null} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} allowAi={allowAi} />
       case "relation":
         const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
@@ -247,13 +246,11 @@ export function ComponentField({
               </Label>
               {assistFields.includes(field) && fieldAiActions(field, form).length > 0 && (
                 <AIAssistantDialog
-                  key={locale}
                   tenantSlug={tenantSlug}
                   form={form}
                   field={field}
                   value={values[field.slug]}
                   context={context}
-                  locale={locale}
                   onApply={(suggestion) => handleFieldChange(index, field.slug, applyAiFieldValue(field, values[field.slug], suggestion))}
                 />
               )}

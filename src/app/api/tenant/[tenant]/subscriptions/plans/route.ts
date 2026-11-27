@@ -46,7 +46,6 @@ export async function GET(
         maxTeamMembers: p.maxTeamMembers,
         maxApiCalls: p.maxApiCalls,
         maxStorage: p.maxStorageMb,
-        maxLocales: p.maxLocales,
         auditLogRetention: 0,
         supportLevel: p.slug === "enterprise" ? "Prioritas & SLA" : p.slug === "pro" ? "Prioritas" : "Email",
         order: p.order,
@@ -155,7 +154,6 @@ export async function GET(
             maxTeamMembers: 1,
             maxApiCalls: 1000,
             maxStorage: 100,
-            maxLocales: 1,
             auditLogRetention: 0,
             supportLevel: "Community"
           },
@@ -184,7 +182,6 @@ export async function GET(
             maxTeamMembers: 10,
             maxApiCalls: 100000,
             maxStorage: 5120,
-            maxLocales: 5,
             auditLogRetention: 30,
             supportLevel: "Prioritas & SLA 99.9%"
           },

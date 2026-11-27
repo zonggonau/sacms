@@ -90,7 +90,6 @@ async function seedWorkspacePlans() {
       maxContentEntries: 500,
       maxTeamMembers: 1,
       maxStorageMb: 100,
-      maxLocales: 1,
       maxApiCalls: 1000,
       fairUseBandwidthGb: 2,
       features: [
@@ -114,7 +113,6 @@ async function seedWorkspacePlans() {
       maxContentEntries: 2000,
       maxTeamMembers: 3,
       maxStorageMb: 1024,
-      maxLocales: 2,
       maxApiCalls: 10000,
       fairUseBandwidthGb: 10,
       features: [
@@ -138,7 +136,6 @@ async function seedWorkspacePlans() {
       maxContentEntries: 10000,
       maxTeamMembers: 10,
       maxStorageMb: 5120,
-      maxLocales: 5,
       maxApiCalls: 100000,
       fairUseBandwidthGb: 50,
       features: [
@@ -163,7 +160,6 @@ async function seedWorkspacePlans() {
       maxContentEntries: 50000,
       maxTeamMembers: 25,
       maxStorageMb: 10240,
-      maxLocales: 10,
       maxApiCalls: 1000000,
       fairUseBandwidthGb: 250,
       features: [

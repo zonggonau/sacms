@@ -30,28 +30,22 @@ export interface FindManyParams {
   fields?: string[]
   /** Seventh external audit: `findOne` already accepted `"*"` (every relation); `findMany` crashed on it with a raw TypeError (`"*".map` isn't a function) — now consistent. */
   populate?: string[] | "*"
-  locale?: string
   sort?: string
   pagination?: PaginationParams
   search?: string
   status?: string
 }
 
-export interface FindSingleParams {
-  locale?: string
-}
-
 /**
  * Sixth external audit: findOne() didn't accept either of these at all —
  * the server's own single-entry GET route (confirmed: `src/app/api/public/
  * [tenant]/content/[contentType]/[id]/route.ts`) supports both `?populate=`
- * and `?locale=` already, the SDK just never built them into the request,
+ * already, the SDK just never built them into the request,
  * so a relation always came back as a raw id regardless of what you asked
  * list/findMany for.
  */
 export interface FindOneParams {
   populate?: string[] | "*"
-  locale?: string
 }
 
 export interface PaginationMeta {
@@ -73,7 +67,6 @@ export interface SingleResponse<T = Record<string, unknown>> {
   data: T
   meta: {
     singleType: { name: string; slug: string }
-    locale: string
   }
 }
 
@@ -95,7 +88,6 @@ export interface SaCMSConfig {
    * that distinction used to matter).
    */
   token?: string
-  locale?: string
   /**
    * Default timeout (in ms) applied to every request made by this client,
    * overridable per call via `RequestExtras.timeoutMs` (pass `0` to disable
@@ -107,7 +99,6 @@ export interface SaCMSConfig {
 
 export interface MutateParams {
   data: Record<string, unknown>
-  locale?: string
   status?: string
 }
 

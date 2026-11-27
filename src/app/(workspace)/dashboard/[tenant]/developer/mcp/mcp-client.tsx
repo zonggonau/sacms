@@ -340,17 +340,17 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "delete_content_type_group", category: "schema", description: "Menghapus grup beserta subgrup di dalamnya. Content Type di dalamnya tidak terhapus, hanya kehilangan grupnya.", inputs: ["id"] },
   { name: "assign_content_type_to_group", category: "schema", description: "Memasukkan/memindahkan Content Type ke sebuah grup, atau mengeluarkannya dari grup (groupId null).", inputs: ["contentTypeId", "groupId?"] },
 
-  { name: "query_content", category: "content", description: "Mengambil entri konten (published atau draft) dari satu Content Type dengan pagination, pencarian, dan sorting.", inputs: ["contentTypeSlug", "page", "limit", "status", "search", "locale", "sortOrder"] },
+  { name: "query_content", category: "content", description: "Mengambil entri konten (published atau draft) dari satu Content Type dengan pagination, pencarian, dan sorting.", inputs: ["contentTypeSlug", "page", "limit", "status", "search", "sortOrder"] },
   { name: "get_content_entry", category: "content", description: "Mengambil data lengkap satu entri konten spesifik berdasarkan ID uniknya.", inputs: ["id"] },
-  { name: "create_content_entry", category: "content", description: "Menambahkan entri konten baru ke sebuah Content Type dengan payload data JSON.", inputs: ["contentTypeSlug", "data", "status", "locale"] },
+  { name: "create_content_entry", category: "content", description: "Menambahkan entri konten baru ke sebuah Content Type dengan payload data JSON.", inputs: ["contentTypeSlug", "data", "status"] },
   { name: "update_content_entry", category: "content", description: "Memperbarui entri konten yang sudah ada berdasarkan ID-nya.", inputs: ["id", "data", "status"] },
   { name: "delete_content_entry", category: "content", description: "Menghapus satu entri konten spesifik berdasarkan ID.", inputs: ["id"] },
 
   { name: "list_single_types", category: "single", description: "Mendaftar seluruh Single Type (skema halaman tunggal seperti Homepage, Pengaturan Situs).", inputs: [] },
-  { name: "get_single_type", category: "single", description: "Mengambil skema field dan data konten tersimpan dari satu Single Type.", inputs: ["singleTypeSlug", "locale?"] },
-  { name: "create_single_type", category: "single", description: "Membuat Single Type baru (skema halaman tunggal, mis. 'Homepage', 'Halaman Kontak') dengan field dan data awal opsional.", inputs: ["name", "slug", "description", "fields", "initialData", "locale?"] },
+  { name: "get_single_type", category: "single", description: "Mengambil skema field dan data konten tersimpan dari satu Single Type.", inputs: ["singleTypeSlug"] },
+  { name: "create_single_type", category: "single", description: "Membuat Single Type baru (skema halaman tunggal, mis. 'Homepage', 'Halaman Kontak') dengan field dan data awal opsional.", inputs: ["name", "slug", "description", "fields", "initialData"] },
   { name: "update_single_type", category: "single", description: "Memperbarui nama, deskripsi, atau menambah/mengganti skema field pada sebuah Single Type.", inputs: ["singleTypeSlug", "name", "description", "fields"] },
-  { name: "update_single_type_content", category: "single", description: "Menyimpan/memperbarui nilai data singleton pada sebuah Single Type (mis. judul hero banner, link footer).", inputs: ["singleTypeSlug", "data", "locale?"] },
+  { name: "update_single_type_content", category: "single", description: "Menyimpan/memperbarui nilai data singleton pada sebuah Single Type (mis. judul hero banner, link footer).", inputs: ["singleTypeSlug", "data"] },
   { name: "delete_single_type", category: "single", description: "Menghapus permanen sebuah Single Type, skema field, dan data kontennya.", inputs: ["singleTypeSlug"] },
 
   { name: "list_components", category: "single", description: "Mendaftar seluruh Component reusable (mis. Hero Section, Feature Card, FAQ Item) beserta skema field-nya.", inputs: [] },

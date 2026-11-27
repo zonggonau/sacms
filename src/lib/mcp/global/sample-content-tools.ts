@@ -1,6 +1,6 @@
 // registerSampleContentTools — Global MCP: plan and seed sample entries in a Schema
 // Template's demo workspace. Writes go through saveDemoContentEntry, so the demo's own
-// rules (its locale resolution and content checks) still apply. The demo workspace is
+// content checks still apply. The demo workspace is
 // a test fixture, so publishing here is direct and needs no approval.
 import { z } from "zod"
 import { db, getTenantDb } from "@/lib/database"
@@ -13,12 +13,11 @@ import { registerDemoSampleBatchTools } from "./sample-batch-tools"
 
 const demoSampleShape = {
   schemaTemplateId: z.string().trim().min(1).max(150).describe("Schema Template ID or slug. Its demo workspace receives the sample entries."),
-  locale: z.string().default("id").describe("Locale the entries are written in (e.g. 'id', 'en')."),
   perType: z.number().int().min(1).max(MAX_PER_TYPE).default(3).describe(`Entries per Content Type (1–${MAX_PER_TYPE}).`),
   contentTypes: z.array(z.string()).optional().describe("Only these Content Type slugs. Omit for all."),
 }
 
-async function loadDemoSample(templateId: string, locale: string) {
+async function loadDemoSample(templateId: string) {
   const demo = await requireDemoWorkspace(templateId)
   const tenantDb = await getTenantDb(demo.slug)
   const bundle = await serializeTenantSchema(tenantDb, { tenantId: demo.id, draftTemplateId: null } as any)
@@ -37,9 +36,9 @@ async function loadDemoSample(templateId: string, locale: string) {
     const slug = slugById.get(row.contentTypeId)
     if (slug) existingCounts[slug] = row._count._all
   }
-  // A Single Type counts as populated when this locale already has content.
+  // A Single Type counts as populated when it already has content.
   const assigned = await tenantDb.tenantSingleTypeAssignment.findMany({
-    where: { tenantId: demo.id, locale, singleType: { draftTemplateId: null } },
+    where: { tenantId: demo.id, singleType: { draftTemplateId: null } },
     select: { data: true, draftData: true, singleType: { select: { slug: true } } },
   })
   for (const a of assigned) {
@@ -59,14 +58,14 @@ export function registerSampleContentTools(server: McpServer) {
       inputSchema: demoSampleShape,
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ schemaTemplateId, locale, perType, contentTypes }) => {
+    async ({ schemaTemplateId, perType, contentTypes }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
       if (!auth.scopes.includes("read")) return scopeDenied("plan_demo_sample_content", "read")
 
       return runDemoOperation(async () => {
-        const { schema, existingCounts } = await loadDemoSample(schemaTemplateId, locale)
-        const options: PlanOptions = { locale, perType, contentTypes, existingCounts }
+        const { schema, existingCounts } = await loadDemoSample(schemaTemplateId)
+        const options: PlanOptions = { perType, contentTypes, existingCounts }
         return buildSamplePlan(schema, options) as unknown as Record<string, unknown>
       })
     },
@@ -84,21 +83,20 @@ export function registerSampleContentTools(server: McpServer) {
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
-    async ({ schemaTemplateId, locale, perType, contentTypes, status }) => {
+    async ({ schemaTemplateId, perType, contentTypes, status }) => {
       const auth = authContext.getStore()
       if (!auth) return UNAUTHORIZED
       if (!auth.scopes.includes("demo")) return scopeDenied("seed_demo_sample_content", "demo")
 
       return runDemoOperation(async () => {
-        const { demo, schema, existingCounts } = await loadDemoSample(schemaTemplateId, locale)
-        const plan = buildSamplePlan(schema, { locale, perType, contentTypes, existingCounts })
+        const { demo, schema, existingCounts } = await loadDemoSample(schemaTemplateId)
+        const plan = buildSamplePlan(schema, { perType, contentTypes, existingCounts })
 
         const writer: EntryWriter = {
-          create: async (slug, data, entryLocale) => {
+          create: async (slug, data) => {
             try {
               const saved = await saveDemoContentEntry(schemaTemplateId, {
                 contentTypeSlug: slug,
-                locale: entryLocale,
                 data: data as any,
                 status,
               })
@@ -108,16 +106,15 @@ export function registerSampleContentTools(server: McpServer) {
               throw error
             }
           },
-          upsertSingle: async (slug, data, entryLocale) => {
+          upsertSingle: async (slug, data) => {
             try {
               await updateDemoSingleTypeEntry(schemaTemplateId, {
                 singleTypeSlug: slug,
-                locale: entryLocale,
                 data: data as any,
                 publish: status === "PUBLISHED",
               })
               const assignment = await db.tenantSingleTypeAssignment.findFirst({
-                where: { tenantId: demo.id, locale: entryLocale, singleType: { slug } },
+                where: { tenantId: demo.id, singleType: { slug } },
                 select: { id: true },
               })
               return assignment ? { ok: true, id: assignment.id } : { ok: false, message: "Assignment tidak ditemukan setelah penulisan." }
@@ -126,9 +123,9 @@ export function registerSampleContentTools(server: McpServer) {
               throw error
             }
           },
-          existingIds: async (slug, entryLocale) => {
+          existingIds: async (slug) => {
             const rows = await db.contentEntry.findMany({
-              where: { tenantId: demo.id, deletedAt: null, locale: entryLocale, contentType: { slug } },
+              where: { tenantId: demo.id, deletedAt: null, contentType: { slug } },
               select: { id: true },
               orderBy: { createdAt: "asc" },
               take: 50,

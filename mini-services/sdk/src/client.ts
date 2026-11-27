@@ -2,7 +2,6 @@ import type {
   SaCMSConfig,
   FindManyParams,
   FindOneParams,
-  FindSingleParams,
   CollectionResponse,
   SingleResponse,
   GraphQLResponse,
@@ -34,7 +33,6 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   private baseUrl: string
   private tenant: string
   private token: string
-  private defaultLocale?: string
   private defaultTimeoutMs: number
 
   /** Member (end-user) authentication — login, register, session, profile. */
@@ -44,7 +42,6 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "")
     this.tenant = config.tenant
     this.token = config.token ?? ""
-    this.defaultLocale = config.locale ?? "id"
     // Sixth external audit: unset before, a hung connection to the server
     // could block a page's render indefinitely — 15s is generous enough
     // not to false-positive on a slow connection, short enough to not
@@ -224,11 +221,6 @@ export class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> {
   }
 
   /** @internal */
-  getDefaultLocale() {
-    return this.defaultLocale
-  }
-
-  /** @internal */
   getTenant() {
     return this.tenant
   }
@@ -254,7 +246,7 @@ class CollectionClient<T> {
     params?: FindManyParams,
     extras?: RequestExtras,
   ): Promise<CollectionResponse<T>> {
-    const qs = buildQueryString(params, this.cf.getDefaultLocale())
+    const qs = buildQueryString(params)
     return this.cf.request<CollectionResponse<T>>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`,
       {},
@@ -263,13 +255,11 @@ class CollectionClient<T> {
   }
 
   /**
-   * Get a single entry by ID. Pass `populate`/`locale` the same way you
+   * Get a single entry by ID. Pass `populate` the same way you
    * would to `findMany` — omitted, a relation field comes back as a raw id.
    */
   async findOne(id: string, params?: FindOneParams, extras?: RequestExtras): Promise<{ data: T }> {
     const qsParts: string[] = []
-    const locale = params?.locale ?? this.cf.getDefaultLocale()
-    if (locale) qsParts.push(`locale=${encodeURIComponent(locale)}`)
     if (params?.populate) {
       const populateValue = params.populate === "*" ? "*" : params.populate.map(encodeURIComponent).join(",")
       qsParts.push(`populate=${populateValue}`)
@@ -292,7 +282,6 @@ class CollectionClient<T> {
         method: "POST",
         body: JSON.stringify({
           data: params.data,
-          locale: params.locale ?? this.cf.getDefaultLocale(),
           status: params.status,
         }),
       },
@@ -314,7 +303,6 @@ class CollectionClient<T> {
         method: "PUT",
         body: JSON.stringify({
           data: params.data,
-          locale: params.locale ?? this.cf.getDefaultLocale(),
           status: params.status,
         }),
       },
@@ -344,13 +332,10 @@ class SingleClient<T> {
    * Get the single type content.
    */
   async find(
-    params?: FindSingleParams,
     extras?: RequestExtras,
   ): Promise<SingleResponse<T>> {
-    const locale = params?.locale ?? this.cf.getDefaultLocale()
-    const qs = locale ? `?locale=${encodeURIComponent(locale)}` : ""
     return this.cf.request<SingleResponse<T>>(
-      `/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`,
+      `/api/public/${this.cf.getTenant()}/single/${this.slug}`,
       {},
       extras,
     )
@@ -433,14 +418,6 @@ export class QueryBuilder<T> {
   }
 
   /**
-   * Target a specific locale. E.g. .locale('id') or .locale('en')
-   */
-  locale(loc: string) {
-    this.params.locale = loc
-    return this
-  }
-
-  /**
    * Filter by status. E.g. .status('PUBLISHED') or .status('DRAFT')
    */
   status(st: string) {
@@ -494,10 +471,7 @@ function parseRetryAfterMs(header: string | null): number | null {
   return null
 }
 
-function buildQueryString(
-  params?: FindManyParams,
-  defaultLocale?: string
-): string {
+function buildQueryString(params?: FindManyParams): string {
   if (!params) return ""
   const parts: string[] = []
 
@@ -518,11 +492,6 @@ function buildQueryString(
     parts.push("populate=*")
   } else if (params.populate?.length) {
     parts.push(`populate=${params.populate.map(encodeURIComponent).join(",")}`)
-  }
-
-  const locale = params.locale ?? defaultLocale
-  if (locale) {
-    parts.push(`locale=${encodeURIComponent(locale)}`)
   }
 
   if (params.sort) {

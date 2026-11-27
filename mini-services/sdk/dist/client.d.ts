@@ -1,4 +1,4 @@
-import type { SaCMSConfig, FindManyParams, FindOneParams, FindSingleParams, CollectionResponse, SingleResponse, GraphQLResponse, MutateParams, RequestExtras } from "./types";
+import type { SaCMSConfig, FindManyParams, FindOneParams, CollectionResponse, SingleResponse, GraphQLResponse, MutateParams, RequestExtras } from "./types";
 import type { EmptyRegistry, SaCMSRegistryShape } from "./generated-types";
 import { AuthClient } from "./auth";
 /**
@@ -21,7 +21,6 @@ export declare class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> 
     private baseUrl;
     private tenant;
     private token;
-    private defaultLocale?;
     private defaultTimeoutMs;
     /** Member (end-user) authentication — login, register, session, profile. */
     readonly auth: AuthClient;
@@ -43,8 +42,6 @@ export declare class SaCMS<Registry extends SaCMSRegistryShape = EmptyRegistry> 
     /** @internal */
     request<T>(path: string, init?: RequestInit, extras?: RequestExtras, retries?: number): Promise<T>;
     /** @internal */
-    getDefaultLocale(): string | undefined;
-    /** @internal */
     getTenant(): string;
 }
 declare class CollectionClient<T> {
@@ -60,7 +57,7 @@ declare class CollectionClient<T> {
      */
     findMany(params?: FindManyParams, extras?: RequestExtras): Promise<CollectionResponse<T>>;
     /**
-     * Get a single entry by ID. Pass `populate`/`locale` the same way you
+     * Get a single entry by ID. Pass `populate` the same way you
      * would to `findMany` — omitted, a relation field comes back as a raw id.
      */
     findOne(id: string, params?: FindOneParams, extras?: RequestExtras): Promise<{
@@ -92,7 +89,7 @@ declare class SingleClient<T> {
     /**
      * Get the single type content.
      */
-    find(params?: FindSingleParams, extras?: RequestExtras): Promise<SingleResponse<T>>;
+    find(extras?: RequestExtras): Promise<SingleResponse<T>>;
     /**
      * Update the single type content (requires full-access token).
      */
@@ -126,10 +123,6 @@ export declare class QueryBuilder<T> {
      * Full-text search across content entries. E.g. .search('nextjs tutorial')
      */
     search(query: string): this;
-    /**
-     * Target a specific locale. E.g. .locale('id') or .locale('en')
-     */
-    locale(loc: string): this;
     /**
      * Filter by status. E.g. .status('PUBLISHED') or .status('DRAFT')
      */

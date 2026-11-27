@@ -22,7 +22,7 @@ export function registerDemoSampleBatchTools(server: McpServer) {
       "list_demo_sample_batches",
     {
       title: "List Demo Sample Batches",
-      description: "Lists the sample batches seeded into a Schema Template's demo workspace, with locale, time, and entry counts per Content Type. Needs the demo scope.",
+      description: "Lists the sample batches seeded into a Schema Template's demo workspace, with time, and entry counts per Content Type. Needs the demo scope.",
       inputSchema: { schemaTemplateId: schemaTemplateIdInput },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -50,7 +50,7 @@ export function registerDemoSampleBatchTools(server: McpServer) {
       "verify_demo_sample_batch",
     {
       title: "Verify Demo Sample Batch",
-      description: "Reads back every entry a demo batch created. Checks each still exists, is in the batch's locale, and, when PUBLISHED, is the content the demo preview reads. Drafts are reported as not public, not as failures. Read-only. Needs the demo scope.",
+      description: "Reads back every entry a demo batch created. Checks each still exists and, when PUBLISHED, is the content the demo preview reads. Drafts are reported as not public, not as failures. Read-only. Needs the demo scope.",
       inputSchema: {
         schemaTemplateId: schemaTemplateIdInput,
         batchId: z.string().min(1).describe("batchId from seed_demo_sample_content or list_demo_sample_batches"),
@@ -71,22 +71,22 @@ export function registerDemoSampleBatchTools(server: McpServer) {
           entry: async (contentType, id) => {
             const e = await db.contentEntry.findFirst({
               where: { id, tenantId: demo.id, deletedAt: null, contentType: { slug: contentType } },
-              select: { status: true, locale: true },
+              select: { status: true },
             })
-            return e ? { status: String(e.status), locale: e.locale } : null
+            return e ? { status: String(e.status) } : null
           },
-          publicIds: async (contentType, locale) => {
+          publicIds: async (contentType) => {
             const rows = await db.contentEntry.findMany({
-              where: { tenantId: demo.id, deletedAt: null, status: "PUBLISHED", locale, contentType: { slug: contentType } },
+              where: { tenantId: demo.id, deletedAt: null, status: "PUBLISHED", contentType: { slug: contentType } },
               select: { id: true },
             })
             return new Set(rows.map((r) => r.id))
           },
-          single: async (slug, locale) => {
+          single: async (slug) => {
             const st = await db.singleType.findFirst({ where: { tenantId: demo.id, slug, draftTemplateId: null }, select: { id: true } })
             if (!st) return null
             const a = await db.tenantSingleTypeAssignment.findUnique({
-              where: { tenantId_singleTypeId_locale: { tenantId: demo.id, singleTypeId: st.id, locale } },
+              where: { tenantId_singleTypeId: { tenantId: demo.id, singleTypeId: st.id } },
               select: { data: true },
             })
             return a ? { published: a.data != null } : null
@@ -129,12 +129,12 @@ export function registerDemoSampleBatchTools(server: McpServer) {
             if (res.code === "not_found") return "gone"
             throw new Error(res.message)
           },
-          clearSingle: async (singleType, locale) => {
+          clearSingle: async (singleType) => {
             const result = await db.tenantSingleTypeAssignment.updateMany({
-              where: { tenantId: demo.id, locale, singleType: { slug: singleType } },
+              where: { tenantId: demo.id, singleType: { slug: singleType } },
               data: { data: await DbNull(), draftData: await DbNull(), publishedAt: null },
             })
-            await invalidateSingleTypePublication(demo.id, singleType, locale)
+            await invalidateSingleTypePublication(demo.id, singleType)
             return result.count > 0
           },
           saveRecord: async (updated) => {

@@ -10,7 +10,6 @@ const overrideSchema = z.object({
   maxContentEntries: z.number().int().nonnegative().nullable().optional(),
   maxTeamMembers: z.number().int().nonnegative().nullable().optional(),
   maxStorage: z.number().int().nonnegative().nullable().optional(),
-  maxLocales: z.number().int().nonnegative().nullable().optional(),
   maxApiCalls: z.number().int().nonnegative().nullable().optional(),
   note: z.string().max(500).nullable().optional(),
 })
@@ -26,7 +25,7 @@ export const POST = withAdminAuth(async (request, context, { session }) => {
   const result = await validateBody(request, overrideSchema)
   if ("error" in result) return result.error
 
-  const { maxContentTypes, maxContentEntries, maxTeamMembers, maxStorage, maxLocales, maxApiCalls, note } = result.data
+  const { maxContentTypes, maxContentEntries, maxTeamMembers, maxStorage, maxApiCalls, note } = result.data
   const creator = session.user.email || session.user.name || "super_admin"
 
   const values = {
@@ -34,7 +33,6 @@ export const POST = withAdminAuth(async (request, context, { session }) => {
     maxContentEntries: maxContentEntries ?? null,
     maxTeamMembers: maxTeamMembers ?? null,
     maxStorage: maxStorage ?? null,
-    maxLocales: maxLocales ?? null,
     maxApiCalls: maxApiCalls ?? null,
     note: note ?? null,
   }

@@ -30,7 +30,6 @@ export type WorkspaceResource =
   | "content_entries"
   | "team_members"
   | "storage"       // in bytes (current usage)
-  | "locales"
   | "api_calls"
 
 export type UserResource = "workspaces" | "ai_credits"
@@ -511,8 +510,6 @@ function getEffectiveWorkspaceMax(
     case "storage":
       // Handled by getStorageQuota before this is reached.
       return 0
-    case "locales":
-      return override?.maxLocales ?? planConfig.max_locales
     case "api_calls": {
       const baseCalls = override?.maxApiCalls ?? planConfig.max_api_calls
       const extraCalls = Number(topupExtras?.apiCallsExtra || 0)
@@ -887,8 +884,6 @@ async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource):
         return db.tenantMember.count({ where: { tenantId, role: { not: "owner" } } })
       case "storage":
         return getStorageUsedBytes(tenantId)
-      case "locales":
-        return db.tenantLocale.count({ where: { tenantId, isEnabled: true } })
       case "api_calls":
         return db.apiRequest.count({
           where: {
@@ -911,7 +906,6 @@ interface WorkspaceOverride {
   maxContentEntries: number | null
   maxTeamMembers: number | null
   maxStorage: number | null
-  maxLocales: number | null
   maxApiCalls: number | null
 }
 
@@ -931,7 +925,6 @@ async function getWorkspaceOverride(tenantId: string): Promise<WorkspaceOverride
       maxContentEntries: override.maxContentEntries,
       maxTeamMembers: override.maxTeamMembers,
       maxStorage: override.maxStorage,
-      maxLocales: override.maxLocales,
       maxApiCalls: override.maxApiCalls,
     }
   } catch {
@@ -989,7 +982,6 @@ function formatResourceName(resource: string): string {
     content_entries: "content entries",
     team_members: "team members",
     storage: "MB storage",
-    locales: "locales",
     api_calls: "API calls/month",
     workspaces: "workspaces",
     ai_credits: "AI credits/month",

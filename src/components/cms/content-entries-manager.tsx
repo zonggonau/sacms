@@ -385,9 +385,9 @@ export function ContentEntriesManager({
       const payload = await res.json()
       const fields = contentType?.fields || []
 
-      const headers = ["id", "status", "locale", ...fields.map((f: any) => f.name || f.slug), "publishedAt", "createdAt"]
+      const headers = ["id", "status", ...fields.map((f: any) => f.name || f.slug), "publishedAt", "createdAt"]
       const rows = (payload.entries || []).map((e: any) => {
-        const row = [e.sourceId, e.status, e.locale]
+        const row = [e.sourceId, e.status]
         for (const f of fields) {
           const raw = e.data?.[f.slug]
           if (CSV_STRUCTURAL_TYPES.has(f.type)) {

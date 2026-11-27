@@ -26,13 +26,12 @@ import {
 } from "@/lib/filters"
 
 /**
- * Public API - Get entries with advanced filtering, field selection, and locale support.
+ * Public API - Get entries with advanced filtering and field selection.
  *
  * Query params:
  *   ?filters[field][$op]=value   — Strapi-style filtering
  *   ?fields=title,slug           — Field selection
  *   ?populate=author,tags        — Relation expansion
- *   ?locale=id                   — Locale filter
  *   ?sort=createdAt:desc         — Sorting
  *   ?pagination[page]=1&pagination[pageSize]=25
  *   ?search=keyword              — Full-text search (basic)
@@ -163,17 +162,6 @@ export async function GET(
     const page = Math.max(1, parseInt(searchParams.get("pagination[page]") || searchParams.get("page") || "1"))
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pagination[pageSize]") || searchParams.get("pageSize") || "25")))
 
-    // Locale + fallback logic
-    const requestedLocale = searchParams.get("locale")
-    
-    // Resolve the tenant's default locale (used for fallback)
-    const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
-      where: { tenantId: tenantId, isDefault: true },
-      select: { locale: true },
-    })
-    const defaultLocale = tenantDefaultLocale?.locale ?? "id"
-    const locale = requestedLocale ?? defaultLocale
-
     // Status (default: only PUBLISHED for public API)
     const statusParam = searchParams.get("status")
     if (apiTokenType !== "full-access" && statusParam && statusParam !== "PUBLISHED") {
@@ -225,7 +213,6 @@ export async function GET(
       status,
       deletedAt: null,
     }
-    if (locale) baseWhere.locale = locale
 
     // Parse advanced filters
     const { conditions, orGroups, rejected } = parseFilters(searchParams, allowedFieldNames)
@@ -251,7 +238,7 @@ export async function GET(
     // Check if sortField is a dynamic field inside JSON data.
     // It must be a known content-type slug AND a plain SQL identifier — the value
     // is interpolated into a raw `"data"->>'<slug>'` expression below.
-    const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt", "id", "status", "locale"])
+    const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt", "id", "status"])
     const isDynamicSort =
       allowedFieldNames.has(sortField) &&
       !validSystemColumns.has(sortField) &&
@@ -267,12 +254,6 @@ export async function GET(
       ]
       const queryParams: unknown[] = [contentType.id, tenantId, status]
       let paramIdx = 4
-
-      if (locale) {
-        whereParts.push(`"locale" = $${paramIdx}`)
-        queryParams.push(locale)
-        paramIdx++
-      }
 
       // Apply advanced filters
       const filterResult = buildFilterSQL(conditions, orGroups, paramIdx)
@@ -317,7 +298,7 @@ export async function GET(
       // Data query with sorting and pagination
       entries = await tenantDb.$queryRawUnsafe(
         `SELECT 
-          "id", "documentId", "contentTypeId", "tenantId", "locale", 
+          "id", "documentId", "contentTypeId", "tenantId", 
           "data", "status", "reviewComment", "publishedAt", 
           "scheduledAt", "archivedAt", "createdBy", "updatedBy", 
           "createdAt", "updatedAt"
@@ -354,75 +335,7 @@ export async function GET(
         ? relationFields.filter(f => populateParam.includes(f.slug))
         : []
 
-    // 3. Map relations back to entries + availableLocales (Synchronously)
-    // Collect documentIds to batch-fetch available locales
-    const documentIds = entries
-      .map((e: any) => e.documentId as string | null)
-      .filter((id): id is string => !!id)
-
-    // Batch fetch all locale variants for the documentIds in this result set
-    const localeVariants = documentIds.length > 0
-      ? await tenantDb.contentEntry.findMany({
-          where: {
-            documentId: { in: documentIds },
-            contentTypeId: contentType.id,
-            tenantId: tenantId,
-            deletedAt: null,
-            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-          },
-          select: { documentId: true, locale: true, status: true },
-        })
-      : []
-
-    // Build a map: documentId → available locales
-    const localesByDoc = new Map<string, string[]>()
-    for (const v of localeVariants) {
-      if (!v.documentId) continue
-      if (!localesByDoc.has(v.documentId)) localesByDoc.set(v.documentId, [])
-      localesByDoc.get(v.documentId)!.push(v.locale)
-    }
-
-    // Locale fallback: if locale was requested and entry has no data in that
-    // locale, attempt to fall back to the tenant's default locale
-    let finalEntries = entries
-    if (requestedLocale && requestedLocale !== defaultLocale) {
-      // Find document IDs for entries that may have a default-locale equivalent
-      const docIdsNeedingFallback = entries
-        .filter((e: any) => {
-          const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data
-          return !data || Object.keys(data).length === 0
-        })
-        .map((e: any) => e.documentId as string | null)
-        .filter((id): id is string => !!id)
-
-      if (docIdsNeedingFallback.length > 0) {
-        const fallbacks = await tenantDb.contentEntry.findMany({
-          where: {
-            documentId: { in: docIdsNeedingFallback },
-            locale: defaultLocale,
-            contentTypeId: contentType.id,
-            tenantId: tenantId,
-            deletedAt: null,
-            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
-          },
-        })
-        const fallbackMap = new Map(fallbacks.map((f) => [f.documentId, f]))
-        finalEntries = entries.map((e: any) => {
-          let currentData: Record<string, unknown> = {}
-          try {
-            currentData = typeof e.data === "string" ? JSON.parse(e.data) : (e.data || {})
-          } catch {
-            currentData = {}
-          }
-          const needsFallback = Object.keys(currentData).length === 0
-          return needsFallback && e.documentId && fallbackMap.has(e.documentId)
-            ? fallbackMap.get(e.documentId)!
-            : e
-        })
-      }
-    } else {
-      finalEntries = entries
-    }
+    const finalEntries = entries
 
     const rowsParsed: Record<string, unknown>[] = finalEntries.map((entry: any) => {
       try {
@@ -449,8 +362,6 @@ export async function GET(
       return {
         id: entry.id,
         ...publicShaped,
-        locale: entry.locale,
-        availableLocales: entry.documentId ? (localesByDoc.get(entry.documentId) ?? [entry.locale]) : [entry.locale],
         status: entry.status,
         publishedAt: entry.publishedAt,
         createdAt: entry.createdAt,
@@ -528,7 +439,7 @@ export async function GET(
  * anonymous "public" role) must be granted the `create` action for this content
  * type. Full-access API tokens are also accepted.
  *
- * Body: `{ data: { ...fields }, locale?: string }`
+ * Body: `{ data: { ...fields } }`
  * New entries are always created as DRAFT; publishing goes through the CMS workflow.
  */
 export async function POST(
@@ -601,7 +512,6 @@ export async function POST(
         data: body.data as Record<string, unknown>,
         // Headless callers always create DRAFT; the service enforces this too.
         status: "DRAFT",
-        locale: typeof body.locale === "string" ? body.locale : null,
       },
     )
     if (!result.ok) {
@@ -623,7 +533,6 @@ export async function POST(
             id: created.id,
             documentId: created.documentId,
             ...createdData,
-            locale: created.locale,
             status: created.status,
             createdAt: created.createdAt,
             updatedAt: created.updatedAt,

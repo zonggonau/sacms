@@ -17,7 +17,6 @@ export const GET = withStaffAuth(
       contentTypeGroups,
       contentEntries,
       singleTypeData,
-      locales,
       mediaFolders,
       media,
     ] = await Promise.all([
@@ -40,9 +39,6 @@ export const GET = withStaffAuth(
       tenantDb.tenantSingleTypeAssignment.findMany({
         where: { tenantId, singleType: { draftTemplateId: null } },
       }),
-      db.tenantLocale.findMany({
-        where: { tenantId },
-      }),
       tenantDb.mediaFolder.findMany({
         where: { tenantId },
       }),
@@ -59,7 +55,7 @@ export const GET = withStaffAuth(
     const singleTypes = singleTypesRaw.map(({ schemaFields, ...definition }) => ({ ...definition, fields: schemaFields }))
     const components = componentsRaw.map(({ schemaFields, ...definition }) => ({ ...definition, fields: schemaFields }))
 
-    const data = { locales, contentTypes, singleTypes, components, contentTypeGroups, contentEntries, singleTypeData, mediaFolders, media }
+    const data = { contentTypes, singleTypes, components, contentTypeGroups, contentEntries, singleTypeData, mediaFolders, media }
 
     const exportData = {
       version: BACKUP_VERSION,

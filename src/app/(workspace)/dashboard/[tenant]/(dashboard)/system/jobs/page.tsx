@@ -53,14 +53,12 @@ export default async function SystemJobsPage({ params }: { params: Promise<{ ten
                 <Table>
                   <TableHeader><TableRow>
                     <TableHead>Koleksi</TableHead>
-                    <TableHead>Locale</TableHead>
                     <TableHead>Waktu terjadwal</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {jobs.scheduled.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell>{entry.contentType.name}</TableCell>
-                        <TableCell>{entry.locale}</TableCell>
                         <TableCell>{displayDate(entry.scheduledAt)}</TableCell>
                       </TableRow>
                     ))}

@@ -82,7 +82,6 @@ const CATEGORIES: CategoryConfig[] = [
       { key: "maxContentEntries", label: "Maks Entri Konten", type: "number", required: true, showInTable: true },
       { key: "maxTeamMembers", label: "Maks Anggota Tim", type: "number", required: true, showInTable: true },
       { key: "maxStorageMb", label: "Maks Storage (MB)", type: "number", required: true },
-      { key: "maxLocales", label: "Maks Bahasa", type: "number", required: true },
       { key: "maxApiCalls", label: "Maks API Calls/bulan", type: "number", required: true },
       { key: "fairUseBandwidthGb", label: "Fair-Use Bandwidth (GB)", type: "number" },
       { key: "features", label: "Fitur (satu per baris)", type: "features" },

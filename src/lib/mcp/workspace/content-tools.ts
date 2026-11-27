@@ -12,25 +12,24 @@ export function registerContentTools(server: McpServer) {
       "query_content",
       {
         title: "Query Content Entries",
-        description: "Fetch published or draft content entries from a Content Type collection with pagination, search, locale filtering, and sorting.",
+        description: "Fetch published or draft content entries from a Content Type collection with pagination, search, and sorting.",
         inputSchema: {
           contentTypeSlug: z.string().describe("Slug of the Content Type (e.g. 'articles', 'products')"),
           limit: z.number().default(10).describe("Number of items to return (max 100)"),
           page: z.number().default(1).describe("Page number (1-indexed)"),
           status: z.enum(["PUBLISHED", "DRAFT", "IN_REVIEW", "ARCHIVED", "ALL"]).default("PUBLISHED"),
           search: z.string().optional().describe("Search term"),
-          locale: z.string().optional().describe("Filter by locale code (e.g. 'id', 'en')"),
           sortOrder: z.enum(["asc", "desc"]).default("desc"),
         },
       },
-      async ({ contentTypeSlug, limit, page, status, search, locale, sortOrder }) => {
+      async ({ contentTypeSlug, limit, page, status, search, sortOrder }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "read")) return permissionDenied("read")
 
         const tenantDb = await getTenantDb(auth.tenantSlug)
         const result = await queryContentForTenant(tenantDb, auth.tenantId, {
-          contentTypeSlug, limit, page, status, search, locale, sortOrder,
+          contentTypeSlug, limit, page, status, search, sortOrder,
         })
         if (!result) return { content: [{ type: "text" as const, text: `❌ Content Type '${contentTypeSlug}' not found.` }], structuredContent: { ok: false, code: "NOT_FOUND", message: "Content Type not found." }, isError: true }
 
@@ -43,7 +42,7 @@ export function registerContentTools(server: McpServer) {
       "get_content_entry",
       {
         title: "Get Content Entry",
-        description: "Fetch a specific content entry record by its unique ID, including all JSON fields, locale, status, and metadata.",
+        description: "Fetch a specific content entry record by its unique ID, including all JSON fields, status, and metadata.",
         inputSchema: {
           id: z.string().describe("Unique ID of the content entry (e.g. 'cmtcsh...')"),
         },
@@ -76,7 +75,6 @@ export function registerContentTools(server: McpServer) {
           _contentType: entry.contentType.slug,
           _contentTypeName: entry.contentType.name,
           _status: entry.status,
-          _locale: entry.locale,
           _createdAt: entry.createdAt,
           _updatedAt: entry.updatedAt,
           _publishedAt: entry.publishedAt,
@@ -98,10 +96,9 @@ export function registerContentTools(server: McpServer) {
           contentTypeSlug: z.string().describe("Slug of the target Content Type (e.g. 'articles')"),
           data: z.record(z.string(), z.any()).describe("JSON object containing the field values (e.g. { title: 'Hello', slug: 'hello', content: '...' })"),
           status: z.enum(["PUBLISHED", "DRAFT", "IN_REVIEW"]).default("PUBLISHED").describe("Initial entry status"),
-          locale: z.string().default("id").describe("Content locale (default 'id')"),
         },
       },
-      async ({ contentTypeSlug, data, status, locale }) => {
+      async ({ contentTypeSlug, data, status }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
         if (!hasScope(auth, "write")) return permissionDenied("write")
@@ -113,7 +110,6 @@ export function registerContentTools(server: McpServer) {
           contentTypeSlug,
           data: data || {},
           status,
-          locale,
         })
         if (!result.ok) {
           return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], isError: true }
@@ -160,7 +156,6 @@ export function registerContentTools(server: McpServer) {
           entryId: id,
           data,
           status,
-          locale: existing.locale,
         })
         if (!result.ok) {
           return { content: [{ type: "text" as const, text: `❌ ${result.message}` }], isError: true }

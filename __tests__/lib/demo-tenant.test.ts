@@ -42,7 +42,6 @@ const contentEntryFindMany = vi.fn().mockResolvedValue([])
 const tenantSingleTypeAssignmentFindUnique = vi.fn().mockResolvedValue(null)
 const tenantSingleTypeAssignmentCreate = vi.fn().mockResolvedValue({})
 const tenantSingleTypeAssignmentUpsert = vi.fn().mockResolvedValue({})
-const tenantLocaleCreate = vi.fn().mockResolvedValue({})
 const tenantDbMock = {
   contentType: { findMany: contentTypeFindMany },
   contentEntry: { findMany: contentEntryFindMany },
@@ -52,7 +51,6 @@ const tenantDbMock = {
     findUnique: tenantSingleTypeAssignmentFindUnique,
     create: tenantSingleTypeAssignmentCreate,
   },
-  tenantLocale: { create: tenantLocaleCreate },
 }
 
 const { ensureDemoTenantForSchemaTemplate } = await import("@/lib/infrastructure/demo-tenant")
@@ -87,7 +85,6 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
 
     expect(result).toEqual({ id: "demo-tenant-1", slug: "demo-company-profile" })
     expect(tenantCreate).not.toHaveBeenCalled()
-    expect(tenantLocaleCreate).not.toHaveBeenCalled()
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
     expect(contentTypeFindMany).not.toHaveBeenCalled()
   })
@@ -107,7 +104,7 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     expect(createContentEntry).not.toHaveBeenCalled()
     expect(tenantSingleTypeAssignmentUpsert).not.toHaveBeenCalled()
     expect(tenantSingleTypeAssignmentCreate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-      data: expect.objectContaining({ tenantId: demo.id, singleTypeId: "home", locale: "id" }),
+      data: expect.objectContaining({ tenantId: demo.id, singleTypeId: "home" }),
     }))
   })
 
@@ -127,13 +124,6 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
     expect(schemaTemplateUpdate).toHaveBeenCalledWith({
       where: { id: "st_1" },
       data: { demoTenantId: "demo-tenant-new" },
-    })
-    // chatgpt.md P0: without this, createContentEntry's resolveWriteLocale
-    // falls back to "en" (no TenantLocale enabled for the tenant) while
-    // every public read path defaults to "id" — a locale mismatch that
-    // made every seeded sample entry invisible through the demo API.
-    expect(tenantLocaleCreate).toHaveBeenCalledWith({
-      data: { tenantId: "demo-tenant-new", locale: "id", name: "Bahasa Indonesia", isDefault: true, isEnabled: true },
     })
   })
 
@@ -284,13 +274,13 @@ describe("ensureDemoTenantForSchemaTemplate", () => {
 
     // chatgpt.md P0: materializeSchemaIntoTenant's own `tenants: { create:
     // { tenantId } }` already inserts a TenantSingleTypeAssignment row for
-    // this exact [tenantId, singleTypeId, locale] key — a plain `.create()`
+    // this exact [tenantId, singleTypeId] key — a plain `.create()`
     // here threw P2002 (silently swallowed), so the real sample data/
     // publishedAt never actually landed and the demo API 404'd as "not
     // published". upsert fixes it regardless of which call ran first.
     expect(tenantSingleTypeAssignmentUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { tenantId_singleTypeId_locale: { tenantId: "demo-tenant-new", singleTypeId: "st_home", locale: "id" } },
+        where: { tenantId_singleTypeId: { tenantId: "demo-tenant-new", singleTypeId: "st_home" } },
         create: expect.objectContaining({ singleTypeId: "st_home", enabled: true, data: { headline: expect.any(String) }, publishedAt: expect.any(Date) }),
         update: expect.objectContaining({ enabled: true, data: { headline: expect.any(String) }, publishedAt: expect.any(Date) }),
       }),

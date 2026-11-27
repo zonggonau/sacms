@@ -3,7 +3,7 @@
 // long instructions mid-sentence, so the full workflow lives in get_builder_guide.
 // Bump GLOBAL_MCP_VERSION whenever a tool or a rule here changes.
 
-export const GLOBAL_MCP_VERSION = "1.21.0"
+export const GLOBAL_MCP_VERSION = "2.0.0"
 
 export const GLOBAL_MCP_INSTRUCTIONS =
       "This server manages SaCMS's platform-wide template catalog ONLY — Schema Templates and Website " +

@@ -223,7 +223,6 @@ export const cms = new SaCMS({
   baseUrl: '${origin}',
   tenant: '${tenantSlug}',
   token: process.env.SACMS_API_KEY || 'cf_your_api_key_here',
-  locale: 'id',
 })`} 
               />
             </CardContent>

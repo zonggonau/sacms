@@ -23,7 +23,6 @@ class SaCMS {
         this.baseUrl = config.baseUrl.replace(/\/+$/, "");
         this.tenant = config.tenant;
         this.token = config.token ?? "";
-        this.defaultLocale = config.locale ?? "id";
         // Sixth external audit: unset before, a hung connection to the server
         // could block a page's render indefinitely — 15s is generous enough
         // not to false-positive on a slow connection, short enough to not
@@ -180,10 +179,6 @@ class SaCMS {
         throw new SaCMSError("Max retries reached", 429);
     }
     /** @internal */
-    getDefaultLocale() {
-        return this.defaultLocale;
-    }
-    /** @internal */
     getTenant() {
         return this.tenant;
     }
@@ -204,18 +199,15 @@ class CollectionClient {
      * Query multiple entries with filtering, sorting, pagination, and field selection.
      */
     async findMany(params, extras) {
-        const qs = buildQueryString(params, this.cf.getDefaultLocale());
+        const qs = buildQueryString(params);
         return this.cf.request(`/api/public/${this.cf.getTenant()}/content/${this.slug}${qs}`, {}, extras);
     }
     /**
-     * Get a single entry by ID. Pass `populate`/`locale` the same way you
+     * Get a single entry by ID. Pass `populate` the same way you
      * would to `findMany` — omitted, a relation field comes back as a raw id.
      */
     async findOne(id, params, extras) {
         const qsParts = [];
-        const locale = params?.locale ?? this.cf.getDefaultLocale();
-        if (locale)
-            qsParts.push(`locale=${encodeURIComponent(locale)}`);
         if (params?.populate) {
             const populateValue = params.populate === "*" ? "*" : params.populate.map(encodeURIComponent).join(",");
             qsParts.push(`populate=${populateValue}`);
@@ -231,7 +223,6 @@ class CollectionClient {
             method: "POST",
             body: JSON.stringify({
                 data: params.data,
-                locale: params.locale ?? this.cf.getDefaultLocale(),
                 status: params.status,
             }),
         }, extras);
@@ -244,7 +235,6 @@ class CollectionClient {
             method: "PUT",
             body: JSON.stringify({
                 data: params.data,
-                locale: params.locale ?? this.cf.getDefaultLocale(),
                 status: params.status,
             }),
         }, extras);
@@ -264,10 +254,8 @@ class SingleClient {
     /**
      * Get the single type content.
      */
-    async find(params, extras) {
-        const locale = params?.locale ?? this.cf.getDefaultLocale();
-        const qs = locale ? `?locale=${encodeURIComponent(locale)}` : "";
-        return this.cf.request(`/api/public/${this.cf.getTenant()}/single/${this.slug}${qs}`, {}, extras);
+    async find(extras) {
+        return this.cf.request(`/api/public/${this.cf.getTenant()}/single/${this.slug}`, {}, extras);
     }
     /**
      * Update the single type content (requires full-access token).
@@ -333,13 +321,6 @@ class QueryBuilder {
         return this;
     }
     /**
-     * Target a specific locale. E.g. .locale('id') or .locale('en')
-     */
-    locale(loc) {
-        this.params.locale = loc;
-        return this;
-    }
-    /**
      * Filter by status. E.g. .status('PUBLISHED') or .status('DRAFT')
      */
     status(st) {
@@ -393,7 +374,7 @@ function parseRetryAfterMs(header) {
         return Math.max(0, dateMs - Date.now());
     return null;
 }
-function buildQueryString(params, defaultLocale) {
+function buildQueryString(params) {
     if (!params)
         return "";
     const parts = [];
@@ -413,10 +394,6 @@ function buildQueryString(params, defaultLocale) {
     }
     else if (params.populate?.length) {
         parts.push(`populate=${params.populate.map(encodeURIComponent).join(",")}`);
-    }
-    const locale = params.locale ?? defaultLocale;
-    if (locale) {
-        parts.push(`locale=${encodeURIComponent(locale)}`);
     }
     if (params.sort) {
         parts.push(`sort=${encodeURIComponent(params.sort)}`);

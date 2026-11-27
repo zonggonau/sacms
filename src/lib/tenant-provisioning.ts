@@ -109,15 +109,6 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
         })
       }
       
-      // Sync all global locales to the dedicated DB to ensure localized fields work
-      const globalLocales = await db.tenantLocale.findMany({ where: { tenantId } })
-      for (const loc of globalLocales) {
-        await tenantDb.tenantLocale.upsert({
-          where: { tenantId_locale: { tenantId, locale: loc.locale } },
-          update: { name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled },
-          create: { tenantId, locale: loc.locale, name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled }
-        })
-      }
     }
 
     // 2. Generate Architecture (DB Template or Starter Kit)
@@ -329,10 +320,9 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
 
           await tx.tenantSingleTypeAssignment.upsert({
             where: {
-              tenantId_singleTypeId_locale: {
+              tenantId_singleTypeId: {
                 tenantId,
-                singleTypeId: singleType.id,
-                locale: "id"
+                singleTypeId: singleType.id
               }
             },
             update: { enabled: true },

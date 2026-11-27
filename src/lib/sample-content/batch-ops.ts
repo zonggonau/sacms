@@ -36,7 +36,6 @@ export function parseRecord(raw: string): SeedRecord | null {
 
 export interface BatchSummary {
   batchId: string
-  locale: string | null
   createdAt: string | null
   complete: boolean
   cleared: boolean
@@ -53,7 +52,6 @@ export function summarizeBatch(batchId: string, record: SeedRecord): BatchSummar
   }
   return {
     batchId,
-    locale: record.locale ?? null,
     createdAt: record.createdAt ?? null,
     complete: record.complete,
     cleared: record.cleared === true,
@@ -84,11 +82,11 @@ export function clearTargets(record: SeedRecord): ClearTargets {
 
 export interface VerifyAdapters {
   /** The entry as stored, or null when it does not exist or was deleted. */
-  entry(contentType: string, id: string): Promise<{ status: string; locale: string } | null>
-  /** Ids the public content API returns for this Content Type and locale (PUBLISHED only). */
-  publicIds(contentType: string, locale: string): Promise<Set<string>>
-  /** Whether the Single Type's content for this locale is published, or null when absent. */
-  single(slug: string, locale: string): Promise<{ published: boolean } | null>
+  entry(contentType: string, id: string): Promise<{ status: string } | null>
+  /** Ids the public content API returns for this Content Type (PUBLISHED only). */
+  publicIds(contentType: string): Promise<Set<string>>
+  /** Whether the Single Type's content is published, or null when absent. */
+  single(slug: string): Promise<{ published: boolean } | null>
 }
 
 export interface VerifyCheck {
@@ -101,45 +99,39 @@ export interface VerifyCheck {
 
 export interface VerifyReport {
   ok: boolean
-  locale: string
   checks: VerifyCheck[]
   /** Entries that exist but are not public yet (DRAFT, IN_REVIEW, ...). Not a failure. */
   notPublic: number
 }
 
 /**
- * Reads every recorded entry back and checks it is in the batch's locale.
+ * Reads every recorded entry back and checks it still exists.
  * Anything PUBLISHED must also appear in the public content API, which is what
  * the website reads. Drafts are reported as not public, not as failures.
  */
 export async function verifyBatch(record: SeedRecord, adapters: VerifyAdapters): Promise<VerifyReport> {
-  const locale = record.locale ?? "id"
   const checks: VerifyCheck[] = []
   let notPublic = 0
 
   for (const [key, ids] of Object.entries(record.ids)) {
     if (key.startsWith("single:")) {
       const slug = key.slice("single:".length)
-      const single = await adapters.single(slug, locale)
+      const single = await adapters.single(slug)
       checks.push({
         kind: "single",
         target: slug,
         ok: single !== null,
-        detail: single === null ? "content for this locale is missing" : single.published ? "published and readable" : "saved as draft, not public",
+        detail: single === null ? "content is missing" : single.published ? "published and readable" : "saved as draft, not public",
       })
       if (single && !single.published) notPublic++
       continue
     }
 
-    const publicIds = await adapters.publicIds(key, locale)
+    const publicIds = await adapters.publicIds(key)
     for (const id of ids) {
       const entry = await adapters.entry(key, id)
       if (!entry) {
         checks.push({ kind: "collection", target: key, id, ok: false, detail: "entry is missing or deleted" })
-        continue
-      }
-      if (entry.locale !== locale) {
-        checks.push({ kind: "collection", target: key, id, ok: false, detail: `locale is ${entry.locale}, expected ${locale}` })
         continue
       }
       if (entry.status === "PUBLISHED") {
@@ -158,6 +150,6 @@ export async function verifyBatch(record: SeedRecord, adapters: VerifyAdapters):
     }
   }
 
-  return { ok: checks.every((c) => c.ok), locale, checks, notPublic }
+  return { ok: checks.every((c) => c.ok), checks, notPublic }
 }
 

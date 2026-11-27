@@ -75,7 +75,7 @@ export const FIELD_TYPE_GUIDE: Record<string, FieldTypeGuideEntry> = {
     exampleOptions: { relationType: "oneToMany" },
     relationSlug: "string — target Content Type/Single Type slug, e.g. 'categories'. Omit relationSlug and set options.targetModel: 'member' instead to relate to this tenant's own end-user Members table (a real, separate capability, easy to miss).",
     entryValue:
-      "RAW (default): just the related record's id string (or an array of id strings for a *-to-many) — e.g. { \"category\": \"cmt8x...\" }. POPULATED: the public content API only expands a relation when the request explicitly asks for it — add `?populate=<fieldSlug>` (or `?populate=*` for every relation field on that Content Type) to the URL. A populated field then becomes the related record's own fields spread flat alongside its id, e.g. { \"category\": { \"id\": \"cmt8x...\", \"name\": \"Kopi\", \"slug\": \"kopi\", \"locale\": \"id\", \"status\": \"PUBLISHED\" } } — NOT Strapi's { data: { id, attributes: {...} } } wrapper, this project's shape is flat. A *-to-many populated relation is an array of these same flat objects. A relation with options.targetModel: 'member' resolves from the Members table instead. Public and member callers get only { id, name, avatar }; an API token gets { id, name, email, avatar, role, status, createdAt }. Never a password hash or other credential material. A relation whose target the caller cannot read (no find permission on that Content Type) is not expanded: it stays the raw id.",
+      "RAW (default): just the related record's id string (or an array of id strings for a *-to-many) — e.g. { \"category\": \"cmt8x...\" }. POPULATED: the public content API only expands a relation when the request explicitly asks for it — add `?populate=<fieldSlug>` (or `?populate=*` for every relation field on that Content Type) to the URL. A populated field then becomes the related record's own fields spread flat alongside its id, e.g. { \"category\": { \"id\": \"cmt8x...\", \"name\": \"Kopi\", \"slug\": \"kopi\", \"status\": \"PUBLISHED\" } } — NOT Strapi's { data: { id, attributes: {...} } } wrapper, this project's shape is flat. A *-to-many populated relation is an array of these same flat objects. A relation with options.targetModel: 'member' resolves from the Members table instead. Public and member callers get only { id, name, avatar }; an API token gets { id, name, email, avatar, role, status, createdAt }. Never a password hash or other credential material. A relation whose target the caller cannot read (no find permission on that Content Type) is not expanded: it stays the raw id.",
   },
   component: {
     options: "{ componentSlug: string, repeatable?: boolean }",
@@ -137,9 +137,7 @@ export const CONTENT_API_CONTRACT_EXAMPLES = {
           title: "Kopi Terbaik di Nabire",
           slug: "kopi-terbaik-di-nabire",
           cover: "https://sacms.cloud/api/public/media?key=acme-coffee/cover.jpg",
-          category: { id: "cmt8xcat01", name: "Kopi", slug: "kopi", locale: "id", status: "PUBLISHED" },
-          locale: "id",
-          availableLocales: ["id"],
+          category: { id: "cmt8xcat01", name: "Kopi", slug: "kopi", status: "PUBLISHED" },
           status: "PUBLISHED",
           publishedAt: "2026-10-01T03:00:00.000Z",
           createdAt: "2026-10-01T03:00:00.000Z",
@@ -152,8 +150,8 @@ export const CONTENT_API_CONTRACT_EXAMPLES = {
   },
   singleEntry: {
     request: "GET /api/public/acme-coffee/content/articles/doc_abc123",
-    response: { data: { id: "cmt8xabc123", documentId: "doc_abc123", title: "Kopi Terbaik di Nabire", slug: "kopi-terbaik-di-nabire", locale: "id", availableLocales: ["id"], status: "PUBLISHED", publishedAt: "2026-10-01T03:00:00.000Z", createdAt: "2026-10-01T03:00:00.000Z", updatedAt: "2026-10-01T03:00:00.000Z" }, meta: { contentType: { name: "Articles", slug: "articles" } } },
-    note: "Addressable by either the row id OR documentId (the locale-stable id that stays the same across that same document's translations).",
+    response: { data: { id: "cmt8xabc123", documentId: "doc_abc123", title: "Kopi Terbaik di Nabire", slug: "kopi-terbaik-di-nabire", status: "PUBLISHED", publishedAt: "2026-10-01T03:00:00.000Z", createdAt: "2026-10-01T03:00:00.000Z", updatedAt: "2026-10-01T03:00:00.000Z" }, meta: { contentType: { name: "Articles", slug: "articles" } } },
+    note: "Addressable by either the row id OR documentId (a stable id for the document).",
   },
   filtering: {
     request: "GET /api/public/acme-coffee/content/articles?filters[category][$eq]=kopi&filters[$or][0][title][$contains]=nabire&filters[$or][1][title][$contains]=papua&filters[tags][$in][0]=kopi&filters[tags][$in][1]=teh",

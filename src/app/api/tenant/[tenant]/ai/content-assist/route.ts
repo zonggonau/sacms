@@ -6,29 +6,26 @@ import { isStudioFieldEnabled } from "@/lib/field-visibility"
 import { aiFormContextSchema, aiFormTargetSchema, filterAiContext, isAiQuotaError, loadAiFormSchema, normalizeGeneratedField } from "@/lib/content/ai-form-schema"
 
 const assistSchema = z.object({
-  action: z.enum(["generate", "improve", "summarize", "translate", "seo"]),
+  action: z.enum(["generate", "improve", "summarize", "seo"]),
   form: aiFormTargetSchema.optional(),
   fieldSlug: z.string().max(128).optional(),
   prompt: z.string().trim().max(4000).optional(),
   content: z.string().max(24000).optional(),
   context: aiFormContextSchema.default({}),
-  locale: z.string().min(2).max(30).default("id"),
   tone: z.string().max(100).optional(),
-  targetLanguage: z.string().min(1).max(100).optional(),
 })
 
 const instructions = {
   generate: "Write a draft based on the supplied source and brief.",
   improve: "Improve clarity and grammar. Preserve names, facts and meaning.",
   summarize: "Summarize the provided text while preserving its key facts.",
-  translate: "Translate the provided text. Preserve meaning, names and formatting.",
   seo: "Suggest concise and accurate search metadata using the supplied source.",
 }
 
 export const POST = withStaffAuth(async (request, _context, { access }) => {
   const parsed = await readJson(request, assistSchema)
   if (!parsed.ok) return parsed.response
-  const { action, form, fieldSlug, locale, tone, targetLanguage, prompt, content } = parsed.data
+  const { action, form, fieldSlug, tone, prompt, content } = parsed.data
   const definition = form ? await loadAiFormSchema(form, access) : null
   if (form && !definition) return apiError("not_found", { message: "Formulir tidak tersedia untuk AI Assist." })
 
@@ -46,10 +43,9 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
   if (
     (action === "generate" && !prompt && Object.keys(context).length === 0) ||
     (action !== "generate" && action !== "seo" && !hasContent) ||
-    (action === "seo" && !hasContent && (polishOnly || (!prompt && Object.keys(context).length === 0))) ||
-    (action === "translate" && !targetLanguage)
+    (action === "seo" && !hasContent && (polishOnly || (!prompt && Object.keys(context).length === 0)))
   ) {
-    return apiError("validation", { message: "Isi teks, informasi sumber, atau bahasa tujuan yang dibutuhkan terlebih dahulu." })
+    return apiError("validation", { message: "Isi teks atau informasi sumber terlebih dahulu." })
   }
 
   const titleAlternatives = field?.type === "text" && action === "generate"
@@ -57,7 +53,7 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
   const rule = polishOnly
     ? "Only refine existing wording in its original language. Do not add information."
     : "Use only supplied facts. Do not invent prices, dates, places, names, certification, or other claims."
-  const languageRule = action === "translate" ? "Use the specified targetLanguage." : "Use the specified locale unless polishing existing wording."
+  const languageRule = "Write in the language of the brief and the existing content unless polishing existing wording."
   const format = seo
     ? field
       ? 'Return JSON with "meta_title" (max 60 chars) and "meta_description" (max 160 chars).'
@@ -72,7 +68,7 @@ export const POST = withStaffAuth(async (request, _context, { access }) => {
     const { safeGenerateContent } = await import("@/lib/ai")
     const result = await safeGenerateContent(
       [instructions[action], rule, languageRule, format].join(" "),
-      JSON.stringify({ field: field?.name, locale, tone, targetLanguage, prompt: polishOnly ? undefined : prompt, content, context: polishOnly ? undefined : context }),
+      JSON.stringify({ field: field?.name, tone, prompt: polishOnly ? undefined : prompt, content, context: polishOnly ? undefined : context }),
       {
         tenantId: access.tenantId,
         action: "content_assist_" + action,

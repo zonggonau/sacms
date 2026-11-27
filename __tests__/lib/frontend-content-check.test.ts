@@ -35,19 +35,6 @@ describe("checkFrontendSource", () => {
     expect(codes([f])).toContain("UNKNOWN_SINGLE_TYPE")
   })
 
-  it("flags a content request with no locale anywhere near it", () => {
-    const f: CheckFile = { name: "app/menu.tsx", content: `const r = await fetch("/api/public/acme/content/menu"); if (!r.ok) return []` }
-    expect(codes([f])).toContain("LOCALE_NOT_SET")
-  })
-
-  it("accepts a locale set in the options a few lines below the URL", () => {
-    const f: CheckFile = {
-      name: "app/menu.tsx",
-      content: `const r = await fetch(\n  "/api/public/acme/content/menu",\n  { headers: {} }\n)\nconst u = "?locale=id"\nif (!r.ok) return []`,
-    }
-    expect(codes([f])).not.toContain("LOCALE_NOT_SET")
-  })
-
   it("flags a fetch whose HTTP status is never checked", () => {
     const f: CheckFile = { name: "app/menu.tsx", content: `const data = await (await fetch("/api/public/acme/content/menu?locale=id")).json()` }
     expect(codes([f])).toContain("HTTP_STATUS_UNCHECKED")

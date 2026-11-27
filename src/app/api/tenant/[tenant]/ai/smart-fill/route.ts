@@ -9,7 +9,6 @@ const smartFillSchema = z.object({
   fieldSlugs: z.array(z.string().min(1).max(128)).min(1).max(64),
   prompt: z.string().trim().max(4000).default(""),
   context: aiFormContextSchema.default({}),
-  locale: z.string().min(2).max(30).default("id"),
 })
 
 const factsRule = "Use only facts explicitly supplied in the brief or the existing content. Never invent prices, dates, places, provenance, names or certification. Omit a field if there is insufficient information."
@@ -17,7 +16,7 @@ const factsRule = "Use only facts explicitly supplied in the brief or the existi
 export const POST = withStaffAuth(async (request, _context, { access, session }) => {
   const parsed = await readJson(request, smartFillSchema)
   if (!parsed.ok) return parsed.response
-  const { form, fieldSlugs, prompt, locale } = parsed.data
+  const { form, fieldSlugs, prompt } = parsed.data
   const definition = await loadAiFormSchema(form, access)
   if (!definition) return apiError("not_found", { message: "Formulir tidak tersedia untuk Smart Fill." })
 
@@ -44,8 +43,8 @@ export const POST = withStaffAuth(async (request, _context, { access, session })
     }))
     const result = await safeGenerateContent(
       "You assist a human CMS editor. Return a JSON object with only the requested field slugs as keys. " + factsRule +
-        " Keep existing editorial tone. Use the requested locale. Do not include external links or embedded media.",
-      JSON.stringify({ model: definition.name, locale, fields: fieldsGuide, source: context, brief: prompt }),
+        " Keep existing editorial tone. Write in the language of the brief and the existing content. Do not include external links or embedded media.",
+      JSON.stringify({ model: definition.name, fields: fieldsGuide, source: context, brief: prompt }),
       {
         tenantId: access.tenantId,
         userId: session.user.id,

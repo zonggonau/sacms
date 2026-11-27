@@ -66,7 +66,6 @@ export default function AdminTenantsPage() {
     maxContentEntries: "",
     maxTeamMembers: "",
     maxStorage: "",
-    maxLocales: "",
     maxApiCalls: "",
     note: ""
   })
@@ -190,7 +189,6 @@ export default function AdminTenantsPage() {
           maxContentEntries: toNullableInt(overrideFormData.maxContentEntries),
           maxTeamMembers: toNullableInt(overrideFormData.maxTeamMembers),
           maxStorage: toNullableInt(overrideFormData.maxStorage),
-          maxLocales: toNullableInt(overrideFormData.maxLocales),
           maxApiCalls: toNullableInt(overrideFormData.maxApiCalls),
           note: overrideFormData.note.trim() === "" ? null : overrideFormData.note,
         }),
@@ -235,7 +233,6 @@ export default function AdminTenantsPage() {
       maxContentEntries: "",
       maxTeamMembers: "",
       maxStorage: "",
-      maxLocales: "",
       maxApiCalls: "",
       note: ""
     })
@@ -252,7 +249,6 @@ export default function AdminTenantsPage() {
             maxContentEntries: data.override.maxContentEntries?.toString() || "",
             maxTeamMembers: data.override.maxTeamMembers?.toString() || "",
             maxStorage: data.override.maxStorage?.toString() || "",
-            maxLocales: data.override.maxLocales?.toString() || "",
             maxApiCalls: data.override.maxApiCalls?.toString() || "",
             note: data.override.note || ""
           })

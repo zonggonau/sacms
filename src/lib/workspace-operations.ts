@@ -43,7 +43,7 @@ export async function getWorkspaceJobs(tenantId: string) {
     tenantDb.contentEntry.count({ where: scheduledWhere }),
     tenantDb.contentEntry.findMany({
       where: scheduledWhere,
-      select: { id: true, scheduledAt: true, locale: true, contentType: { select: { name: true, slug: true } } },
+      select: { id: true, scheduledAt: true, contentType: { select: { name: true, slug: true } } },
       orderBy: [{ scheduledAt: "asc" }, { id: "asc" }],
       take: 20,
     }),

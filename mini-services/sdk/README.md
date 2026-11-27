@@ -28,7 +28,6 @@ const sacms = new SaCMS({
   baseUrl: "https://your-sacms-instance.com", // or http://localhost:3000
   tenant: "agency-client-1",                   // Workspace slug or ID
   token: "cf_live_xxxxxxxxxxxx",               // Read-only or Full-Access API Token
-  locale: "id",                                // Default locale (e.g. 'id', 'en')
 });
 
 // Fetch published articles
@@ -57,7 +56,6 @@ const result = await sacms
   .populate(["author", "tags"])
   .sort("publishedAt:desc")
   .search("microservices")
-  .locale("id")
   .status("PUBLISHED")
   .page(1)
   .limit(20)
@@ -81,11 +79,10 @@ const posts = await sacms.collection("posts").findMany({
   populate: ["author"],
 });
 
-// 2. Fetch single entry by ID — pass populate/locale the same way findMany
+// 2. Fetch single entry by ID — pass populate the same way findMany
 // takes them; omitted, a relation field comes back as a raw id.
 const post = await sacms.collection("posts").findOne("entry_cuid_123", {
   populate: ["author"],
-  locale: "id",
 });
 
 // 3. Create entry (Requires Full-Access API Token)
@@ -99,7 +96,6 @@ const created = await sacms.collection("posts").create({
     slug: "scaling-nextjs",
     content: "<p>Deep dive into architecture...</p>",
   },
-  locale: "id",
 });
 
 // 4. Update entry
@@ -115,7 +111,7 @@ await sacms.collection("posts").delete("entry_cuid_123");
 
 ```typescript
 // Fetch single type data
-const siteSettings = await sacms.single("site_settings").find({ locale: "id" });
+const siteSettings = await sacms.single("site_settings").find();
 console.log(siteSettings.data.siteName);
 console.log(siteSettings.data.logoUrl);
 

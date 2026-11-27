@@ -25,7 +25,6 @@ const mocks = vi.hoisted(() => {
     transaction: vi.fn(),
     materialize: vi.fn(),
     serialize: vi.fn(),
-    resolveWriteLocale: vi.fn(),
     createContentEntry: vi.fn(),
     updateContentEntry: vi.fn(),
     uploadTenantMedia: vi.fn(),
@@ -71,7 +70,6 @@ vi.mock("@/lib/database", () => ({
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn().mockResolvedValue({ success: true }) }))
 vi.mock("@/lib/schema-wipe", () => ({ wipeTenantSchema: vi.fn() }))
 vi.mock("@/lib/content/entry-service", () => ({
-  resolveWriteLocale: mocks.resolveWriteLocale,
   createContentEntry: mocks.createContentEntry, updateContentEntry: mocks.updateContentEntry,
 }))
 vi.mock("@/lib/cache", () => ({ invalidatePattern: mocks.invalidatePattern }))
@@ -101,7 +99,7 @@ const stored = {
   id: "template-1", name: "Contoh", slug: "contoh", category: "Website", icon: "📦", description: null,
   schema: starter, demoTenantId: workspace.id, isDefault: false, published: false, createdAt: version, updatedAt: version, sourceVersion: version,
 }
-const singleInput = { schemaTemplateId: stored.id, singleTypeSlug: "site-settings", locale: "id" }
+const singleInput = { schemaTemplateId: stored.id, singleTypeSlug: "site-settings" }
 const demoSingle = {
   id: "st-settings", name: "Site Settings", slug: "site-settings", isPublished: true,
   schemaFields: [
@@ -111,7 +109,7 @@ const demoSingle = {
   ],
 }
 const assignment = {
-  id: "assignment-1", locale: "id", enabled: true, updatedAt: version, publishedAt: version,
+  id: "assignment-1", enabled: true, updatedAt: version, publishedAt: version,
   data: { title: "Kopi Demo" }, draftData: null,
 }
 
@@ -151,7 +149,6 @@ describe("Global MCP starter schema and demo workspace", () => {
     mocks.tx.singleType.findFirst.mockResolvedValue(demoSingle)
     mocks.tx.tenantSingleTypeAssignment.findUnique.mockResolvedValue(assignment)
     mocks.tx.media.findFirst.mockResolvedValue(null)
-    mocks.resolveWriteLocale.mockResolvedValue({ ok: true, data: "id" })
     mocks.materialize.mockResolvedValue({ imported: 7 })
   })
 
@@ -254,18 +251,18 @@ describe("Global MCP starter schema and demo workspace", () => {
     expect(mocks.transaction).not.toHaveBeenCalled()
   })
 
-  it("reads exact locale and distinguishes empty entries, pending drafts and public values", async () => {
+  it("reads the saved state and distinguishes empty entries, pending drafts and public values", async () => {
     mocks.tx.tenantSingleTypeAssignment.findUnique
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce({ ...assignment, draftData: { title: "Belum terbit" } })
     const empty = await call("get_demo_single_type_entry", singleInput)
-    expect(empty.structuredContent).toMatchObject({ status: "empty", data: {}, publishedData: null, locale: "id" })
+    expect(empty.structuredContent).toMatchObject({ status: "empty", data: {}, publishedData: null })
     const saved = await call("get_demo_single_type_entry", singleInput)
     expect(saved.structuredContent).toMatchObject({
       status: "published", hasPendingDraft: true, data: { title: "Belum terbit" }, publishedData: { title: "Kopi Demo" },
     })
     expect(mocks.tx.tenantSingleTypeAssignment.findUnique).toHaveBeenCalledWith({
-      where: { tenantId_singleTypeId_locale: { tenantId: workspace.id, singleTypeId: "st-settings", locale: "id" } },
+      where: { tenantId_singleTypeId: { tenantId: workspace.id, singleTypeId: "st-settings" } },
     })
   })
 
@@ -307,19 +304,19 @@ describe("Global MCP starter schema and demo workspace", () => {
   it("uses the ordinary entry service to create demo collection drafts and rejects IDs outside the resolved collection", async () => {
     mocks.tx.contentType.findFirst.mockResolvedValue({ id: "ct-posts", slug: "posts", schemaFields: [{ ...field, required: false }] })
     mocks.createContentEntry.mockResolvedValue({
-      ok: true, data: { id: "new-post", data: { title: "Contoh" }, status: "DRAFT", locale: "id", updatedAt: version, publishedAt: null },
+      ok: true, data: { id: "new-post", data: { title: "Contoh" }, status: "DRAFT", updatedAt: version, publishedAt: null },
     })
-    const input = { schemaTemplateId: stored.id, contentTypeSlug: "posts", locale: "id", data: { title: "Contoh" } }
+    const input = { schemaTemplateId: stored.id, contentTypeSlug: "posts", data: { title: "Contoh" } }
     const created = await call("save_demo_content_entry", input)
-    expect(created.structuredContent.entry).toMatchObject({ id: "new-post", status: "DRAFT", locale: "id" })
+    expect(created.structuredContent.entry).toMatchObject({ id: "new-post", status: "DRAFT" })
     expect(mocks.createContentEntry).toHaveBeenCalledWith(expect.objectContaining({ tenantId: workspace.id }), { kind: "system" }, {
-      contentTypeSlug: "posts", locale: "id", status: "DRAFT", data: { title: "Contoh" },
+      contentTypeSlug: "posts", status: "DRAFT", data: { title: "Contoh" },
     })
 
     const refused = await call("save_demo_content_entry", { ...input, entryId: "external-entry" })
     expect(refused.structuredContent.code).toBe("NOT_FOUND")
     expect(mocks.tx.contentEntry.findFirst).toHaveBeenCalledWith({
-      where: { id: "external-entry", tenantId: workspace.id, contentTypeId: "ct-posts", locale: "id", deletedAt: null },
+      where: { id: "external-entry", tenantId: workspace.id, contentTypeId: "ct-posts", deletedAt: null },
     })
     expect(mocks.updateContentEntry).not.toHaveBeenCalled()
   })

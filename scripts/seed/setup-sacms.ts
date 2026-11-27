@@ -132,7 +132,6 @@ async function main() {
       { name: "Max Team Members", slug: "max_team_members", type: "integer", order: 7 },
       { name: "Max API Calls", slug: "max_api_calls", type: "integer", order: 8 },
       { name: "Max Storage MB", slug: "max_storage", type: "integer", order: 9 },
-      { name: "Max Locales", slug: "max_locales", type: "integer", order: 10 },
       { name: "Audit Log Retention", slug: "audit_log_retention", type: "integer", order: 11 },
       { name: "Support Level", slug: "support_level", type: "text", order: 12 },
       { name: "Is Popular", slug: "is_popular", type: "boolean", order: 13 },
@@ -346,17 +345,17 @@ async function main() {
     { 
       name: "Standard", plan_slug: "starter", price: "499.000", description: "Solusi workspace untuk tim kecil dan organisasi lokal.", 
       features_list: ["5 Content Schemas", "5.000 Content Entries", "3 Team Members", "10.000 API Calls / bulan", "1 GB Media Storage", "Email Support"], 
-      max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_api_calls: 10000, max_storage: 1024, max_locales: 2, audit_log_retention: 0, support_level: "Email Support", is_popular: false, button_text: "Mulai Trial 7 Hari" 
+      max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_api_calls: 10000, max_storage: 1024, audit_log_retention: 0, support_level: "Email Support", is_popular: false, button_text: "Mulai Trial 7 Hari" 
     },
     { 
       name: "Business", plan_slug: "pro", price: "1.499.000", description: "Tier pro untuk instansi dengan trafik konten menengah.", 
       features_list: ["10 Content Schemas", "10.000 Content Entries", "10 Team Members", "100.000 API Calls / bulan", "5 GB Media Storage", "Advanced Workflow", "Audit Logs (30 Days)", "Priority Support"], 
-      max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_api_calls: 100000, max_storage: 5120, max_locales: 5, audit_log_retention: 30, support_level: "Priority Support", is_popular: true, button_text: "Mulai Trial 7 Hari" 
+      max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_api_calls: 100000, max_storage: 5120, audit_log_retention: 30, support_level: "Priority Support", is_popular: true, button_text: "Mulai Trial 7 Hari" 
     },
     { 
       name: "Enterprise", plan_slug: "enterprise", price: "2.499.000", description: "Performa maksimal untuk infrastruktur skala besar.", 
       features_list: ["20 Content Schemas", "20.000 Content Entries", "20 Team Members", "1.000.000 API Calls / bulan", "10 GB Media Storage", "Custom Roles (RBAC)", "Audit Logs (365 Days)", "24/7 Dedicated Support"], 
-      max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_api_calls: 1000000, max_storage: 10240, max_locales: 20, audit_log_retention: 365, support_level: "24/7 Dedicated Support", is_popular: false, button_text: "Mulai Trial 7 Hari" 
+      max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_api_calls: 1000000, max_storage: 10240, audit_log_retention: 365, support_level: "24/7 Dedicated Support", is_popular: false, button_text: "Mulai Trial 7 Hari" 
     },
   ]
 

@@ -39,7 +39,7 @@ describe("CMS entry import and export", () => {
   })
 
   it("excludes entries in Trash and exports the document grouping", async () => {
-    findEntries.mockResolvedValueOnce([{ id: "entry1", documentId: "document1", locale: "id", data: { title: "Kopi" } }])
+    findEntries.mockResolvedValueOnce([{ id: "entry1", documentId: "document1", data: { title: "Kopi" } }])
     const response = await GET(new NextRequest(`${url}/export`), context)
 
     expect(response.status).toBe(200)
@@ -48,31 +48,33 @@ describe("CMS entry import and export", () => {
     }))
     expect(await response.json()).toMatchObject({
       count: 1,
-      entries: [{ sourceId: "entry1", documentId: "document1", locale: "id" }],
+      entries: [{ sourceId: "entry1", documentId: "document1" }],
     })
   })
 
-  it("groups translated rows under the new destination ID and keeps new entries as drafts", async () => {
+  it("imports each row as its own DRAFT entry and reports rows that fail", async () => {
     createEntry
-      .mockResolvedValueOnce({ ok: true, data: { id: "destination-id", locale: "id" } })
-      .mockResolvedValueOnce({ ok: true, data: { id: "translated-id", locale: "en" } })
+      .mockResolvedValueOnce({ ok: true, data: { id: "destination-id" } })
+      .mockResolvedValueOnce({ ok: true, data: { id: "second-id" } })
+      .mockResolvedValueOnce({ ok: false, message: "duplicate" })
 
     const response = await POST(new NextRequest(`${url}/import`, {
       method: "POST",
       body: JSON.stringify({
         entries: [
-          { documentId: "origin-id", locale: "id", status: "PUBLISHED", data: { title: "Kopi" } },
-          { documentId: "origin-id", locale: "en", status: "PUBLISHED", data: { title: "Coffee" } },
-          { documentId: "origin-id", locale: "id", data: { title: "Duplikat" } },
+          { documentId: "origin-id", status: "PUBLISHED", data: { title: "Kopi" } },
+          { documentId: "origin-id", status: "PUBLISHED", data: { title: "Coffee" } },
+          { documentId: "origin-id", data: { title: "Duplikat" } },
         ],
       }),
     }), context)
 
     expect(response.status).toBe(200)
-    expect(createEntry).toHaveBeenCalledTimes(2)
+    expect(createEntry).toHaveBeenCalledTimes(3)
     expect(createEntry.mock.calls.map(([, , input]) => input)).toMatchObject([
-      { locale: "id", status: "DRAFT", importDocumentId: undefined },
-      { locale: "en", status: "DRAFT", importDocumentId: "destination-id" },
+      { status: "DRAFT" },
+      { status: "DRAFT" },
+      { status: "DRAFT" },
     ])
     expect(await response.json()).toMatchObject({ imported: 2, failed: 1, failures: [{ index: 2 }] })
   })

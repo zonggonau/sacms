@@ -200,7 +200,6 @@ model Tenant {
   subscriptions                   Subscription[]
   componentAssignments            TenantComponentAssignment[]
   contentTypeAssignments          TenantContentTypeAssignment[]
-  locales                         TenantLocale[]
   members                         TenantMember[]
   singleTypeAssignments           TenantSingleTypeAssignment[]
   webhooks                        Webhook[]
@@ -241,7 +240,6 @@ model CustomPlanOverride {
   maxContentEntries Int?
   maxTeamMembers    Int?
   maxStorage        Int?
-  maxLocales        Int?
   maxApiCalls       Int?
   maxAiTokens       Int?
   maxAiCredits      Int?
@@ -384,7 +382,6 @@ model ContentEntry {
   updatedAt         DateTime                  @updatedAt
   archivedAt        DateTime?
   deletedAt         DateTime?
-  locale            String                    @default("id")
   reviewComment     String?
   scheduledAt       DateTime?
   status            ContentStatus             @default(DRAFT)
@@ -398,7 +395,6 @@ model ContentEntry {
 
   @@index([documentId])
   @@index([tenantId, contentTypeId, status])
-  @@index([tenantId, locale])
   @@index([status, scheduledAt])
   @@index([tenantId, status])
   @@index([tenantId, contentTypeId, deletedAt])
@@ -471,14 +467,13 @@ model TenantSingleTypeAssignment {
   publishedAt  DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  locale       String     @default("id")
   // The published payload (or legacy data). Pending edits stay in draftData.
   data         Json?
   draftData    Json?
   singleType   SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
   tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, singleTypeId, locale])
+  @@unique([tenantId, singleTypeId])
   @@map("tenant_single_type_assignments")
 }
 
@@ -647,7 +642,6 @@ model WorkspacePlan {
   maxContentEntries  Int
   maxTeamMembers     Int
   maxStorageMb       Int
-  maxLocales         Int
   maxApiCalls        Int
   // Informational fair-use figure for shared-hosting plans — not literally
   // metered (see the equivalent field's comment in the old CMS seed data);
@@ -1220,19 +1214,6 @@ model WebhookDeadLetter {
   @@index([status, nextRetryAt])
   @@index([webhookId])
   @@map("webhook_dead_letters")
-}
-
-model TenantLocale {
-  id        String  @id @default(cuid())
-  tenantId  String?
-  locale    String
-  name      String
-  isDefault Boolean @default(false)
-  isEnabled Boolean @default(true)
-  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, locale])
-  @@map("tenant_locales")
 }
 
 enum ContentStatus {

@@ -5,7 +5,6 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { redirect, notFound } from "next/navigation"
 import { parseSchemaFieldOptions } from "@/actions/content-pipeline"
-import { getStudioLocales } from "@/lib/content/studio-locales"
 import CMSEditEntryClient from "./edit-entry-client"
 
 export default async function CMSEditEntryPage({
@@ -45,7 +44,7 @@ export default async function CMSEditEntryPage({
     fields: formattedFields
   }
 
-  const [entry, availableLocales, previewSetting] = await Promise.all([
+  const [entry, previewSetting] = await Promise.all([
     tenantDb.contentEntry.findFirst({
       where: {
         id: entryId,
@@ -54,7 +53,6 @@ export default async function CMSEditEntryPage({
         deletedAt: null,
       },
     }),
-    getStudioLocales(access.tenantId),
     db.setting.findUnique({
       where: { key: `${access.tenantId}_previewUrl` },
       select: { value: true },
@@ -71,7 +69,6 @@ export default async function CMSEditEntryPage({
       entryId={entryId}
       initialEntry={entry}
       initialContentType={mappedContentType as any}
-      initialAvailableLocales={availableLocales}
       previewUrl={previewSetting?.value}
       userRole={access.role}
       customPermissions={(access as any).customPermissions}

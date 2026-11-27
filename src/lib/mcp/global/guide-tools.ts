@@ -181,7 +181,7 @@ export function registerGuideTools(server: McpServer) {
       "get_demo_single_type_entry",
       {
         title: "Read Demo Single Type Entry",
-        description: "Read actual demo Single Type values for an exact locale. Returns editor data, public data, publication status, pending draft, and the write version.",
+        description: "Read actual demo Single Type values. Returns editor data, public data, publication status, pending draft, and the write version.",
         inputSchema: DEMO_SINGLE_INPUT,
         outputSchema: DEMO_SINGLE_ENTRY,
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
@@ -209,13 +209,13 @@ export function registerGuideTools(server: McpServer) {
       "list_demo_content_entries",
       {
         title: "List Demo Collection Entries",
-        description: "List actual Content Type entries and status for an exact demo locale. Use the entry IDs for related data or an update.",
+        description: "List actual Content Type entries and status. Use the entry IDs for related data or an update.",
         inputSchema: {
           ...DEMO_COLLECTION_INPUT,
           limit: z.number().int().min(1).max(25).default(10).describe("Entries per page (1-25)."),
           offset: z.number().int().min(0).max(10_000).default(0).describe("Entries to skip; use with hasMore to page."),
         },
-        outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), locale: z.string(), entries: z.array(DEMO_COLLECTION_ENTRY), hasMore: z.boolean() },
+        outputSchema: { demo: DEMO_IDENTITY, contentTypeSlug: z.string(), entries: z.array(DEMO_COLLECTION_ENTRY), hasMore: z.boolean() },
         annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
       },
       async ({ schemaTemplateId, ...input }) => runDemoOperation(() => listDemoContentEntries(schemaTemplateId, input)),

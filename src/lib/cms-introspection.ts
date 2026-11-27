@@ -171,7 +171,6 @@ export interface QueryContentOptions {
   page?: number
   status?: "PUBLISHED" | "DRAFT" | "IN_REVIEW" | "ARCHIVED" | "ALL"
   search?: string
-  locale?: string
   sortOrder?: "asc" | "desc"
 }
 
@@ -180,7 +179,7 @@ export async function queryContentForTenant(
   tenantId: string,
   opts: QueryContentOptions
 ): Promise<Record<string, any> | null> {
-  const { contentTypeSlug, limit, page, status, search, locale, sortOrder } = opts
+  const { contentTypeSlug, limit, page, status, search, sortOrder } = opts
 
   const ct = await tenantDb.contentType.findFirst({
     where: {
@@ -217,11 +216,6 @@ export async function queryContentForTenant(
     if (status && status !== "ALL") {
       whereParts.push(`"status"::text = $${idx}`)
       params.push(status)
-      idx++
-    }
-    if (locale) {
-      whereParts.push(`"locale" = $${idx}`)
-      params.push(locale)
       idx++
     }
     whereParts.push(`("searchVector" @@ plainto_tsquery('english', $${idx}) OR "data"::text ILIKE $${idx + 1})`)
@@ -267,9 +261,6 @@ export async function queryContentForTenant(
     if (status && status !== "ALL") {
       whereClause.status = status
     }
-    if (locale) {
-      whereClause.locale = locale
-    }
 
     const [rows, count] = await Promise.all([
       tenantDb.contentEntry.findMany({
@@ -296,7 +287,6 @@ export async function queryContentForTenant(
     data: entries.map((e) => ({
       _id: e.id,
       _status: e.status,
-      _locale: e.locale,
       _createdAt: e.createdAt,
       _publishedAt: e.publishedAt,
       ...(typeof e.data === "object" && e.data !== null ? e.data : {}),

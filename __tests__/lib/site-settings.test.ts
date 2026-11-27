@@ -66,7 +66,7 @@ describe("ensureSiteSettings", () => {
 
     expect(tenantSingleTypeAssignmentUpsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { tenantId_singleTypeId_locale: { tenantId: "tenant-1", singleTypeId: "st_site_settings", locale: "id" } },
+        where: { tenantId_singleTypeId: { tenantId: "tenant-1", singleTypeId: "st_site_settings" } },
         create: expect.objectContaining({
           data: expect.objectContaining({
             "brand-name": "Toko Kopi Nabire",

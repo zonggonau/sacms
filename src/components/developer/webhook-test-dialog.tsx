@@ -71,7 +71,6 @@ export function WebhookTestDialog({
         title: "Judul Berita Uji Coba Webhook SaCMS",
         slug: "judul-berita-uji-coba-webhook",
         status: "PUBLISHED",
-        locale: "id",
         author: "Admin SaCMS",
       },
     }

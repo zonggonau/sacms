@@ -1,7 +1,7 @@
 import { isFieldVisible, isStudioFieldEnabled } from "@/lib/field-visibility"
 
 export type FieldAiMode = "off" | "polish" | "write"
-export type FieldAiAction = "generate" | "improve" | "summarize" | "translate" | "seo"
+export type FieldAiAction = "generate" | "improve" | "summarize" | "seo"
 export type AiFormKind = "contentType" | "singleType" | "component"
 
 export interface AiFormTarget {
@@ -59,7 +59,7 @@ export function fieldAiActions(field: AiField, target: AiFormTarget): readonly F
   if (mode === "polish") return ["improve"]
   return field.type === "text"
     ? ["generate", "improve"]
-    : ["generate", "improve", "summarize", "translate"]
+    : ["generate", "improve", "summarize"]
 }
 
 export function smartFillFields(fields: readonly AiField[], target: AiFormTarget) {

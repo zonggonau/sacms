@@ -14,7 +14,6 @@ describe("SaCMS SDK", () => {
       baseUrl: "https://api.example.com",
       tenant: "my-tenant",
       token: "cf_test_token",
-      locale: "en",
     })
   })
 
@@ -59,7 +58,6 @@ describe("SaCMS SDK", () => {
         fields: ["title", "slug"],
         sort: "createdAt:desc",
         pagination: { page: 1, pageSize: 10 },
-        locale: "id",
       })
 
       const calledUrl = mockFetch.mock.calls[0][0] as string
@@ -69,19 +67,6 @@ describe("SaCMS SDK", () => {
       expect(calledUrl).toContain("sort=createdAt")
       expect(calledUrl).toContain("pagination[page]=1")
       expect(calledUrl).toContain("pagination[pageSize]=10")
-      expect(calledUrl).toContain("locale=id")
-    })
-
-    it("uses default locale when not specified", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: [], meta: {} }),
-      })
-
-      await cf.collection("articles").findMany({})
-
-      const calledUrl = mockFetch.mock.calls[0][0] as string
-      expect(calledUrl).toContain("locale=en")
     })
 
     it("builds search param", async () => {
@@ -106,12 +91,8 @@ describe("SaCMS SDK", () => {
 
       const result = await cf.collection("articles").findOne("123")
 
-      // Sixth external audit: findOne() now defaults to the client's own
-      // locale the same way findMany() already did — previously it built
-      // no query string at all, so a relation came back as a raw id
-      // regardless of what the caller asked findMany() for.
       expect(mockFetch).toHaveBeenCalledWith(
-        "https://api.example.com/api/public/my-tenant/content/articles/123?locale=en",
+        "https://api.example.com/api/public/my-tenant/content/articles/123",
         expect.anything()
       )
       expect(result.data.id).toBe("123")
@@ -127,14 +108,13 @@ describe("SaCMS SDK", () => {
 
       await cf.collection("articles").create({
         data: { title: "New Article" },
-        locale: "en",
       })
 
       expect(mockFetch).toHaveBeenCalledWith(
         "https://api.example.com/api/public/my-tenant/content/articles",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ data: { title: "New Article" }, locale: "en", status: undefined }),
+          body: JSON.stringify({ data: { title: "New Article" }, status: undefined }),
         })
       )
     })
@@ -176,31 +156,20 @@ describe("SaCMS SDK", () => {
   })
 
   describe("single().find()", () => {
-    it("sends GET request with locale", async () => {
+    it("sends GET request to the single endpoint", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ data: { hero: "Welcome" } }),
       })
 
-      await cf.single("homepage").find({ locale: "id" })
+      await cf.single("homepage").find()
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "https://api.example.com/api/public/my-tenant/single/homepage?locale=id",
+        "https://api.example.com/api/public/my-tenant/single/homepage",
         expect.anything()
       )
     })
 
-    it("uses default locale when none specified", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ data: {} }),
-      })
-
-      await cf.single("homepage").find()
-
-      const calledUrl = mockFetch.mock.calls[0][0] as string
-      expect(calledUrl).toContain("locale=en")
-    })
   })
 
   describe("graphql()", () => {
@@ -250,7 +219,6 @@ describe("SaCMS SDK", () => {
         .populate(["author"])
         .sort("createdAt:desc")
         .search("framework")
-        .locale("id")
         .status("PUBLISHED")
         .page(2)
         .limit(15)
@@ -262,7 +230,6 @@ describe("SaCMS SDK", () => {
       expect(calledUrl).toContain("populate=author")
       expect(calledUrl).toContain("sort=createdAt%3Adesc")
       expect(calledUrl).toContain("search=framework")
-      expect(calledUrl).toContain("locale=id")
       expect(calledUrl).toContain("status=PUBLISHED")
       expect(calledUrl).toContain("pagination[page]=2")
       expect(calledUrl).toContain("pagination[pageSize]=15")

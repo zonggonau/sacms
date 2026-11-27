@@ -30,22 +30,22 @@ async function workspaceAdapters(tenantDb: Awaited<ReturnType<typeof getTenantDb
     entry: async (contentType, id) => {
       const row = await tenantDb.contentEntry.findFirst({
         where: { id, tenantId, deletedAt: null, contentType: { slug: contentType } },
-        select: { status: true, locale: true },
+        select: { status: true },
       })
-      return row ? { status: String(row.status), locale: row.locale } : null
+      return row ? { status: String(row.status) } : null
     },
     // What the public content API returns (the same query the website uses).
-    publicIds: async (contentType, locale) => {
+    publicIds: async (contentType) => {
       const result = await queryContentForTenant(tenantDb, tenantId, {
-        contentTypeSlug: contentType, limit: 100, page: 1, status: "PUBLISHED", locale, sortOrder: "desc",
+        contentTypeSlug: contentType, limit: 100, page: 1, status: "PUBLISHED", sortOrder: "desc",
       })
       return new Set(((result?.data ?? []) as Array<{ _id: string }>).map((e) => e._id))
     },
-    single: async (slug, locale) => {
+    single: async (slug) => {
       const st = await tenantDb.singleType.findFirst({ where: { tenantId, slug, draftTemplateId: null }, select: { id: true } })
       if (!st) return null
       const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
-        where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId: st.id, locale } },
+        where: { tenantId_singleTypeId: { tenantId, singleTypeId: st.id } },
         select: { data: true },
       })
       return assignment ? { published: assignment.data != null } : null
@@ -59,7 +59,7 @@ export function registerSampleBatchTools(server: McpServer) {
     "list_sample_batches",
     {
       title: "List Sample Batches",
-      description: "Lists the sample-content batches seeded in this workspace, with locale, time, how many entries each Content Type received, and whether each batch was already cleared.",
+      description: "Lists the sample-content batches seeded in this workspace, with time, how many entries each Content Type received, and whether each batch was already cleared.",
       inputSchema: {},
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -86,7 +86,7 @@ export function registerSampleBatchTools(server: McpServer) {
     "verify_sample_batch",
     {
       title: "Verify Sample Batch",
-      description: "Reads back every entry a batch created. Checks each still exists, is in the batch's locale, and, when PUBLISHED, is returned by the public content API the website reads. Drafts are reported as not public, not as failures. Read-only.",
+      description: "Reads back every entry a batch created. Checks each still exists and, when PUBLISHED, is returned by the public content API the website reads. Drafts are reported as not public, not as failures. Read-only.",
       inputSchema: { batchId: z.string().min(1).describe("batchId from seed_sample_content or list_sample_batches") },
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
@@ -109,7 +109,7 @@ export function registerSampleBatchTools(server: McpServer) {
     "clear_sample_batch",
     {
       title: "Clear Sample Batch",
-      description: "Removes the entries one sample batch created. Entries are soft-deleted (they stay in the trash for the trash window), and Single Type content the batch wrote for its locale is emptied. Only ids the batch recorded are touched. A cleared batch is marked and a second call does nothing. Requires confirm: true. Not available on the SaCMS Global workspace.",
+      description: "Removes the entries one sample batch created. Entries are soft-deleted (they stay in the trash for the trash window), and Single Type content the batch wrote is emptied. Only ids the batch recorded are touched. A cleared batch is marked and a second call does nothing. Requires confirm: true. Not available on the SaCMS Global workspace.",
       inputSchema: {
         batchId: z.string().min(1),
         confirm: z.literal(true).describe("Must be true. Confirms the entries will be removed."),
@@ -129,7 +129,6 @@ export function registerSampleBatchTools(server: McpServer) {
 
       const tenantDb = await getTenantDb(auth.tenantSlug)
       const { ctx, actor } = await mcpEntryContext(auth, tenantDb)
-      const locale = record.locale ?? "id"
       const deps: ClearDeps = {
         deleteEntry: async (contentType, id) => {
           const res = await deleteContentEntry(ctx, actor, { contentTypeSlug: contentType, entryId: id })
@@ -137,12 +136,12 @@ export function registerSampleBatchTools(server: McpServer) {
           if (res.code === "not_found") return "gone"
           throw new Error(res.message)
         },
-        clearSingle: async (singleType, entryLocale) => {
+        clearSingle: async (singleType) => {
           const result = await tenantDb.tenantSingleTypeAssignment.updateMany({
-            where: { tenantId: auth.tenantId, locale: entryLocale, singleType: { slug: singleType } },
+            where: { tenantId: auth.tenantId, singleType: { slug: singleType } },
             data: { data: await DbNull(), draftData: await DbNull(), publishedAt: null },
           })
-          await invalidateSingleTypePublication(auth.tenantId, singleType, entryLocale)
+          await invalidateSingleTypePublication(auth.tenantId, singleType)
           return result.count > 0
         },
         saveRecord: async (updated) => {
@@ -150,7 +149,7 @@ export function registerSampleBatchTools(server: McpServer) {
         },
       }
 
-      const result = await clearSampleBatch({ ...record, locale }, deps)
+      const result = await clearSampleBatch(record, deps)
       for (const group of result.targets.collections) {
         for (const path of contentRevalidatePaths(auth.tenantSlug, group.contentType)) revalidatePath(path)
       }

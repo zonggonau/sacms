@@ -6,7 +6,6 @@ interface ContentResolutionOptions {
   client?: PrismaClient
   includeUnpublished?: boolean
   includeSingleTypeDraft?: boolean
-  locale?: string
 }
 
 /**
@@ -124,9 +123,7 @@ async function resolveRelation(
         tenantId, singleTypeId: singleType.id, enabled: true,
         ...(!includeDraft && { publishedAt: { not: null } }),
       }
-      const assignment = (options.locale && await client.tenantSingleTypeAssignment.findFirst({
-        where: { ...where, locale: options.locale },
-      })) || await client.tenantSingleTypeAssignment.findFirst({ where, orderBy: { locale: "asc" } })
+      const assignment = await client.tenantSingleTypeAssignment.findFirst({ where })
 
       if (assignment) {
         const { data } = readSingleTypeAssignment(assignment, includeDraft)
@@ -137,7 +134,6 @@ async function resolveRelation(
           _meta: {
             singleType: singleType.slug,
             publishedAt: assignment.publishedAt,
-            locale: assignment.locale
           }
         }
       }
@@ -183,7 +179,6 @@ async function resolveRelation(
         contentType: entry.contentType.slug,
         status: entry.status,
         publishedAt: entry.publishedAt,
-        locale: entry.locale,
       }
     }
   }

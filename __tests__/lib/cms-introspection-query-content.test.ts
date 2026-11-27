@@ -98,18 +98,16 @@ describe("queryContentForTenant", () => {
     expect(tenantDb.contentEntry.findMany).not.toHaveBeenCalled()
   })
 
-  it("combines search with status and locale filters in the same raw query", async () => {
+  it("combines search with the status filter in the same raw query", async () => {
     tenantDb.$queryRawUnsafe
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ count: BigInt(0) }])
 
-    await queryContentForTenant(tenantDb, "t1", { contentTypeSlug: "menu-kedai", search: "latte", status: "PUBLISHED", locale: "id" })
+    await queryContentForTenant(tenantDb, "t1", { contentTypeSlug: "menu-kedai", search: "latte", status: "PUBLISHED" })
 
     const [dataSql, ...params] = tenantDb.$queryRawUnsafe.mock.calls[0]
     expect(dataSql).toMatch(/"status"::text = \$\d+/)
-    expect(dataSql).toMatch(/"locale" = \$\d+/)
     expect(params).toContain("PUBLISHED")
-    expect(params).toContain("id")
   })
 
   it("ignores a whitespace-only search term (falls back to the unfiltered path)", async () => {

@@ -5,7 +5,6 @@ import type { SeedRecord } from "@/lib/sample-content/run"
 
 const record = (over: Partial<SeedRecord> = {}): SeedRecord => ({
   batchKey: "abc123",
-  locale: "id",
   createdAt: "2026-11-26T00:00:00.000Z",
   complete: true,
   ids: { authors: ["a1", "a2"], books: ["b1"], "single:homepage": ["s1"] },
@@ -33,7 +32,6 @@ describe("summarizeBatch and clearTargets", () => {
     const s = summarizeBatch("abc123", record())
     expect(s.collections).toEqual({ authors: 2, books: 1 })
     expect(s.singles).toEqual(["homepage"])
-    expect(s.locale).toBe("id")
     expect(s.cleared).toBe(false)
   })
 
@@ -93,7 +91,7 @@ describe("verifyBatch", () => {
 
   function adapters(over: Partial<VerifyAdapters> = {}): VerifyAdapters {
     return {
-      entry: async (_ct, id) => ({ pub: { status: "PUBLISHED", locale: "id" }, draft: { status: "DRAFT", locale: "id" } } as Record<string, { status: string; locale: string }>)[id] ?? null,
+      entry: async (_ct, id) => ({ pub: { status: "PUBLISHED" }, draft: { status: "DRAFT" } } as Record<string, { status: string }>)[id] ?? null,
       publicIds: async () => new Set(["pub"]),
       single: async () => ({ published: true }),
       ...over,
@@ -116,11 +114,6 @@ describe("verifyBatch", () => {
   it("fails an entry that is missing or deleted", async () => {
     const report = await verifyBatch(rec, adapters())
     expect(report.checks.find((c) => c.id === "gone")!.ok).toBe(false)
-  })
-
-  it("fails an entry stored in another locale", async () => {
-    const report = await verifyBatch(rec, adapters({ entry: async () => ({ status: "PUBLISHED", locale: "en" }) }))
-    expect(report.checks.find((c) => c.id === "pub")!.detail).toContain("expected id")
   })
 
   it("fails a single type whose content for the locale is missing", async () => {

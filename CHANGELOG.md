@@ -38,6 +38,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 - **Bring-Your-Own-VPS Hosting**: Removed the customer-facing VPS/VDS provisioning feature end-to-end — the Contabo provisioning integration (`lib/contabo.ts`), VPS catalog/ordering actions (`actions/vps-service.ts`), the "Cloud Server" catalog page, the per-workspace VPS lifecycle UI, the `UserVpsService` model and table, every `vps-*`/`vds-*` pricing slug across billing/checkout/plan-enforcement, and the now-unused `ssh2` dependency. Every workspace now uses SaCMS's own managed infrastructure (`ManagedInfraService`/BYODB for a dedicated database, and `StorageAddon` for storage upgrades) instead.
 - **In-Dashboard AI Website Builder**: Removed the single-file AI website generator (Developer Portal > AI Instant Website), its `TenantStaticSite` model/table, the `/api/tenant/[tenant]/static-site/*` routes, the public `/site/[tenant]` serving route, the `write_static_site` MCP tool, and the "site" custom-domain target. Frontend development now happens in an IDE, connected to SaCMS via MCP (`deploy_to_vercel` and the other developer-facing MCP tools).
+- **Content locales (`id`, `en`, and any other per-entry language)** are removed. An entry is now one record, and a Single Type has one assignment per workspace. Public API responses no longer include `locale` or `availableLocales`, and `?locale=` is ignored. Breaking for MCP clients and API consumers that send `locale`: workspace MCP 5.0.0 and Global MCP 2.0.0 drop the parameter.
+- **AI translation** (`/api/tenant/*/ai/translate`, the translate action in the AI assistant, and the translate tab in the CMS AI modal) is removed with the locale feature.
+- **Workspace locale limit** (`maxLocales`) is removed from plans, custom overrides, pricing, and the pricing catalog.
+- **Workspace backup format 1.2** no longer includes `locales`. Backups in format 1.0 and 1.1 still import; their `locales` section is ignored.
+
+### Migration
+- Before deploying, delete any content in non-default locales (and the `id` content if you keep `en`). The schema change drops the `locale` column and the `tenant_locales` table; `prisma db push` refuses to drop a column that still holds data.
+
 
 ## [1.3.0] - 2026-08-24
 

@@ -16,7 +16,6 @@ vi.mock("@/lib/database", () => {
     apiToken: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     contentType: { findFirst: vi.fn() },
     contentEntry: { findFirst: vi.fn(), findMany: vi.fn() },
-    tenantLocale: { findFirst: vi.fn() },
     memberRole: { findFirst: vi.fn(), findMany: vi.fn() },
     memberRolePermission: { findFirst: vi.fn() },
   }
@@ -133,18 +132,12 @@ describe("Public Single Entry REST API Endpoint", () => {
       documentId: "doc-1",
       contentTypeId: "type-articles",
       tenantId: "tenant-1",
-      locale: "en",
       data: { title: "Single Entry Title", content: "Body text" },
       status: "PUBLISHED",
       createdAt: new Date(),
       updatedAt: new Date(),
       publishedAt: new Date(),
     } as any)
-
-    vi.mocked(db.contentEntry.findMany).mockResolvedValue([
-      { locale: "en" },
-      { locale: "id" },
-    ] as any)
 
     const req = createRequest("http://localhost:3000/api/public/tenant-1/content/articles/entry-1")
     const params = Promise.resolve({ tenant: "tenant-1", contentType: "articles", id: "entry-1" })
@@ -156,7 +149,6 @@ describe("Public Single Entry REST API Endpoint", () => {
     const body = await response.json()
     expect(body.data.id).toBe("entry-1")
     expect(body.data.title).toBe("Single Entry Title")
-    expect(body.data.availableLocales).toEqual(["en", "id"])
     expect(body.meta.contentType.slug).toBe("articles")
     expect(setCache).toHaveBeenCalled()
   })

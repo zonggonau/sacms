@@ -187,10 +187,6 @@ export async function GET(
                     type: "STRING",
                     description: `Slug of the single type. Available: ${singleTypes.map(s => s.slug).join(", ")}`,
                   },
-                  locale: {
-                    type: "STRING",
-                    description: "Language locale code (e.g. 'id', 'en')",
-                  },
                 },
                 required: ["singleType"],
               },

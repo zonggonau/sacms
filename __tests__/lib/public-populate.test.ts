@@ -14,7 +14,7 @@ function fakeDb(): any {
     contentEntry: {
       findMany: vi.fn(async ({ where }: any) => {
         if (where.contentType.slug === "authors") {
-          return [{ id: "a1ccccccccccccc", data: JSON.stringify({ name: "Budi" }), locale: "id", status: "PUBLISHED" }]
+          return [{ id: "a1ccccccccccccc", data: JSON.stringify({ name: "Budi" }), status: "PUBLISHED" }]
         }
         return []
       }),
@@ -57,7 +57,7 @@ describe("resolvePopulate", () => {
     const where = db.contentEntry.findMany.mock.calls[0][0].where
     expect(where.contentType).toEqual({ slug: "authors" })
     expect(where.status).toBe("PUBLISHED")
-    expect(r.byId.get("a1ccccccccccccc")).toMatchObject({ id: "a1ccccccccccccc", name: "Budi", locale: "id" })
+    expect(r.byId.get("a1ccccccccccccc")).toMatchObject({ id: "a1ccccccccccccc", name: "Budi" })
   })
 
   it("returns only public Member fields to a public caller", async () => {

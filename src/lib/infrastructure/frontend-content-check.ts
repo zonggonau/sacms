@@ -6,8 +6,6 @@
  * Catches the failures that build cleanly but show wrong content:
  * - a slug the code fetches that the schema does not have (a Content Type
  *   renamed or a template written for a different schema)
- * - a content request without a locale, so the page shows whatever the tenant
- *   default is instead of the page's language
  * - a fetch whose HTTP status is never checked, so an API failure looks like
  *   an empty collection
  * - a site that reads content but has no revalidation hook, so edits may not
@@ -27,7 +25,6 @@ export interface SchemaSlugs {
 export type FrontendWarningCode =
   | "UNKNOWN_CONTENT_TYPE"
   | "UNKNOWN_SINGLE_TYPE"
-  | "LOCALE_NOT_SET"
   | "HTTP_STATUS_UNCHECKED"
   | "NO_REVALIDATION"
 
@@ -67,16 +64,6 @@ export function checkFrontendSource(files: CheckFile[], schema: SchemaSlugs): Fr
             file: file.name,
             line: i + 1,
             message: `Kode meminta Content Type "${slug}", tetapi schema workspace tidak punya Content Type dengan slug itu.`,
-          })
-        }
-        // The locale may sit on the same line or in the options object a few lines down.
-        const near = lines.slice(i, i + 4).join(" ")
-        if (!/locale/.test(near)) {
-          warnings.push({
-            code: "LOCALE_NOT_SET",
-            file: file.name,
-            line: i + 1,
-            message: `Permintaan "${slug}" tidak menyertakan locale. API memakai locale default workspace, bukan bahasa halaman.`,
           })
         }
       }

@@ -61,7 +61,6 @@ async function resolveWriteContext(
     ok: true,
     ctx: {
       client: tenantDb,
-      localeClient: db,
       tenantId: access.tenantId,
       tenantSlug,
       enforcePlan: true,
@@ -150,7 +149,6 @@ export async function getEntriesAction(
     page?: number
     pageSize?: number
     status?: string
-    locale?: string
     search?: string
     searchField?: string
     sortBy?: string
@@ -200,7 +198,7 @@ export async function getEntriesAction(
 
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
-    const { status, locale, authorId } = params
+    const { status, authorId } = params
     const search = typeof params.search === "string" ? params.search.trim().slice(0, 200) : ""
     const statuses = Array.isArray(params.statuses) ? params.statuses.filter(isWorkflowStatus) : undefined
     const sortBy = params.sortBy && SORTABLE_COLUMNS.has(params.sortBy) ? params.sortBy : "createdAt"
@@ -228,7 +226,6 @@ export async function getEntriesAction(
     }
     if (status) where.status = status
     else if (statuses) where.status = { in: statuses }
-    if (locale) where.locale = locale
     if (authorId) where.createdBy = authorId
     if (dateFrom || dateTo || dateBefore) {
       where[dateField] = {
@@ -257,12 +254,6 @@ export async function getEntriesAction(
         whereParts.push(statuses.length === 0 ? "false" : `entry."status"::text IN (${statuses.map((_, index) => `$${paramIdx + index}`).join(", ")})`)
         queryParams.push(...statuses)
         paramIdx += statuses.length
-      }
-
-      if (locale) {
-        whereParts.push(`entry."locale" = $${paramIdx}`)
-        queryParams.push(locale)
-        paramIdx++
       }
 
       if (authorId) {
@@ -410,7 +401,7 @@ export async function getEntriesAction(
 /**
  * Get a specific entry
  */
-export async function getEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, locale: string = "en") {
+export async function getEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -447,7 +438,6 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
       const entry = await tenantDb.contentEntry.findFirst({
         where: {
           contentTypeId: contentType.id,
-          locale,
           deletedAt: null,
           OR: [
             { tenantId: access.tenantId },
@@ -473,33 +463,7 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 
     if (!baseEntry) return { error: "Entry not found" }
 
-    const documentId = baseEntry.documentId || baseEntry.id
-
-    let entry: typeof baseEntry | null = null
-    let isNewTranslation = false
-
-    if (baseEntry.locale === locale) {
-      entry = baseEntry
-      isNewTranslation = false
-    } else {
-      entry = await tenantDb.contentEntry.findFirst({
-        where: {
-          documentId,
-          contentTypeId: baseEntry.contentTypeId,
-          tenantId: baseEntry.tenantId,
-          locale,
-          deletedAt: null,
-        },
-        include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
-      })
-
-      if (!entry) {
-        entry = baseEntry
-        isNewTranslation = true
-      }
-    }
-
-    return { entry, isNewTranslation, documentId, contentType }
+    return { entry: baseEntry, contentType }
   } catch (error: any) {
     console.error("Error fetching entry:", error)
     return { error: error.message || "Internal server error" }
@@ -509,7 +473,7 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 /**
  * Create a new entry
  */
-export async function createEntryAction(tenantSlug: string, contentTypeSlug: string, payload: { data: any; status: string; locale: string; scheduledAt?: Date | null }) {
+export async function createEntryAction(tenantSlug: string, contentTypeSlug: string, payload: { data: any; status: string; scheduledAt?: Date | null }) {
   try {
     const resolved = await resolveWriteContext(tenantSlug)
     if (!resolved.ok) return actionError(resolved.error)
@@ -524,7 +488,6 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
       contentTypeSlug,
       data: payload.data,
       status: payload.status,
-      locale: payload.locale,
       scheduledAt: payload.scheduledAt ?? null,
     })
     if (!result.ok) return serviceFailure(result)
@@ -569,7 +532,6 @@ export async function duplicateEntryAction(tenantSlug: string, contentTypeSlug: 
       contentTypeSlug,
       data: sourceData,
       status: "DRAFT",
-      locale: source.locale,
       scheduledAt: null,
     })
     if (!result.ok) return serviceFailure(result)
@@ -588,10 +550,8 @@ export async function duplicateEntryAction(tenantSlug: string, contentTypeSlug: 
 export async function updateEntryAction(tenantSlug: string, contentTypeSlug: string, entryId: string, payload: {
   data: any
   status?: string
-  locale: string
   scheduledAt?: Date | null
   expectedUpdatedAt?: Date | string | null
-  expectedLocaleMissing?: boolean
 }) {
   try {
     const resolved = await resolveWriteContext(tenantSlug)
@@ -610,10 +570,8 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
       entryId,
       data: payload.data,
       status: payload.status,
-      locale: payload.locale,
       scheduledAt: payload.scheduledAt ?? null,
       expectedUpdatedAt: payload.expectedUpdatedAt ?? null,
-      expectedLocaleMissing: payload.expectedLocaleMissing,
     })
     if (!result.ok) return serviceFailure(result)
 
@@ -797,7 +755,6 @@ export async function bulkContentAction(
            const result = await updateEntryAction(tenantSlug, contentTypeSlug, entry.id, {
              data: undefined,
              status: targetStatus,
-             locale: entry.locale
            })
            if ("success" in result && result.success) successCount++
            else failures.push({ entryId: entry.id, error: ("error" in result && result.error) || `${action} failed` })
@@ -822,7 +779,6 @@ export async function bulkContentAction(
         const existingData = (typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data) || {}
         const result = await updateEntryAction(tenantSlug, contentTypeSlug, entry.id, {
           data: { ...existingData, [fieldUpdate.slug]: fieldUpdate.value },
-          locale: entry.locale,
         })
         if ("success" in result && result.success) successCount++
         else failures.push({ entryId: entry.id, error: ("error" in result && result.error) || "setField failed" })

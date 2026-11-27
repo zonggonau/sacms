@@ -13,7 +13,6 @@ import { parseSchemaFieldOptions } from "./content-pipeline"
 import { validateContentEntry } from "@/lib/content-validations"
 import { assertSchemaEditable } from "@/lib/schema-lock"
 import {
-  getSingleTypeLocales,
   invalidateSingleTypePublication,
   readSingleTypeAssignment,
   singleTypeContentWrite,
@@ -42,7 +41,6 @@ export async function getSingleTypesAction(tenantSlug: string, scope?: "studio")
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
-    const [{ locale }] = await getSingleTypeLocales(tenantId)
 
     const singleTypes = await tenantDb.singleType.findMany({
       where: {
@@ -65,7 +63,7 @@ export async function getSingleTypesAction(tenantSlug: string, scope?: "studio")
     })
 
     const assignments = await tenantDb.tenantSingleTypeAssignment.findMany({
-      where: { tenantId, locale }
+      where: { tenantId }
     })
     const assignmentsByType = new Map(assignments.map((assignment) => [assignment.singleTypeId, assignment]))
 
@@ -98,7 +96,7 @@ export async function getSingleTypesAction(tenantSlug: string, scope?: "studio")
   }
 }
 
-export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string, locale?: string, scope?: "studio") {
+export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string, scope?: "studio") {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -113,9 +111,6 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
-    const locales = await getSingleTypeLocales(tenantId)
-    const targetLocale = locale || locales[0].locale
-
     // No draftTemplateId:null filter — single-item lookup by slug is also
     // how the edit page reaches a template's materialized draft rows.
     const singleType = await tenantDb.singleType.findFirst({
@@ -139,7 +134,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
     if (!singleType) return { error: "Single type not found" }
 
     const assignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
-      where: { tenantId, singleTypeId: singleType.id, locale: targetLocale }
+      where: { tenantId, singleTypeId: singleType.id }
     })
 
     const formattedFields = parseSchemaFieldOptions(singleType.schemaFields)
@@ -149,8 +144,6 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
         ...singleType,
         fields: formattedFields,
         data: assignment ? readSingleTypeAssignment(assignment, true).data : {},
-        locale: targetLocale,
-        locales,
         hasPendingDraft: assignment?.draftData != null,
         publishedAt: assignment?.publishedAt || null,
         isGlobal: singleType.tenantId === null,
@@ -393,14 +386,14 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
 }
 
 /**
- * Takes a Single Type offline for one locale: clears publishedAt so the
+ * Takes a Single Type offline: clears publishedAt so the
  * public API stops serving it. saveSingleTypeDataAction(..., publish:
  * false) can't do this — it only writes a draft and leaves the published
  * version live. The current published values move into the draft (unless
  * a newer draft already exists), so nothing is lost and republishing puts
  * the same content back.
  */
-export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId: string, locale?: string) {
+export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -414,10 +407,6 @@ export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
-    const locales = await getSingleTypeLocales(tenantId)
-    const targetLocale = locale || locales[0].locale
-    if (!locales.some((language) => language.locale === targetLocale)) return { error: "Bahasa tidak aktif di workspace ini" }
-
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         id: singleTypeId,
@@ -432,7 +421,7 @@ export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId
     if (!singleType) return { error: "Single type not found" }
 
     const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
-      where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale: targetLocale } },
+      where: { tenantId_singleTypeId: { tenantId, singleTypeId } },
     })
     if (!assignment?.publishedAt) return { error: "Single type ini belum terbit." }
 
@@ -443,7 +432,7 @@ export async function unpublishSingleTypeAction(tenantSlug: string, singleTypeId
         ...(assignment.draftData == null ? { draftData: assignment.data ?? {} } : {}),
       },
     })
-    await invalidateSingleTypePublication(tenantId, singleType.slug, targetLocale)
+    await invalidateSingleTypePublication(tenantId, singleType.slug)
 
     revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
@@ -461,7 +450,6 @@ export async function saveSingleTypeDataAction(
   singleTypeId: string,
   data: unknown,
   publish?: boolean,
-  locale?: string,
   scope?: "studio",
 ) {
   try {
@@ -485,10 +473,6 @@ export async function saveSingleTypeDataAction(
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
-    const locales = await getSingleTypeLocales(tenantId)
-    const targetLocale = locale || locales[0].locale
-    if (!locales.some((language) => language.locale === targetLocale)) return { error: "Bahasa tidak aktif di workspace ini" }
-
     const singleType = await tenantDb.singleType.findFirst({
       where: {
         id: singleTypeId,
@@ -526,12 +510,12 @@ export async function saveSingleTypeDataAction(
     )
     const content = singleTypeContentWrite(processedData, shouldPublish)
     const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
-      where: { tenantId_singleTypeId_locale: { tenantId, singleTypeId, locale: targetLocale } },
-      create: { tenantId, singleTypeId, locale: targetLocale, ...content },
+      where: { tenantId_singleTypeId: { tenantId, singleTypeId } },
+      create: { tenantId, singleTypeId, ...content },
       update: content,
     })
 
-    if (shouldPublish) await invalidateSingleTypePublication(tenantId, singleType.slug, targetLocale)
+    if (shouldPublish) await invalidateSingleTypePublication(tenantId, singleType.slug)
 
     revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)

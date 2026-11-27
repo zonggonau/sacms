@@ -16,7 +16,6 @@ vi.mock("@/lib/database", () => {
     apiToken: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     contentType: { findFirst: vi.fn() },
     contentEntry: { findMany: vi.fn(), count: vi.fn() },
-    tenantLocale: { findFirst: vi.fn(), findMany: vi.fn() },
     memberRole: { findFirst: vi.fn(), findMany: vi.fn() },
     $queryRawUnsafe: vi.fn(),
   }
@@ -60,8 +59,6 @@ describe("Public Content API GET Endpoint", () => {
     } as any)
     vi.mocked(db.contentEntry.findMany).mockResolvedValue([])
     vi.mocked(db.contentEntry.count).mockResolvedValue(0)
-    vi.mocked(db.tenantLocale.findFirst).mockResolvedValue(null)
-
     const req = createRequest("http://localhost:3000/api/public/tenant-1/content/articles", {})
     const params = Promise.resolve({ tenant: "tenant-1", contentType: "articles" })
 
@@ -280,7 +277,6 @@ describe("Public Content API GET Endpoint", () => {
         documentId: "doc-1",
         contentTypeId: "type-articles",
         tenantId: "tenant-1",
-        locale: "en",
         data: { title: "Hello World", body: "First post content" },
         status: "PUBLISHED",
         createdAt: new Date(),
@@ -289,12 +285,6 @@ describe("Public Content API GET Endpoint", () => {
       },
     ] as any)
     vi.mocked(db.contentEntry.count).mockResolvedValue(1)
-
-    // Mock tenantLocale for locale resolution
-    vi.mocked(db.tenantLocale.findFirst).mockResolvedValue({
-      locale: "en",
-    } as any)
-
     const req = createRequest("http://localhost:3000/api/public/tenant-1/content/articles")
     const params = Promise.resolve({ tenant: "tenant-1", contentType: "articles" })
 
@@ -305,8 +295,6 @@ describe("Public Content API GET Endpoint", () => {
     const body = await response.json()
     expect(body.data).toHaveLength(1)
     expect(body.data[0].title).toBe("Hello World")
-    expect(body.data[0].locale).toBe("en")
-    expect(body.data[0].availableLocales).toContain("en")
     expect(body.meta.pagination.total).toBe(1)
 
     // Ensure cache was updated in Redis

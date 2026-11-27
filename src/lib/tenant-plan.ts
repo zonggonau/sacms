@@ -32,7 +32,6 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
         max_team_members: plan.maxTeamMembers || base.max_team_members,
         max_api_calls: plan.maxApiCalls || base.max_api_calls,
         max_storage: plan.maxStorageMb || base.max_storage,
-        max_locales: plan.maxLocales || base.max_locales,
         audit_log_retention: base.audit_log_retention,
         support_level: base.support_level,
         max_ai_tokens: base.max_ai_tokens,

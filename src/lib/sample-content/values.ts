@@ -9,7 +9,6 @@ export interface ValueContext {
   /** 0-based entry index within the Content Type. */
   index: number
   contentTypeName: string
-  locale: string
   /** Real entry ids already written for a relation target slug (or reused from the workspace). */
   relationIds: (targetSlug: string) => string[]
   schema: SampleSchema

@@ -121,7 +121,7 @@ async function main() {
         const { name: returnTypeName } = unwrap(field.type);
         if (returnTypeName.endsWith("Collection")) {
             // A Content Type's query field returns `${TypeName}Collection`, which
-            // wraps `data: [${TypeName}!]!` — the real entry shape (id, locale,
+            // wraps `data: [${TypeName}!]!` — the real entry shape (id,
             // status, publishedAt, createdAt, updatedAt, and every custom field)
             // lives on `${TypeName}` itself, introspected directly rather than
             // assumed from a hand-written base interface.
@@ -134,7 +134,7 @@ async function main() {
         }
         else if (returnTypeName.endsWith("Single")) {
             // A Single Type's query field returns `${TypeName}Single` directly —
-            // unlike a collection entry, it has no id/locale/status/createdAt,
+            // unlike a collection entry, it has no id/status/createdAt,
             // only publishedAt/updatedAt plus its custom fields (see
             // src/lib/graphql-schema.ts's Single Type generation and the real
             // REST response in src/app/api/public/[tenant]/single/[singleType]).

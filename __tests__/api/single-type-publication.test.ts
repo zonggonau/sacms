@@ -17,7 +17,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/database", () => {
   const db = {
     tenant: { findFirst: vi.fn().mockResolvedValue({ id: "tenant-id", slug: "tenant" }) },
-    tenantLocale: { findMany: vi.fn().mockResolvedValue([{ locale: "en", name: "English" }]) },
     apiKey: { findUnique: vi.fn().mockResolvedValue(null) },
     apiToken: {
       findFirst: vi.fn().mockResolvedValue({
@@ -91,10 +90,10 @@ describe("workspace Single Type publication", () => {
   })
 
   it("stages Studio edits while normal reads use the published payload even with a write token", async () => {
-    const result = await saveSingleTypeDataAction("tenant", "single-id", { heading: "Pending" }, false, undefined, "studio")
+    const result = await saveSingleTypeDataAction("tenant", "single-id", { heading: "Pending" }, false, "studio")
     expect(result.singleType?.data).toEqual({ heading: "Pending" })
     expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { tenantId_singleTypeId_locale: { tenantId: "tenant-id", singleTypeId: "single-id", locale: "en" } },
+      where: { tenantId_singleTypeId: { tenantId: "tenant-id", singleTypeId: "single-id" } },
       update: { draftData: { heading: "Pending" } },
     }))
 
@@ -121,7 +120,7 @@ describe("workspace Single Type publication", () => {
       data: { data: { heading: "Final" }, draftData: mocks.dbNull, publishedAt: expect.any(Date) },
     })
     expect((await (await getPage()).json()).data.heading).toBe("Final")
-    expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:en:*")
+    expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:*")
     expect(mocks.invalidate).toHaveBeenCalledWith("graphql:tenant-id:*")
   })
 
@@ -132,7 +131,7 @@ describe("workspace Single Type publication", () => {
       where: { id: "row-id" },
       data: { publishedAt: null, draftData: JSON.stringify({ heading: "Published" }) },
     })
-    expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:en:*")
+    expect(mocks.invalidate).toHaveBeenCalledWith("single:tenant-id:homepage:*")
     expect((await getPage()).status).toBe(404)
   })
 

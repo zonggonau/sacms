@@ -14,7 +14,6 @@ interface AISmartFillProps {
   form: AiFormTarget
   contentTypeName: string
   schema: AiField[]
-  locale: string
   currentValues: Record<string, unknown>
   onApply: (data: Record<string, AiFieldValue>) => void
 }
@@ -31,7 +30,7 @@ function describe(value: unknown, field: AiField) {
   return String(value)
 }
 
-export function AISmartFill({ tenantSlug, form, contentTypeName, schema, locale, currentValues, onApply }: AISmartFillProps) {
+export function AISmartFill({ tenantSlug, form, contentTypeName, schema, currentValues, onApply }: AISmartFillProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [prompt, setPrompt] = useState("")
@@ -70,7 +69,7 @@ export function AISmartFill({ tenantSlug, form, contentTypeName, schema, locale,
       const response = await fetch("/api/tenant/" + encodeURIComponent(tenantSlug) + "/ai/smart-fill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ form, fieldSlugs: candidates.map((field) => field.slug), prompt, locale, context }),
+        body: JSON.stringify({ form, fieldSlugs: candidates.map((field) => field.slug), prompt, context }),
       })
       const data = await response.json()
       if (!response.ok || !data.content) throw new Error(data.error || "Smart Fill gagal.")

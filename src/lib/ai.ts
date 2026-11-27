@@ -314,7 +314,6 @@ export interface GenerateContentParams {
   prompt: string
   contentType?: string
   fieldName?: string
-  locale?: string
   maxTokens?: number
   tone?: "formal" | "casual" | "professional" | "creative" | "technical"
   mode?: "generate" | "correct"
@@ -336,8 +335,8 @@ export interface GenerateContentResult {
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
-  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens, mode = "generate", tenantId } = params
-  const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone, mode })
+  const { prompt, contentType, fieldName, tone = "professional", maxTokens, mode = "generate", tenantId } = params
+  const systemPrompt = buildSystemPrompt({ contentType, fieldName, tone, mode })
 
   const result = await safeGenerateContent(systemPrompt, prompt, { maxTokens, tenantId, action: "generate" })
 
@@ -350,7 +349,6 @@ export async function generateContent(
 export interface SummarizeParams {
   text: string
   maxLength?: number
-  locale?: string
   tenantId?: string
 }
 
@@ -360,8 +358,8 @@ export interface SummarizeParams {
 export async function summarizeContent(
   params: SummarizeParams
 ): Promise<GenerateContentResult> {
-  const { text, maxLength = 200, locale = "en", tenantId } = params
-  const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`
+  const { text, maxLength = 200, tenantId } = params
+  const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Return only the summary, no extra commentary.`
 
   const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`, { maxTokens: Math.max(maxLength, 500), tenantId, action: "summarize" })
 
@@ -370,35 +368,9 @@ export async function summarizeContent(
     usage: result.usage
   }
 }
-
-export interface TranslateParams {
-  text: string
-  targetLocale: string
-  sourceLocale?: string
-  tenantId?: string
-}
-
-/**
- * Translate content to a target locale
- */
-export async function translateContent(
-  params: TranslateParams
-): Promise<GenerateContentResult> {
-  const { text, targetLocale, sourceLocale = "auto", tenantId } = params
-  const prompt = `You are a professional translator. Translate the given text${sourceLocale !== "auto" ? ` from ${sourceLocale}` : ""} to ${targetLocale}. Preserve formatting (Markdown, HTML). Return only the translation, no extra commentary.`
-
-  const result = await safeGenerateContent("", `${prompt}\n\nText to translate:\n${text}`, { tenantId, action: "translate" })
-
-  return {
-    content: result.text,
-    usage: result.usage
-  }
-}
-
 function buildSystemPrompt(opts: {
   contentType?: string
   fieldName?: string
-  locale?: string
   tone?: string
   mode?: "generate" | "correct"
 }): string {
@@ -417,9 +389,6 @@ function buildSystemPrompt(opts: {
   }
   if (opts.fieldName) {
     parts.push(`You are generating content for the "${opts.fieldName}" field.`)
-  }
-  if (opts.locale && opts.locale !== "en") {
-    parts.push(`Write in locale: ${opts.locale}.`)
   }
 
   parts.push("Return only the generated content. No extra commentary or labels. Do not include markdown blocks like ```json unless explicitly asked.")

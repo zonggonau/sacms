@@ -110,7 +110,7 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
     lp = { ...lp, [section]: value }
 
     // Can't use upsert's compound-unique `where` here — Prisma's generated
-    // tenantId_singleTypeId_locale selector requires tenantId to be a real
+    // tenantId_singleTypeId selector requires tenantId to be a real
     // string, and throws "Argument `tenantId` must not be null" at runtime
     // even though the column itself is nullable and a plain `where` filter
     // (the `existing` lookup above) accepts null just fine. Branch on
@@ -125,7 +125,6 @@ export async function updateCmsLandingSectionAction(section: string, value: unkn
         data: {
           tenantId: null,
           singleTypeId: singleType.id,
-          locale: "id",
           enabled: true,
           publishedAt: new Date(),
           data: lp as any,
@@ -244,7 +243,6 @@ export async function createCmsBlogPostAction(input: BlogPostInput, status: "DRA
       data: {
         contentTypeId: contentType.id,
         tenantId: null,
-        locale: "id",
         data: { ...input, date: publishedAt ? formatIndonesianDate(publishedAt) : null } as any,
         status,
         publishedAt,

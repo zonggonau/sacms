@@ -45,7 +45,6 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
     // Import uses the source document ID to group translations under a new ID.
     sourceId: e.id,
     documentId: e.documentId,
-    locale: e.locale,
     status: e.status,
     data: typeof e.data === "string" ? JSON.parse(e.data) : e.data,
     publishedAt: e.publishedAt,

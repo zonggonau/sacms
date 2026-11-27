@@ -134,9 +134,7 @@ export default function CTBEditEntryClient({
   const [contentType, setContentType] = useState<ContentType | null>(null)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [entryStatus, setEntryStatus] = useState<string>("DRAFT")
-  const [locale, setLocale] = useState<string>("id")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
-  const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "id", name: "Bahasa Indonesia" }])
   const [isLimitReached, setIsLimitReached] = useState(false)
   const [entriesLimit, setEntriesLimit] = useState(0)
 
@@ -145,9 +143,8 @@ export default function CTBEditEntryClient({
       if (!tenantSlug || !contentTypeSlug || !entryId) return
       try {
         setLoading(true)
-        const [entryData, locRes, limitRes] = await Promise.all([
-          getEntryAction(tenantSlug, contentTypeSlug, entryId, locale),
-          fetch(`/api/tenant/${tenantSlug}/locales`),
+        const [entryData, limitRes] = await Promise.all([
+          getEntryAction(tenantSlug, contentTypeSlug, entryId),
           fetch(`/api/tenant/${tenantSlug}/subscription/limit-check?feature=content_entries`),
         ])
 
@@ -164,11 +161,6 @@ export default function CTBEditEntryClient({
           }
         }
 
-        if (locRes.ok) {
-          const data = await locRes.json()
-          if (data.locales?.length > 0) setAvailableLocales(data.locales)
-        }
-
         if (limitRes.ok) {
           const data = await limitRes.json()
           setIsLimitReached(!data.allowed)
@@ -181,7 +173,7 @@ export default function CTBEditEntryClient({
       }
     }
     fetchData()
-  }, [tenantSlug, contentTypeSlug, entryId, locale])
+  }, [tenantSlug, contentTypeSlug, entryId])
 
   const handleSave = async (publishNow: boolean = false, targetOverride?: string) => {
     setSaving(true)
@@ -194,7 +186,6 @@ export default function CTBEditEntryClient({
       const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
         data: formData,
         status: targetStatus,
-        locale,
         scheduledAt: scheduledAt || null
       })
 
@@ -375,7 +366,6 @@ export default function CTBEditEntryClient({
               <div className="flex items-center gap-2">
                 <AISmartFill
                   form={aiForm}
-                  locale={locale}
                   tenantSlug={tenantSlug}
                   contentTypeName={contentType?.name || ""}
                   schema={contentType?.fields || []}
@@ -454,23 +444,6 @@ export default function CTBEditEntryClient({
                       </Select>
                     </div>
 
-                    {availableLocales.length > 1 && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold">Language</Label>
-                        <Select value={locale} onValueChange={setLocale}>
-                          <SelectTrigger className="h-8 rounded-xl text-xs bg-background border-border/80">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            {availableLocales.map((loc) => (
-                              <SelectItem key={loc.locale} value={loc.locale} className="text-xs">
-                                {loc.name || loc.locale}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
 

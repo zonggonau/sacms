@@ -16,25 +16,22 @@ interface AIAssistantDialogProps {
   field: AiField
   value: unknown
   context: Record<string, string>
-  locale: string
   onApply: (suggestion: AiFieldValue) => void
 }
 
 const actionLabels: Record<FieldAiAction, string> = {
   generate: "Buat draf", improve: "Rapikan teks", summarize: "Ringkas",
-  translate: "Terjemahkan", seo: "Sarankan SEO",
+  seo: "Sarankan SEO",
 }
 
-const languages = { id: "Indonesia", en: "Inggris", ms: "Melayu", ja: "Jepang", zh: "Mandarin", es: "Spanyol", fr: "Prancis" }
 
-export function AIAssistantDialog({ tenantSlug, form, field, value, context, locale, onApply }: AIAssistantDialogProps) {
+export function AIAssistantDialog({ tenantSlug, form, field, value, context, onApply }: AIAssistantDialogProps) {
   const actions = fieldAiActions(field, form)
   const isSeo = field.type === "seo"
   const polishOnly = getFieldAiMode(field, form) === "polish"
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState<FieldAiAction>(actions[0] ?? "improve")
   const [prompt, setPrompt] = useState("")
-  const [language, setLanguage] = useState(locale.startsWith("en") ? "id" : "en")
   const [suggestions, setSuggestions] = useState<AiFieldValue[]>([])
   const [selected, setSelected] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -48,7 +45,7 @@ export function AIAssistantDialog({ tenantSlug, form, field, value, context, loc
   const hasContext = Object.keys(context).length > 0
   const canGenerate = action === "generate" ? !!prompt.trim() || hasContext
     : action === "seo" ? (polishOnly ? hasValue : hasContext || hasValue || !!prompt.trim())
-      : hasValue && (action !== "translate" || !!language.trim())
+      : hasValue
 
   function changeOpen(next: boolean) {
     if (loading) return
@@ -78,9 +75,8 @@ export function AIAssistantDialog({ tenantSlug, form, field, value, context, loc
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          form, fieldSlug: field.slug, action, locale, prompt,
+          form, fieldSlug: field.slug, action, prompt,
           content, context: polishOnly ? {} : context,
-          targetLanguage: action === "translate" ? language.trim() : undefined,
         }),
       })
       const data = await response.json()
@@ -142,24 +138,6 @@ export function AIAssistantDialog({ tenantSlug, form, field, value, context, loc
               setError("")
             }}
               placeholder="Tambahkan fakta atau arahan penulisan" disabled={loading} maxLength={4000} rows={3} />
-          </div>
-        )}
-
-        {action === "translate" && (
-          <div className="space-y-1.5">
-            <Label htmlFor="field-ai-language">Bahasa tujuan</Label>
-            <Select value={language} disabled={loading} onValueChange={(next) => {
-              setLanguage(next)
-              setSuggestions([])
-              setError("")
-            }}>
-              <SelectTrigger id="field-ai-language" className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(languages).map(([code, label]) => (
-                  <SelectItem key={code} value={code}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         )}
 

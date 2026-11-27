@@ -55,18 +55,9 @@ export async function GET(
     const tenantId = apiKey?.tenantId || apiToken?.tenantId
     const apiTokenType = apiKey ? "full-access" : apiToken?.type
 
-    const { searchParams } = new URL(request.url)
-    const defaultLocale = tenantId
-      ? (await db.tenantLocale.findFirst({
-          where: { tenantId: tenantId, isDefault: true },
-          select: { locale: true },
-        }))?.locale || "en"
-      : "en"
-    const locale = searchParams.get("locale") || defaultLocale
-
     // Cache check only after authentication.
     const cacheOwner = tenantId ? `${tenantId}:${apiTokenType}` : "system"
-    const cacheKey = `public_api_single_global:${cacheOwner}:${singleTypeSlug}:${locale}`
+    const cacheKey = `public_api_single_global:${cacheOwner}:${singleTypeSlug}`
     const cached = await getCache(cacheKey)
     if (cached) return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } })
 
@@ -83,7 +74,6 @@ export async function GET(
     let assignment = await db.tenantSingleTypeAssignment.findFirst({
       where: {
         singleTypeId: singleType.id,
-        locale,
         OR: [
           { tenantId: null },
           { tenantId: systemTenantId },

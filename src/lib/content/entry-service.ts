@@ -76,7 +76,6 @@ export type ServiceError =
   | "conflict"
   | "rejected_by_hook"
   | "invalid_status"
-  | "locale_not_enabled"
   | "plan_limit"
 
 export type ServiceResult<T> =
@@ -161,29 +160,6 @@ export async function resolveWritableContentType(
   return done({ contentType, fields: parseSchemaFieldOptions(contentType.schemaFields) })
 }
 
-/** Resolve the locale a write lands in and verify it is enabled for the tenant. */
-export async function resolveWriteLocale(
-  client: Pick<PrismaClient, "tenantLocale">,
-  tenantId: string | null,
-  requested: string | null | undefined,
-): Promise<ServiceResult<string>> {
-  if (tenantId === null) return done((requested && requested.trim()) || "en")
-
-  const enabled = await client.tenantLocale.findMany({
-    where: { tenantId, isEnabled: true },
-    select: { locale: true, isDefault: true },
-  })
-
-  if (requested && requested.trim()) {
-    const locale = requested.trim()
-    if (enabled.length > 0 && !enabled.some((l) => l.locale === locale)) {
-      return fail("locale_not_enabled", `Locale '${locale}' is not enabled for this workspace`)
-    }
-    return done(locale)
-  }
-  return done(enabled.find((l) => l.isDefault)?.locale ?? enabled[0]?.locale ?? "en")
-}
-
 /** publishedAt / scheduledAt / archivedAt for a target status given a previous one. */
 function timestampsFor(status: WorkflowStatus, prevStatus: WorkflowStatus | null, scheduledAt: Date | null) {
   const out: { publishedAt?: Date | null; scheduledAt?: Date | null; archivedAt?: Date | null } = {}
@@ -247,8 +223,6 @@ export function contentRevalidatePaths(tenantSlug: string, contentTypeSlug: stri
 export interface EntryWriteContext {
   /** Tenant Prisma client (shared pool or dedicated). For global content pass `db`. */
   client: PrismaClient
-  /** Control-plane locale configuration when separate from the content database. */
-  localeClient?: Pick<PrismaClient, "tenantLocale">
   /** Resolved tenant id, or `null` for super-admin global content. */
   tenantId: string | null
   /** Tenant slug — used for cache keys and revalidation. `"admin"` for global. */
@@ -291,7 +265,6 @@ export interface CreateEntryInput {
   contentTypeSlug: string
   data: Record<string, unknown>
   status?: string
-  locale?: string | null
   scheduledAt?: Date | string | null
   /** Existing destination document from the same import, never a source ID. */
   importDocumentId?: string
@@ -316,10 +289,6 @@ export async function createContentEntry(
   const ctResult = await resolveWritableContentType(client, input.contentTypeSlug, { tenantId, isGlobal: ctx.isGlobal })
   if (!ctResult.ok) return ctResult
   const { contentType, fields } = ctResult.data
-
-  const localeResult = await resolveWriteLocale(ctx.localeClient ?? client, tenantId, input.locale)
-  if (!localeResult.ok) return localeResult
-  const locale = localeResult.data
 
   const scheduledAt = normalizeScheduledAt(input.scheduledAt)
   const scheduleError = validateScheduledPublicationDate(targetStatus, scheduledAt)
@@ -387,7 +356,6 @@ export async function createContentEntry(
       data: {
         contentTypeId: contentType.id,
         tenantId,
-        locale,
         documentId: input.importDocumentId,
         data: finalData as any,
         status: targetStatus as any,
@@ -397,7 +365,7 @@ export async function createContentEntry(
         updatedBy: uid,
       },
     })
-    // documentId defaults to the row's own id for a first locale.
+    // documentId defaults to the row's own id when no import supplied one.
     const withDoc = input.importDocumentId ? created : await tx.contentEntry.update({
       where: { id: created.id },
       data: { documentId: created.id },
@@ -424,13 +392,13 @@ export async function createContentEntry(
     action: AuditAction.CONTENT_CREATED,
     entity: "content_entry",
     entityId: entry.id,
-    data: { contentType: input.contentTypeSlug, status: entry.status, locale },
+    data: { contentType: input.contentTypeSlug, status: entry.status },
   })
 
   return done(entry)
 }
 
-// ── UPDATE (incl. translation flow + shared-field sync) ───────────────────
+// ── UPDATE ───────────────────────────────────────────────────────────────
 
 export interface UpdateEntryInput {
   contentTypeSlug: string
@@ -438,18 +406,15 @@ export interface UpdateEntryInput {
   /** Omit to change only the status. */
   data?: Record<string, unknown>
   status?: string
-  locale?: string | null
   scheduledAt?: Date | string | null
   /**
-   * The `updatedAt` the caller's editor last loaded for this entry/locale.
+   * The `updatedAt` the caller's editor last loaded for this entry.
    * When supplied, the write is rejected with a "conflict" if someone else
    * saved in between — otherwise two concurrent editors silently last-write-
    * wins over each other with no signal. Omit to skip the check (e.g. bulk
    * field updates that intentionally don't carry a stale client snapshot).
    */
   expectedUpdatedAt?: Date | string | null
-  /** Fail rather than overwrite a translation created after opening the editor. */
-  expectedLocaleMissing?: boolean
 }
 
 export async function updateContentEntry(
@@ -466,10 +431,6 @@ export async function updateContentEntry(
   const ctResult = await resolveWritableContentType(client, input.contentTypeSlug, { tenantId, isGlobal: ctx.isGlobal })
   if (!ctResult.ok) return ctResult
   const { contentType, fields } = ctResult.data
-
-  const localeResult = await resolveWriteLocale(ctx.localeClient ?? client, tenantId, input.locale)
-  if (!localeResult.ok) return localeResult
-  const targetLocale = localeResult.data
 
   const baseEntry = await client.contentEntry.findFirst({
     where: {
@@ -491,30 +452,16 @@ export async function updateContentEntry(
     return fail("forbidden", "This entry is globally shared and cannot be modified by tenant admins")
   }
 
-  const documentId = baseEntry.documentId || baseEntry.id
-
-  let existingLocaleEntry: ContentEntry | null =
-    baseEntry.locale === targetLocale
-      ? baseEntry
-      : await client.contentEntry.findFirst({
-          where: {
-            documentId,
-            contentTypeId: baseEntry.contentTypeId,
-            tenantId: baseEntry.tenantId,
-            locale: targetLocale,
-            deletedAt: null,
-          },
-        })
-
-  const prevStatus = (existingLocaleEntry?.status ?? "DRAFT") as WorkflowStatus
-  const targetStatusRaw = input.status ?? existingLocaleEntry?.status ?? "DRAFT"
+  const existingEntry: ContentEntry = baseEntry
+  const prevStatus = existingEntry.status as WorkflowStatus
+  const targetStatusRaw = input.status ?? existingEntry?.status ?? "DRAFT"
   const statusCheck = assertActorStatusAllowed(actor, targetStatusRaw)
   if (!statusCheck.ok) return statusCheck
   const targetStatus = statusCheck.data
 
   // Ownership — staff "author"/"contributor" and members with ownershipRequired
   // may only touch entries they created.
-  const ownerId = existingLocaleEntry?.createdBy ?? baseEntry.createdBy
+  const ownerId = existingEntry?.createdBy ?? baseEntry.createdBy
   if (actor.kind === "staff" && (actor.role === "author" || actor.role === "contributor")) {
     if (ownerId !== actor.userId) return fail("forbidden", "You do not have permission to edit content you do not own")
   }
@@ -522,25 +469,24 @@ export async function updateContentEntry(
     return fail("forbidden", "You can only modify entries you created")
   }
 
-  // Optimistic lock — reject if someone else saved this locale's row since
+  // Optimistic lock — reject if someone else saved this entry since
   // the caller's editor last loaded it, instead of silently overwriting
   // their changes (see UpdateEntryInput.expectedUpdatedAt).
   const conflictMessage = "This entry was changed by someone else since you opened it. Reload it to see the latest version before saving."
   const expectedUpdatedAt = normalizeScheduledAt(input.expectedUpdatedAt)
   if (
-    (input.expectedLocaleMissing && existingLocaleEntry) ||
-    (expectedUpdatedAt && expectedUpdatedAt.getTime() !== existingLocaleEntry?.updatedAt.getTime())
+    (expectedUpdatedAt && expectedUpdatedAt.getTime() !== existingEntry?.updatedAt.getTime())
   ) {
     return fail("conflict", conflictMessage)
   }
 
-  const transition = existingLocaleEntry
+  const transition = existingEntry
     ? assertWorkflowTransition(actor, prevStatus, targetStatus)
     : assertWorkflowTransition(actor, "DRAFT", targetStatus)
   if (!transition.ok) return transition
 
   const scheduledAt = normalizeScheduledAt(input.scheduledAt)
-  const effectiveScheduledAt = scheduledAt || existingLocaleEntry?.scheduledAt || null
+  const effectiveScheduledAt = scheduledAt || existingEntry?.scheduledAt || null
   const scheduleError = validateScheduledPublicationDate(targetStatus, effectiveScheduledAt)
   if (scheduleError) return fail("validation", scheduleError)
 
@@ -558,8 +504,8 @@ export async function updateContentEntry(
   let mergedData: Record<string, unknown> | undefined
   if (input.data || enforceRequired) {
     const existingData =
-      existingLocaleEntry?.data && typeof existingLocaleEntry.data === "object"
-        ? (existingLocaleEntry.data as Record<string, unknown>)
+      existingEntry?.data && typeof existingEntry.data === "object"
+        ? (existingEntry.data as Record<string, unknown>)
         : {}
     const candidate = { ...existingData, ...(input.data || {}) }
     const withSlugs = await processAutoSlugs(
@@ -567,7 +513,7 @@ export async function updateContentEntry(
       contentType.id,
       fields,
       candidate as Record<string, any>,
-      existingLocaleEntry?.id,
+      existingEntry?.id,
       "content",
       client,
     )
@@ -579,7 +525,7 @@ export async function updateContentEntry(
     }
 
     if (tenantId) {
-      const dynamic = await validateDynamicContent(contentType.id, tenantId, withSlugs, existingLocaleEntry?.id, {
+      const dynamic = await validateDynamicContent(contentType.id, tenantId, withSlugs, existingEntry?.id, {
         enforceRequired,
         client,
         studio: ctx.studio,
@@ -599,9 +545,9 @@ export async function updateContentEntry(
   const uid = actorUserId(actor)
 
   const entry = await client.$transaction(async (tx) => {
-    let targetEntryId: string
+    let targetEntryId: string = existingEntry.id
 
-    if (existingLocaleEntry) {
+    if (existingEntry) {
       let finalData = mergedData
       if (mergedData && tenantId) {
         const beforeUpdate = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_UPDATE, mergedData as Record<string, unknown>)
@@ -610,8 +556,8 @@ export async function updateContentEntry(
       }
       if (targetStatus === "PUBLISHED" && prevStatus !== "PUBLISHED" && tenantId) {
         const beforePublish = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_PUBLISH, {
-          id: existingLocaleEntry.id,
-          data: (finalData || existingLocaleEntry.data) as Record<string, unknown>,
+          id: existingEntry.id,
+          data: (finalData || existingEntry.data) as Record<string, unknown>,
           currentStatus: prevStatus,
         })
         if (!beforePublish.allowed) throw new Error(beforePublish.rejectMessage || "Rejected by publish hook")
@@ -620,7 +566,6 @@ export async function updateContentEntry(
 
       const ts = timestampsFor(targetStatus, prevStatus, effectiveScheduledAt)
       const updateData: Record<string, unknown> = { updatedBy: uid }
-      if (!existingLocaleEntry.documentId) updateData.documentId = documentId
       if (finalData) updateData.data = finalData as any
       if (input.status || targetStatus !== prevStatus) {
         updateData.status = targetStatus
@@ -630,82 +575,14 @@ export async function updateContentEntry(
       }
       if (expectedUpdatedAt) {
         const result = await tx.contentEntry.updateMany({
-          where: { id: existingLocaleEntry.id, updatedAt: expectedUpdatedAt, deletedAt: null },
+          where: { id: existingEntry.id, updatedAt: expectedUpdatedAt, deletedAt: null },
           data: updateData,
         })
         if (result.count === 0) return null
       } else {
-        await tx.contentEntry.update({ where: { id: existingLocaleEntry.id }, data: updateData })
+        await tx.contentEntry.update({ where: { id: existingEntry.id }, data: updateData })
       }
-      targetEntryId = existingLocaleEntry.id
-    } else {
-      if (input.expectedLocaleMissing) {
-        // Serialize simultaneous translation saves on a stable row for the document.
-        await tx.$queryRaw`
-          SELECT id FROM content_entries
-          WHERE "tenantId" IS NOT DISTINCT FROM ${baseEntry.tenantId}
-            AND "contentTypeId" = ${baseEntry.contentTypeId}
-            AND (id = ${documentId} OR "documentId" = ${documentId})
-          ORDER BY "createdAt", id
-          LIMIT 1 FOR UPDATE
-        `
-        const competingTranslation = await tx.contentEntry.findFirst({
-          where: { documentId, locale: targetLocale, contentTypeId: baseEntry.contentTypeId, tenantId: baseEntry.tenantId, deletedAt: null },
-          select: { id: true },
-        })
-        if (competingTranslation) return null
-      }
-      // New translation of an existing document.
-      if (!mergedData) throw new Error("Data is required to create a new translation")
-      let finalData: Record<string, unknown> = mergedData
-      if (tenantId) {
-        const beforeCreate = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_CREATE, finalData as Record<string, unknown>)
-        if (!beforeCreate.allowed) throw new Error(beforeCreate.rejectMessage || "Rejected by hook")
-        finalData = (beforeCreate.modifiedData as Record<string, unknown>) || finalData
-        if (targetStatus === "PUBLISHED") {
-          const beforePublish = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_PUBLISH, finalData as Record<string, unknown>)
-          if (!beforePublish.allowed) throw new Error(beforePublish.rejectMessage || "Rejected by publish hook")
-          finalData = (beforePublish.modifiedData as Record<string, unknown>) || finalData
-        }
-      }
-      if (!baseEntry.documentId) {
-        await tx.contentEntry.update({ where: { id: baseEntry.id }, data: { documentId } })
-      }
-      const ts = timestampsFor(targetStatus, null, effectiveScheduledAt)
-      const newEntry = await tx.contentEntry.create({
-        data: {
-          documentId,
-          contentTypeId: baseEntry.contentTypeId,
-          tenantId,
-          locale: targetLocale,
-          data: finalData as any,
-          status: targetStatus as any,
-          publishedAt: ts.publishedAt ?? null,
-          scheduledAt: ts.scheduledAt ?? null,
-          createdBy: uid,
-          updatedBy: uid,
-        },
-      })
-      targetEntryId = newEntry.id
-    }
-
-    // Sync non-localizable (shared) fields across every translation.
-    if (input.data) {
-      const sharedFields = fields.filter((f: any) => !f.localizable)
-      if (sharedFields.length > 0) {
-        const siblings = await tx.contentEntry.findMany({ where: { documentId, NOT: { id: targetEntryId } } })
-        for (const sib of siblings) {
-          const sibData = typeof sib.data === "string" ? JSON.parse(sib.data) : (sib.data as Record<string, unknown>)
-          let changed = false
-          for (const f of sharedFields) {
-            if (input.data[f.slug] !== sibData[f.slug]) {
-              sibData[f.slug] = input.data[f.slug]
-              changed = true
-            }
-          }
-          if (changed) await tx.contentEntry.update({ where: { id: sib.id }, data: { data: sibData as any } })
-        }
-      }
+      targetEntryId = existingEntry.id
     }
 
     const updated = await tx.contentEntry.findUnique({ where: { id: targetEntryId } })
@@ -713,7 +590,7 @@ export async function updateContentEntry(
       tx as PrismaClient,
       targetEntryId,
       updated?.data,
-      existingLocaleEntry ? "updated" : "created",
+      "updated",
       uid,
     )
     return updated!
@@ -722,8 +599,7 @@ export async function updateContentEntry(
   if (!entry) return fail("conflict", conflictMessage)
 
   if (tenantId) {
-    const wasCreate = !existingLocaleEntry
-    triggerWebhooks(tenantId, wasCreate ? WebhookEvents.CONTENT_CREATED : WebhookEvents.CONTENT_UPDATED, {
+    triggerWebhooks(tenantId, WebhookEvents.CONTENT_UPDATED, {
       entry: { id: entry.id, contentType: input.contentTypeSlug, status: entry.status },
     }).catch(() => {})
     if (entry.status === "PUBLISHED" && prevStatus !== "PUBLISHED") {
@@ -745,11 +621,9 @@ export async function updateContentEntry(
   // AuditAction.CONTENT_PUBLISHED/CONTENT_UNPUBLISHED already exist for
   // exactly this (and the webhook events right above already make the
   // same distinction).
-  let auditAction: string = existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED
-  if (existingLocaleEntry) {
-    if (entry.status === "PUBLISHED" && prevStatus !== "PUBLISHED") auditAction = AuditAction.CONTENT_PUBLISHED
-    else if (prevStatus === "PUBLISHED" && entry.status !== "PUBLISHED") auditAction = AuditAction.CONTENT_UNPUBLISHED
-  }
+  let auditAction: string = AuditAction.CONTENT_UPDATED
+  if (entry.status === "PUBLISHED" && prevStatus !== "PUBLISHED") auditAction = AuditAction.CONTENT_PUBLISHED
+  else if (prevStatus === "PUBLISHED" && entry.status !== "PUBLISHED") auditAction = AuditAction.CONTENT_UNPUBLISHED
 
   logAudit({
     tenantId: tenantId ?? undefined,
@@ -757,7 +631,7 @@ export async function updateContentEntry(
     action: auditAction,
     entity: "content_entry",
     entityId: entry.id,
-    data: { contentType: input.contentTypeSlug, status: entry.status, locale: targetLocale },
+    data: { contentType: input.contentTypeSlug, status: entry.status },
   })
 
   return done(entry)
@@ -770,19 +644,10 @@ export async function transitionContentEntryStatus(
   actor: ContentActor,
   input: { contentTypeSlug: string; entryId: string; status: string },
 ): Promise<ServiceResult<ContentEntry>> {
-  const existing = await ctx.client.contentEntry.findFirst({
-    where: {
-      id: input.entryId,
-      OR: ctx.tenantId === null ? [{ tenantId: null }] : [{ tenantId: ctx.tenantId }, { tenantId: null }],
-    },
-    select: { locale: true },
-  })
-  if (!existing) return fail("not_found", "Entry not found")
   return updateContentEntry(ctx, actor, {
     contentTypeSlug: input.contentTypeSlug,
     entryId: input.entryId,
     status: input.status,
-    locale: existing.locale,
   })
 }
 

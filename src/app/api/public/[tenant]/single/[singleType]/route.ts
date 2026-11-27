@@ -6,7 +6,6 @@ import { rewritePublicMediaUrls } from "@/lib/public-media-url"
 import { logApiRequest } from "@/lib/monitoring"
 import { getCache, setCache } from "@/lib/cache"
 import {
-  getSingleTypeLocales,
   invalidateSingleTypePublication,
   readSingleTypeAssignment,
   singleTypeContentWrite,
@@ -185,8 +184,6 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const [{ locale: defaultLocale }] = await getSingleTypeLocales(auth.tenantId)
-    const locale = searchParams.get("locale") || defaultLocale
     const readDraft = searchParams.get("draft") === "true"
     if (readDraft && !auth.hasWriteAccess) {
       return logResponse(NextResponse.json({ error: "Draft preview requires write access" }, {
@@ -225,10 +222,9 @@ export async function GET(
     // Check if single type is assigned to tenant
     const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
       where: {
-        tenantId_singleTypeId_locale: {
+        tenantId_singleTypeId: {
           tenantId: auth.tenantId,
           singleTypeId: singleType.id,
-          locale,
         },
       },
     })
@@ -248,7 +244,7 @@ export async function GET(
     }
 
     const cacheKey = !readDraft && assignment.publishedAt
-      ? `single:${auth.tenantId}:${singleTypeSlug}:${locale}:published:${assignment.publishedAt.getTime()}`
+      ? `single:${auth.tenantId}:${singleTypeSlug}:published:${assignment.publishedAt.getTime()}`
       : null
     const responseHeaders = {
       "X-RateLimit-Limit": String(rateLimitResult.limit),
@@ -266,7 +262,7 @@ export async function GET(
       auth.tenantId,
       snapshot.data,
       singleType.schemaFields,
-      { client: tenantDb, includeUnpublished: readDraft, includeSingleTypeDraft: readDraft, locale },
+      { client: tenantDb, includeUnpublished: readDraft, includeSingleTypeDraft: readDraft },
     )
     const responseData = readDraft ? resolvedData : rewritePublicMediaUrls(resolvedData)
 
@@ -281,7 +277,6 @@ export async function GET(
           name: singleType.name,
           slug: singleType.slug,
         },
-        locale,
       },
     }
 
@@ -351,8 +346,6 @@ export async function PUT(
     }
 
     const { searchParams } = new URL(request.url)
-    const [{ locale: defaultLocale }] = await getSingleTypeLocales(auth.tenantId)
-    const locale = searchParams.get("locale") || defaultLocale
 
     const { getTenantDb } = await import("@/lib/database")
     const tenantDb = await getTenantDb(auth.tenantId)
@@ -379,10 +372,9 @@ export async function PUT(
     // Check assignment
     const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
       where: {
-        tenantId_singleTypeId_locale: {
+        tenantId_singleTypeId: {
           tenantId: auth.tenantId,
           singleTypeId: singleType.id,
-          locale,
         },
       },
     })
@@ -415,7 +407,7 @@ export async function PUT(
       data: singleTypeContentWrite(content, publish),
     })
 
-    if (publish) await invalidateSingleTypePublication(auth.tenantId, singleType.slug, locale)
+    if (publish) await invalidateSingleTypePublication(auth.tenantId, singleType.slug)
 
     return logResponse(NextResponse.json({
       data: {
@@ -428,7 +420,6 @@ export async function PUT(
           name: singleType.name,
           slug: singleType.slug,
         },
-        locale,
       }
     }))
   } catch (error) {

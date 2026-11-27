@@ -77,11 +77,10 @@ describe("CMS portal and backups against PostgreSQL", () => {
     expect(localList.entries?.map(entry => entry.id)).toEqual([captured.id])
   })
 
-  it("restores a portable backup and its locale to the right databases without duplicating entries", async () => {
+  it("restores a portable backup to the right databases without duplicating entries", async () => {
     const source = await db.tenant.create({ data: { slug: "cms-backup-source-ci", name: "Source CI", useOwnerInfra: false } })
     const destination = await db.tenant.create({ data: { slug: "cms-backup-result-ci", name: "Result CI", databaseUrl: dedicatedUrl, useOwnerInfra: false } })
     await dedicated.tenant.create({ data: { id: destination.id, slug: destination.slug, name: destination.name } })
-    await db.tenantLocale.create({ data: { tenantId: source.id, locale: "id", name: "Indonesia", isDefault: true } })
     const group = await db.contentTypeGroup.create({ data: { tenantId: source.id, name: "Editorial" } })
     const model = await db.contentType.create({ data: { tenantId: source.id, name: "Articles", slug: "backup-articles", groupId: group.id, showInCms: false } })
     const singleton = await db.singleType.create({ data: { tenantId: source.id, name: "Home", slug: "backup-home" } })
@@ -90,7 +89,7 @@ describe("CMS portal and backups against PostgreSQL", () => {
       data: { tenantId: source.id, contentTypeId: model.id, status: "PUBLISHED", publishedAt: new Date("2026-02-12T11:00:00Z"), data: { title: "Published" } },
     })
     await db.tenantSingleTypeAssignment.create({
-      data: { tenantId: source.id, singleTypeId: singleton.id, locale: "id", publishedAt: new Date("2026-02-12T11:00:00Z"), data: { featured: entry.id }, draftData: { title: "Draft changes" } },
+      data: { tenantId: source.id, singleTypeId: singleton.id, publishedAt: new Date("2026-02-12T11:00:00Z"), data: { featured: entry.id }, draftData: { title: "Draft changes" } },
     })
     await db.media.create({
       data: { tenantId: source.id, name: "cover.png", originalName: "cover.png", mimeType: "image/png", size: 100, url: "/api/media/cover", storageKey: "storage/cover" },
@@ -100,7 +99,7 @@ describe("CMS portal and backups against PostgreSQL", () => {
     const response = await exportBackup(new NextRequest(`http://localhost/api/tenant/${source.slug}/export`), { params: Promise.resolve({ tenant: source.slug }) })
     expect(response.status).toBe(200)
     const backup = await response.json()
-    expect(backup).toMatchObject({ version: "1.1", manifest: { counts: { locales: 1, contentEntries: 1, media: 1 } } })
+    expect(backup).toMatchObject({ version: "1.2", manifest: { counts: { contentEntries: 1, media: 1 } } })
     expect(backup.data.media[0]).not.toHaveProperty("storageKey")
 
     allowWorkspace(destination)
@@ -113,14 +112,12 @@ describe("CMS portal and backups against PostgreSQL", () => {
     }
     expect(await restore()).toMatchObject({
       success: true, partial: true,
-      imported: { locales: 1, contentTypes: 1, contentTypeGroups: 1, components: 1, singleTypes: 1, contentEntries: 1, singleTypeData: 1 },
+      imported: { contentTypes: 1, contentTypeGroups: 1, components: 1, singleTypes: 1, contentEntries: 1, singleTypeData: 1 },
       skipped: [{ section: "media", count: 1 }],
     })
     expect(await restore()).toMatchObject({ success: true, imported: { contentEntries: 1 } })
     expect(await dedicated.contentEntry.count({ where: { tenantId: destination.id } })).toBe(1)
     expect(await db.contentEntry.count({ where: { tenantId: destination.id } })).toBe(0)
-    expect(await db.tenantLocale.count({ where: { tenantId: destination.id, isDefault: true } })).toBe(1)
-    expect(await dedicated.tenantLocale.count({ where: { tenantId: destination.id } })).toBe(0)
 
     const restoredEntry = await dedicated.contentEntry.findFirstOrThrow({ where: { tenantId: destination.id } })
     expect(restoredEntry).toMatchObject({ status: "PUBLISHED", publishedAt: entry.publishedAt })

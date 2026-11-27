@@ -1144,7 +1144,7 @@ export default function TenantSettingsPage() {
                     Cadangan Skema dan Konten
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Cadangan JSON berisi skema, locale, dan entri. Media, akun tim, riwayat versi, billing, dan hosting memerlukan pemulihan tersendiri.
+                    Cadangan JSON berisi skema dan entri. Media, akun tim, riwayat versi, billing, dan hosting memerlukan pemulihan tersendiri.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">

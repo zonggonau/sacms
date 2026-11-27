@@ -165,8 +165,6 @@ export function buildOpenApiSpec(options: {
       properties: {
         id: { type: "string", description: "Unique entry ID" },
         documentId: { type: "string" },
-        locale: { type: "string", example: "id" },
-        availableLocales: { type: "array", items: { type: "string" } },
         status: { type: "string", enum: CONTENT_STATUS_ENUM, example: "PUBLISHED" },
         publishedAt: { type: "string", format: "date-time", nullable: true },
         createdAt: { type: "string", format: "date-time" },
@@ -187,7 +185,6 @@ export function buildOpenApiSpec(options: {
           { name: "pagination[page]", in: "query", schema: { type: "integer", default: 1 } },
           { name: "pagination[pageSize]", in: "query", schema: { type: "integer", default: 25, maximum: 100 } },
           { name: "sort", in: "query", schema: { type: "string", example: "createdAt:desc" }, description: "Field and direction." },
-          { name: "locale", in: "query", schema: { type: "string", example: "id" } },
           { name: "fields", in: "query", schema: { type: "string" }, description: "Comma-separated field selection, e.g. title,slug." },
           { name: "populate", in: "query", schema: { type: "string", example: "*" }, description: "Comma-separated relation fields to expand, or * for all." },
           { name: "filters", in: "query", schema: { type: "object" }, description: "Bracket-syntax field filters, e.g. filters[title][$eq]=Tutorial ($eq/$ne/$gt/$gte/$lt/$lte/$in/$notIn/$contains)." },
@@ -223,7 +220,6 @@ export function buildOpenApiSpec(options: {
                 properties: {
                   data: { $ref: `#/components/schemas/${inputSchema}` },
                   status: { type: "string", enum: ["DRAFT", "PUBLISHED", "IN_REVIEW"], default: "PUBLISHED" },
-                  locale: { type: "string", default: "id" },
                 },
                 required: ["data"],
               },
@@ -250,7 +246,6 @@ export function buildOpenApiSpec(options: {
           { name: "id", in: "path", required: true, schema: { type: "string" } },
           { name: "fields", in: "query", schema: { type: "string" } },
           { name: "populate", in: "query", schema: { type: "string", example: "*" } },
-          { name: "locale", in: "query", schema: { type: "string" } },
         ],
         responses: {
           "200": { description: "Entry details.", content: { "application/json": { schema: { type: "object", properties: { data: { $ref: `#/components/schemas/${entrySchema}` } } } } } },
@@ -301,7 +296,6 @@ export function buildOpenApiSpec(options: {
     for (const f of st.fields) fieldProps[f.slug] = fieldSchema(f)
 
     schemas[schemaName] = { type: "object", description: `Singleton data for ${st.name}`, properties: fieldProps }
-    const localeParameter = { name: "locale", in: "query", description: "Defaults to the workspace language.", schema: { type: "string" } }
 
     paths[`/single/${st.slug}`] = {
       get: {
@@ -309,7 +303,7 @@ export function buildOpenApiSpec(options: {
         description: "Returns the published content by default. Draft preview requires a write-capable token.",
         operationId: `get${schemaName}`,
         tags: ["Single Types"],
-        parameters: [localeParameter, { name: "draft", in: "query", schema: { type: "boolean", default: false } }],
+        parameters: [{ name: "draft", in: "query", schema: { type: "boolean", default: false } }],
         responses: {
           "200": {
             description: `Retrieved ${st.name} content data.`,
@@ -319,7 +313,7 @@ export function buildOpenApiSpec(options: {
                   type: "object",
                   properties: {
                     data: { $ref: `#/components/schemas/${schemaName}` },
-                    meta: { type: "object", properties: { singleType: { type: "string", example: st.slug }, locale: { type: "string", example: "id" }, updatedAt: { type: "string", format: "date-time" } } },
+                    meta: { type: "object", properties: { singleType: { type: "string", example: st.slug }, updatedAt: { type: "string", format: "date-time" } } },
                   },
                 },
               },
@@ -334,7 +328,6 @@ export function buildOpenApiSpec(options: {
         description: "Saves a draft by default. Set publish to true to make the supplied content live.",
         operationId: `update${schemaName}`,
         tags: ["Single Types"],
-        parameters: [localeParameter],
         requestBody: {
           required: true,
           content: {

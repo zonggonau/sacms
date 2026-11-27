@@ -46,7 +46,6 @@ export interface WorkspacePlan {
   max_content_entries?: number
   max_storage?: number
   max_team_members?: number
-  max_locales?: number
   max_api_calls?: number
   features?: string[]
 }
