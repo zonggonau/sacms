@@ -14,10 +14,12 @@ import { registerBuildTools } from "@/lib/mcp/workspace/build-tools"
 import { registerDeployTools } from "@/lib/mcp/workspace/deploy-tools"
 import { publicOrigin } from "@/lib/mcp/oauth/protocol"
 import { workspaceScopeError } from "@/lib/mcp/workspace-scope"
+import { withWorkspaceScopeGate } from "@/lib/mcp/workspace/scope-gate"
 
 const handler = createMcpHandler(
   async (server) => {
-    registerWorkspacePreviews(server, () => {
+    const gated = withWorkspaceScopeGate(server)
+    registerWorkspacePreviews(gated, () => {
       const auth = authContext.getStore()
       return auth && { tenantId: auth.tenantId, tenantSlug: auth.tenantSlug, canRead: hasScope(auth, "read"), canWrite: hasScope(auth, "write") && auth.isHostingPlanPaid }
     })
@@ -26,14 +28,14 @@ const handler = createMcpHandler(
     // 1. FULL SCHEMA & INTROSPECTION TOOLS
     // =========================================================================
 
-    registerSchemaTools(server)
-    registerContentTools(server)
-    registerSampleContentTools(server)
-    registerSingleTypeAndComponentTools(server)
-    registerWebhookTools(server)
-    registerPlatformTools(server)
-    registerBuildTools(server)
-    registerDeployTools(server)
+    registerSchemaTools(gated)
+    registerContentTools(gated)
+    registerSampleContentTools(gated)
+    registerSingleTypeAndComponentTools(gated)
+    registerWebhookTools(gated)
+    registerPlatformTools(gated)
+    registerBuildTools(gated)
+    registerDeployTools(gated)
 
 
   },

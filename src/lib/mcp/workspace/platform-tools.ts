@@ -338,7 +338,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
     server.registerTool(
       "get_or_create_api_key",
       {
-        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+        annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
         title: "Get or Create Workspace API Key",
         description: "Get this workspace's primary REST/GraphQL API key (used as `Authorization: Bearer <key>` by frontends built against this workspace), creating it once if it doesn't exist yet. Safe to call repeatedly — an existing key is always reused, never duplicated. The plaintext secret is only returned the first time it is created; calling this again later returns metadata only (id, name, permissions), since the secret cannot be recovered after creation.",
         inputSchema: {},
