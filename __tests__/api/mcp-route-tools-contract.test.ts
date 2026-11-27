@@ -20,7 +20,7 @@ const workspaceToolDir = join(__dirname, "../../src/lib/mcp/workspace")
 const routeSource = [
   join(__dirname, "../../src/app/api/mcp/[[...transport]]/route.ts"),
   ...readdirSync(workspaceToolDir).map((file) => join(workspaceToolDir, file)),
-].map((file) => readFileSync(file, "utf-8")).join("\n")
+].map((file) => readFileSync(file, "utf-8").replace(/\r\n/g, "\n")).join("\n")
 
 /**
  * Locates a tool's ACTUAL `server.registerTool("name", { ... })` call and

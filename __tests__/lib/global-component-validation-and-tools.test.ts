@@ -77,13 +77,13 @@ const globalSchemaRouteSourceDir = join(__dirname, "../../src/lib/mcp/global")
 const globalSchemaRouteSource = [
   join(__dirname, "../../src/app/api/mcp/global-schema/[[...transport]]/route.ts"),
   ...readdirSync(globalSchemaRouteSourceDir).map((file) => join(globalSchemaRouteSourceDir, file)),
-].map((file) => readFileSync(file, "utf-8")).join("\n")
+].map((file) => readFileSync(file, "utf-8").replace(/\r\n/g, "\n")).join("\n")
 // The workspace route plus the per-domain tool modules it registers (src/lib/mcp/workspace/*).
 const workspaceToolDir = join(__dirname, "../../src/lib/mcp/workspace")
 const perWorkspaceRouteSource = [
   join(__dirname, "../../src/app/api/mcp/[[...transport]]/route.ts"),
   ...readdirSync(workspaceToolDir).map((file) => join(workspaceToolDir, file)),
-].map((file) => readFileSync(file, "utf-8")).join("\n")
+].map((file) => readFileSync(file, "utf-8").replace(/\r\n/g, "\n")).join("\n")
 
 function toolBlockOf(source: string, tool: string): string {
   const anchor = `server.registerTool(\n      "${tool}",`
