@@ -24,7 +24,7 @@ export interface ApplyWebsiteTemplateInput {
 
 /**
  * The starter catalog row carries the same files and schema as the starter, and its lock record holds the
- * commit. Applying it therefore locks the workspace's starter files exactly like download_starter_template.
+ * commit. Applying it therefore locks the workspace's starter files exactly like the starter load.
  */
 async function starterSnapshotOfTemplate(template: ApplyWebsiteTemplateInput): Promise<StarterSnapshot | undefined> {
   const lock = await readStarterLock(templateLockKey(template.id))

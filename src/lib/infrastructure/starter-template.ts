@@ -1,25 +1,18 @@
-// SaCMS starter template: the zonggonau/sacms-nextjs-starter repository, downloaded from GitHub at
-// the current commit of its default branch. An agent builds on it by adding files. Once a workspace
-// or Website Template holds the starter, its own files are locked (see starterLockViolations): they
-// may not be changed or removed, so the base stays the one SaCMS ships.
+// SaCMS starter template: the starter source is read from our own Vercel project (its production
+// deployment), never from GitHub. An agent builds on it by adding files. Once a workspace or Website
+// Template holds the starter, its own files are locked (see starterLockViolations): they may not be
+// changed or removed, so the base stays the one SaCMS ships.
 import { createHash } from "node:crypto"
-import JSZip from "jszip"
 import { db } from "@/lib/database"
-import { safeFetch } from "@/lib/safe-url"
+import { getDeploymentFiles, getLatestDeployment } from "@/lib/vercel-client"
 import { schemaTemplateBundleSchema } from "@/lib/validations/schema-template"
 
 // Same digest as checksumOf in mcp-deployment-source.ts. Kept local so this module does not pull in
 // that file's server-only import: the MCP route tests load it without that package.
 const checksumOf = (content: string) => createHash("sha256").update(content).digest("hex")
 
-export const STARTER_OWNER = "zonggonau"
-export const STARTER_REPO_NAME = "sacms-nextjs-starter"
-export const STARTER_REF = "master"
-const STARTER_REPO = `${STARTER_OWNER}/${STARTER_REPO_NAME}`
-
 const CACHE_TTL_MS = 10 * 60_000
-const MAX_ARCHIVE_BYTES = 20 * 1024 * 1024
-const BINARY_EXT_RE = /\.(png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|eot|pdf|mp4|webm|zip|gz)$/i
+const MAX_STARTER_FILES = 1000
 const SAFE_PATH_RE = /^(?!\/)(?!.*\.\.(\/|$))[^\0\\]+$/
 // Machine-local or generated files stay out of the snapshot. package-lock.json is left out as well:
 // it is ~224 KB, over the 200 KB text cap of a Website Template, and npm regenerates it on install.
@@ -55,16 +48,16 @@ export interface StarterLock {
   files: Record<string, string>
 }
 
-const GITHUB_HEADERS = { Accept: "application/vnd.github+json", "User-Agent": "SaCMS-Starter-Sync" }
-
 let cached: { snapshot: StarterSnapshot; at: number } | null = null
 
-/** Fetches the starter at the current commit of STARTER_REF. Cached in-process for 10 minutes. */
+/**
+ * The starter as it is deployed to production on our Vercel project (SACMS_STARTER_VERCEL_PROJECT_ID).
+ * Its files come straight from that deployment. Cached in-process for 10 minutes.
+ */
 export async function loadStarterSnapshot(): Promise<StarterSnapshot> {
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) return cached.snapshot
-  const commit = await resolveStarterCommit()
-  const files = await downloadStarterFiles(commit)
-  const snapshot: StarterSnapshot = { repo: STARTER_REPO, commit, files, schema: starterSchemaFrom(files) }
+  const { deploymentId, files } = await fetchStarterFromVercel()
+  const snapshot: StarterSnapshot = { repo: `vercel:${process.env.SACMS_STARTER_VERCEL_PROJECT_ID}`, commit: deploymentId, files, schema: starterSchemaFrom(files) }
   cached = { snapshot, at: Date.now() }
   return snapshot
 }
@@ -74,40 +67,22 @@ export function resetStarterCache(): void {
   cached = null
 }
 
-async function resolveStarterCommit(): Promise<string> {
-  const res = await safeFetch(`https://api.github.com/repos/${STARTER_REPO}/commits/${STARTER_REF}`, { headers: GITHUB_HEADERS })
-  if (!res.ok) throw new StarterUnavailableError(`GitHub menjawab ${res.status} untuk ${STARTER_REPO}@${STARTER_REF}.`)
-  const body = (await res.json()) as { sha?: unknown }
-  if (typeof body.sha !== "string" || !/^[0-9a-f]{40}$/.test(body.sha)) {
-    throw new StarterUnavailableError("Respons GitHub tidak memuat commit starter yang valid.")
-  }
-  return body.sha
-}
+async function fetchStarterFromVercel(): Promise<{ deploymentId: string; files: StarterFile[] }> {
+  const projectId = process.env.SACMS_STARTER_VERCEL_PROJECT_ID
+  if (!projectId) throw new StarterUnavailableError("Starter belum dikonfigurasi: SACMS_STARTER_VERCEL_PROJECT_ID belum diatur.")
+  const latest = await getLatestDeployment(projectId)
+  if (!latest) throw new StarterUnavailableError("Project starter di Vercel belum punya deployment production.")
 
-async function downloadStarterFiles(commit: string): Promise<StarterFile[]> {
-  const res = await safeFetch(`https://codeload.github.com/${STARTER_REPO}/zip/${commit}`, { headers: { "User-Agent": GITHUB_HEADERS["User-Agent"] } })
-  if (!res.ok) throw new StarterUnavailableError(`Gagal mengunduh arsip starter (${res.status}).`)
-  const bytes = Buffer.from(await res.arrayBuffer())
-  if (bytes.length > MAX_ARCHIVE_BYTES) throw new StarterUnavailableError("Arsip starter melebihi batas ukuran.")
-
-  const zip = await JSZip.loadAsync(bytes)
-  const entries = Object.values(zip.files)
-  // GitHub wraps the repository in one folder named <repo>-<sha7>/; strip it so paths are repo-relative.
-  const root = (entries[0]?.name ?? "").split("/")[0] + "/"
-  if (root === "/") throw new StarterUnavailableError("Arsip starter kosong.")
-
+  const { files: deployed, truncated } = await getDeploymentFiles(latest.id, MAX_STARTER_FILES)
+  if (truncated) throw new StarterUnavailableError("Deployment starter melebihi batas jumlah file.")
   const files: StarterFile[] = []
-  for (const entry of entries) {
-    if (entry.dir) continue
-    if (!entry.name.startsWith(root)) throw new StarterUnavailableError("Arsip starter memuat berkas di luar folder utamanya.")
-    const path = entry.name.slice(root.length)
+  for (const file of deployed) {
+    const path = file.name
     if (!SAFE_PATH_RE.test(path) || EXCLUDED_FILES.has(path) || path.split("/").some((segment) => EXCLUDED_SEGMENTS.has(segment))) continue
-    const binary = BINARY_EXT_RE.test(path)
-    const content = await entry.async(binary ? "base64" : "string")
-    files.push({ path, content, encoding: binary ? "base64" : "utf-8" })
+    files.push({ path, content: file.content, encoding: file.encoding })
   }
-  if (files.length === 0) throw new StarterUnavailableError("Starter tidak memuat berkas yang bisa dipakai.")
-  return files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
+  if (files.length === 0) throw new StarterUnavailableError("Deployment starter tidak memuat berkas yang bisa dipakai.")
+  return { deploymentId: latest.id, files: files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0)) }
 }
 
 /** The starter's `sacms/schema.json` (components + singles) in the Schema Template bundle shape. */

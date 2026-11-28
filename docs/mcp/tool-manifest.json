@@ -75,7 +75,6 @@
     "deploy_site_version",
     "deploy_to_sacms",
     "deploy_website_patch",
-    "download_starter_template",
     "extend_preview",
     "get_agent_playbook",
     "get_api_info",

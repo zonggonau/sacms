@@ -36,11 +36,6 @@ describe("starter lock is enforced on every workspace write path", () => {
 })
 
 describe("starter download and creation", () => {
-  it("download_starter_template is registered in the workspace build tools", () => {
-    expect(buildTools).toContain('"download_starter_template"')
-    expect(buildTools).toMatch(/applyWebsiteTemplateToTenant\([\s\S]*\{ starter: snapshot \}/)
-  })
-
   it("create_website_template writes the starter lock in the same transaction as the template", () => {
     const tx = globalTemplates.indexOf("writeStarterLock(tx, templateLockKey(createdTemplate.id)")
     expect(tx).toBeGreaterThan(-1)

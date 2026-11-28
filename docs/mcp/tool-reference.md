@@ -8,7 +8,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 
 ## Workspace MCP (`/api/mcp`)
 
-86 tools.
+85 tools.
 
 | Tool | Hints | Description |
 | --- | --- | --- |
@@ -35,7 +35,6 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `deploy_site_version` | external | Deploy a specific saved sourceVersion to staging. Release from Infrastructure → Hosting. |
 | `deploy_to_sacms` | external | One-shot STAGING build from the supplied source. This is NOT the normal release path: for building or editing use start_preview → apply_preview_changes → save_preview_changes, then an administrator releases from Infrastructure → Hosting. Use this only when the user explicitly asks for a one-shot staging deploy. |
 | `deploy_website_patch` | external | Build a staging candidate by patching a saved sourceRevision. Deploy Production is available in Infrastructure → Hosting. |
-| `download_starter_template` | external | Downloads the official SaCMS Next.js starter (github.com/zonggonau/sacms-nextjs-starter, current commit of its default branch) and makes it this workspace's base. Its default schema (site-settings, homepage and every section/block Component) is created, its .env.example variables are declared, and its source becomes the workspace's first saved revision. The starter's files are then LOCKED: add new files (routes, components, lib modules) freely, but any change to or deletion of a starter file is refused with STARTER_LOCKED by deploy_to_sacms, deploy_website_patch, rollback_website, deploy_site_version, and the preview apply/save tools. Like apply_website_template, it replaces the workspace's existing schema (every Content Type, Single Type and Component with its entries). Then build on top. |
 | `extend_preview` | not annotated | Keep an active preview running for another 30 minutes from now. Call it before expiresAt during a long edit session; an expired session with unsaved edits can still be saved, and start_preview resumes it. |
 | `get_agent_playbook` | read-only | Read this FIRST when you connect to this MCP server. Returns the recommended, ordered workflow for building or updating a frontend against this SaCMS workspace — which tools to call, in what order, and how schema, content, and deployment fit together. Call with no arguments. |
 | `get_api_info` | read-only | Get the full REST API documentation, endpoints, filtering syntax, and sample integration code for this workspace. The base URL is resolved automatically — only pass baseUrl to override it (e.g. a custom domain this isn't aware of). |

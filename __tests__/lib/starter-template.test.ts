@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import JSZip from "jszip"
 
-const safeFetch = vi.fn()
-vi.mock("@/lib/safe-url", () => ({ safeFetch: (...args: unknown[]) => safeFetch(...args) }))
+const getLatestDeployment = vi.fn()
+const getDeploymentFiles = vi.fn()
+vi.mock("@/lib/vercel-client", () => ({
+  getLatestDeployment: (...args: unknown[]) => getLatestDeployment(...args),
+  getDeploymentFiles: (...args: unknown[]) => getDeploymentFiles(...args),
+}))
 
 const settings = new Map<string, string>()
 vi.mock("@/lib/database", () => ({
@@ -25,8 +28,7 @@ import {
   workspaceLockKey,
 } from "@/lib/infrastructure/starter-template"
 
-const COMMIT = "a".repeat(40)
-const ROOT = "sacms-nextjs-starter-aaaaaaa/"
+const DEPLOYMENT_ID = "dpl_starter_1"
 
 const schemaJson = {
   $comment: "test",
@@ -35,73 +37,82 @@ const schemaJson = {
   singles: [{ slug: "site-settings", name: "Site", description: "x", fields: [{ name: "Name", slug: "name", type: "text", required: false }] }],
 }
 
-async function starterZip(extra: Record<string, string | Uint8Array> = {}): Promise<Buffer> {
-  const zip = new JSZip()
-  zip.folder(ROOT.slice(0, -1))
-  zip.file(`${ROOT}package.json`, JSON.stringify({ name: "starter" }))
-  zip.file(`${ROOT}app/page.tsx`, "export default function Page() { return null }")
-  zip.file(`${ROOT}sacms/schema.json`, JSON.stringify(schemaJson))
-  zip.file(`${ROOT}package-lock.json`, "{}")
-  zip.file(`${ROOT}node_modules/left-pad/index.js`, "module.exports = 1")
-  zip.file(`${ROOT}.git/config`, "[core]")
-  zip.file(`${ROOT}public/logo.png`, new Uint8Array([137, 80, 78, 71]))
-  for (const [path, content] of Object.entries(extra)) zip.file(`${ROOT}${path}`, content)
-  return zip.generateAsync({ type: "nodebuffer" })
+function deployed(extra: { name: string; content: string; encoding?: "utf-8" | "base64" }[] = []) {
+  return {
+    files: [
+      { name: "package.json", content: JSON.stringify({ name: "starter" }), encoding: "utf-8", size: 2, checksum: "x" },
+      { name: "app/page.tsx", content: "export default function Page() { return null }", encoding: "utf-8", size: 1, checksum: "x" },
+      { name: "sacms/schema.json", content: JSON.stringify(schemaJson), encoding: "utf-8", size: 1, checksum: "x" },
+      { name: "package-lock.json", content: "{}", encoding: "utf-8", size: 1, checksum: "x" },
+      { name: "node_modules/left-pad/index.js", content: "x", encoding: "utf-8", size: 1, checksum: "x" },
+      ...extra.map((f) => ({ ...f, encoding: f.encoding ?? "utf-8", size: 1, checksum: "x" })),
+    ],
+    skipped: [],
+    truncated: false,
+    invalidAssets: [],
+  }
 }
 
-function respondWith(commit: string, zipBuffer: Buffer) {
-  safeFetch.mockImplementation(async (url: string) => {
-    if (url.startsWith("https://api.github.com/")) {
-      return new Response(JSON.stringify({ sha: commit }), { status: 200 })
-    }
-    return new Response(new Uint8Array(zipBuffer), { status: 200 })
-  })
-}
-
-describe("starter snapshot", () => {
+describe("starter snapshot from the Vercel project", () => {
   beforeEach(() => {
-    safeFetch.mockReset()
     settings.clear()
     resetStarterCache()
+    getLatestDeployment.mockReset()
+    getDeploymentFiles.mockReset()
+    vi.stubEnv("SACMS_STARTER_VERCEL_PROJECT_ID", "prj_starter")
+    getLatestDeployment.mockResolvedValue({ id: DEPLOYMENT_ID, deploymentUrl: "x", productionUrl: null, state: "READY" })
+    getDeploymentFiles.mockResolvedValue(deployed())
   })
 
-  it("downloads the commit's archive, strips the wrapper folder, and skips generated and machine-local files", async () => {
-    respondWith(COMMIT, await starterZip())
+  it("reads the production deployment of the starter project and drops generated and machine-local files", async () => {
     const snapshot = await loadStarterSnapshot()
+    expect(getLatestDeployment).toHaveBeenCalledWith("prj_starter")
+    expect(getDeploymentFiles).toHaveBeenCalledWith(DEPLOYMENT_ID, expect.any(Number))
+    expect(snapshot.commit).toBe(DEPLOYMENT_ID)
+    expect(snapshot.files.map((f) => f.path)).toEqual(["app/page.tsx", "package.json", "sacms/schema.json"])
+  })
 
-    expect(snapshot.commit).toBe(COMMIT)
-    expect(snapshot.files.map((f) => f.path)).toEqual(["app/page.tsx", "package.json", "public/logo.png", "sacms/schema.json"])
-    expect(snapshot.files.find((f) => f.path === "public/logo.png")?.encoding).toBe("base64")
-    expect(snapshot.files.find((f) => f.path === "package.json")?.encoding).toBe("utf-8")
-    expect(snapshot.files.some((f) => f.path.includes("node_modules") || f.path.startsWith(".git"))).toBe(false)
+  it("keeps binary files as base64", async () => {
+    getDeploymentFiles.mockResolvedValue(deployed([{ name: "public/logo.png", content: "iVBORw0K", encoding: "base64" }]))
+    const snapshot = await loadStarterSnapshot()
+    expect(snapshot.files.find((f) => f.path === "public/logo.png")).toMatchObject({ encoding: "base64" })
   })
 
   it("reads sacms/schema.json into the Schema Template bundle shape (singles become Single Types)", async () => {
-    respondWith(COMMIT, await starterZip())
     const { schema } = await loadStarterSnapshot()
-
     expect(schema.contentTypes).toEqual([])
     expect(schema.singleTypes.map((s) => s.slug)).toEqual(["site-settings"])
     expect(schema.components.map((c) => c.slug)).toEqual(["hero"])
   })
 
-  it("fails with StarterUnavailableError when GitHub returns a malformed commit", async () => {
-    respondWith("not-a-sha", await starterZip())
+  it("is unavailable when the starter project is not configured", async () => {
+    vi.stubEnv("SACMS_STARTER_VERCEL_PROJECT_ID", "")
+    await expect(loadStarterSnapshot()).rejects.toBeInstanceOf(StarterUnavailableError)
+    expect(getLatestDeployment).not.toHaveBeenCalled()
+  })
+
+  it("is unavailable when the project has no production deployment", async () => {
+    getLatestDeployment.mockResolvedValue(null)
     await expect(loadStarterSnapshot()).rejects.toBeInstanceOf(StarterUnavailableError)
   })
 
-  it("fails when the archive has no sacms/schema.json", async () => {
-    const zip = new JSZip()
-    zip.file(`${ROOT}package.json`, "{}")
-    respondWith(COMMIT, await zip.generateAsync({ type: "nodebuffer" }))
+  it("is unavailable when the deployment is truncated", async () => {
+    getDeploymentFiles.mockResolvedValue({ ...deployed(), truncated: true })
+    await expect(loadStarterSnapshot()).rejects.toBeInstanceOf(StarterUnavailableError)
+  })
+
+  it("fails when sacms/schema.json is missing", async () => {
+    getDeploymentFiles.mockResolvedValue({
+      ...deployed(),
+      files: [{ name: "package.json", content: "{}", encoding: "utf-8", size: 2, checksum: "x" }],
+    })
     await expect(loadStarterSnapshot()).rejects.toThrow(/sacms\/schema\.json/)
   })
 
-  it("serves the cached snapshot inside the TTL instead of hitting GitHub again", async () => {
-    respondWith(COMMIT, await starterZip())
+  it("serves the cached snapshot inside the TTL instead of asking Vercel again", async () => {
     await loadStarterSnapshot()
     await loadStarterSnapshot()
-    expect(safeFetch).toHaveBeenCalledTimes(2) // one commit lookup + one archive download, once
+    expect(getDeploymentFiles).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -111,8 +122,8 @@ describe("starter lock", () => {
     { path: "app/page.tsx", content: "export default null" },
   ]
   const lock = starterLockFor({
-    repo: "zonggonau/sacms-nextjs-starter",
-    commit: COMMIT,
+    repo: "vercel:prj_starter",
+    commit: DEPLOYMENT_ID,
     files: [
       { path: "package.json", content: "{}", encoding: "utf-8" },
       { path: "app/page.tsx", content: "export default null", encoding: "utf-8" },
@@ -145,9 +156,7 @@ describe("starter lock", () => {
 
   it("judges only the files a partial write carries", async () => {
     settings.set(workspaceLockKey("t-partial"), JSON.stringify(lock))
-    // A new file, and a locked file carried with its starter content, pass.
     expect(await starterChangeBreach(workspaceLockKey("t-partial"), [{ path: "app/blog/page.tsx", content: "new" }, files[0]])).toBeNull()
-    // A locked file carried with different content is refused, even though the rest of the set is not sent.
     expect(await starterChangeBreach(workspaceLockKey("t-partial"), [{ path: "app/page.tsx", content: "changed" }])).toMatch(/diubah: app\/page\.tsx/)
   })
 
