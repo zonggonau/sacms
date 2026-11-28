@@ -3,6 +3,7 @@ import { db, getTenantDb } from "@/lib/database"
 import { wipeTenantSchema } from "@/lib/schema-wipe"
 import { seedDefaultTenantSchema } from "@/lib/infrastructure/default-tenant-schema"
 import { ensureSiteSettings } from "@/lib/infrastructure/site-settings"
+import { finalizeSchema } from "@/lib/schema-lock"
 
 /**
  * Reset total schema: deletes every Content Type, Single Type and Component this workspace owns
@@ -19,5 +20,6 @@ export async function resetSchemaToStarter(tenantId: string, tenantSlug: string)
   await seedDefaultTenantSchema(tenantId)
   const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { name: true } })
   await ensureSiteSettings(tenantId, tenant?.name ?? tenantSlug)
+  await finalizeSchema(tenantId)
   return deleted
 }

@@ -1,5 +1,6 @@
 import { db, getTenantDbById } from "@/lib/database"
 import { materializeSchemaIntoTenant, type SchemaBlob } from "@/lib/schema-template-sync"
+import { finalizeSchema } from "@/lib/schema-lock"
 
 /**
  * Fallback identity for the default SchemaTemplate — only used the very
@@ -95,6 +96,8 @@ export async function seedDefaultTenantSchema(tenantId: string): Promise<void> {
   const { schema } = await loadDefaultTenantSchema(true)
   const tenantDb = await getTenantDbById(tenantId)
   await materializeSchemaIntoTenant(tenantDb, tenantId, { ...schema, contentTypes: [] })
+  // The default schema ships published: no Draft step for the owner to press first.
+  await finalizeSchema(tenantId)
 }
 
 /** Read the starter schema and the published reusable catalog. Template previews

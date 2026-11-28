@@ -26,7 +26,7 @@ vi.mock("@/lib/database", () => ({
 vi.mock("@/lib/infrastructure/default-tenant-schema", () => ({ seedDefaultTenantSchema: vi.fn(async () => {}) }))
 vi.mock("@/lib/infrastructure/site-settings", () => ({ ensureSiteSettings: vi.fn(async () => {}) }))
 
-vi.mock("@/lib/schema-lock", () => ({
+vi.mock("@/lib/schema-lock", () => ({ finalizeSchema: vi.fn(async () => {}),
   assertSchemaEditable: vi.fn().mockResolvedValue(null),
 }))
 

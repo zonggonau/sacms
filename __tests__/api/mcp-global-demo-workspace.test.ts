@@ -1,3 +1,4 @@
+vi.mock("@/lib/schema-lock", () => ({ finalizeSchema: vi.fn(async () => {}) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { readFile } from "node:fs/promises"
 

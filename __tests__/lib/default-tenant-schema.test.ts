@@ -1,3 +1,4 @@
+vi.mock("@/lib/schema-lock", () => ({ finalizeSchema: vi.fn(async () => {}) }))
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // seedDefaultTenantSchema materializes the one isDefault SchemaTemplate

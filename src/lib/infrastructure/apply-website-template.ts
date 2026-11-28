@@ -6,6 +6,7 @@ import { websiteTemplateRunKey, type TemplateRun } from "./website-template-run"
 import { schemaRequirements } from "./site-schema-contract"
 import { buildManifest } from "./mcp-deployment-source"
 import { starterLockFor, workspaceLockKey, writeStarterLock, type StarterSnapshot } from "./starter-template"
+import { finalizeSchema } from "@/lib/schema-lock"
 import {
   resolveWebsiteTemplateEnvVars,
   getTenantCustomEnvVarList,
@@ -102,6 +103,8 @@ export async function applyWebsiteTemplateToTenant(
         mergeSingleTypeSlug: SITE_SETTINGS_SLUG,
       })
       imported = result.imported
+      // A template's schema goes live as published, not as a draft.
+      await finalizeSchema(tenantId)
 
       const templateEnvVars = await resolveWebsiteTemplateEnvVars(tenantId, tenantSlug, templateFiles)
       if (templateEnvVars.length > 0) {
