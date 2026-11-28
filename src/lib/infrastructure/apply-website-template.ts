@@ -1,6 +1,7 @@
 import { db, getTenantDb } from "@/lib/database"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
 import { SITE_SETTINGS_SLUG } from "@/lib/content/site-settings-slug"
+import { restoreSiteSettingsBrandName } from "./site-settings"
 import { randomUUID } from "node:crypto"
 import { websiteTemplateRunKey, type TemplateRun } from "./website-template-run"
 import { schemaRequirements } from "./site-schema-contract"
@@ -112,6 +113,9 @@ export async function applyWebsiteTemplateToTenant(
         mergeSingleTypeSlug: SITE_SETTINGS_SLUG,
       })
       imported = result.imported
+      // The replaced site-settings has no content yet: keep the workspace's brand name on it.
+      const tenantName = (await db.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }))?.name ?? tenantSlug
+      await restoreSiteSettingsBrandName(tenantDb, tenantId, tenantName)
       // A template's schema goes live as published, not as a draft.
       await finalizeSchema(tenantId)
 

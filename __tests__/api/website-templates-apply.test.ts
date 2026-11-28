@@ -32,6 +32,10 @@ vi.mock("@/lib/database", () => ({
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
 
+vi.mock("@/lib/infrastructure/site-settings", () => ({
+  restoreSiteSettingsBrandName: vi.fn().mockResolvedValue(undefined),
+}))
+
 vi.mock("@/lib/schema-wipe", () => ({
   wipeTenantSchema: vi.fn().mockResolvedValue({ contentTypes: 0, singleTypes: 0, components: 0 }),
 }))

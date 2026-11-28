@@ -70,6 +70,34 @@ const DEFAULT_SITE_SETTINGS_DATA = {
  * untouched — this only fills an actual gap, it never resets a workspace's
  * own customization.
  */
+/**
+ * After a template replaces the schema, site-settings comes back from the template with no content, so the
+ * brand name is lost. Put the workspace's name back as brand-name. A brand name that is already set is kept.
+ */
+export async function restoreSiteSettingsBrandName(
+  tenantDb: Awaited<ReturnType<typeof getTenantDbById>>,
+  tenantId: string,
+  tenantName: string,
+): Promise<void> {
+  const singleType = await tenantDb.singleType.findFirst({ where: { tenantId, slug: SITE_SETTINGS_SLUG }, select: { id: true } })
+  if (!singleType) return
+  const where = { tenantId_singleTypeId: { tenantId, singleTypeId: singleType.id } }
+  const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({ where })
+  const data = (assignment?.data ?? {}) as Record<string, unknown>
+  if (data["brand-name"]) return
+  await tenantDb.tenantSingleTypeAssignment.upsert({
+    where,
+    update: { data: { ...data, "brand-name": tenantName } as any },
+    create: {
+      tenantId,
+      singleTypeId: singleType.id,
+      enabled: true,
+      publishedAt: new Date(),
+      data: { ...DEFAULT_SITE_SETTINGS_DATA, "brand-name": tenantName } as any,
+    },
+  })
+}
+
 export async function ensureSiteSettings(tenantId: string, tenantName: string): Promise<void> {
   const tenantDb = await getTenantDbById(tenantId)
 
