@@ -26,13 +26,15 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     },
   })
 
-  const [pending, purchases] = await Promise.all([
+  const [pending, purchases, tenant] = await Promise.all([
     getWebsiteTemplateRun(access.tenantId),
     db.websiteTemplatePurchase.findMany({ where: { tenantId: access.tenantId }, select: { websiteTemplateId: true } }),
+    db.tenant.findUnique({ where: { id: access.tenantId }, select: { sourceWebsiteTemplateId: true } }),
   ])
   const owned = new Set(purchases.map((p) => p.websiteTemplateId))
   return NextResponse.json({
     templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price, t.isStarter) })),
     pendingTemplateId: pending?.templateId ?? null,
+    appliedTemplateId: tenant?.sourceWebsiteTemplateId ?? null,
   })
 })

@@ -64,6 +64,8 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   const [applyingId, setApplyingId] = useState<string | null>(null)
   const [purchasingId, setPurchasingId] = useState<string | null>(null)
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
+  // The template whose schema and site this workspace runs now (tenant.sourceWebsiteTemplateId).
+  const [appliedTemplateId, setAppliedTemplateId] = useState<string | null>(null)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
   const [confirmApplyTemplate, setConfirmApplyTemplate] = useState<WebsiteTemplateItem | null>(null)
@@ -75,6 +77,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
       .then((data) => {
         if (data?.templates) setTemplates(data.templates)
         setPendingTemplateId(data?.pendingTemplateId ?? null)
+        setAppliedTemplateId(data?.appliedTemplateId ?? null)
       })
       .catch(() => {})
       .finally(() => setIsLoading(false))
@@ -245,20 +248,23 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
         </Tooltip>
       )
     }
+    const isApplied = appliedTemplateId === t.id
     const reason =
       !canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template"
-      : "Lanjutkan template yang tertunda atau reset workspace"
+      : "Ada penerapan template yang belum selesai. Lanjutkan template itu dulu."
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span tabIndex={0} className={wrap}>
-            <Button size="sm" onClick={() => setConfirmApplyTemplate(t)} disabled={!canApplyTemplate(t)} className={size}>
+            <Button size="sm" variant={isApplied ? "outline" : "default"} onClick={() => setConfirmApplyTemplate(t)} disabled={isApplied || !canApplyTemplate(t)} className={size}>
               {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-              {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
+              {isApplied ? "Sudah diterapkan" : pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
             </Button>
           </span>
         </TooltipTrigger>
-        {!canApplyTemplate(t) && <TooltipContent>{reason}</TooltipContent>}
+        {(isApplied || !canApplyTemplate(t)) && (
+          <TooltipContent>{isApplied ? "Template ini sudah diterapkan di workspace ini. Pilih template lain untuk mengganti schema." : reason}</TooltipContent>
+        )}
       </Tooltip>
     )
   }

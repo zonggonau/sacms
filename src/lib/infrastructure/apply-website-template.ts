@@ -146,8 +146,8 @@ export async function applyWebsiteTemplateToTenant(
       const removed = await tx.setting.deleteMany({ where: { key, value: claimedValue } })
       if (!removed.count) return false
       if (starter) {
-        // The starter is not a catalog template: no template link, and its files are locked from here on.
-        await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: null } })
+        // The starter catalog row is applied like any template, so it is also the workspace's applied template.
+        await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: websiteTemplate.id } })
         await writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(starter))
       } else {
         // A catalog template replaces whatever was there, including an earlier starter lock.
