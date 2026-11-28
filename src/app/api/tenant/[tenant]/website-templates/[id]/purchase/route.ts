@@ -22,7 +22,7 @@ export const POST = withStaffAuth(
 
     const template = await db.websiteTemplate.findFirst({
       where: { id, published: true, deletedAt: null },
-      select: { id: true, name: true, price: true },
+      select: { id: true, name: true, price: true, isStarter: true },
     })
     if (!template) return apiError("not_found", { message: "Website Template tidak ditemukan" })
 
@@ -31,12 +31,12 @@ export const POST = withStaffAuth(
       select: { id: true },
     })
     const enterprise = !owned && !template.price && (await isEnterpriseWorkspace(tenant.id))
-    const templateAccess = websiteTemplateAccess(!!owned, template.price, enterprise)
+    const templateAccess = websiteTemplateAccess(!!owned, template.price, enterprise, template.isStarter)
     if (templateAccess === "owned") {
       return apiError("conflict", { message: "Template ini sudah bisa digunakan workspace ini, tidak perlu dibeli." })
     }
     if (templateAccess === "included") {
-      return apiError("conflict", { message: "Template ini gratis untuk workspace Enterprise, tidak perlu dibeli." })
+      return apiError("conflict", { message: "Template ini gratis untuk workspace ini, tidak perlu dibeli." })
     }
     if (templateAccess !== "purchasable" || !template.price) {
       return apiError("plan_limit", { message: WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess] })

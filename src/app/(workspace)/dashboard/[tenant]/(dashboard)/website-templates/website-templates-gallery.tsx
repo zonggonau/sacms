@@ -25,6 +25,7 @@ interface WebsiteTemplateItem {
   price?: number | null
   /** included: Enterprise gets unpriced templates free; owned: bought; purchasable: priced, not yet bought; unavailable: not for sale to this plan */
   access?: "included" | "owned" | "purchasable" | "unavailable"
+  isStarter?: boolean
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
 
@@ -266,7 +267,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
     t.access === "owned" ? (
       <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Dimiliki</Badge>
     ) : t.access === "included" ? (
-      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Gratis (Enterprise)</Badge>
+      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">{t.isStarter ? "Gratis" : "Gratis (Enterprise)"}</Badge>
     ) : t.access === "purchasable" && t.price ? (
       <Badge variant="outline" className="text-[10px] font-bold">{formatRupiah(t.price)}</Badge>
     ) : null

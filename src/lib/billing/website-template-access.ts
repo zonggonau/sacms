@@ -4,6 +4,7 @@ import { db } from "@/lib/database"
 // - Standard, Pro, and Business workspaces buy each template once (lifetime).
 //   A template without a price is not for sale to them.
 // - Enterprise workspaces get every unpriced template free ("included").
+// - The SaCMS Next.js starter is free for every plan ("included").
 //   A priced template is a one-time, lifetime purchase, so Enterprise buys it like everyone else.
 export type WebsiteTemplateAccess =
   | "owned" // bought by this workspace
@@ -18,8 +19,10 @@ export function websiteTemplateAccess(
   owned: boolean,
   price: number | null | undefined,
   enterprise = false,
+  starter = false,
 ): WebsiteTemplateAccess {
   if (owned) return "owned"
+  if (starter) return "included"
   if (price && price > 0) return "purchasable"
   return enterprise ? "included" : "unavailable"
 }
@@ -46,7 +49,7 @@ export async function isEnterpriseWorkspace(tenantId: string): Promise<boolean> 
 /** Resolves this workspace's access to one template, checking its purchase record and plan. */
 export async function resolveWebsiteTemplateAccess(
   tenantId: string,
-  template: { id: string; price: number | null },
+  template: { id: string; price: number | null; isStarter?: boolean },
 ): Promise<WebsiteTemplateAccess> {
   const owned = !!(await db.websiteTemplatePurchase.findUnique({
     where: { tenantId_websiteTemplateId: { tenantId, websiteTemplateId: template.id } },
@@ -54,7 +57,7 @@ export async function resolveWebsiteTemplateAccess(
   }))
   // A priced template is always purchased, so the plan only matters when it is unpriced.
   const enterprise = !owned && !((template.price ?? 0) > 0) && (await isEnterpriseWorkspace(tenantId))
-  return websiteTemplateAccess(owned, template.price, enterprise)
+  return websiteTemplateAccess(owned, template.price, enterprise, !!template.isStarter)
 }
 
 export const canApplyWithAccess = (access: WebsiteTemplateAccess) => access === "owned" || access === "included"

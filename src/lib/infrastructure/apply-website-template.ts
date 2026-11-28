@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto"
 import { websiteTemplateRunKey, type TemplateRun } from "./website-template-run"
 import { schemaRequirements } from "./site-schema-contract"
 import { buildManifest } from "./mcp-deployment-source"
-import { starterLockFor, workspaceLockKey, writeStarterLock, type StarterSnapshot } from "./starter-template"
+import { readStarterLock, starterLockFor, templateLockKey, workspaceLockKey, writeStarterLock, type StarterSnapshot } from "./starter-template"
 import { finalizeSchema } from "@/lib/schema-lock"
 import {
   resolveWebsiteTemplateEnvVars,
@@ -17,6 +17,22 @@ export interface ApplyWebsiteTemplateInput {
   id: string
   files: unknown
   schemaTemplate: { schema: unknown }
+  isStarter?: boolean
+}
+
+/**
+ * The starter catalog row carries the same files and schema as the starter, and its lock record holds the
+ * commit. Applying it therefore locks the workspace's starter files exactly like download_starter_template.
+ */
+async function starterSnapshotOfTemplate(template: ApplyWebsiteTemplateInput): Promise<StarterSnapshot | undefined> {
+  const lock = await readStarterLock(templateLockKey(template.id))
+  if (!lock) return undefined
+  return {
+    repo: lock.repo,
+    commit: lock.commit,
+    files: template.files as StarterSnapshot["files"],
+    schema: template.schemaTemplate.schema as StarterSnapshot["schema"],
+  }
 }
 
 export type ApplyWebsiteTemplateResult =
@@ -58,6 +74,7 @@ export async function applyWebsiteTemplateToTenant(
   websiteTemplate: ApplyWebsiteTemplateInput,
   options: ApplyWebsiteTemplateOptions = {},
 ): Promise<ApplyWebsiteTemplateResult> {
+  const starter = options.starter ?? (websiteTemplate.isStarter ? await starterSnapshotOfTemplate(websiteTemplate) : undefined)
   const tenantDb = await getTenantDb(tenantSlug)
   const key = websiteTemplateRunKey(tenantId)
   let row = await db.setting.findUnique({ where: { key }, select: { value: true } })
@@ -132,10 +149,10 @@ export async function applyWebsiteTemplateToTenant(
     const completed = await db.$transaction(async (tx) => {
       const removed = await tx.setting.deleteMany({ where: { key, value: claimedValue } })
       if (!removed.count) return false
-      if (options.starter) {
+      if (starter) {
         // The starter is not a catalog template: no template link, and its files are locked from here on.
         await tx.tenant.update({ where: { id: tenantId }, data: { sourceWebsiteTemplateId: null } })
-        await writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(options.starter))
+        await writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(starter))
       } else {
         // A catalog template replaces whatever was there, including an earlier starter lock.
         await tx.setting.deleteMany({ where: { key: workspaceLockKey(tenantId) } })

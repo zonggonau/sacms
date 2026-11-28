@@ -36,3 +36,15 @@ describe("websiteTemplateAccess", () => {
     expect(canApplyWithAccess("unavailable")).toBe(false)
   })
 })
+
+describe("SaCMS starter Website Template", () => {
+  it("is free for every plan, not only Enterprise", () => {
+    expect(websiteTemplateAccess(false, null, false, true)).toBe("included")
+    expect(websiteTemplateAccess(false, null, true, true)).toBe("included")
+    expect(websiteTemplateAccess(false, 150_000, false, true)).toBe("included")
+  })
+
+  it("stays owned when the workspace has a purchase record, and is never purchasable", () => {
+    expect(websiteTemplateAccess(true, null, false, true)).toBe("owned")
+  })
+})

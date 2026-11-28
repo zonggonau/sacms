@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 import { getWebsiteTemplateRun } from "@/lib/infrastructure/website-template-run"
 import { isEnterpriseWorkspace, websiteTemplateAccess } from "@/lib/billing/website-template-access"
+import { ensureStarterWebsiteTemplate } from "@/lib/infrastructure/starter-catalog"
 
 // Website Templates are platform catalog data (see prisma/schema.prisma —
 // no tenantId FK, same as SchemaTemplate) and must be visible to every
@@ -12,13 +13,15 @@ import { isEnterpriseWorkspace, websiteTemplateAccess } from "@/lib/billing/webs
 // POST here, only GET.
 
 export const GET = withStaffAuth(async (_req, _context, { access }) => {
+  // Non-fatal: the catalog still loads if the starter cannot be created right now.
+  await ensureStarterWebsiteTemplate().catch(() => undefined)
   const templates = await db.websiteTemplate.findMany({
     where: { published: true },
     orderBy: { createdAt: "desc" },
     select: {
       id: true, name: true, slug: true, schemaTemplateId: true, icon: true,
       description: true, published: true, createdAt: true, updatedAt: true,
-      demoUrl: true, price: true,
+      demoUrl: true, price: true, isStarter: true,
       schemaTemplate: { select: { id: true, name: true, slug: true, icon: true } },
     },
   })
@@ -30,7 +33,7 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
   ])
   const owned = new Set(purchases.map((p) => p.websiteTemplateId))
   return NextResponse.json({
-    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price, enterprise) })),
+    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price, enterprise, t.isStarter) })),
     pendingTemplateId: pending?.templateId ?? null,
   })
 })

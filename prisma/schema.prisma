@@ -974,6 +974,8 @@ model WebsiteTemplate {
   // (no binary assets in v1). Validated by websiteTemplateFilesSchema.
   files            Json
   published        Boolean  @default(false)
+  // The SaCMS Next.js starter: free for every plan, never purchased (see website-template-access.ts).
+  isStarter        Boolean  @default(false)
   createdBy        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

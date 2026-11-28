@@ -48,8 +48,8 @@ describe("starter download and creation", () => {
   })
 
   it("applying a catalog Website Template clears any workspace starter lock, a starter apply sets one", () => {
-    expect(applyTemplate).toContain("if (options.starter) {")
+    expect(applyTemplate).toContain("if (starter) {")
     expect(applyTemplate).toContain("tx.setting.deleteMany({ where: { key: workspaceLockKey(tenantId) } })")
-    expect(applyTemplate).toContain("writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(options.starter))")
+    expect(applyTemplate).toContain("writeStarterLock(tx, workspaceLockKey(tenantId), tenantId, starterLockFor(starter))")
   })
 })
