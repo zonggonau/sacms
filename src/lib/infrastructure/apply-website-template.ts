@@ -7,6 +7,7 @@ import { schemaRequirements } from "./site-schema-contract"
 import { buildManifest } from "./mcp-deployment-source"
 import { readStarterLock, starterLockFor, templateLockKey, workspaceLockKey, writeStarterLock, type StarterSnapshot } from "./starter-template"
 import { finalizeSchema } from "@/lib/schema-lock"
+import { wipeTenantSchema } from "@/lib/schema-wipe"
 import {
   resolveWebsiteTemplateEnvVars,
   getTenantCustomEnvVarList,
@@ -79,18 +80,6 @@ export async function applyWebsiteTemplateToTenant(
   const key = websiteTemplateRunKey(tenantId)
   let row = await db.setting.findUnique({ where: { key }, select: { value: true } })
   if (!row) {
-    const [hasCt, hasSt, hasComp] = await Promise.all([
-      tenantDb.contentType.findFirst({ where: { tenantId }, select: { id: true } }),
-      tenantDb.singleType.findFirst({ where: { tenantId, slug: { not: SITE_SETTINGS_SLUG } }, select: { id: true } }),
-      tenantDb.component.findFirst({ where: { tenantId }, select: { id: true } }),
-    ])
-    if (hasCt || hasSt || hasComp) {
-      return {
-        ok: false,
-        code: "WORKSPACE_NOT_EMPTY",
-        message: "Workspace sudah memiliki skema. Reset workspace sebelum menerapkan Website Template lain.",
-      }
-    }
     const initial: TemplateRun = { templateId: websiteTemplate.id, phase: "schema", lease: null, expiresAt: 0 }
     row = await db.setting.upsert({
       where: { key },
@@ -116,6 +105,9 @@ export async function applyWebsiteTemplateToTenant(
     let envVarsApplied: string[] = []
     const templateFiles = websiteTemplate.files as { path: string; content: string; encoding?: "utf-8" | "base64" }[]
     if (state.phase === "schema") {
+      // Applying a template replaces the workspace schema: every Content Type, Single Type and Component
+      // (with their entries) is deleted first, then the template's schema is imported.
+      await wipeTenantSchema(tenantDb, tenantId)
       const result = await materializeSchemaIntoTenant(tenantDb, tenantId, websiteTemplate.schemaTemplate.schema as any, {}, {
         mergeSingleTypeSlug: SITE_SETTINGS_SLUG,
       })

@@ -97,10 +97,10 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/purchase", () => {
     expect(createSnapPayment).not.toHaveBeenCalled()
   })
 
-  it("refuses a template that is not for sale to a Pro workspace", async () => {
+  it("refuses to sell a free (unpriced) template to a Pro workspace, since it needs no purchase", async () => {
     asPlan("pro")
     db.websiteTemplate.findFirst.mockResolvedValue({ id: "wt-1", name: "Gratis", price: null })
-    expect((await buy()).status).toBe(403)
+    expect((await buy()).status).toBe(409)
     expect(db.paymentTransaction.create).not.toHaveBeenCalled()
   })
 

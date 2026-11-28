@@ -127,6 +127,6 @@ export const updateWebsiteTemplateSchema = z.object({
   description: z.string().trim().max(500).optional(),
   files: websiteTemplateFilesSchema.optional(),
   published: z.boolean().optional(),
-  // One-time IDR price for Starter/Pro workspaces; null = not for sale.
+  // One-time IDR price; null = free for every plan.
   price: z.number().int().min(1000).max(100_000_000).nullable().optional(),
 })

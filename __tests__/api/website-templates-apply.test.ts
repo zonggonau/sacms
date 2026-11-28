@@ -32,6 +32,10 @@ vi.mock("@/lib/database", () => ({
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
 
+vi.mock("@/lib/schema-wipe", () => ({
+  wipeTenantSchema: vi.fn().mockResolvedValue({ contentTypes: 0, singleTypes: 0, components: 0 }),
+}))
+
 vi.mock("@/lib/schema-template-sync", () => ({
   materializeSchemaIntoTenant: vi.fn().mockResolvedValue({ imported: 3 }),
 }))
@@ -51,6 +55,7 @@ import { getServerSession } from "next-auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { db } from "@/lib/database"
 import { materializeSchemaIntoTenant } from "@/lib/schema-template-sync"
+import { wipeTenantSchema } from "@/lib/schema-wipe"
 import { deployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import {
   resolveWebsiteTemplateEnvVars,
@@ -117,21 +122,11 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
   })
 
-  it("blocks a template that is not for sale, before touching the workspace schema", async () => {
+  it("applies a free (unpriced) template on a Business workspace without buying it", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: null } as any)
     vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
-    expect(res.status).toBe(403)
-    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
-    expect(deployTenantFrontend).not.toHaveBeenCalled()
-  })
-
-  it("lets an Enterprise workspace apply an unpriced template without buying it", async () => {
-    vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue({ ...fakeTemplate, price: null } as any)
-    vi.mocked((db as any).websiteTemplatePurchase.findUnique).mockResolvedValueOnce(null)
-    vi.mocked(db.tenant.findUnique).mockResolvedValueOnce({ plan: "enterprise", ownerId: null } as any)
-    const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
-    expect(res.status).not.toBe(403)
+    expect(res.status).toBe(200)
     expect(materializeSchemaIntoTenant).toHaveBeenCalled()
   })
 
@@ -165,13 +160,13 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     })
   })
 
-  it("rejects when the workspace already has a Content Type (not empty)", async () => {
+  it("replaces an existing workspace schema: wipes it before importing the template's schema", async () => {
     vi.mocked(db.websiteTemplate.findUnique).mockResolvedValue(fakeTemplate as any)
     fakeTenantDb.contentType.findFirst.mockResolvedValue({ id: "ct1" })
     const res = await POST(req(), ctx({ tenant: "acme", id: "wt1" }))
-    expect(res.status).toBe(400)
-    expect(materializeSchemaIntoTenant).not.toHaveBeenCalled()
-    expect(deployTenantFrontend).not.toHaveBeenCalled()
+    expect(res.status).toBe(200)
+    expect(wipeTenantSchema).toHaveBeenCalled()
+    expect(vi.mocked(wipeTenantSchema).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(materializeSchemaIntoTenant).mock.invocationCallOrder[0])
   })
 
   it("materializes the linked schema and deploys the bundled files on the happy path", async () => {
@@ -181,10 +176,6 @@ describe("POST /api/tenant/[tenant]/website-templates/[id]/apply", () => {
     const body = await res.json()
 
     expect(res.status).toBe(200)
-    expect(fakeTenantDb.singleType.findFirst).toHaveBeenCalledWith({
-      where: { tenantId: "tenant1", slug: { not: "site-settings" } },
-      select: { id: true },
-    })
     expect(materializeSchemaIntoTenant).toHaveBeenCalledWith(fakeTenantDb, "tenant1", fakeTemplate.schemaTemplate.schema, {}, {
       mergeSingleTypeSlug: "site-settings",
     })

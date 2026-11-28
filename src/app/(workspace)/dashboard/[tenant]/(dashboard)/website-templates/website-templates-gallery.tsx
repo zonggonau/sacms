@@ -24,7 +24,7 @@ interface WebsiteTemplateItem {
   demoUrl?: string | null
   price?: number | null
   /** included: Enterprise gets unpriced templates free; owned: bought; purchasable: priced, not yet bought; unavailable: not for sale to this plan */
-  access?: "included" | "owned" | "purchasable" | "unavailable"
+  access?: "included" | "owned" | "purchasable"
   isStarter?: boolean
   schemaTemplate: { id: string; name: string; slug: string; icon: string }
 }
@@ -66,6 +66,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null)
   const [confirmResetOpen, setConfirmResetOpen] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [confirmApplyTemplate, setConfirmApplyTemplate] = useState<WebsiteTemplateItem | null>(null)
 
   const fetchTemplates = () => {
     setIsLoading(true)
@@ -223,7 +224,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
   const canApply = currentRole === "owner" || currentRole === "admin"
   const canApplyTemplate = (t: WebsiteTemplateItem) =>
     canApply && (t.access === "owned" || t.access === "included") && !isResetting && applyingId === null &&
-    (pendingTemplateId ? pendingTemplateId === t.id : isWorkspaceEmpty)
+    (pendingTemplateId ? pendingTemplateId === t.id : true)
 
   // One action per template, shared by the card and table layouts.
   const renderAction = (t: WebsiteTemplateItem, layout: "card" | "table") => {
@@ -245,16 +246,15 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
       )
     }
     const reason =
-      t.access === "unavailable" ? "Template ini belum dijual untuk plan workspace Anda"
-      : !canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template"
+      !canApply ? "Hanya owner dan admin workspace yang bisa menerapkan template"
       : "Lanjutkan template yang tertunda atau reset workspace"
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span tabIndex={0} className={wrap}>
-            <Button size="sm" onClick={() => handleApply(t)} disabled={!canApplyTemplate(t)} className={size}>
+            <Button size="sm" onClick={() => setConfirmApplyTemplate(t)} disabled={!canApplyTemplate(t)} className={size}>
               {applyingId === t.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Rocket className="h-3 w-3" />}
-              {t.access === "unavailable" ? "Belum dijual" : pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
+              {pendingTemplateId === t.id ? "Lanjutkan" : "Terapkan"}
             </Button>
           </span>
         </TooltipTrigger>
@@ -267,7 +267,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
     t.access === "owned" ? (
       <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Dimiliki</Badge>
     ) : t.access === "included" ? (
-      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">{t.isStarter ? "Gratis" : "Gratis (Enterprise)"}</Badge>
+      <Badge variant="outline" className="text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400">Gratis</Badge>
     ) : t.access === "purchasable" && t.price ? (
       <Badge variant="outline" className="text-[10px] font-bold">{formatRupiah(t.price)}</Badge>
     ) : null
@@ -279,7 +279,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="text-xs font-bold text-foreground">Workspace ini sudah punya schema dan/atau website aktif</p>
           <p className="text-[11px] text-muted-foreground">
-            Menerapkan Website Template baru memerlukan reset total dulu — project hosting dan semua Content Type/Single Type/Component beserta kontennya akan dihapus permanen.
+            Menerapkan Website Template akan menghapus semua Content Type/Single Type/Component beserta kontennya, lalu menggantinya dengan schema template. Reset total juga menghapus project hosting.
             Kalau cuma mau mengubah sebagian website yang sudah diterapkan, tidak perlu reset — langsung edit lewat ChatGPT/MCP di tab{" "}
             <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="font-semibold underline underline-offset-2 hover:text-foreground">Server MCP</a>.
           </p>
@@ -306,7 +306,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-xs font-bold text-foreground">Workspace ini sudah punya schema dan/atau website aktif</p>
           <p className="text-[11px] text-muted-foreground">
-            Menerapkan Website Template baru memerlukan reset total workspace — hanya <strong className="text-foreground">owner</strong> workspace ini yang bisa melakukannya.
+            Menerapkan Website Template akan mengganti schema workspace ini — hanya <strong className="text-foreground">owner</strong> workspace ini yang bisa melakukannya.
             Kalau cuma mau mengubah sebagian website yang sudah diterapkan, tidak perlu reset — langsung edit lewat ChatGPT/MCP di tab{" "}
             <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="font-semibold underline underline-offset-2 hover:text-foreground">Server MCP</a>.
           </p>
@@ -363,8 +363,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
     <div className="space-y-3">
       {planAccess === "purchase" && (
         <p className="text-[11px] text-muted-foreground">
-          Plan Standar, Pro, dan Bisnis membeli setiap template satuan (sekali bayar, berlaku seumur hidup untuk workspace ini). Plan Enterprise mendapat template tanpa harga secara gratis; template berbayar tetap dibeli.
-        </p>
+          Template berharga dibeli sekali dan berlaku seumur hidup untuk workspace ini. Template tanpa harga gratis untuk semua plan.</p>
       )}
       {!isWorkspaceEmpty && (isOwner ? <ResetBanner /> : <OwnerOnlyResetNotice />)}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -519,6 +518,20 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
           </CardContent>
         </Card>
       )}
+
+      <ConfirmDialog
+        open={!!confirmApplyTemplate}
+        onOpenChange={(open) => { if (!open) setConfirmApplyTemplate(null) }}
+        title={`Terapkan "${confirmApplyTemplate?.name ?? "template"}"?`}
+        description="Semua Content Type, Single Type, dan Component beserta kontennya di workspace ini akan dihapus permanen, lalu schema dari template ini diterapkan. Tindakan ini tidak bisa dibatalkan."
+        confirmLabel="Hapus & Terapkan"
+        variant="destructive"
+        onConfirm={() => {
+          const template = confirmApplyTemplate
+          setConfirmApplyTemplate(null)
+          if (template) void handleApply(template)
+        }}
+      />
 
       <ConfirmDialog
         open={confirmResetOpen}

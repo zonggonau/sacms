@@ -83,7 +83,7 @@ export default function AdminDeveloperTemplatesPage() {
     return templates.filter((t) => t.name.toLowerCase().includes(q) || t.schemaTemplate?.name.toLowerCase().includes(q))
   }, [templates, search])
 
-  // Empty clears the price (not for sale). Saved on blur or Enter.
+  // Empty clears the price: the template is free. Saved on blur or Enter.
   const handleSavePrice = async (t: WebsiteTemplateItem) => {
     const draft = priceDrafts[t.id]
     if (draft === undefined) return
@@ -91,7 +91,7 @@ export default function AdminDeveloperTemplatesPage() {
     const price = digits ? Number(digits) : null
     if (price === t.price) return
     if (price !== null && price < 1000) {
-      toast({ variant: "destructive", title: "Harga tidak valid", description: "Harga minimal Rp 1.000, atau kosongkan agar tidak dijual." })
+      toast({ variant: "destructive", title: "Harga tidak valid", description: "Harga minimal Rp 1.000, atau kosongkan agar gratis." })
       return
     }
     setSavingPriceId(t.id)
@@ -108,7 +108,7 @@ export default function AdminDeveloperTemplatesPage() {
       }
       setTemplates((prev) => prev.map((x) => (x.id === t.id ? { ...x, price } : x)))
       setPriceDrafts((prev) => { const next = { ...prev }; delete next[t.id]; return next })
-      toast({ title: price ? `Harga disimpan: Rp ${price.toLocaleString("id-ID")}` : "Template tidak dijual" })
+      toast({ title: price ? `Harga disimpan: Rp ${price.toLocaleString("id-ID")}` : "Template gratis (harga dikosongkan)" })
     } finally {
       setSavingPriceId(null)
     }
@@ -280,7 +280,7 @@ export default function AdminDeveloperTemplatesPage() {
                       <Input
                         id={`price-${t.id}`}
                         inputMode="numeric"
-                        placeholder="Kosong = tidak dijual"
+                        placeholder="Kosong = gratis"
                         disabled={savingPriceId === t.id}
                         value={priceDrafts[t.id] ?? (t.price ? t.price.toLocaleString("id-ID") : "")}
                         onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [t.id]: e.target.value }))}

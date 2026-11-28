@@ -62,14 +62,10 @@ describe("GET /api/tenant/[tenant]/website-templates — per-template access", (
     return Object.fromEntries(body.templates.map((t: any) => [t.id, t.access]))
   }
 
-  it("Standard, Pro, and Business buy every priced template, and unpriced ones are not for sale", async () => {
-    for (const plan of ["free", "starter", "pro", "business", "custom"]) {
-      expect(await accessFor(plan, ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "unavailable" })
+  it("every plan buys priced templates once, and gets unpriced templates free", async () => {
+    for (const plan of ["free", "starter", "pro", "business", "custom", "enterprise"]) {
+      expect(await accessFor(plan, ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "included" })
+      expect(await accessFor(plan, [])).toEqual({ bought: "purchasable", "for-sale": "purchasable", "not-for-sale": "included" })
     }
-  })
-
-  it("Enterprise gets unpriced templates free and still buys priced ones", async () => {
-    expect(await accessFor("enterprise", ["bought"])).toEqual({ bought: "owned", "for-sale": "purchasable", "not-for-sale": "included" })
-    expect(await accessFor("enterprise", [])).toEqual({ bought: "purchasable", "for-sale": "purchasable", "not-for-sale": "included" })
   })
 })

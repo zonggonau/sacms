@@ -17,7 +17,7 @@ export function registerBuildTools(server: McpServer) {
       {
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Download the SaCMS Next.js Starter into This Workspace",
-        description: "Downloads the official SaCMS Next.js starter (github.com/zonggonau/sacms-nextjs-starter, current commit of its default branch) and makes it this workspace's base. Its default schema (site-settings, homepage and every section/block Component) is created, its .env.example variables are declared, and its source becomes the workspace's first saved revision. The starter's files are then LOCKED: add new files (routes, components, lib modules) freely, but any change to or deletion of a starter file is refused with STARTER_LOCKED by deploy_to_sacms, deploy_website_patch, rollback_website, deploy_site_version, and the preview apply/save tools. Requires an empty workspace, the same rule as apply_website_template (call get_full_schema first). Run once per workspace, then build on top.",
+        description: "Downloads the official SaCMS Next.js starter (github.com/zonggonau/sacms-nextjs-starter, current commit of its default branch) and makes it this workspace's base. Its default schema (site-settings, homepage and every section/block Component) is created, its .env.example variables are declared, and its source becomes the workspace's first saved revision. The starter's files are then LOCKED: add new files (routes, components, lib modules) freely, but any change to or deletion of a starter file is refused with STARTER_LOCKED by deploy_to_sacms, deploy_website_patch, rollback_website, deploy_site_version, and the preview apply/save tools. Like apply_website_template, it replaces the workspace's existing schema (every Content Type, Single Type and Component with its entries). Then build on top.",
         inputSchema: {
           dryRun: z.boolean().optional().describe("Fetch the starter and report what would be installed, without writing anything. The empty-workspace rule is checked on the real call."),
         },
@@ -98,7 +98,7 @@ export function registerBuildTools(server: McpServer) {
       {
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Apply a Catalog Website Template to This Workspace",
-        description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and saves its bundled frontend for Sandbox editing — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Only works on a workspace with NO existing Content Types/Single Types/Components (call get_full_schema first to confirm it's actually empty) — applying on top of unrelated existing structures would silently skip slug-conflicting models and leave a confusing mix behind. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
+        description: "Materializes a published Website Template's schema (Content Types/Single Types/Components) into THIS workspace and saves its bundled frontend for Sandbox editing — the same \"Terapkan\" action available from the dashboard's Website Template tab/gallery, now callable directly. Applying REPLACES this workspace's schema: every existing Content Type, Single Type and Component (with its entries) is deleted first, then the template's schema is imported. Call get_full_schema first if anything must be kept. Templates without a price are free on every plan; priced templates must be bought in the dashboard first. This server has no catalog-browsing tool of its own (Website Templates are platform-wide, not per-workspace) — get the template id/slug from the dashboard's gallery or from whoever is directing this build.",
         inputSchema: {
           dryRun: z.boolean().optional(),
           background: z.boolean().optional(),
@@ -154,7 +154,7 @@ export function registerBuildTools(server: McpServer) {
             tenantDb.singleType.findFirst({ where: { tenantId: auth.tenantId, slug: { not: "site-settings" } }, select: { slug: true } }),
             tenantDb.component.findFirst({ where: { tenantId: auth.tenantId }, select: { slug: true } }),
           ])
-          const canApply = run ? run.templateId === websiteTemplate.id && run.expiresAt <= Date.now() : !(contentType || singleType || component)
+          const canApply = run ? run.templateId === websiteTemplate.id && run.expiresAt <= Date.now() : true
           const incoming = schemaRequirements(websiteTemplate.schemaTemplate.schema)
           const exists = (m: typeof incoming[number]) => current.some(c => c.kind === m.kind && c.slug === m.slug)
           const incomingFiles = websiteTemplate.files as { path: string; content: string; encoding?: string }[]

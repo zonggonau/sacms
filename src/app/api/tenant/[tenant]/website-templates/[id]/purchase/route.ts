@@ -3,7 +3,7 @@ import { db } from "@/lib/database"
 import { createSnapPayment } from "@/lib/midtrans"
 import { PAYMENT_WINDOW_MS } from "@/lib/billing/payment-window"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
-import { WEBSITE_TEMPLATE_ACCESS_MESSAGE, WEBSITE_TEMPLATE_ORDER_PREFIX, isEnterpriseWorkspace, websiteTemplateAccess } from "@/lib/billing/website-template-access"
+import { WEBSITE_TEMPLATE_ACCESS_MESSAGE, WEBSITE_TEMPLATE_ORDER_PREFIX, websiteTemplateAccess } from "@/lib/billing/website-template-access"
 const MIDTRANS_TEXT_MAX = 50
 // An unpaid order is reused only while it is still payable (see payment-window.ts).
 const PENDING_ORDER_WINDOW_MS = PAYMENT_WINDOW_MS
@@ -30,13 +30,12 @@ export const POST = withStaffAuth(
       where: { tenantId_websiteTemplateId: { tenantId: tenant.id, websiteTemplateId: template.id } },
       select: { id: true },
     })
-    const enterprise = !owned && !template.price && (await isEnterpriseWorkspace(tenant.id))
-    const templateAccess = websiteTemplateAccess(!!owned, template.price, enterprise, template.isStarter)
+    const templateAccess = websiteTemplateAccess(!!owned, template.price, template.isStarter)
     if (templateAccess === "owned") {
       return apiError("conflict", { message: "Template ini sudah bisa digunakan workspace ini, tidak perlu dibeli." })
     }
     if (templateAccess === "included") {
-      return apiError("conflict", { message: "Template ini gratis untuk workspace ini, tidak perlu dibeli." })
+      return apiError("conflict", { message: "Template ini gratis, tidak perlu dibeli." })
     }
     if (templateAccess !== "purchasable" || !template.price) {
       return apiError("plan_limit", { message: WEBSITE_TEMPLATE_ACCESS_MESSAGE[templateAccess] })

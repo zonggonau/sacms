@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 import { getWebsiteTemplateRun } from "@/lib/infrastructure/website-template-run"
-import { isEnterpriseWorkspace, websiteTemplateAccess } from "@/lib/billing/website-template-access"
+import { websiteTemplateAccess } from "@/lib/billing/website-template-access"
 import { ensureStarterWebsiteTemplate } from "@/lib/infrastructure/starter-catalog"
 
 // Website Templates are platform catalog data (see prisma/schema.prisma —
@@ -26,14 +26,13 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     },
   })
 
-  const [pending, purchases, enterprise] = await Promise.all([
+  const [pending, purchases] = await Promise.all([
     getWebsiteTemplateRun(access.tenantId),
     db.websiteTemplatePurchase.findMany({ where: { tenantId: access.tenantId }, select: { websiteTemplateId: true } }),
-    isEnterpriseWorkspace(access.tenantId),
   ])
   const owned = new Set(purchases.map((p) => p.websiteTemplateId))
   return NextResponse.json({
-    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price, enterprise, t.isStarter) })),
+    templates: templates.map((t) => ({ ...t, access: websiteTemplateAccess(owned.has(t.id), t.price, t.isStarter) })),
     pendingTemplateId: pending?.templateId ?? null,
   })
 })

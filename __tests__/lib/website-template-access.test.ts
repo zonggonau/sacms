@@ -5,46 +5,28 @@ vi.mock("@/lib/database", () => ({ db: {} }))
 import { canApplyWithAccess, websiteTemplateAccess } from "@/lib/billing/website-template-access"
 
 describe("websiteTemplateAccess", () => {
-  it("a bought template is owned on every plan, priced or not", () => {
+  it("a bought template is owned on every plan", () => {
     expect(websiteTemplateAccess(true, 150_000)).toBe("owned")
+    expect(websiteTemplateAccess(true, null)).toBe("owned")
+  })
+
+  it("a priced template that is not bought is purchasable on every plan", () => {
+    expect(websiteTemplateAccess(false, 150_000)).toBe("purchasable")
+  })
+
+  it("a template without a price is free (included) on every plan, not 'not for sale'", () => {
+    expect(websiteTemplateAccess(false, null)).toBe("included")
+    expect(websiteTemplateAccess(false, 0)).toBe("included")
+  })
+
+  it("the SaCMS starter is free even when it carries a price", () => {
+    expect(websiteTemplateAccess(false, 150_000, true)).toBe("included")
     expect(websiteTemplateAccess(true, null, true)).toBe("owned")
   })
 
-  it("a priced template must be bought by Standard, Pro, and Business", () => {
-    expect(websiteTemplateAccess(false, 150_000)).toBe("purchasable")
-    expect(websiteTemplateAccess(false, 150_000, false)).toBe("purchasable")
-  })
-
-  it("an unpriced template is not for sale to non-Enterprise plans", () => {
-    expect(websiteTemplateAccess(false, null)).toBe("unavailable")
-    expect(websiteTemplateAccess(false, 0, false)).toBe("unavailable")
-  })
-
-  it("an unpriced template is free for Enterprise", () => {
-    expect(websiteTemplateAccess(false, null, true)).toBe("included")
-    expect(websiteTemplateAccess(false, 0, true)).toBe("included")
-  })
-
-  it("a priced template is still bought once, for life, by Enterprise", () => {
-    expect(websiteTemplateAccess(false, 150_000, true)).toBe("purchasable")
-  })
-
-  it("applying is allowed for owned and included templates only", () => {
+  it("applying is allowed for owned and free templates only", () => {
     expect(canApplyWithAccess("owned")).toBe(true)
     expect(canApplyWithAccess("included")).toBe(true)
     expect(canApplyWithAccess("purchasable")).toBe(false)
-    expect(canApplyWithAccess("unavailable")).toBe(false)
-  })
-})
-
-describe("SaCMS starter Website Template", () => {
-  it("is free for every plan, not only Enterprise", () => {
-    expect(websiteTemplateAccess(false, null, false, true)).toBe("included")
-    expect(websiteTemplateAccess(false, null, true, true)).toBe("included")
-    expect(websiteTemplateAccess(false, 150_000, false, true)).toBe("included")
-  })
-
-  it("stays owned when the workspace has a purchase record, and is never purchasable", () => {
-    expect(websiteTemplateAccess(true, null, false, true)).toBe("owned")
   })
 })
