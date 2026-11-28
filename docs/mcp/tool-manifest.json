@@ -8,6 +8,7 @@
     "delete_global_component",
     "delete_schema_template",
     "delete_website_template",
+    "deploy_to_sacms",
     "extend_preview",
     "get_approval_status",
     "get_builder_guide",

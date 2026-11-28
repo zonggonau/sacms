@@ -29,7 +29,15 @@ function toolBlockOf(tool: string): string {
   expect(start, `${tool} should be registered via server.registerTool`).toBeGreaterThan(-1)
   const rest = routeSource.slice(start + anchor.length)
   const nextRegisterTool = rest.indexOf("server.registerTool(")
-  return nextRegisterTool === -1 ? rest : rest.slice(0, nextRegisterTool)
+  const registration = nextRegisterTool === -1 ? rest : rest.slice(0, nextRegisterTool)
+  if (tool === "redeploy_website_template_demo") {
+    // The demo deploy handler is shared with deploy_to_sacms, so it is declared above the registrations.
+    const handlerStart = routeSource.indexOf("const redeployWebsiteTemplateDemoTool")
+    const closing = String.fromCharCode(10) + "    }" + String.fromCharCode(10)
+    const handlerEnd = routeSource.indexOf(closing, handlerStart) + closing.length
+    return routeSource.slice(handlerStart, handlerEnd) + registration
+  }
+  return registration
 }
 
 describe("SaCMS Global Schema Template MCP route — source contract", () => {

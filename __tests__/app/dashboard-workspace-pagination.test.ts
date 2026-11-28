@@ -17,6 +17,8 @@ vi.mock("@/lib/pricing", () => ({ getWorkspacePlans: vi.fn(async () => []), getA
 const { db, rows } = vi.hoisted(() => {
   const rows: any[] = []
   const db = {
+    // Demo workspaces are the tenants a catalog Schema Template points at; none in these fixtures.
+    schemaTemplate: { findMany: vi.fn(async () => []) },
     tenant: {
       count: vi.fn(),
       findMany: vi.fn(),
@@ -50,7 +52,10 @@ function wire(all: any[]) {
 }
 function matchesSearch(t: any, where: any) {
   if (!where?.AND) return true
-  const needle = where.AND[1].OR[0].name.contains.toLowerCase()
+  // Only the search clause narrows by text; other AND clauses (the production/demo filter) are not text searches.
+  const searchClause = where.AND[1]?.OR
+  if (!searchClause) return true
+  const needle = searchClause[0].name.contains.toLowerCase()
   return t.name.toLowerCase().includes(needle) || t.slug.toLowerCase().includes(needle)
 }
 

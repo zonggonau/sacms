@@ -53,3 +53,14 @@ describe("annotations", () => {
     expect(annotated.length).toBe(registrations.length)
   })
 })
+
+describe("deploy_to_sacms on both servers", () => {
+  it("the workspace server deploys the built site with deploy_to_sacms", () => {
+    expect(manifest.workspace).toContain("deploy_to_sacms")
+  })
+
+  it("the global server deploys a built Website Template to its demo hosting under the same name", () => {
+    expect(manifest.global).toContain("deploy_to_sacms")
+    expect(requiredScopeForTool("deploy_to_sacms")).toBe("write")
+  })
+})

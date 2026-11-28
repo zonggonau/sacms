@@ -36,12 +36,14 @@ function lifecycleOf(t: LifecycleRow, enterprise: boolean) {
   return { status, daysRemaining, isExpired }
 }
 
-export default async function WorkspaceSelectionPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string }> }) {
+export default async function WorkspaceSelectionPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; env?: string }> }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
 
-  const { page: pageParam, q: qParam } = await searchParams
+  const { page: pageParam, q: qParam, env: envParam } = await searchParams
   const q = (qParam ?? "").trim().slice(0, 100)
+  // Production vs demo: demo workspaces are the tenants a catalog Schema Template uses for its demo.
+  const env = envParam === "demo" || envParam === "production" ? envParam : "all"
   const requestedPage = Math.max(1, parseInt(pageParam ?? "1", 10) || 1)
 
   const isSuperAdmin = session.user.role === "super_admin"
@@ -70,11 +72,20 @@ export default async function WorkspaceSelectionPage({ searchParams }: { searchP
     ? { AND: [baseWhere, { OR: [{ name: { contains: q, mode: "insensitive" } }, { slug: { contains: q, mode: "insensitive" } }] }] }
     : baseWhere
 
+  const demoRows = await db.schemaTemplate.findMany({ where: { demoTenantId: { not: null } }, select: { demoTenantId: true } })
+  const demoTenantIds = demoRows.flatMap((r) => (r.demoTenantId ? [r.demoTenantId] : []))
+  const envWhere = env === "demo" ? { id: { in: demoTenantIds } } : env === "production" ? { id: { notIn: demoTenantIds } } : null
+  const scopedWhere = envWhere ? { AND: [listWhere, envWhere] } : listWhere
+  const [allCount, demoCount] = await Promise.all([
+    db.tenant.count({ where: baseWhere }),
+    db.tenant.count({ where: { AND: [baseWhere, { id: { in: demoTenantIds } }] } }),
+  ])
+  const envCounts = { all: allCount, demo: demoCount, production: allCount - demoCount }
   const isGlobalEnterpriseFast = await isEnterpriseTenant(INSTANCE_LICENSE_ID)
   const isGlobalEnterprise = isGlobalEnterpriseFast || (await isEnterpriseTenant(session.user.id))
 
   const [total, summaryRows, globalTenant, adminMemberships] = await Promise.all([
-    db.tenant.count({ where: listWhere }),
+    db.tenant.count({ where: scopedWhere }),
     // Lightweight rows for every workspace: feeds the summary counts, and the
     // "every workspace suspended" / "only one workspace" redirects below.
     db.tenant.findMany({
@@ -135,7 +146,7 @@ export default async function WorkspaceSelectionPage({ searchParams }: { searchP
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const page = Math.min(requestedPage, pageCount)
   const pageRows = total === 0 ? [] : await db.tenant.findMany({
-    where: listWhere,
+    where: scopedWhere,
     include: {
       members: {
         where: { userId: session.user.id },
@@ -190,6 +201,7 @@ export default async function WorkspaceSelectionPage({ searchParams }: { searchP
       isGlobalWorkspace,
       storageUsedBytes,
       storageLimitBytes,
+      isDemo: demoTenantIds.includes(t.id),
     }
   }
 
@@ -315,6 +327,8 @@ export default async function WorkspaceSelectionPage({ searchParams }: { searchP
       initialTenants={formattedTenants}
       summary={summary}
       pagination={{ page, pageCount, total, pageSize: PAGE_SIZE, q }}
+      env={env}
+      envCounts={envCounts}
       usage={usage}
       dbTemplates={dbTemplates}
       workspacePlans={workspacePlans}

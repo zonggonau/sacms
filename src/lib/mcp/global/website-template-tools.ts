@@ -17,6 +17,38 @@ import { loadStarterSnapshot, StarterUnavailableError, starterLockBreach, starte
 import { McpServer, authContext, UNAUTHORIZED, SchemaTemplateNotFoundError, notFound, APPROVAL_OUTPUT, BUNDLE_FILE_OUTPUT, FILE_SIZE_OUTPUT, describeFileSize, WEBSITE_TEMPLATE_OUTPUT_SHAPE, serializeWebsiteTemplate, serializeWebsiteTemplateSummary, demoFailure, DEMO_DEPLOYMENT_OUTPUT_SHAPE, describeDemoDeployment, DRY_RUN_OUTPUT_SHAPE, ASYNC_OPERATION_OUTPUT_SHAPE, ToolResult, runToolInBackground, requiresPublishScope, queueApprovals, approvalNote, findDemoTenantForSchemaTemplate, runVerifyBuild, invalidSchema, warningsNote, referenceIssuesResponse, dedupeSlug, WEBSITE_TEMPLATE_SUMMARY_SHAPE } from "./context"
 
 export function registerWebsiteTemplateTools(server: McpServer) {
+    // The demo deploy of a built Website Template. Exposed as redeploy_website_template_demo and as deploy_to_sacms.
+    const redeployWebsiteTemplateDemoTool = async ({ id, background }: { id: string; background?: boolean }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        if (background) {
+          return runToolInBackground("redeploy_website_template_demo", () => redeployWebsiteTemplateDemoTool({ id, background: false }) as Promise<ToolResult>)
+        }
+
+        const existing = await db.websiteTemplate.findFirst({
+          where: { deletedAt: null, OR: [{ id }, { slug: id }] },
+          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
+        })
+        if (!existing) return notFound("Website Template", id)
+
+        const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
+        const demo = await deployWebsiteTemplateDemo({
+          id: existing.id,
+          sourceVersion: existing.sourceVersion,
+          slug: existing.slug,
+          files: existing.files as unknown as WebsiteTemplateFile[],
+          schemaTemplate: existing.schemaTemplate,
+        })
+
+        const saved = (await db.websiteTemplate.findUnique({ where: { id: existing.id } })) || existing
+        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: { ...describeDemoDeployment(demo), sourceVersion: existing.sourceVersion.toISOString() } }
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
+          structuredContent: structured,
+        }
+    }
+
     // ── Website Templates (frontend bundles following a Schema Template) ──
 
     server.registerTool(
@@ -1279,35 +1311,24 @@ export function registerWebsiteTemplateTools(server: McpServer) {
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      async function redeployWebsiteTemplateDemoTool({ id, background }) {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
+      redeployWebsiteTemplateDemoTool,
+    )
 
-        if (background) {
-          return runToolInBackground("redeploy_website_template_demo", () => redeployWebsiteTemplateDemoTool({ id, background: false }) as Promise<ToolResult>)
-        }
-
-        const existing = await db.websiteTemplate.findFirst({
-          where: { deletedAt: null, OR: [{ id }, { slug: id }] },
-          include: { schemaTemplate: { select: { id: true, slug: true, name: true, schema: true, demoTenantId: true } } },
-        })
-        if (!existing) return notFound("Website Template", id)
-
-        const { deployWebsiteTemplateDemo } = await import("@/lib/infrastructure/deploy-website-template-demo")
-        const demo = await deployWebsiteTemplateDemo({
-          id: existing.id,
-          sourceVersion: existing.sourceVersion,
-          slug: existing.slug,
-          files: existing.files as unknown as WebsiteTemplateFile[],
-          schemaTemplate: existing.schemaTemplate,
-        })
-
-        const saved = (await db.websiteTemplate.findUnique({ where: { id: existing.id } })) || existing
-        const structured = { ...serializeWebsiteTemplateSummary(saved), demoDeployment: { ...describeDemoDeployment(demo), sourceVersion: existing.sourceVersion.toISOString() } }
-        return {
-          content: [{ type: "text" as const, text: JSON.stringify(structured, null, 2) }],
-          structuredContent: structured,
-        }
+    server.registerTool(
+      "deploy_to_sacms",
+      {
+        title: "Deploy Website Template to SaCMS Cloud Hosting (Demo)",
+        description: "Deploy a built Website Template straight to SaCMS Cloud Hosting: its demo deployment is built from the stored files and verified. Same as redeploy_website_template_demo, under the name the workspace server uses. Production is released from Infrastructure → Hosting.",
+        inputSchema: {
+          id: z.string().describe("Website Template id or slug"),
+          background: z.boolean().optional().describe("Run the deploy in the background and return an operationId immediately. Poll get_global_operation_status."),
+        },
+        outputSchema: z.union([
+          ASYNC_OPERATION_OUTPUT_SHAPE,
+          z.object({ ...WEBSITE_TEMPLATE_SUMMARY_SHAPE, demoDeployment: DEMO_DEPLOYMENT_OUTPUT_SHAPE }),
+        ]),
+        annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
+      redeployWebsiteTemplateDemoTool,
     )
 }

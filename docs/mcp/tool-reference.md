@@ -98,7 +98,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 
 ## Global MCP (`/api/mcp/global-schema`)
 
-48 tools.
+49 tools.
 
 | Tool | Hints | Description |
 | --- | --- | --- |
@@ -110,6 +110,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `delete_global_component` | destructive | Permanently delete a Global Component from the catalog. This has no effect on any real Component already materialized in a tenant's own schema previously — it only stops it from being found/reused in future. |
 | `delete_schema_template` | destructive | Delete a Schema Template from the catalog (soft-delete with recovery window). Unpublished templates with no Website Template dependents are soft-deleted immediately. Published templates or those with dependents require a super admin approval at /admin/developer/approvals before soft-deletion. Website Templates built on this schema soft-delete with it (cascade is now soft, not permanent). |
 | `delete_website_template` | destructive, external | Delete a Website Template from the catalog (soft-delete with recovery window). The Schema Template it followed is unaffected. Published templates require a super admin approval at /admin/developer/approvals before soft-deletion; unpublished templates are soft-deleted immediately. If it has a live demo deployment, that Vercel project is best-effort deleted (failure is logged but doesn't block the soft-delete). |
+| `deploy_to_sacms` | external | Deploy a built Website Template straight to SaCMS Cloud Hosting: its demo deployment is built from the stored files and verified. Same as redeploy_website_template_demo, under the name the workspace server uses. Production is released from Infrastructure → Hosting. |
 | `extend_preview` | external | Keep an active preview running for another 30 minutes from now. Call it before expiresAt during a long edit session; an expired session with unsaved edits can still be saved, and start_preview resumes it. |
 | `get_approval_status` | read-only | Check a publish / default-schema / cascade-delete request that's waiting on a human. These are never applied by the agent: a super admin approves or rejects them in the SaCMS dashboard (/admin/developer/approvals). Status: pending, approved, rejected, or failed (approved but couldn't be applied — see resultMessage). |
 | `get_builder_guide` | read-only | Read this FIRST when you connect to this MCP server. Returns the full workflow for building a Schema Template + Website Template together, dry-run validation, the demo preview/verification contract, and every structured error code — call with no arguments. |

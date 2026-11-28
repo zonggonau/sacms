@@ -58,6 +58,8 @@ interface Tenant {
   subscriptionStatus: string | null
   isExpired?: boolean
   isEnterprise?: boolean
+  /** A demo workspace (a catalog template's demo), not a production workspace. */
+  isDemo?: boolean
   /** The SaCMS Global workspace itself — no manage/delete menu, just a way in. */
   isGlobalWorkspace?: boolean
   /** This workspace's own slice of its owner's pooled Enterprise storage
@@ -73,12 +75,32 @@ function formatBytesGb(bytes: number): string {
   return gb >= 1024 ? `${(gb / 1024).toFixed(gb % 1024 === 0 ? 0 : 1)} TB` : `${gb.toFixed(gb % 1 === 0 ? 0 : 1)} GB`
 }
 
+export type WorkspaceEnvFilter = "all" | "production" | "demo"
+
+const ENV_TABS: { value: WorkspaceEnvFilter; label: string }[] = [
+  { value: "all", label: "Semua" },
+  { value: "production", label: "Produksi" },
+  { value: "demo", label: "Demo" },
+]
+
+/** Label that tells a production workspace from a demo one at a glance. */
+function EnvironmentBadge({ isDemo }: { isDemo?: boolean }) {
+  return isDemo ? (
+    <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 rounded-full border-amber-500/40 text-amber-600 dark:text-amber-400">Demo</Badge>
+  ) : (
+    <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 rounded-full border-emerald-500/40 text-emerald-600 dark:text-emerald-400">Produksi</Badge>
+  )
+}
+
 interface WorkspaceManagerProps {
   /** This page's slice of the account's workspaces (see pagination). */
   initialTenants: Tenant[]
   /** Counts across every workspace, not just this page. */
   summary: { total: number; active: number; expired: number; expiringSoon: number; suspended: number }
   pagination: { page: number; pageCount: number; total: number; pageSize: number; q: string }
+  /** Production vs demo filter, applied on the server so pagination and counts follow it. */
+  env: WorkspaceEnvFilter
+  envCounts: Record<WorkspaceEnvFilter, number>
   usage: { current: number; max: number | null; allowed: boolean; plan: string } | null
   dbTemplates: any[]
   workspacePlans: WorkspacePlan[]
@@ -95,6 +117,8 @@ export function WorkspaceManager({
   initialTenants,
   summary,
   pagination,
+  env,
+  envCounts,
   usage,
   dbTemplates,
   workspacePlans,
@@ -164,6 +188,15 @@ export function WorkspaceManager({
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput])
+
+  const goToEnv = (value: WorkspaceEnvFilter) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
+    if (value === "all") params.delete("env")
+    else params.set("env", value)
+    params.delete("page")
+    const qs = params.toString()
+    router.push(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
 
   const goToPage = (page: number) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -312,6 +345,22 @@ export function WorkspaceManager({
         </Card>
       </div>
 
+      {/* Production vs demo tabs. */}
+      <div className="flex items-center gap-1 p-0.5 bg-muted/40 rounded-xl border border-border/80 w-fit">
+        {ENV_TABS.map((tab) => (
+          <Button
+            key={tab.value}
+            variant="ghost"
+            size="sm"
+            onClick={() => goToEnv(tab.value)}
+            className={cn("h-7 px-3 rounded-lg text-xs font-bold", env === tab.value && "bg-card shadow-xs text-foreground")}
+          >
+            {tab.label}
+            <span className="ml-1.5 text-[10px] font-mono text-muted-foreground">{envCounts[tab.value]}</span>
+          </Button>
+        ))}
+      </div>
+
       {/* Search & View Switcher Bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
         <div className="relative flex-1 max-w-md">
@@ -427,6 +476,7 @@ export function WorkspaceManager({
                           >
                             {tenant.name}
                           </Link>
+                          <EnvironmentBadge isDemo={tenant.isDemo} />
                           <button
                             type="button"
                             onClick={(e) => handleCopySlug(tenant.slug, e)}
@@ -598,6 +648,7 @@ export function WorkspaceManager({
                           <div>
                             <div className="flex items-center gap-1.5">
                               <p className="font-bold text-xs text-foreground line-clamp-1">{tenant.name}</p>
+                              <EnvironmentBadge isDemo={tenant.isDemo} />
                               {tenant.isGlobalWorkspace && (
                                 <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 rounded-full bg-primary/10 text-primary border-primary/30">
                                   System

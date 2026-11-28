@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### MCP hardening
+- **Global `deploy_to_sacms`**: deploys a built Website Template straight to SaCMS Cloud Hosting through its demo deployment. It is the same deploy as `redeploy_website_template_demo`, under the name the workspace server uses, so agents find it on both servers. Production is still released from Infrastructure → Hosting.
+- **Dashboard workspace list**: each workspace is labelled Produksi or Demo, and tabs filter the list between Semua, Produksi, and Demo. The filter runs on the server, so pagination and counts follow it.
 - **Global MCP `delete` scope**: deleting a Website Template, Schema Template or Global Component needs the `delete` scope. The `write` scope can no longer delete catalog data. Existing tokens keep `write` only, so re-issue a token that needs deletes.
 - **Workspace `get_or_create_api_key` and `call_external_api` need the `env` scope** (was `write`). Both handle secrets. `call_external_api` now sends requests over HTTPS only.
 - **Tool annotations**: every preview tool and the global operation-status tool declare read-only or write hints, so clients can tell them apart. `stop_preview` is marked destructive.
