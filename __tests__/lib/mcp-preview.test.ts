@@ -91,7 +91,7 @@ it("uses the MCP tenant for workspace access and rejects an unrelated hosting pr
   await expect(handlers.get("start_preview")!({})).rejects.toThrow("Insufficient workspace permission")
   canWrite = true
   await expect(handlers.get("start_preview")!({ siteId: "project-b" })).rejects.toThrow("Site not found")
-  const info = await handlers.get("get_site_preview")!({})
+  const info = await handlers.get("get_preview_url")!({ siteId: "project-a" })
   expect(info.structuredContent).toMatchObject({ scope: "workspace", target: "acme", status: "inactive" })
   expect(db.mcpPreviewSession.findUnique).toHaveBeenCalledWith({ where: { scope_targetId: { scope: "workspace", targetId: "tenant-a" } } })
   db.mcpDeploymentSource.findFirst.mockResolvedValue({ id: "saved", files: [{ name: "package.json", content: "{}" }] })
@@ -99,7 +99,7 @@ it("uses the MCP tenant for workspace access and rejects an unrelated hosting pr
   db.mcpPreviewSession.create.mockImplementation(async ({ data }) => data)
   const { Sandbox } = await import("@vercel/sandbox")
   vi.mocked(Sandbox.create).mockRejectedValueOnce({ response: { status: 404 } })
-  await expect(handlers.get("start_site_preview")!({ siteId: "project-a" })).rejects.toThrow("project project-a di team team_test")
+  await expect(handlers.get("start_preview")!({ siteId: "project-a" })).rejects.toThrow("project project-a di team team_test")
   expect(Sandbox.create).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: "project-a", teamId: "team_test" }))
 })
 

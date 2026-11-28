@@ -116,7 +116,7 @@ export function registerWebsiteTemplateTools(server: McpServer) {
       {
         title: "Get Local .env for a Template's Demo Workspace",
         description:
-          "Returns a ready-to-save .env.local for the demo workspace behind a Website Template (or Schema Template): " +
+          "SENSITIVE: returns a live API key. Returns a ready-to-save .env.local for the demo workspace behind a Website Template (or Schema Template): " +
           "NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT and SACMS_API_KEY of that demo workspace, plus its custom variables. " +
           "Use it to run the template's frontend locally against the content you are editing. Write it to .env.local and never commit it.",
         inputSchema: {
@@ -1033,7 +1033,7 @@ export function registerWebsiteTemplateTools(server: McpServer) {
           startedAt: z.string(),
           finishedAt: z.string().nullable(),
         },
-        annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+        annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       },
       async ({ operationId }) => {
         const auth = authContext.getStore()

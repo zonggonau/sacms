@@ -103,7 +103,9 @@ function buildReference(root = ROOT) {
     for (const name of manifest[server]) {
       const block = blockFor(source, name)
       const desc = descriptionOf(block, source) || aliasDescriptionOf(source, name) || "(no description)"
-      lines.push(`| \`${name}\` | ${hintsOf(block)} | ${escapeCell(desc)} |`)
+      // Tools registered through the shared status helper carry its read-only annotation (see website-template-tools.ts).
+      const hints = !block && aliasDescriptionOf(source, name) ? "read-only" : hintsOf(block)
+      lines.push(`| \`${name}\` | ${hints} | ${escapeCell(desc)} |`)
     }
     lines.push("")
   }

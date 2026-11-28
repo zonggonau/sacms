@@ -1516,7 +1516,7 @@ export function registerDeployTools(server: McpServer) {
         annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
         title: "Call a Third-Party API Using a Stored Env Var",
         description:
-          "Call ANY third-party API (Printful, a payment gateway, a maps provider, etc.) using a secret " +
+          "Requires the env scope, because stored secrets are substituted into the request and sent over HTTPS only. Call ANY third-party API (Printful, a payment gateway, a maps provider, etc.) using a secret " +
           "already stored on this workspace's Environment tab — WITHOUT ever exposing that secret's value " +
           "to you or this conversation. Write {{ENV_KEY}} anywhere a secret belongs (a header value, a query " +
           "param, or the body) — e.g. headers: { \"Authorization\": \"Bearer {{PRINTFUL_API_KEY}}\" } — and " +
@@ -1537,7 +1537,7 @@ export function registerDeployTools(server: McpServer) {
       async ({ url, method, headers, query, body }) => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
+        if (!hasScope(auth, "env")) return permissionDenied("env")
 
         const { getTenantCustomEnvVars } = await import("@/lib/infrastructure/frontend-env")
         const envMap = auth.tenantId ? await getTenantCustomEnvVars(auth.tenantId) : {}
@@ -1559,6 +1559,10 @@ export function registerDeployTools(server: McpServer) {
           targetUrl = new URL(substitute(url))
         } catch {
           return { content: [{ type: "text" as const, text: "❌ URL tidak valid." }], isError: true }
+        }
+        // Stored secrets are substituted into this request, so they only ever leave over TLS.
+        if (targetUrl.protocol !== "https:") {
+          return { content: [{ type: "text" as const, text: "❌ URL harus https." }], isError: true }
         }
         if (query) {
           for (const [k, v] of Object.entries(query)) targetUrl.searchParams.set(k, substitute(v))

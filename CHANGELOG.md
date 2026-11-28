@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### MCP hardening
+- **Global MCP `delete` scope**: deleting a Website Template, Schema Template or Global Component needs the `delete` scope. The `write` scope can no longer delete catalog data. Existing tokens keep `write` only, so re-issue a token that needs deletes.
+- **Workspace `get_or_create_api_key` and `call_external_api` need the `env` scope** (was `write`). Both handle secrets. `call_external_api` now sends requests over HTTPS only.
+- **Tool annotations**: every preview tool and the global operation-status tool declare read-only or write hints, so clients can tell them apart. `stop_preview` is marked destructive.
+- **`sync_dev_env`** (both servers) is marked sensitive in its description, because it returns a live API key.
+- **Removed** the compatibility aliases `start_site_preview` and `get_site_preview`. Use `start_preview` and `get_preview_url`, which accept the same `siteId`.
+
 ### Added
 - **SaCMS Next.js starter as the locked base for agent-built sites**: the official repository `zonggonau/sacms-nextjs-starter` (default branch, current commit) is fetched from GitHub. Workspace MCP: `download_starter_template` installs its default schema, `.env.example` variables, and source as the workspace's first revision. Global MCP: `get_starter_template` reads it, and `create_website_template` with `starter: true` builds a template on it. The starter's files are locked: deploy, rollback, and preview edits that change or remove one return `STARTER_LOCKED`, while new files are allowed. `package-lock.json` is left out of the snapshot (224 KB, over the 200 KB text-file cap, and npm regenerates it).
 - **Starter lock** (`src/lib/infrastructure/starter-template.ts`): per-scope hashes stored in `Setting` (`starter-lock:workspace:<tenantId>`, `starter-lock:template:<templateId>`). Applying a catalog Website Template to a workspace replaces its starter lock.

@@ -6,18 +6,21 @@
  * - demo:    also write a template's internal demo content.
  * - write:   also create/update/delete Schema/Website Templates and Global
  *            Components, and redeploy demos.
+ * - delete: also delete Website Templates, Schema Templates and Global Components.
+ *   Deletes are a separate grant: a write token cannot remove catalog data.
  * - publish: also REQUEST publish / isDefault / cascade delete. Those still
  *            wait for a human to approve them in the dashboard
  *            (/admin/developer/approvals) — the scope only decides who may
  *            ask, never who may skip the approval.
  */
-export const GLOBAL_MCP_SCOPES = ["read", "demo", "write", "publish"] as const
+export const GLOBAL_MCP_SCOPES = ["read", "demo", "write", "delete", "publish"] as const
 export type GlobalMcpScope = (typeof GLOBAL_MCP_SCOPES)[number]
 
 export const GLOBAL_MCP_SCOPE_LABELS: Record<GlobalMcpScope, string> = {
   read: "Baca",
   demo: "Konten demo",
   write: "Ubah template",
+  delete: "Hapus template",
   publish: "Ajukan publikasi",
 }
 
@@ -61,6 +64,13 @@ const READ_TOOLS = [
   "verify_demo_sample_batch",
 ]
 
+// Deletes of catalog data. Separate from write, like the workspace's delete scope.
+const DELETE_TOOLS = [
+  "delete_website_template",
+  "delete_schema_template",
+  "delete_global_component",
+]
+
 const DEMO_TOOLS = [
   "sync_dev_env",
   "update_demo_single_type_entry",
@@ -76,5 +86,6 @@ const DEMO_TOOLS = [
 export function requiredScopeForTool(toolName: string): GlobalMcpScope {
   if (READ_TOOLS.includes(toolName)) return "read"
   if (DEMO_TOOLS.includes(toolName)) return "demo"
+  if (DELETE_TOOLS.includes(toolName)) return "delete"
   return "write"
 }

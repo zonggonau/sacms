@@ -42,7 +42,8 @@ interface GlobalMcpToken {
 const SCOPE_HINTS: Record<GlobalMcpScope, string> = {
   read: "Melihat template, schema, demo, dan status.",
   demo: "Mengisi konten workspace demo.",
-  write: "Membuat, mengubah, dan menghapus template.",
+  write: "Membuat dan mengubah template.",
+  delete: "Menghapus Website Template, Schema Template, dan Global Component.",
   publish: "Mengajukan publikasi, schema default, dan hapus berantai — tetap menunggu persetujuan di dashboard.",
 }
 

@@ -178,21 +178,16 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
 
   const startDescription = "Start or reuse a code preview with published CMS content."
   const getDescription = "Read session status, sourceVersion and accessUrl without starting a Sandbox."
-  server.registerTool("start_preview", { description: startDescription, inputSchema: selector }, startPreview)
-  server.registerTool("get_preview_url", { description: getDescription, inputSchema: selector }, getPreview)
-  if (workspace) {
-    const site = { siteId: z.string().optional() }
-    // Compatibility aliases: same handlers as start_preview / get_preview_url, input limited to siteId.
-    server.registerTool("start_site_preview", { description: `${startDescription} Alias of start_preview; accepts only siteId.`, inputSchema: site }, startPreview)
-    server.registerTool("get_site_preview", { description: `${getDescription} Alias of get_preview_url; accepts only siteId.`, inputSchema: site }, getPreview)
-  } else {
+  server.registerTool("start_preview", { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }, description: startDescription, inputSchema: selector }, startPreview)
+  server.registerTool("get_preview_url", { annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, description: getDescription, inputSchema: selector }, getPreview)
+  if (!workspace) {
     const target = { websiteTemplateId: z.string().min(1) }
-    server.registerTool("start_website_template_preview", { description: startDescription, inputSchema: target },
+    server.registerTool("start_website_template_preview", { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }, description: startDescription, inputSchema: target },
       ({ websiteTemplateId }) => startPreview({ templateId: websiteTemplateId }))
-    server.registerTool("get_website_template_preview", { description: getDescription, inputSchema: target },
+    server.registerTool("get_website_template_preview", { annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, description: getDescription, inputSchema: target },
       ({ websiteTemplateId }) => getPreview({ templateId: websiteTemplateId }))
   }
-  server.registerTool("read_preview_file", { description: "Read a file from the current preview revision.", inputSchema: { ...selector, path: z.string() } }, async ({ path, ...input }) => {
+  server.registerTool("read_preview_file", { annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, description: "Read a file from the current preview revision.", inputSchema: { ...selector, path: z.string() } }, async ({ path, ...input }) => {
     const { s } = await current(input)
     const file = parseFiles(s.files).find(f => f.path === path)
     if (!file) throw Error("File not found")
@@ -202,7 +197,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     const content = bytes.toString(file.encoding ?? "utf-8")
     return result({ revision: s.revision, ...file, content })
   })
-  server.registerTool("apply_preview_changes", { description: "Write changed files to the same live preview.", inputSchema: { ...selector,
+  server.registerTool("apply_preview_changes", { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }, description: "Write changed files to the same live preview.", inputSchema: { ...selector,
     expectedRevision: z.number().int(), changedFiles: z.array(websiteTemplateFileSchema).min(1).max(200) } }, async ({ expectedRevision, changedFiles, ...input }) => {
     const { t, s } = await current(input, true)
     const merged = new Map(parseFiles(s.files).map(f => [f.path, f]))
@@ -224,7 +219,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
       throw error
     }
   })
-  server.registerTool("save_preview_changes", { description: "Save the current revision to its source history. Workspace production releases are made from Infrastructure → Hosting.", inputSchema: { ...selector, expectedSourceVersion: z.string() } }, async ({ expectedSourceVersion, ...input }) => {
+  server.registerTool("save_preview_changes", { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }, description: "Save the current revision to its source history. Workspace production releases are made from Infrastructure → Hosting.", inputSchema: { ...selector, expectedSourceVersion: z.string() } }, async ({ expectedSourceVersion, ...input }) => {
     const t = await template(input, true)
     const s = await lookup(t.id)
     // An expired session keeps its edited files in the DB, so they can still be saved.
@@ -261,13 +256,13 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     })
     return result(saved)
   })
-  server.registerTool("get_preview_logs", { description: "Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes.", inputSchema: selector }, async input => {
+  server.registerTool("get_preview_logs", { annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false }, description: "Read the end of the preview's dev-server output (compile and runtime errors) and of its dependency install. Check this whenever a page renders an error or blank after apply_preview_changes.", inputSchema: selector }, async input => {
     const { s } = await current(input)
     const box = await sessionSandbox(s)
     const [dev, install] = await Promise.all([tailLog(box, DEV_LOG), tailLog(box, INSTALL_LOG, 2_000)])
     return result({ revision: s.revision, devServer: dev.log, devServerTruncated: dev.truncated, install: install.log })
   })
-  server.registerTool("extend_preview", { description: "Keep an active preview running for another 30 minutes from now. Call it before expiresAt during a long edit session; an expired session with unsaved edits can still be saved, and start_preview resumes it.", inputSchema: selector }, async input => {
+  server.registerTool("extend_preview", { annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true }, description: "Keep an active preview running for another 30 minutes from now. Call it before expiresAt during a long edit session; an expired session with unsaved edits can still be saved, and start_preview resumes it.", inputSchema: selector }, async input => {
     const { s } = await current(input, true)
     const expiresAt = new Date(Date.now() + lifetime)
     const extendBy = expiresAt.getTime() - s.expiresAt.getTime()
@@ -277,7 +272,7 @@ function registerPreviews(server: McpServer, actor?: () => Actor | undefined, wo
     await db.apiToken.updateMany({ where: { name: "Template preview " + s.id }, data: { expiresAt } })
     return result(describe(s.target, await db.mcpPreviewSession.update({ where: { id: s.id }, data: { expiresAt } })))
   })
-  server.registerTool("stop_preview", { description: "Stop a preview. Unsaved edits require discardChanges.", inputSchema: { ...selector, discardChanges: z.boolean().optional() } }, async ({ discardChanges, ...input }) => {
+  server.registerTool("stop_preview", { annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true }, description: "Stop a preview. Unsaved edits require discardChanges.", inputSchema: { ...selector, discardChanges: z.boolean().optional() } }, async ({ discardChanges, ...input }) => {
     const t = await template(input, true)
     const s = await lookup(t.id)
     if (!s || !active(s) || s.dirty && !discardChanges) return result(describe(t.slug, s))

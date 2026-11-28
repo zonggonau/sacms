@@ -346,7 +346,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
       async () => {
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
+        if (!hasScope(auth, "env")) return permissionDenied("env")
 
         const { findPrimaryApiToken, getOrCreatePrimaryApiToken } = await import("@/lib/api-token-registry")
 
@@ -409,7 +409,7 @@ const { data } = await sacms.collection("articles").findMany({ pagination: { pag
       {
         title: "Get Local Development .env",
         description:
-          "Returns a ready-to-save .env.local for running this workspace's frontend locally against SaCMS: " +
+          "SENSITIVE: returns a live API key and custom secrets. Returns a ready-to-save .env.local for running this workspace's frontend locally against SaCMS: " +
           "NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT, SACMS_API_KEY (the same server-side key deploy_to_sacms injects), " +
           "plus every custom variable saved via add_deployment_env or the dashboard's Environment tab. " +
           "Write it to .env.local (never commit it). To add a third-party variable, call add_deployment_env — it is stored " +

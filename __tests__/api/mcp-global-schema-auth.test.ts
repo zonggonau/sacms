@@ -63,7 +63,7 @@ describe("Global Schema Template MCP route — resolveGlobalSchemaToken", () => 
   it("gives a legacy token (permissions: ['schema-template'], minted before scopes) full access so existing integrations keep working", async () => {
     vi.mocked(db.apiToken.findFirst).mockResolvedValue({ id: "tok-1", name: "Old", permissions: ["schema-template"], expiresAt: null } as any)
     const auth = await resolveGlobalSchemaToken("mcpglobal_valid")
-    expect(auth?.scopes).toEqual(["read", "demo", "write", "publish"])
+    expect(auth?.scopes).toEqual(["read", "demo", "write", "delete", "publish"])
   })
 
   it("rejects an expired token (expiresAt used to be stored but never checked)", async () => {
