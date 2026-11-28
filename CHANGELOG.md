@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### MCP hardening
+- **Global `deploy_to_sacms` takes a bundle**: pass `files` (the full bundle) to save it as the template's new version and deploy it to demo hosting in one call, the same deploy the workspace server offers. Starter-locked files are refused. Without `files`, the stored bundle is redeployed.
 - **Global `deploy_to_sacms`**: deploys a built Website Template straight to SaCMS Cloud Hosting through its demo deployment. It is the same deploy as `redeploy_website_template_demo`, under the name the workspace server uses, so agents find it on both servers. Production is still released from Infrastructure → Hosting.
 - **Dashboard workspace list**: each workspace is labelled Produksi or Demo, and tabs filter the list between Semua, Produksi, and Demo. The filter runs on the server, so pagination and counts follow it.
 - **Global MCP `delete` scope**: deleting a Website Template, Schema Template or Global Component needs the `delete` scope. The `write` scope can no longer delete catalog data. Existing tokens keep `write` only, so re-issue a token that needs deletes.

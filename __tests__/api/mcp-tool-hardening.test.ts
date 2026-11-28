@@ -64,3 +64,15 @@ describe("deploy_to_sacms on both servers", () => {
     expect(requiredScopeForTool("deploy_to_sacms")).toBe("write")
   })
 })
+
+describe("global deploy_to_sacms takes a bundle", () => {
+  const globalTools = read("src/lib/mcp/global/website-template-tools.ts")
+  it("accepts files, validates them, checks the starter lock, records a version, then deploys", () => {
+    const body = globalTools.slice(globalTools.indexOf("const deployToSacmsTool"), globalTools.indexOf("const deployToSacmsTool") + 2500)
+    expect(body).toContain("websiteTemplateFilesSchema.safeParse(files)")
+    expect(body).toContain("starterLockBreach(templateLockKey(existing.id), parsedFiles.data)")
+    expect(body).toContain("recordTemplateVersion({")
+    // The deploy at the end runs on the saved files, so the version record must come before it.
+    expect(body.indexOf("recordTemplateVersion({")).toBeLessThan(body.lastIndexOf("return redeployWebsiteTemplateDemoTool({ id: existing.id"))
+  })
+})

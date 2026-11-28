@@ -49,6 +49,43 @@ export function registerWebsiteTemplateTools(server: McpServer) {
         }
     }
 
+    // deploy_to_sacms: the workspace tool's shape on the global server. Optional files are validated and saved as
+    // the template's new version (same checks as update_website_template), then the demo deploy runs on them.
+    const deployToSacmsTool = async ({ id, files, background }: { id: string; files?: WebsiteTemplateFile[]; background?: boolean }) => {
+      const auth = authContext.getStore()
+      if (!auth) return UNAUTHORIZED
+      if (files === undefined) return redeployWebsiteTemplateDemoTool({ id, background })
+
+      const existing = await db.websiteTemplate.findFirst({
+        where: { deletedAt: null, OR: [{ id }, { slug: id }] },
+        include: { schemaTemplate: { select: { id: true, schema: true } } },
+      })
+      if (!existing) return notFound("Website Template", id)
+
+      const parsedFiles = websiteTemplateFilesSchema.safeParse(files)
+      if (!parsedFiles.success) return invalidSchema(parsedFiles.error)
+      if (!parsedFiles.data.some((f) => f.path === "package.json")) {
+        return referenceIssuesResponse([{ path: "files", message: "No package.json found at the bundle root — a real deploy has no dependencies/scripts to build with." }])
+      }
+      const starterBreach = await starterLockBreach(templateLockKey(existing.id), parsedFiles.data)
+      if (starterBreach) {
+        return { content: [{ type: "text" as const, text: `❌ ${starterBreach}` }], structuredContent: { ok: false, code: "STARTER_LOCKED", message: starterBreach }, isError: true }
+      }
+
+      await db.websiteTemplate.update({ where: { id: existing.id }, data: { files: parsedFiles.data as unknown as object, sourceVersion: new Date() } })
+      await recordTemplateVersion({
+        websiteTemplateId: existing.id,
+        files: parsedFiles.data as unknown as VersionFile[],
+        schema: existing.schemaTemplate.schema,
+        schemaChanged: false,
+        changedBy: auth.tokenName,
+        tokenId: auth.tokenId,
+        note: "Deployed via deploy_to_sacms",
+        baseline: { files: existing.files as unknown as VersionFile[], schema: existing.schemaTemplate.schema },
+      })
+      return redeployWebsiteTemplateDemoTool({ id: existing.id, background })
+    }
+
     // ── Website Templates (frontend bundles following a Schema Template) ──
 
     server.registerTool(
@@ -1317,10 +1354,11 @@ export function registerWebsiteTemplateTools(server: McpServer) {
     server.registerTool(
       "deploy_to_sacms",
       {
-        title: "Deploy Website Template to SaCMS Cloud Hosting (Demo)",
-        description: "Deploy a built Website Template straight to SaCMS Cloud Hosting: its demo deployment is built from the stored files and verified. Same as redeploy_website_template_demo, under the name the workspace server uses. Production is released from Infrastructure → Hosting.",
+        title: "Deploy Website Template to SaCMS Cloud Hosting",
+        description: "Deploy a built Website Template straight to SaCMS Cloud Hosting, the same deploy the workspace server's deploy_to_sacms uses. Pass files to deploy a new bundle: the files are validated, saved as the template's new version, and deployed to its demo hosting. Without files, the stored bundle is redeployed. Starter-locked files cannot be changed.",
         inputSchema: {
           id: z.string().describe("Website Template id or slug"),
+          files: websiteTemplateFilesSchema.optional().describe("The FULL bundle, same shape as create_website_template's files. Omit to redeploy the stored bundle."),
           background: z.boolean().optional().describe("Run the deploy in the background and return an operationId immediately. Poll get_global_operation_status."),
         },
         outputSchema: z.union([
@@ -1329,6 +1367,6 @@ export function registerWebsiteTemplateTools(server: McpServer) {
         ]),
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: true },
       },
-      redeployWebsiteTemplateDemoTool,
+      deployToSacmsTool,
     )
 }
