@@ -25,7 +25,7 @@ vi.mock("@/lib/database", () => ({
   db: {
     setting: { upsert: vi.fn(), findUnique: findSetting, deleteMany: vi.fn().mockResolvedValue({}) },
     mcpDeploymentSource: { findFirst: vi.fn() },
-    tenant: { update: vi.fn().mockResolvedValue({}) },
+    tenant: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn(async () => ({ name: "Toko" })) },
     schemaTemplate: { count: vi.fn().mockResolvedValue(0) },
   },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
@@ -52,6 +52,8 @@ vi.mock("@/lib/infrastructure/frontend-env", () => ({
   resolveApiOrigin: vi.fn().mockReturnValue("https://sacms.cloud"),
 }))
 
+vi.mock("@/lib/infrastructure/default-tenant-schema", () => ({ seedDefaultTenantSchema: vi.fn(async () => {}) }))
+vi.mock("@/lib/infrastructure/site-settings", () => ({ ensureSiteSettings: vi.fn(async () => {}) }))
 vi.mock("@/lib/schema-lock", () => ({
   assertSchemaEditable: vi.fn().mockResolvedValue(null),
 }))

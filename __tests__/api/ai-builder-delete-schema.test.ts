@@ -20,8 +20,11 @@ const { fakeTenantDb } = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/database", () => ({
+  db: { tenant: { findUnique: vi.fn(async () => ({ name: "Toko" })) } },
   getTenantDb: vi.fn().mockResolvedValue(fakeTenantDb),
 }))
+vi.mock("@/lib/infrastructure/default-tenant-schema", () => ({ seedDefaultTenantSchema: vi.fn(async () => {}) }))
+vi.mock("@/lib/infrastructure/site-settings", () => ({ ensureSiteSettings: vi.fn(async () => {}) }))
 
 vi.mock("@/lib/schema-lock", () => ({
   assertSchemaEditable: vi.fn().mockResolvedValue(null),

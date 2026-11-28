@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
-import { getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { assertSchemaEditable } from "@/lib/schema-lock"
-import { wipeTenantSchema } from "@/lib/schema-wipe"
+import { resetSchemaToStarter } from "@/lib/schema-reset"
 import { isGlobalWorkspace } from "@/lib/global-workspace"
 
 /**
@@ -29,8 +28,7 @@ export const POST = withStaffAuth(
     const lockError = await assertSchemaEditable(access.tenantId)
     if (lockError) return apiError("forbidden", { message: lockError.error })
 
-    const tenantDb = await getTenantDb(access.tenant.slug)
-    const deleted = await wipeTenantSchema(tenantDb, access.tenantId)
+    const deleted = await resetSchemaToStarter(access.tenantId, access.tenant.slug)
 
     return NextResponse.json({ success: true, deleted })
   },

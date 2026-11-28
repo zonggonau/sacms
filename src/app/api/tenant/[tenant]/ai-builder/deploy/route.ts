@@ -1,13 +1,14 @@
 import { getLatestDeploymentSource } from "@/lib/infrastructure/mcp-deployment-source"
 import { NextResponse } from "next/server"
 import { getWebsiteTemplateRun, websiteTemplateRunKey } from "@/lib/infrastructure/website-template-run"
-import { db, getTenantDb } from "@/lib/database"
+import { db } from "@/lib/database"
 import { hasReadyProduction, addDomainToProject, deleteVercelProject, getDomainConfig, removeDomainFromProject } from "@/lib/vercel-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 import { deployTenantFrontend, redeployTenantFrontend } from "@/lib/infrastructure/deploy-frontend"
 import { assertSchemaEditable } from "@/lib/schema-lock"
-import { wipeTenantSchema } from "@/lib/schema-wipe"
+import { resetSchemaToStarter } from "@/lib/schema-reset"
+import { workspaceLockKey } from "@/lib/infrastructure/starter-template"
 import { isDemoWorkspace, listWorkspacePreviews } from "@/lib/infrastructure/workspace-previews"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
@@ -237,8 +238,9 @@ export const POST = withStaffAuth(
         }).catch(() => null),
       ])
 
-      const tenantDb = await getTenantDb(tenantSlug)
-      const deletedSchema = await wipeTenantSchema(tenantDb, tenantId)
+      // The starter lock belongs to the source that was just discarded.
+      await db.setting.deleteMany({ where: { key: workspaceLockKey(tenantId) } })
+      const deletedSchema = await resetSchemaToStarter(tenantId, tenantSlug)
       await db.setting.deleteMany({ where: { key: websiteTemplateRunKey(tenantId) } })
 
       return NextResponse.json({ success: true, deletedSchema })

@@ -326,7 +326,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
           open={confirmResetOpen}
           onOpenChange={setConfirmResetOpen}
           title="Reset total workspace ini?"
-          description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Tindakan ini tidak bisa dibatalkan."
+          description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Setelah itu schema starter default dimuat ulang. Tindakan ini tidak bisa dibatalkan."
           confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
           variant="destructive"
           onConfirm={handleReset}
@@ -523,7 +523,7 @@ export function WebsiteTemplatesTab({ tenantSlug, currentRole, isWorkspaceEmpty,
         open={confirmResetOpen}
         onOpenChange={setConfirmResetOpen}
         title="Reset total workspace ini?"
-        description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Tindakan ini tidak bisa dibatalkan."
+        description="Project hosting Vercel akan dihapus, SEMUA Content Type/Single Type/Component beserta kontennya akan dihapus permanen, dan koneksi ke template sebelumnya akan diputus. Setelah itu schema starter default dimuat ulang. Tindakan ini tidak bisa dibatalkan."
         confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
         variant="destructive"
         onConfirm={handleReset}

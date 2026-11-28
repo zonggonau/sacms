@@ -65,7 +65,7 @@ export function SchemaGeneratorClient({
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/delete-schema`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal mereset schema")
-      toast({ title: "Schema Direset", description: "Semua Content Type, Single Type, dan Component dihapus. Buat schema baru dari prompt." })
+      toast({ title: "Schema Direset", description: "Semua schema dihapus dan schema starter default sudah dimuat ulang." })
       setConfirmResetOpen(false)
       setRefreshKey((k) => k + 1)
     } catch (err: any) {
@@ -199,7 +199,7 @@ export function SchemaGeneratorClient({
         open={confirmResetOpen}
         onOpenChange={setConfirmResetOpen}
         title="Reset schema workspace ini?"
-        description="Semua Content Type, Single Type, dan Component beserta isinya (fields dan content entries) akan dihapus permanen. Tidak bisa dibatalkan."
+        description="Semua Content Type, Single Type, dan Component beserta isinya (fields dan content entries) akan dihapus permanen, lalu schema starter default dimuat ulang. Tidak bisa dibatalkan."
         confirmLabel={isResetting ? "Mereset..." : "Hapus & Reset"}
         variant="destructive"
         onConfirm={handleResetSchema}
