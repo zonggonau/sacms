@@ -101,7 +101,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 
 ## Global MCP (`/api/mcp/global-schema`)
 
-49 tools.
+50 tools.
 
 | Tool | Hints | Description |
 | --- | --- | --- |
@@ -147,6 +147,7 @@ The hints column comes from each tool's MCP annotations: `read-only` tools chang
 | `start_site_preview` | not annotated | Start or reuse a code preview with published CMS content. Alias of start_preview; accepts only siteId. |
 | `start_website_template_preview` | not annotated | Start or reuse a code preview with published CMS content. |
 | `stop_preview` | not annotated | Stop a preview. Unsaved edits require discardChanges. |
+| `sync_dev_env` | write | Returns a ready-to-save .env.local for the demo workspace behind a Website Template (or Schema Template): NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT and SACMS_API_KEY of that demo workspace, plus its custom variables. Use it to run the template's frontend locally against the content you are editing. Write it to .env.local and never commit it. |
 | `update_demo_single_type_entry` | write | Patch an entry in the linked demo only. Top-level fields not included in the patch are preserved. A supplied Component or Repeater replaces that entire field. Use demo media IDs or returned media URLs. Saves as a draft by default. |
 | `update_global_component` | destructive | Update an existing Global Component's metadata, field array, and/or published status. Passing `fields` REPLACES the whole array — include every field you want to keep, not just the ones that changed. |
 | `update_schema_template` | destructive | Update an existing Schema Template's metadata, full schema, and/or published status. Passing `schema` REPLACES the whole blob (contentTypes/singleTypes/components) — it is not merged field by field, so include every model you want to keep. This Schema Template may be shared by more than one Website Template (a second frontend skin reusing it via schemaTemplateId) — changing `schema` here changes what ALL of them render from, immediately, since they all point at this same row. Call list_website_templates with schemaTemplateId first to see who's affected; if any exist, a structural `schema` change refuses with code HAS_DEPENDENTS (listing them) unless confirmSharedUpdate: true. |

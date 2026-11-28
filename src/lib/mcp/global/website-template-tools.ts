@@ -108,6 +108,67 @@ export function registerWebsiteTemplateTools(server: McpServer) {
       },
     )
 
+    // ── sync_dev_env ─────────────────────────────────────────────────────────
+    // The demo workspace behind a template is the tenant being edited from Global MCP, so its env is what a
+    // local run of that template needs: the same public URL, tenant slug and API key the workspace uses.
+    server.registerTool(
+      "sync_dev_env",
+      {
+        title: "Get Local .env for a Template's Demo Workspace",
+        description:
+          "Returns a ready-to-save .env.local for the demo workspace behind a Website Template (or Schema Template): " +
+          "NEXT_PUBLIC_SACMS_API_URL, NEXT_PUBLIC_SACMS_TENANT and SACMS_API_KEY of that demo workspace, plus its custom variables. " +
+          "Use it to run the template's frontend locally against the content you are editing. Write it to .env.local and never commit it.",
+        inputSchema: {
+          websiteTemplateId: z.string().optional().describe("Website Template id or slug. Its backing Schema Template's demo workspace is used."),
+          schemaTemplateId: z.string().optional().describe("Schema Template id or slug, when you need its demo workspace directly."),
+          format: z.enum(["env", "json"]).optional().describe("'env' (default) for .env.local file content, 'json' for a key/value object"),
+        },
+        outputSchema: {
+          ok: z.boolean(),
+          message: z.string(),
+          tenant: z.string().optional(),
+          format: z.enum(["env", "json"]).optional(),
+          keys: z.array(z.string()).optional(),
+          content: z.string().optional(),
+        },
+        annotations: { readOnlyHint: false, idempotentHint: true, openWorldHint: false },
+      },
+      async ({ websiteTemplateId, schemaTemplateId, format = "env" }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!websiteTemplateId === !schemaTemplateId) {
+          const message = "Berikan tepat satu dari websiteTemplateId atau schemaTemplateId."
+          return { content: [{ type: "text" as const, text: `❌ ${message}` }], structuredContent: { ok: false, message }, isError: true }
+        }
+
+        const schemaTemplate = websiteTemplateId
+          ? (await db.websiteTemplate.findFirst({
+              where: { OR: [{ id: websiteTemplateId }, { slug: websiteTemplateId }] },
+              select: { schemaTemplate: { select: { id: true, demoTenantId: true } } },
+            }))?.schemaTemplate
+          : await db.schemaTemplate.findFirst({
+              where: { OR: [{ id: schemaTemplateId }, { slug: schemaTemplateId }] },
+              select: { id: true, demoTenantId: true },
+            })
+        if (!schemaTemplate) return notFound(websiteTemplateId ? "Website Template" : "Schema Template", (websiteTemplateId ?? schemaTemplateId)!)
+
+        const { findSchemaDemoWorkspace } = await import("@/lib/infrastructure/demo-tenant")
+        const demo = await findSchemaDemoWorkspace(db, schemaTemplate)
+        if (!demo) {
+          const message = "Template ini belum punya workspace demo, jadi belum ada .env untuk dijalankan lokal."
+          return { content: [{ type: "text" as const, text: `❌ ${message}` }], structuredContent: { ok: false, message }, isError: true }
+        }
+
+        const { resolveFrontendEnv, renderDotEnv, resolveApiOrigin } = await import("@/lib/infrastructure/frontend-env")
+        const env = await resolveFrontendEnv(demo.id, demo.slug, resolveApiOrigin())
+        const content = format === "json" ? JSON.stringify(env, null, 2) : renderDotEnv(env)
+        const message = `.env untuk workspace demo '${demo.slug}' (${Object.keys(env).length} variabel). Simpan sebagai .env.local, jangan di-commit.`
+        const structured = { ok: true, message, tenant: demo.slug, format, keys: Object.keys(env), content }
+        return { content: [{ type: "text" as const, text: content }], structuredContent: structured }
+      },
+    )
+
     // ── get_starter_template ─────────────────────────────────────────────────
     // The SaCMS Next.js starter, read-only: what create_website_template { starter: true } builds on.
     server.registerTool(

@@ -62,6 +62,7 @@ const READ_TOOLS = [
 ]
 
 const DEMO_TOOLS = [
+  "sync_dev_env",
   "update_demo_single_type_entry",
   "save_demo_content_entry",
   "upload_demo_media",

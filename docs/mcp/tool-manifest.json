@@ -42,6 +42,7 @@
     "start_site_preview",
     "start_website_template_preview",
     "stop_preview",
+    "sync_dev_env",
     "update_demo_single_type_entry",
     "update_global_component",
     "update_schema_template",
